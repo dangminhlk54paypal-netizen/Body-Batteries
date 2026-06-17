@@ -1,4 +1,7 @@
-import * as FileSystem from 'expo-file-system';
+// Expo SDK 54 moved the classic file API behind `/legacy`. The main entry now
+// exports the new File/Directory API, where `documentDirectory` /
+// `writeAsStringAsync` / `EncodingType` are missing or throw at runtime.
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { utils, write } from 'xlsx';
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';

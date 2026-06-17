@@ -9,16 +9,16 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 ## 🔄 Phase 0 — Chuẩn bị môi trường (≈ 2–4 ngày)
 **Mục tiêu:** máy tính & điện thoại sẵn sàng, app trống chạy được.
 
-- [ ] Cài Node.js LTS — **VIỆC CẦN LÀM KẾ TIẾP** (cần mạng, vào nodejs.org)
-- [ ] Cài "Expo Go" trên điện thoại (App Store / Google Play)
+- [x] Cài Node.js LTS — **XONG** (v24.16.0)
+- [x] Cài "Expo Go" trên điện thoại — **XONG** (đã kết nối thành công 1 lần)
 - [x] AI tạo cấu trúc project TypeScript đầy đủ (`App.tsx`, `package.json`, `tsconfig.json`…)
 - [x] Tạo cấu trúc thư mục theo `docs/03-architecture.md` — **XONG** (`src/` với 5 lớp)
-- [ ] Chạy `npm install` rồi `npx expo start` — quét QR, thấy app trên điện thoại
+- [ ] Chạy `npm install` rồi `npx expo start` — quét QR, thấy app trên điện thoại — **npm install xong, code đã vá xong 3 lỗi crash (Excel, encryption, SDK version). Sẵn sàng test qua Personal Hotspot.**
 
-**Tiêu chí hoàn thành:** App hiện lên điện thoại (màn hình Home có viên pin).
+**Tiêu chí hoàn thành:** App hiện lên điện thoại (màn hình Home có viên pin), nạp được Protein rồi đóng/mở app vẫn còn dữ liệu.
 **Agent phụ trách:** `architect`
 
-> 🟡 **Trạng thái:** Code sẵn sàng. Đang chờ cài Node.js để chạy thật.
+> 🟡 **Trạng thái:** Môi trường máy 100% xong. Code đã vá lỗi crash. Tiếp theo: nối Personal Hotspot + xác nhận màn hình Home hiện đúng (Session 4).
 
 ---
 
@@ -103,7 +103,7 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 | Phase | Tên | Code | Test thật | Ghi chú |
 |-------|-----|------|-----------|---------|
-| 0 | Chuẩn bị | ✅ | ⏳ | Cần cài Node.js → `npm install` → `npx expo start` |
+| 0 | Chuẩn bị | ✅ | ⏳ | Môi trường xong, đang test nối qua Personal Hotspot |
 | 1 | MVP màn hình pin | ✅ | ⏳ | Cần chạy app thật, test nạp pin + đóng/mở lại |
 | 2 | Modes & tự động | ✅ | ⏳ | Cần test đổi Mode, nhận thông báo thật |
 | 3 | Excel, Diary, dọn dẹp | 🔄 | ⏳ | Còn thiếu biểu đồ xu hướng (victory-native) |
@@ -112,6 +112,6 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 **Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | ⬜ Chưa bắt đầu
 
-> 🚨 **Việc đầu tiên của session tiếp theo:** Cài Node.js (nodejs.org → bản LTS) rồi làm theo `SESSION_LOG.md`.
+> 🚨 **Việc đầu tiên của session tiếp theo:** Nối Mac vào Personal Hotspot của iPhone, chạy lại `npx expo start --clear`, xác nhận màn hình Home hiện đúng. Chi tiết đầy đủ trong `.ai/SESSION_LOG.md` (Session 2).
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

@@ -88,23 +88,31 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối:** 2026-06-16
+**Cập nhật lần cuối:** 2026-06-17 (Session 3)
 
-**Tóm tắt 1 dòng:** Toàn bộ source code đã viết xong (Phase 0–3), chờ cài Node.js để chạy thật.
+**Tóm tắt 1 dòng:** Code đã vá xong 3 lỗi crash (Excel, encryption, SDK version); sẵn sàng test trên điện thoại qua Personal Hotspot. Môi trường máy 100% xong (Node.js, Watchman, SDK 54).
 
 **Môi trường máy:**
-- Node.js: ❌ Chưa cài
-- Expo Go (điện thoại): chưa xác nhận
-- `npm install`: ❌ Chưa chạy
-- Git hooks: ❌ Chưa cài (`bash .ai/scripts/install-hooks.sh`)
+- Node.js: ✅ v24.16.0 / npm 11.13.0
+- Homebrew + Watchman (thật): ✅ Cài xong, không còn lỗi `EMFILE`
+- macOS `launchd maxfiles`: ✅ Nâng 65536
+- Expo SDK: ✅ 54.0.35 (khớp Expo Go trên iPhone)
+- `npm install`: ✅ Xong, dependencies khớp SDK 54
+- Mạng: trường eduroam bị "client isolation". Đã chuyển sang Personal Hotspot (chưa xác nhận máy nối vào).
+- Git hooks: ❌ Chưa cài
 
-**Việc phải làm KẾ TIẾP (theo thứ tự):**
-1. Cài **Node.js LTS** tại nodejs.org (cần wifi ~5 phút)
-2. Mở terminal VS Code → `cd my-body-batteries-app` → `npm install`
-3. `npx expo start` → quét QR trên điện thoại bằng Expo Go
-4. Test màn hình Home: thấy pin hiện lên, bấm pin để nạp
-5. Test đóng app → mở lại → dữ liệu vẫn còn
-6. Báo lỗi cho AI nếu có (thường gặp: thiếu thư viện, lỗi import)
+**Code:**
+- ✅ 38 files kiến trúc mà Session 1 viết vẫn nguyên vẹn (Phase 0–3 logic).
+- ✅ Session 3 đã vá: `excelExportService.ts` (import `/legacy`), `encryption.ts` (UTF-8 + Math.random key), `AGENTS.md` (SDK 54), `SettingsScreen.tsx` (cảnh báo xoá).
+- ✅ 2 lỗi nhỏ còn (không crash) ghi lại để xử lý khi test Phase 2–3.
+
+**Việc phải làm KẾ TIẾP (Session 4):**
+1. ✅ Xác nhận Mac nối vào Personal Hotspot của iPhone
+2. ✅ Chạy `export PATH="/opt/homebrew/bin:$PATH" && npx expo start --clear`
+3. ✅ Safari → `exp://<IP>:8081` → "Open in Expo Go"
+4. ✅ Xác nhận màn hình Home (viên pin) hiện ra đúng
+5. ✅ Test nạp Protein → đóng/mở app → xác nhận dữ liệu
+6. = **Phase 0 done** → bắt đầu Phase 1 test
 
 **Những gì ĐÃ có trong code (không cần viết lại):**
 - `src/types/` — BatteryType, DailyLog, IntakeEvent, ModeDefinition

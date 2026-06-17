@@ -37,11 +37,11 @@ export function SettingsScreen() {
   function handleCleanup() {
     Alert.alert(
       'Xoá dữ liệu cũ',
-      'Dữ liệu hơn 7 ngày sẽ bị xoá. Bạn có chắc không?',
+      'Dữ liệu hơn 7 ngày sẽ bị xoá VĨNH VIỄN và không thể khôi phục.\n\nHãy bấm "Xuất Excel" trước để giữ lại bản lưu. Bạn có chắc muốn xoá?',
       [
         { text: 'Huỷ', style: 'cancel' },
         {
-          text: 'Xoá',
+          text: 'Xoá vĩnh viễn',
           style: 'destructive',
           onPress: () => runWeeklyCleanup(),
         },
