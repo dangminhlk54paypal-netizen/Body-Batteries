@@ -6,59 +6,69 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 ---
 
-## 🟢 Phase 0 — Chuẩn bị môi trường (≈ 2–4 ngày)
+## 🔄 Phase 0 — Chuẩn bị môi trường (≈ 2–4 ngày)
 **Mục tiêu:** máy tính & điện thoại sẵn sàng, app trống chạy được.
 
-- [ ] Cài Node.js, Git, VS Code, extension AI
-- [ ] Cài "Expo Go" trên điện thoại
-- [ ] AI tạo project Expo trống (TypeScript)
-- [ ] Tạo cấu trúc thư mục theo `docs/03-architecture.md`
-- [ ] Chạy thử: quét QR code, thấy màn hình "Hello" trên điện thoại
+- [ ] Cài Node.js LTS — **VIỆC CẦN LÀM KẾ TIẾP** (cần mạng, vào nodejs.org)
+- [ ] Cài "Expo Go" trên điện thoại (App Store / Google Play)
+- [x] AI tạo cấu trúc project TypeScript đầy đủ (`App.tsx`, `package.json`, `tsconfig.json`…)
+- [x] Tạo cấu trúc thư mục theo `docs/03-architecture.md` — **XONG** (`src/` với 5 lớp)
+- [ ] Chạy `npm install` rồi `npx expo start` — quét QR, thấy app trên điện thoại
 
-**Tiêu chí hoàn thành:** App trống hiện lên điện thoại của bạn.
+**Tiêu chí hoàn thành:** App hiện lên điện thoại (màn hình Home có viên pin).
 **Agent phụ trách:** `architect`
+
+> 🟡 **Trạng thái:** Code sẵn sàng. Đang chờ cài Node.js để chạy thật.
 
 ---
 
-## 🟢 Phase 1 — MVP: Màn hình pin (≈ 2–3 tuần)
+## 🔄 Phase 1 — MVP: Màn hình pin (≈ 2–3 tuần)
 **Mục tiêu:** thấy được các viên pin và nạp/xả thủ công.
 
-- [ ] Vẽ `BatteryCell` (1 viên pin) và `BatteryStack` (khối pin)
-- [ ] Màn hình Home hiển thị Master Battery + vài pin nhỏ (Protein, Đường, Nước)
-- [ ] Cài SQLite + tạo các bảng (`battery_types`, `battery_readings`, `intake_events`)
-- [ ] Nút "Nạp" thủ công → pin tăng, lưu vào DB
-- [ ] Dữ liệu còn nguyên sau khi đóng/mở lại app
+- [x] Vẽ `BatteryCell` + `MasterBattery` + `BatteryStack` — **XONG** (`src/components/`)
+- [x] Màn hình Home hiển thị Master Battery + 6 pin nhỏ (Protein, Carbs, Nước, Khoáng, Ngủ, Vận động)
+- [x] SQLite schema + database init + seed dữ liệu mặc định — **XONG** (`src/data/db/`)
+- [x] Nút "Nạp" thủ công qua `IntakeModal` → pin tăng, lưu vào DB — **XONG**
+- [ ] **Test thực tế:** nạp Protein, đóng app, mở lại vẫn thấy mức pin đúng
 
 **Tiêu chí hoàn thành:** Bạn nạp Protein, đóng app, mở lại vẫn thấy mức pin đúng.
 **Agent phụ trách:** `mobile-frontend` + `logic-backend`
 
+> 🟡 **Trạng thái:** Code xong 100%. Chưa test trên điện thoại (chờ Node.js).
+
 ---
 
-## 🟡 Phase 2 — Modes & Tự động hoá (≈ 2 tuần)
+## 🔄 Phase 2 — Modes & Tự động hoá (≈ 2 tuần)
 **Mục tiêu:** app bắt đầu "tự sống".
 
-- [ ] Định nghĩa Modes (Training / Maintain / Rest) trong `domain/modes`
-- [ ] Mode thay đổi sức chứa & tốc độ xả
-- [ ] Daily reset đầu ngày
-- [ ] Xả pin tự động theo thời gian
-- [ ] Thông báo "pin sắp cạn" (`expo-notifications`)
-- [ ] Màn hình Settings: đặt ngưỡng cảnh báo
+- [x] Định nghĩa Modes (Training / Maintain / Rest) — **XONG** (`src/domain/modes/modeDefinitions.ts`)
+- [x] Mode thay đổi sức chứa (`capacityMultipliers`) & tốc độ xả (`drainRatePerHour`) — **XONG**
+- [x] `ModeSelector` component + lưu vào `settingsStore` — **XONG**
+- [x] Logic xả pin theo thời gian (`tickDrain` trong `energyStore`) — **XONG**
+- [x] Thông báo "pin sắp cạn" (`notificationService.ts`) — **XONG**
+- [x] Màn hình Settings: đặt ngưỡng cảnh báo — **XONG** (`src/screens/SettingsScreen.tsx`)
+- [ ] **Test thực tế:** đổi Mode Training → thấy mục tiêu Protein tăng; nhận thông báo thật
 
 **Tiêu chí hoàn thành:** Đổi sang Mode Training thấy mục tiêu Protein tăng; nhận được 1 thông báo nhắc nhở thật.
 **Agent phụ trách:** `logic-backend`
 
+> 🟡 **Trạng thái:** Code xong. Chưa test trên điện thoại.
+
 ---
 
-## 🟡 Phase 3 — Excel, Diary & Dọn dẹp (≈ 1–2 tuần)
+## 🔄 Phase 3 — Excel, Diary & Dọn dẹp (≈ 1–2 tuần)
 **Mục tiêu:** dữ liệu được lưu trữ và riêng tư.
 
-- [ ] Xuất Excel hàng tuần (`xlsx` + `expo-file-system`)
-- [ ] Tự xoá dữ liệu > 1 tuần khỏi app
-- [ ] Màn hình Diary mã hoá (write-only)
-- [ ] Biểu đồ xu hướng tuần (`victory-native`)
+- [x] Xuất Excel (`excelExportService.ts` dùng `xlsx` + `expo-file-system` + `expo-sharing`) — **XONG**
+- [x] Tự xoá dữ liệu > 7 ngày (`cleanupService.ts`) — **XONG**
+- [x] Màn hình Diary mã hoá write-only (`DiaryScreen.tsx` + `encryption.ts`) — **XONG**
+- [ ] Biểu đồ xu hướng tuần (`victory-native`) — **CHƯA LÀM** (để khi test xong các màn kia)
+- [ ] **Test thực tế:** xuất file Excel ra điện thoại; ghi nhật ký riêng tư
 
 **Tiêu chí hoàn thành:** Bạn xuất được 1 file Excel ra điện thoại; ghi được nhật ký riêng tư.
 **Agent phụ trách:** `logic-backend` + `mobile-frontend`
+
+> 🟡 **Trạng thái:** 3/4 mục xong. Còn biểu đồ xu hướng.
 
 ---
 
@@ -91,13 +101,17 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 ## 📊 Bảng tổng quan tiến độ
 
-| Phase | Tên | Thời lượng ước tính | Trạng thái |
-|-------|-----|---------------------|-----------|
-| 0 | Chuẩn bị | 2–4 ngày | ⬜ Chưa bắt đầu |
-| 1 | MVP màn hình pin | 2–3 tuần | ⬜ |
-| 2 | Modes & tự động | 2 tuần | ⬜ |
-| 3 | Excel, Diary, dọn dẹp | 1–2 tuần | ⬜ |
-| 4 | Tích hợp dữ liệu | 2–3 tuần | ⬜ |
-| 5 | Lớp thông minh | Liên tục | ⬜ |
+| Phase | Tên | Code | Test thật | Ghi chú |
+|-------|-----|------|-----------|---------|
+| 0 | Chuẩn bị | ✅ | ⏳ | Cần cài Node.js → `npm install` → `npx expo start` |
+| 1 | MVP màn hình pin | ✅ | ⏳ | Cần chạy app thật, test nạp pin + đóng/mở lại |
+| 2 | Modes & tự động | ✅ | ⏳ | Cần test đổi Mode, nhận thông báo thật |
+| 3 | Excel, Diary, dọn dẹp | 🔄 | ⏳ | Còn thiếu biểu đồ xu hướng (victory-native) |
+| 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu |
+| 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu |
 
-> 💡 Cập nhật cột "Trạng thái" (⬜ → 🔄 → ✅) khi làm xong, để AI luôn biết bạn đang ở đâu.
+**Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | ⬜ Chưa bắt đầu
+
+> 🚨 **Việc đầu tiên của session tiếp theo:** Cài Node.js (nodejs.org → bản LTS) rồi làm theo `SESSION_LOG.md`.
+
+> 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.
