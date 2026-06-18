@@ -88,47 +88,29 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối:** 2026-06-17 (Session 3)
+**Cập nhật lần cuối:** 2026-06-18 (Session 4)
 
-**Tóm tắt 1 dòng:** Code đã vá xong 3 lỗi crash (Excel, encryption, SDK version); sẵn sàng test trên điện thoại qua Personal Hotspot. Môi trường máy 100% xong (Node.js, Watchman, SDK 54).
+**Tóm tắt 1 dòng:** 🎉 App **build thành công lần đầu tiên** (`expo export` iOS = 1403 module). Đã tìm & vá nguyên nhân gốc khiến mọi bundle hỏng (`.watchmanconfig` bắt Watchman bỏ qua `node_modules`) + 6 lỗi logic. Dự án đã **gộp về 1 thư mục duy nhất** `BodyBatteries/` (giữ nguyên git history). Sẵn sàng quét QR test thật.
 
 **Môi trường máy:**
-- Node.js: ✅ v24.16.0 / npm 11.13.0
-- Homebrew + Watchman (thật): ✅ Cài xong, không còn lỗi `EMFILE`
-- macOS `launchd maxfiles`: ✅ Nâng 65536
-- Expo SDK: ✅ 54.0.35 (khớp Expo Go trên iPhone)
-- `npm install`: ✅ Xong, dependencies khớp SDK 54
-- Mạng: trường eduroam bị "client isolation". Đã chuyển sang Personal Hotspot (chưa xác nhận máy nối vào).
-- Git hooks: ❌ Chưa cài
+- Node.js ✅ v24.16.0 / npm 11.13.0 · Homebrew + Watchman ✅ · `maxfiles` ✅ 65536 · Expo SDK ✅ 54.0.35 · `npm install` ✅
+- **Bundle build:** ✅ verify OK cả iOS (1403 module) lẫn web (852 module) bằng `expo export`.
+- Mạng: eduroam có "client isolation" → dùng Personal Hotspot hoặc `--tunnel`.
+- Git: repo có remote `origin` (GitHub). Session 4 commit "Consolidate..." **mới commit local, CHƯA push** — chờ người dùng duyệt.
+- Git hooks: ❌ Chưa cài.
 
-**Code:**
-- ✅ 38 files kiến trúc mà Session 1 viết vẫn nguyên vẹn (Phase 0–3 logic).
-- ✅ Session 3 đã vá: `excelExportService.ts` (import `/legacy`), `encryption.ts` (UTF-8 + Math.random key), `AGENTS.md` (SDK 54), `SettingsScreen.tsx` (cảnh báo xoá).
-- ✅ 2 lỗi nhỏ còn (không crash) ghi lại để xử lý khi test Phase 2–3.
+**⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (Session 4):**
-1. ✅ Xác nhận Mac nối vào Personal Hotspot của iPhone
-2. ✅ Chạy `export PATH="/opt/homebrew/bin:$PATH" && npx expo start --clear`
-3. ✅ Safari → `exp://<IP>:8081` → "Open in Expo Go"
-4. ✅ Xác nhận màn hình Home (viên pin) hiện ra đúng
-5. ✅ Test nạp Protein → đóng/mở app → xác nhận dữ liệu
-6. = **Phase 0 done** → bắt đầu Phase 1 test
+**Code đã vá ở Session 4:** `.watchmanconfig` (→ `{}`, nguyên nhân gốc), `energyStore.ts` (đổi Mode cập nhật sức chứa + try/catch chống màn trống + `addIntake` trả `BatteryAlert[]`), `HomeScreen.tsx` (cảnh báo dùng data mới + tôn trọng nút thông báo), `dateUtils.ts` (ngày theo giờ local), `HistoryScreen.tsx` (`useFocusEffect`), `index.js` (chuẩn Expo), `app.json` (thêm plugin sqlite/secure-store).
 
-**Những gì ĐÃ có trong code (không cần viết lại):**
-- `src/types/` — BatteryType, DailyLog, IntakeEvent, ModeDefinition
-- `src/lib/` — constants, dateUtils, encryption
-- `src/domain/` — batteryEngine, modeDefinitions (Training/Maintain/Rest), lowBatteryRules
-- `src/data/db/` — SQLite schema + database init + seed 6 pin mặc định
-- `src/data/repositories/` — battery, intake, dailyLog repos
-- `src/store/` — energyStore (Zustand), settingsStore
-- `src/services/` — notifications, export Excel, cleanup
-- `src/components/` — BatteryCell, MasterBattery, BatteryStack, ModeSelector, IntakeModal
-- `src/screens/` — Home, History, Diary, Settings
-- `src/navigation/` — AppNavigator (bottom tabs: ⚡📊📔⚙️)
-- `App.tsx`, `package.json`, `tsconfig.json`, `babel.config.js`, `app.json`
+**Việc phải làm KẾ TIẾP:** Xem **`.ai/NEXT_SESSIONS.md`** — kế hoạch chia việc cho NHIỀU phiên Sonnet 4.6 chạy song song (S-A test thật, S-B biểu đồ, S-C nhắc nhở, S-D tự xả pin, S-E unit test). Mỗi phiên chỉ động vào nhóm file riêng để không đụng nhau.
 
-**Việc còn thiếu (chưa viết code):**
-- Biểu đồ xu hướng tuần (`victory-native`) — Phase 3
-- Background task tự xả pin định kỳ (`expo-task-manager`) — Phase 2 nâng cao
-- Tích hợp Health (HealthKit/Health Connect) — Phase 4
-- Lớp thông minh ML — Phase 5
+**Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption), domain (batteryEngine/modeDefinitions/lowBatteryRules), data/db + repositories, store (energy/settings), services (notifications/export/cleanup), components (BatteryCell/MasterBattery/BatteryStack/ModeSelector/IntakeModal), screens (Home/History/Diary/Settings), navigation. Đầy đủ Phase 0–3 (trừ biểu đồ).
+
+**Việc còn thiếu (chi tiết & phân công trong `.ai/NEXT_SESSIONS.md`):**
+- Biểu đồ xu hướng tuần — Phase 3 (S-B)
+- Tự xả pin định kỳ + reset hàng ngày khi mở app — Phase 2 nâng cao (S-D)
+- Nhắc nhở hàng ngày + ngưỡng cảnh báo thật trong Settings — Phase 2 (S-C)
+- Unit test cho domain logic — chất lượng (S-E)
+- Tích hợp Health (HealthKit/Health Connect) — Phase 4 (S-F, làm sau)
+- Lớp thông minh ML — Phase 5 (S-G, làm sau cùng)

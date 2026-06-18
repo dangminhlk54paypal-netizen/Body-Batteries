@@ -137,12 +137,15 @@ Mỗi bản có `node_modules` riêng. Đã **đồng bộ 7 file đã sửa san
 
 **Vấn đề chưa làm (không chặn demo):** tickDrain/daily-reset chưa được gọi định kỳ (pin chưa tự xả theo thời gian — Phase 2/4); biểu đồ xu hướng (Phase 3); tích hợp Health (Phase 4).
 
-**Session tiếp theo phải làm (đã sẵn sàng chạy thật):**
-1. `cd` vào **một** bản (khuyến nghị `BodyBatteries`), `export PATH="/opt/homebrew/bin:$PATH"`, chạy `npx expo start` (hotspot) hoặc `--tunnel`.
-2. Quét QR bằng Expo Go → **lần này Home phải hiện 1 pin tổng + 6 pin nhỏ** (đã verify bundle OK).
-3. Test Phase 1: nạp Protein → đóng/mở app → dữ liệu còn → đánh dấu Phase 0 & 1 **done**.
-4. Test Phase 2: đổi Mode Training → mục tiêu Protein tăng (đã vá logic); chỉnh giờ điện thoại sang hôm sau để thử reset (hoặc để sau).
-5. Cân nhắc gộp 2 thư mục về 1.
+**Cập nhật (cuối Session 4):** Đã **gộp 2 thư mục về 1** — chỉ còn `/Users/minh/VSCode_Repo/BodyBatteries`
+(giữ nguyên git history 3 commit cũ + commit "Consolidate..." mới, **chưa push**). Bản trùng
+`Body Batteries/` và symlink `BodyBatteriesApp` đã xoá; ghi chú/ảnh cũ giữ ở `docs/_reference/`.
+
+**Session tiếp theo phải làm:** Xem **`.ai/NEXT_SESSIONS.md`** — đã chia việc còn lại thành các
+gói độc lập (S-A test thật, S-B biểu đồ, S-C nhắc nhở, S-D tự xả pin, S-E unit test) để chạy
+**nhiều phiên Sonnet 4.6 song song** mà không đụng file của nhau. Mỗi gói có sẵn prompt copy-paste
+và danh sách "file được sửa / không đụng". Việc cấp bách nhất: **S-A — quét QR test thật trên iPhone**
+(bundle đã verify build OK nên Home phải hiện ra).
 
 ---
 

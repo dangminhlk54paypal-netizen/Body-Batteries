@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew --version)",
+      "Bash(git -C \"/Users/minh/VSCode_Repo/Body Batteries\" rev-parse --show-toplevel)",
+      "Bash(gh auth *)",
+      "Bash(curl -sL \"https://github.com/cli/cli/releases/download/v2.74.1/gh_2.74.1_macOS_arm64.tar.gz\" -o /tmp/gh.tar.gz)",
+      "Bash(tar -xzf /tmp/gh.tar.gz -C /tmp)",
+      "Bash(sudo mv /tmp/gh_2.74.1_macOS_arm64/bin/gh /usr/local/bin/gh)",
+      "Bash(gh --version)",
+      "Bash(curl -sI \"https://github.com/cli/cli/releases/download/v2.74.1/gh_2.74.1_macOS_arm64.tar.gz\")",
+      "Bash(curl -s \"https://api.github.com/repos/cli/cli/releases/latest\")",
+      "Bash(curl -sL \"https://github.com/cli/cli/releases/download/v2.94.0/gh_2.94.0_macOS_arm64.tar.gz\" -o /tmp/gh.tar.gz)",
+      "Read(//private/tmp/**)",
+      "Bash(tar -xzf /tmp/gh.tar.gz -C /tmp/)",
+      "Read(//tmp/gh_2.94.0_macOS_arm64/**)",
+      "Bash(sudo mv /tmp/gh_2.94.0_macOS_arm64/bin/gh /usr/local/bin/gh)"
+    ]
+  }
+}
