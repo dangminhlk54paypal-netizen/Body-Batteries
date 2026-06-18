@@ -145,14 +145,14 @@ export function SettingsScreen() {
           <View style={styles.timeRow}>
             <View style={styles.stepperGroup}>
               <Pressable
-                style={styles.stepperBtn}
+                style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
                 onPress={() => handleReminderHourChange(-1)}
               >
                 <Text style={styles.stepperBtnText}>−</Text>
               </Pressable>
               <Text style={styles.timeValue}>{pad(reminderHour)}</Text>
               <Pressable
-                style={styles.stepperBtn}
+                style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
                 onPress={() => handleReminderHourChange(1)}
               >
                 <Text style={styles.stepperBtnText}>+</Text>
@@ -161,14 +161,14 @@ export function SettingsScreen() {
             <Text style={styles.timeColon}>:</Text>
             <View style={styles.stepperGroup}>
               <Pressable
-                style={styles.stepperBtn}
+                style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
                 onPress={() => handleReminderMinuteChange(-15)}
               >
                 <Text style={styles.stepperBtnText}>−</Text>
               </Pressable>
               <Text style={styles.timeValue}>{pad(reminderMinute)}</Text>
               <Pressable
-                style={styles.stepperBtn}
+                style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
                 onPress={() => handleReminderMinuteChange(15)}
               >
                 <Text style={styles.stepperBtnText}>+</Text>
@@ -188,9 +188,10 @@ export function SettingsScreen() {
               <Pressable
                 key={t}
                 onPress={() => setLowBatteryThreshold(t)}
-                style={[
+                style={({ pressed }) => [
                   styles.chip,
                   lowBatteryThreshold === t && styles.chipActive,
+                  pressed && styles.pressed,
                 ]}
               >
                 <Text
@@ -210,13 +211,20 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>DỮ LIỆU</Text>
 
-          <Pressable style={styles.actionBtn} onPress={handleExport} disabled={exporting}>
+          <Pressable
+            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+            onPress={handleExport}
+            disabled={exporting}
+          >
             <Text style={styles.actionBtnText}>
               {exporting ? 'Đang xuất...' : '📊 Xuất Excel 7 ngày gần nhất'}
             </Text>
           </Pressable>
 
-          <Pressable style={[styles.actionBtn, styles.dangerBtn]} onPress={handleCleanup}>
+          <Pressable
+            style={({ pressed }) => [styles.actionBtn, styles.dangerBtn, pressed && styles.pressed]}
+            onPress={handleCleanup}
+          >
             <Text style={[styles.actionBtnText, styles.dangerText]}>
               🗑️ Xoá dữ liệu cũ hơn 7 ngày
             </Text>
@@ -297,4 +305,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 8,
   },
+  pressed: { opacity: 0.6 },
 });

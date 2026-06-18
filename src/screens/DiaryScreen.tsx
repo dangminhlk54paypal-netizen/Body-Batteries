@@ -61,7 +61,10 @@ export function DiaryScreen() {
           {saved ? (
             <View style={styles.savedBox}>
               <Text style={styles.savedText}>✅ Đã lưu và mã hoá thành công!</Text>
-              <Pressable onPress={() => setSaved(false)} style={styles.newEntryBtn}>
+              <Pressable
+                onPress={() => setSaved(false)}
+                style={({ pressed }) => [styles.newEntryBtn, pressed && styles.pressed]}
+              >
                 <Text style={styles.newEntryText}>Viết thêm</Text>
               </Pressable>
             </View>
@@ -77,7 +80,11 @@ export function DiaryScreen() {
                 textAlignVertical="top"
               />
               <Pressable
-                style={[styles.saveBtn, !text.trim() && styles.saveBtnDisabled]}
+                style={({ pressed }) => [
+                  styles.saveBtn,
+                  !text.trim() && styles.saveBtnDisabled,
+                  pressed && styles.pressed,
+                ]}
                 onPress={handleSave}
                 disabled={!text.trim()}
               >
@@ -144,4 +151,5 @@ const styles = StyleSheet.create({
   },
   newEntryText: { color: '#aaa', fontSize: 14 },
   disclaimer: { fontSize: 11, color: '#444', lineHeight: 17 },
+  pressed: { opacity: 0.6 },
 });

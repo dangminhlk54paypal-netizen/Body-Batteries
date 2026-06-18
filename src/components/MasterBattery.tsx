@@ -66,7 +66,7 @@ export function MasterBattery({ percentage, levelKcal, capacityKcal }: Props) {
       <Text style={styles.label}>Năng lượng tổng</Text>
       {capacityKcal != null && levelKcal != null && (
         <Text style={styles.kcal}>
-          {Math.round(levelKcal)} / {Math.round(capacityKcal)} kcal
+          {levelKcal.toFixed(1)} / {Math.round(capacityKcal)} kcal
         </Text>
       )}
     </View>

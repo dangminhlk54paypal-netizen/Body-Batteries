@@ -27,7 +27,10 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           Chỉ tham khảo — không phải thiết bị y tế
         </Text>
 
-        <Pressable style={styles.startBtn} onPress={onDone}>
+        <Pressable
+          style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
+          onPress={onDone}
+        >
           <Text style={styles.startText}>Bắt đầu dùng app</Text>
         </Pressable>
       </ScrollView>
@@ -74,5 +77,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

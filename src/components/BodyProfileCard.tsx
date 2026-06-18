@@ -92,7 +92,15 @@ export function BodyProfileCard() {
       <Text style={styles.fieldLabel}>Giới tính</Text>
       <View style={styles.chipRow}>
         {SEX_LABELS.map((o) => (
-          <Pressable key={o.value} onPress={() => withReset(setSex)(o.value)} style={[styles.chip, sex === o.value && styles.chipActive]}>
+          <Pressable
+            key={o.value}
+            onPress={() => withReset(setSex)(o.value)}
+            style={({ pressed }) => [
+              styles.chip,
+              sex === o.value && styles.chipActive,
+              pressed && styles.pressed,
+            ]}
+          >
             <Text style={[styles.chipText, sex === o.value && styles.chipTextActive]}>{o.label}</Text>
           </Pressable>
         ))}
@@ -104,7 +112,11 @@ export function BodyProfileCard() {
           <Pressable
             key={o.value}
             onPress={() => withReset(setOccupation)(o.value)}
-            style={[styles.chip, occupation === o.value && styles.chipActive]}
+            style={({ pressed }) => [
+              styles.chip,
+              occupation === o.value && styles.chipActive,
+              pressed && styles.pressed,
+            ]}
           >
             <Text style={[styles.chipText, occupation === o.value && styles.chipTextActive]}>{o.label}</Text>
           </Pressable>
@@ -118,7 +130,10 @@ export function BodyProfileCard() {
       {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
       {saved && !error && <Text style={styles.savedText}>✅ Đã lưu hồ sơ.</Text>}
 
-      <Pressable style={styles.saveBtn} onPress={handleSave}>
+      <Pressable
+        style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
+        onPress={handleSave}
+      >
         <Text style={styles.saveText}>Lưu hồ sơ</Text>
       </Pressable>
     </View>
@@ -167,4 +182,5 @@ const styles = StyleSheet.create({
   savedText: { color: '#00B894', fontSize: 13 },
   saveBtn: { backgroundColor: '#00B894', padding: 14, borderRadius: 12, alignItems: 'center' },
   saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  pressed: { opacity: 0.6 },
 });
