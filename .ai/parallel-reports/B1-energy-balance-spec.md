@@ -1,5 +1,10 @@
 # Spec quyết định — B1: xử lý "ăn dư" / hiện cân bằng năng lượng
 
+> ✅ **ĐÃ CHỐT (2026-06-18): chọn Hướng C — lật mô hình thành "đã ăn / mục tiêu" (đếm lên).**
+> Hướng A/B bên dưới KHÔNG dùng nữa. Spec chi tiết của hướng đã chốt:
+> **`.ai/parallel-reports/S-M-energy-redesign-spec.md`** (gói S-M). File này giữ lại để tham khảo
+> lý do loại A/B.
+
 > Tài liệu để **người dùng chốt hướng**, do phiên Opus (điều phối) soạn từ việc đọc engine
 > (`energyBalanceEngine.ts`, `batteryEngine.ts`, `store/energyStore.ts` — 2026-06-18).
 > Sau khi chốt → tách thành 1 gói riêng (đề xuất mã **S-M**), KHÔNG làm chung U1/U6/S-K vì đụng
