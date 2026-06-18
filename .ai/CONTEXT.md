@@ -161,6 +161,16 @@ healthSignalsRepository), navigation. Phase 0–3 đầy đủ kể cả biểu 
 (nhắc nhở thật + tự xả pin + reset ngày mới). UX: U2 (bàn phím modal ghi món) + U3 (nhãn biểu
 đồ/Lịch sử) đã sửa xong. Ghi nhận cân nặng theo thời gian (S-L) đã xong.
 
+**Session 8 (Opus, cuối ngày 2026-06-18 — sau khi người dùng đóng hết các phiên song song khác):**
+Kiểm tra lại toàn bộ trạng thái trước khi kết ngày. Xác nhận: không có gói nào bị bỏ dở giữa code
+(mọi gói đang ✅ xong / 🆕 sẵn sàng chờ người dùng-điện thoại / ⏸ tạm dừng có lý do); 4 file tài
+liệu chính (`NEXT_SESSIONS.md`, `SESSION_LOG.md`, `CONTEXT.md`, `docs/04-roadmap.md`) nhất quán,
+không mâu thuẫn nhau. Chạy lại để xác nhận "xanh" tại thời điểm đóng ngày: `npx tsc --noEmit`
+sạch · `npx jest` → **92 test PASS / 11 suite** · `npx expo export --platform ios` → build OK
+(exit 0). Dọn 6 tiến trình `expo start --web` mồ côi còn sót từ trước Session 4 (trỏ thư mục cũ đã
+xoá, ~1 ngày tuổi) sau khi xin phép người dùng — giữ lại tiến trình port 8093 (trỏ đúng project
+hiện tại). Chi tiết đầy đủ quá trình chốt quyết định S-M ở `.ai/SESSION_LOG.md` mục "Session 8".
+
 **Việc còn thiếu / sẵn sàng giao phiên sau (chi tiết & prompt copy-paste trong `.ai/NEXT_SESSIONS.md`):**
 - **S-M — lật pin Năng lượng sang "đã ăn/mục tiêu"** (đã chốt 2026-06-18, đụng lõi, CHƯA code) —
   việc lớn ưu tiên nhất, xem spec đầy đủ trong `.ai/parallel-reports/S-M-energy-redesign-spec.md`

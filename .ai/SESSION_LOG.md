@@ -331,6 +331,75 @@ S-M**, **U6/S-F nên đợi S-M xong** (cùng đụng `energyStore.ts`/`Settings
 
 ---
 
+## Session 8 — 2026-06-18 (Opus, điều phối song song + chốt quyết định S-M + tổng kết cuối ngày)
+
+**Làm gì:** Phiên Opus chạy song song với các phiên Sonnet khác (U2, U3, S-L, S-J/S-K-spec) trong
+suốt Session 6–7. Vai trò chính: phát hiện rủi ro đụng nhau giữa các phiên, dọn nền sạch, phân
+tích sâu vùng "con số năng lượng chưa hợp logic" mà người dùng phản hồi sau khi test máy, và dẫn
+dắt một quyết định lớn về mô hình pin Năng lượng cùng người dùng.
+
+**Kết quả:**
+- Phát hiện sớm: nhiều phiên đang sửa cùng lúc 6 file UI polish (press feedback + animation
+  trượt sheet) chưa commit, và 1 phiên khác đang biên tập trực tiếp `NEXT_SESSIONS.md`. Để tránh
+  đè mất công nhau: commit hộ phần polish đã xong làm nền sạch (`4499fab`), và viết kế hoạch đợt
+  UX (U1–U6) vào file riêng `NEXT_SESSIONS_UX.md` thay vì sửa đè `NEXT_SESSIONS.md` (file này sau
+  đó đã được một phiên khác gộp lại và xoá, đúng dự tính).
+- Đào sâu vùng "pin tổng + con số năng lượng" theo đúng phản hồi test máy của người dùng → viết
+  `.ai/parallel-reports/U1-FINDINGS.md`: phát hiện số kcal hiển thị `.toFixed(1)` rung liên tục
+  mỗi giây (A1), thiếu chữ giải nghĩa "còn lại / sức chứa" khiến đọc ngược với app đếm calo quen
+  thuộc (A2 — nghi vấn là gốc rễ của "chưa hợp logic"), và màu đỏ ban đêm dễ hiểu nhầm "báo lỗi"
+  (A3). Phân biệt rõ phần U1 tự sửa được (hiển thị) và phần phải báo cho engine, không tự sửa
+  (B1–B3: ăn dư bị clamp mất, không carry-over, cảnh báo "pin thấp" xung đột nhịp sinh học).
+- Soạn `.ai/parallel-reports/B1-energy-balance-spec.md` — 3 hướng xử lý "ăn dư": (A) giữ pin
+  0–100% + thêm dòng cân bằng riêng, (B) cho pin vượt 100%, (C) lật hẳn mô hình thành "đã ăn/mục
+  tiêu" (đếm lên, giống app đếm calo phổ thông). Trình bày kèm minh hoạ ASCII cho người dùng so
+  sánh trực quan.
+- **Người dùng chốt hướng C** (lật mô hình) — quyết định sâu hơn đề xuất ban đầu của phiên này
+  (vốn nghiêng về hướng A vì ít việc hơn), nhưng đúng vì làm pin Năng lượng nhất quán với 6 pin
+  nhỏ khác (tất cả đều đếm lên từ rỗng). Hỏi thêm để chốt chi tiết: thanh pin đếm lên + **giữ yếu
+  tố thời gian** (thêm 1 số sống "còn được ăn ngay" tăng dần theo thời gian, tái dùng cơ chế
+  tick/giây của Session 5 thay vì bỏ hẳn).
+- Viết `.ai/parallel-reports/S-M-energy-redesign-spec.md` — spec đầy đủ: định nghĩa số mới
+  (`level`=đã ăn bắt đầu từ 0, `capacity`=mục tiêu ngày gồm vận động), bảng so sánh trước/sau,
+  **ảnh hưởng dây chuyền** (S-K mất ý nghĩa → tạm dừng; U1 bị viết đè → gộp hẳn vào S-M; U6/S-F
+  đụng file chung → nên làm sau S-M), ràng buộc sức khoẻ, và 3 điểm cần người dùng xác nhận thêm
+  trước khi code. Một phiên khác sau đó đã đăng ký S-M chính thức vào `NEXT_SESSIONS.md` +
+  `CONTEXT.md` (commit `4ac23b7`) — đối chiếu lại, nội dung khớp đúng với spec, không có gì lệch.
+- **Kiểm tra cuối ngày (sau khi người dùng đóng hết các phiên song song khác):** đọc lại toàn bộ
+  `NEXT_SESSIONS.md`, `SESSION_LOG.md`, `CONTEXT.md`, `docs/04-roadmap.md` — xác nhận **không có
+  gói nào bị bỏ dở giữa code** (mọi gói đang ở 1 trong 3 trạng thái rõ ràng: ✅ xong, 🆕 sẵn sàng
+  nhưng cần người dùng/điện thoại để bắt đầu, hoặc ⏸ tạm dừng có lý do); tài liệu nhất quán, không
+  có mục nào mâu thuẫn nhau. Chạy lại `npx tsc --noEmit` (sạch) + `npx jest` (**92 test PASS**/11
+  suite) + `npx expo export --platform ios` (xem dòng dưới) để xác nhận trạng thái "xanh" tại thời
+  điểm đóng ngày làm việc. Dọn 6 tiến trình `expo start --web` mồ côi còn sót từ trước Session 4
+  (trỏ tới thư mục cũ đã xoá `Body Batteries/my-body-batteries-app`, ~1 ngày tuổi) — đã xin phép
+  người dùng trước khi tắt; giữ lại tiến trình port 8093 vì trỏ đúng thư mục project hiện tại.
+
+**Vấn đề gặp phải:**
+- Nhiều phiên cùng sửa file tài liệu dùng chung (`NEXT_SESSIONS.md`) gây 1 lần ghi đè lỗi ("file
+  đã đổi từ lúc đọc") — xử lý bằng cách tách tạm ra file riêng rồi gộp lại sau, không có dữ liệu
+  nào bị mất.
+- Đề xuất ban đầu của phiên này cho việc "ăn dư" (hướng A, ít việc hơn) **không phải là hướng người
+  dùng chọn** — người dùng nhìn xa hơn tới tính nhất quán toàn app. Ghi lại để các phiên sau không
+  mặc định đề xuất "phương án đỡ tốn công nhất" là phương án đúng — nên trình bày đủ các hướng kèm
+  trade-off rõ và để người dùng tự cân nhắc theo góc nhìn họ muốn (sản phẩm, không phải kỹ thuật).
+
+**Session tiếp theo phải làm (đề xuất cho ngày mai):**
+1. **S-A (test máy thật)** — vẫn ưu tiên cao nhất, chưa ai xác nhận Home đủ 7 pin / Phase 1 lưu
+   dữ liệu / Phase 2 đổi Mode / thông báo pin thấp trên điện thoại thật. Không đụng code, chỉ cần
+   người dùng cầm máy làm theo hướng dẫn.
+2. **S-M (lật mô hình pin Năng lượng)** — việc lớn nhất, đã chốt hướng với người dùng, **CHƯA
+   code**. Đọc kỹ `.ai/parallel-reports/S-M-energy-redesign-spec.md` trước. Trước khi code, xác
+   nhận lại 3 điểm ở mục 7 của spec (vị trí dòng "còn được ăn ngay", cách xử lý cảnh báo pin thấp,
+   vận động cộng vào mục tiêu). Làm **một mình 1 đợt riêng** — tạm hoãn S-K/U1(đã gộp)/U6/S-F.
+3. An toàn làm song song ngay, không đụng S-M: **U4** (Nhật ký), **U5** (Onboarding) — cả hai cần
+   mở app cùng người dùng trên điện thoại trước khi code (theo đúng quy trình UX đã đặt ra).
+4. Sau khi S-M xong: **U6** (Cài đặt UX + khung giờ bữa ăn) rồi **S-F** (bước chân trung bình/ngày)
+   — tuần tự, không song song (cùng đụng file).
+5. **S-G** (lớp thông minh) vẫn để sau cùng — cần thêm vài tuần dữ liệu cân nặng từ S-L.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
