@@ -4,9 +4,15 @@
 > động vào **một nhóm file riêng**, để bạn có thể mở **nhiều cửa sổ chat Sonnet 4.6
 > cùng lúc** mà chúng không sửa đè lên nhau (không bị "conflict").
 >
-> Cập nhật: 2026-06-18 (sau Session 5 + tư vấn Opus + gói S-J gộp tài liệu — `.ai/CONTEXT.md`
-> mục 10 và `.ai/SESSION_LOG.md` giờ đã khớp trạng thái thật, 7 commit local trên nhánh
-> `session-5-demo-ready`, chưa push).
+> Cập nhật: 2026-06-18 (Session 6 — Opus: review tích hợp + gộp `.ai/NEXT_SESSIONS_UX.md` vào
+> đây rồi xoá file đó + **đã push hết lên `origin/main`**, không còn commit nào treo lại cục bộ).
+>
+> **Cập nhật tiếp (cùng ngày, lúc khép phiên):** trong lúc chốt tài liệu, phát hiện **nhiều phiên
+> Sonnet/Opus khác đang chạy song song** trên cùng máy đã hoàn tất **S-L** (ghi cân nặng — xong)
+> và chốt với người dùng một **quyết định lớn, đụng lõi**: lật mô hình pin Năng lượng từ "xả dần"
+> sang "đã ăn / mục tiêu" (đếm lên) — xem gói mới **S-M** bên dưới. Quyết định này khiến **S-K bị
+> tạm dừng** (mâu thuẫn với mô hình mới) và **U1 gộp vào S-M** (S-M viết đè toàn bộ hiển thị pin
+> tổng). Đọc kỹ mục S-M trước khi mở phiên nào đụng tới pin Năng lượng.
 
 ---
 
@@ -16,13 +22,13 @@
    không đụng vào file của gói khác (xem cột "KHÔNG đụng").
 2. **Không sửa các file dùng chung** ngoài đúng gói được giao chúng: `.ai/SESSION_LOG.md`,
    `.ai/CONTEXT.md`, `docs/04-roadmap.md` (chỉ gói **S-J**), `App.tsx` (chỉ gói S-D),
-   `package.json` (chỉ gói S-E), `src/store/energyStore.ts` (gói **S-I** — chỉ thêm 1 dòng
-   truyền `mealWindows` vào `logFood`; hoặc gói **S-K** — chỉ sửa lệnh gọi `burnPassive` trong
-   `tickDrain`; hai gói đụng 2 hàm khác nhau trong cùng file nhưng vẫn nên làm xong 1 gói,
-   commit, rồi mới chạy gói kia để tránh merge rối), `src/screens/SettingsScreen.tsx` (gói
-   **S-F** hoặc **S-I**, không cả hai cùng lúc), `src/lib/metabolicConstants.ts` và
-   `src/domain/energy/metabolismEngine.ts` (gói **S-F** hoặc **S-K**, không cả hai cùng lúc —
-   cả hai cùng sửa các hàm tính `passiveDailyBurn`/`passiveBurnPerHour`).
+   `package.json` (chỉ gói S-E), `src/store/energyStore.ts` (gói **S-M** — đợt lật mô hình pin
+   Năng lượng, ưu tiên làm MỘT MÌNH; hoặc gói **U6** — chỉ thêm 1 dòng truyền `mealWindows` vào
+   `logFood`; làm xong 1 gói, commit, rồi mới chạy gói kia. **S-K tạm dừng** nên hiện không còn
+   đụng file này), `src/screens/SettingsScreen.tsx` (gói **S-F** hoặc **U6**, không cả hai cùng
+   lúc — **U6 đã gộp gói S-I**, đừng mở S-I riêng nữa), `src/lib/metabolicConstants.ts` và
+   `src/domain/energy/metabolismEngine.ts` (gói **S-F** — đọc, đừng sửa nếu **S-M** đang chạy,
+   xem mục S-M).
 3. **Báo cáo cuối phiên ghi vào file RIÊNG:** `.ai/parallel-reports/<mã-gói>.md`
    (vd `.ai/parallel-reports/S-B.md`). KHÔNG sửa `SESSION_LOG.md` trong lúc chạy song
    song — để tránh đụng nhau. Sau khi tất cả xong, chạy **1 phiên gộp** (mục cuối) để
@@ -53,15 +59,25 @@
 | **S-F** | Bước chân: v1 đặt mức trung bình/ngày (placeholder) | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | logic-backend | ✅ | không |
 | **S-G** | Lớp thông minh dự báo (Phase 5) | ⏸ làm sau cùng | data-ml | ⏸ làm SAU CÙNG | cần ~1 tháng dữ liệu |
 | **S-H** | "Năng lượng tự xả" (metabolism) vào pin — Hướng B | ✅ v1 xong; Session 5 mở rộng thêm Food Log + pin xả mượt/giây | logic-backend + mobile-frontend | — | `docs/06-`, `docs/07-` |
-| **S-I** | Khung giờ bữa ăn sửa được trong Cài đặt | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ⚠️ KHÔNG song song với S-F (cùng đụng `SettingsScreen.tsx`) | không |
+| **S-I** | Khung giờ bữa ăn sửa được trong Cài đặt | 🔁 Đã gộp vào **U6** (2026-06-18) — đừng chạy riêng, xem mục U6 | mobile-frontend | — | xem U6 |
 | **S-J** | Dọn dẹp tài liệu / gộp báo cáo Session 4+5 | ✅ XONG (2026-06-18, qua tư vấn Opus) | (không cần agent riêng) | ✅ luôn được, không đụng code | không |
-| **S-K** | Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h) | 🆕 Sẵn sàng làm — quyết định 2026-06-18 | logic-backend | ⚠️ KHÔNG song song với S-F (cùng đụng `metabolicConstants.ts`/`metabolismEngine.ts`) | không |
-| **S-L** | Ghi nhận cân nặng theo thời gian (tiền đề cho hiệu chỉnh cá nhân hoá thật) | 🆕 Sẵn sàng làm — quyết định 2026-06-18 | logic-backend | ✅ | không |
+| **S-K** | Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h) | ⏸️ **TẠM DỪNG** (2026-06-18) — mô hình mới ở **S-M** không xả theo thời gian nữa, S-K mất ý nghĩa. Đừng mở gói này trước khi S-M chốt xong code. | logic-backend | — | xem S-M |
+| **S-L** | Ghi nhận cân nặng theo thời gian (tiền đề cho hiệu chỉnh cá nhân hoá thật) | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/S-L.md` | logic-backend | — | không |
+| **S-M** | 🆕 Lật pin Năng lượng sang "đã ăn / mục tiêu" (đếm lên) — đụng lõi | 🆕 Sẵn sàng làm — đã chốt với người dùng 2026-06-18, xem mục S-M bên dưới | logic-backend + mobile-frontend | ⚠️ Làm MỘT MÌNH 1 đợt — tạm hoãn U1/U6/S-K/S-F trong lúc làm | không |
+| **U1** | Đợt UX: Pin tổng + con số năng lượng (hiển thị) | 🔁 **Đã gộp vào S-M** (2026-06-18) — đừng làm riêng, S-M viết đè toàn bộ hiển thị pin tổng | mobile-frontend | — | xem S-M |
+| **U2** | Đợt UX: Nạp & ghi món (modal/bàn phím/luồng) | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/U2.md` | mobile-frontend | — | không |
+| **U3** | Đợt UX: Lịch sử + biểu đồ | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/U3.md` | mobile-frontend | — | không |
+| **U4** | Đợt UX: Nhật ký | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ✅ | không |
+| **U5** | Đợt UX: Onboarding lần đầu | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ✅ | không |
+| **U6** | Đợt UX: Cài đặt (UX) + khung giờ bữa ăn (gộp S-I) | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ⚠️ KHÔNG song song với S-K (cùng đụng `energyStore.ts`); KHÔNG song song với S-F (cùng đụng `SettingsScreen.tsx`) | không |
 
-> **Đợt mới (song song được ngay, không đụng nhau):** S-J, S-L — và S-A (test máy) lúc nào
-> cũng chạy được. **S-F, S-I, S-K mỗi gói đụng file dùng chung với 1+ gói khác** (xem cột
-> "Chạy song song?" của từng gói) — chỉ chạy 1 trong số chúng cùng lúc, làm xong → commit →
-> mới chạy gói tiếp theo trong nhóm này. S-G để sau cùng (cần dữ liệu cân nặng từ S-L, xem mục S-G).
+> **Đợt mới (song song được ngay, không đụng nhau):** U4, U5 — và S-A (test máy) lúc nào cũng
+> chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
+> lượng, quyết định 2026-06-18) — đề nghị làm **MỘT MÌNH 1 đợt riêng**, không xen với gói nào đụng
+> `energyStore.ts`/`MasterBattery.tsx`. Trong lúc S-M chạy: **S-K tạm dừng hẳn** (mâu thuẫn mô
+> hình mới), **U1 gộp vào S-M** (đừng mở riêng), **U6 và S-F nên đợi S-M xong** (cả hai đụng
+> `energyStore.ts`/`SettingsScreen.tsx` mà S-M cũng sửa `energyStore.ts`). S-G để sau cùng (cần
+> dữ liệu cân nặng từ S-L, xem mục S-G).
 
 ---
 
@@ -297,6 +313,12 @@ liệu thật. Hai hướng đã cân nhắc, người dùng sẽ chọn lại k
 
 ## S-K · Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h)
 
+> ⏸️ **TẠM DỪNG (2026-06-18).** Sau khi viết gói này, người dùng chốt thêm quyết định **S-M**
+> (lật pin Năng lượng sang "đã ăn/mục tiêu", xem mục S-M bên dưới) — mô hình mới **không xả theo
+> thời gian nữa**, nên việc "rải xả không đều theo thức/ngủ" ở đây **mất ý nghĩa**. Giữ nguyên nội
+> dung gói dưới đây làm tài liệu tham khảo (có thể cần lại nếu S-M đổi ý), nhưng **đừng mở gói
+> này** cho tới khi có quyết định mới rõ ràng.
+
 **Quyết định đã chốt với người dùng (2026-06-18):** chọn khung thức/ngủ **cố định** (không
 đọc giờ ngủ thật từ pin "Ngủ" — đơn giản hơn, không phụ thuộc người dùng ghi ngủ đều đặn).
 **Tổng kcal/ngày KHÔNG đổi** — gói này chỉ đổi *hình dạng* đường xả trong ngày (xả nhanh hơn
@@ -413,6 +435,65 @@ trước khi code.
 
 ---
 
+## S-M · Lật pin Năng lượng sang "đã ăn / mục tiêu" (đếm lên) — ⚠️ đụng lõi
+
+> ✅ **Hướng đã chốt với người dùng (2026-06-18).** Spec đầy đủ (định nghĩa số, hình UI, ảnh
+> hưởng dây chuyền) đã viết sẵn ở **`.ai/parallel-reports/S-M-energy-redesign-spec.md`** — đọc
+> file đó TRƯỚC, đây chỉ là phần đóng gói/điều phối. Lý do đổi: pin clamp 100% khiến ăn dư "biến
+> mất" và app không bao giờ cho thấy người dùng ăn vượt nhu cầu (xem
+> `.ai/parallel-reports/B1-energy-balance-spec.md` cho bối cảnh đầy đủ của vấn đề).
+
+**Mục tiêu:** thanh pin Năng lượng đổi từ "còn lại, xả dần" sang "đã ăn hôm nay / mục tiêu ngày"
+(đếm LÊN, đầy dần khi ăn). Thêm 1 con số sống "còn được ăn ngay" tăng dần theo thời gian (tái
+dùng cơ chế tick/giây của Session 5, đổi mục đích — KHÔNG xoá).
+
+**File sở hữu (theo spec mục 6):** `domain/energy/energyBalanceEngine.ts` (đổi semantics +
+test), `domain/energy/metabolismEngine.ts` (chỉ ĐỌC `dailyExpenditure`, đừng đụng nếu S-F đang
+chạy), `store/energyStore.ts` (eaten counters, bỏ `burnPassive` cho energy trong `tickDrain`,
+`burnActivity` cộng vào goal thay vì trừ level), `hooks/useLiveEnergyReading.ts`,
+`components/MasterBattery.tsx` + `LiveMasterBattery.tsx`, `types/energy.ts`/`types/battery.ts`
+nếu cần.
+
+**⚠️ Bắt buộc làm MỘT MÌNH 1 đợt (theo spec mục 4 & 6) — tạm hoãn trong lúc S-M chạy:**
+- **S-K** — vô nghĩa với mô hình mới, đã đánh dấu tạm dừng ở mục S-K.
+- **U1** — đã gộp hẳn vào S-M (S-M định nghĩa lại toàn bộ hiển thị pin tổng).
+- **U6** — cùng đụng `energyStore.ts` (U6 sửa `logFood`, S-M sửa phần khác) → serialize, không
+  song song.
+- **S-F** — nếu S-F đang sửa `metabolismEngine.ts` cùng lúc, dễ đụng nhau ở `dailyExpenditure`.
+- **An toàn chạy cùng S-M:** U2 (đã xong), U3 (chỉ hiển thị, đọc theo S-M không sửa engine), U4,
+  U5, S-A.
+
+**Trước khi code, cần người dùng xác nhận lại 3 điểm (spec mục 7):**
+1. Hình UI mục 2 của spec (vị trí dòng "còn được ăn ngay") — ổn chưa?
+2. Cảnh báo "pin thấp" hiện tại: bỏ hẳn, hay đổi thành "nhắc khi ăn vượt mục tiêu nhiều"?
+3. Vận động (đi bộ/tập) cộng vào MỤC TIÊU (giả định trong spec) — đúng ý không?
+
+**Ràng buộc sức khoẻ (BẮT BUỘC — CONTEXT mục 5):** pin rỗng buổi sáng là bình thường, KHÔNG tô đỏ
+hù "pin yếu"; ăn vượt dùng từ ngữ trung tính ("ăn dư"), không "xấu/tệ"; không khuyến khích nhịn để
+"giữ pin thấp"; kèm "Chỉ để tham khảo."
+
+**Xong khi:** `tsc` sạch + `jest` xanh (cập nhật test `energyBalanceEngine`) + `expo export` OK +
+test trên máy cùng người dùng (ăn → bar lên; để lâu không ăn → "còn được ăn" tăng; ăn vượt mục
+tiêu → hiện "ăn dư").
+
+**Prompt copy-paste:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-M-energy-redesign-spec.md (spec
+đầy đủ, ĐỌC TRƯỚC) và .ai/NEXT_SESSIONS.md (mục S-M). Nhập vai agent logic-backend + mobile-
+frontend. Nhiệm vụ: lật pin Năng lượng từ "xả dần" sang "đã ăn/mục tiêu" (đếm lên) đúng theo spec
+— level=eaten bắt đầu 0, capacity=dailyExpenditure (gồm vận động), bỏ burnPassive khỏi tickDrain
+cho energy, thêm con số sống "còn được ăn ngay" tái dùng cơ chế tick/giây cũ. CHỈ sửa:
+domain/energy/energyBalanceEngine.ts (+test), store/energyStore.ts, hooks/useLiveEnergyReading.ts,
+components/MasterBattery.tsx + LiveMasterBattery.tsx, types liên quan nếu cần — chỉ ĐỌC
+metabolismEngine.ts, đừng sửa nếu S-F đang chạy. Đây là việc đụng lõi — xác nhận lại 3 điểm ở mục
+"7. Việc cần người dùng xác nhận" trong spec TRƯỚC khi code, đợi tôi duyệt. Tuân thủ ranh giới sức
+khoẻ CONTEXT mục 5 (pin rỗng sáng = bình thường, không hù, từ ngữ trung tính khi ăn vượt). Chạy
+`npx tsc --noEmit` + `npx jest` + `npx expo export --platform ios` trước khi báo xong. Ghi báo cáo
+vào .ai/parallel-reports/S-M.md.
+```
+
+---
+
 ## S-G · Lớp thông minh dự báo (Phase 5) — ⏸ làm SAU CÙNG
 
 Cần ~1 tháng dữ liệu thật. Bắt đầu bằng rule-based, kèm disclaimer y tế (CONTEXT mục 5). Giao agent `data-ml`.
@@ -450,6 +531,10 @@ pin Năng lượng **xả mượt theo giây** trên màn hình (`LiveMasterBatt
 ---
 
 ## S-I · Khung giờ bữa ăn sửa được trong Cài đặt
+
+> 🔁 **Đã gộp vào gói U6 (2026-06-18)** — vì U6 (Cài đặt UX) cũng cần sửa đúng những file này.
+> **Đừng mở S-I riêng nữa**, dùng prompt copy-paste của **U6** ở mục bên dưới (giữ nguyên kỹ
+> thuật mô tả ở đây làm tài liệu tham khảo).
 
 **Mục tiêu:** `DEFAULT_MEAL_WINDOWS` (sáng 5–10h / trưa 10–14h / tối 17–21h, ngoài ra = bữa phụ)
 hiện hard-code trong `src/lib/constants.ts`. Người dùng đã chọn ở Session 5 ("mặc định cố định,
@@ -521,6 +606,100 @@ gộp các báo cáo S-A…S-E và 3 commit Session 5 (Food Log, Today's Meals, 
 test hiện tại qua `npx jest`, bundle qua `npx expo export --platform ios`, danh sách commit chưa
 push), và tick các mục đã xong trong docs/04-roadmap.md. CHỈ sửa các file tài liệu này — KHÔNG
 sửa bất kỳ file trong src/, App.tsx, hay package.json. Báo cáo lại cho tôi bằng tiếng Việt.
+```
+
+---
+
+## 🎨 Đợt UX (U1–U6) — sửa "chưa hợp logic / khó nhìn" sau test máy thật
+
+> Gộp từ `.ai/NEXT_SESSIONS_UX.md` (đã xoá file đó, 2026-06-18) — file đó tách riêng tạm thời vì
+> lúc viết có 1 phiên khác đang biên tập trực tiếp file này (thêm S-K, S-L). Giờ đã gộp lại 1 chỗ.
+>
+> **Bối cảnh:** test trên iPhone thật cho thấy 3 vùng "chưa hợp góc nhìn người dùng": (1) pin
+> tổng + con số năng lượng · (2) nạp & ghi món · (3) các màn khác. Song song, một "đợt polish
+> nhấn" (press feedback + animation trượt sheet) đã quét qua toàn bộ component liên quan — **đã
+> commit xong hoàn toàn** (`4499fab` + phần đuôi ở commit sau đó), nên **không còn gói U nào bị
+> chặn vì lý do "chờ commit polish" nữa.**
+
+**Bảng gói:**
+
+| Mã | Vùng | File ĐƯỢC sửa (CHỈ những file này) | Trạng thái |
+|----|------|-------------------------------------|------------|
+| **U1** | Pin tổng + con số năng lượng (hiển thị) | `components/LiveMasterBattery.tsx`, `components/MasterBattery.tsx`, `hooks/useLiveEnergyReading.ts` | 🔁 Đã gộp vào **S-M** (2026-06-18) — đừng làm riêng, xem mục S-M |
+| **U2** | Nạp & ghi món (modal/bàn phím/luồng) | `components/IntakeModal.tsx`, `components/FoodLogModal.tsx`, `components/EnergyActionsBar.tsx` | ✅ XONG — `.ai/parallel-reports/U2.md` |
+| **U3** | Lịch sử + biểu đồ | `screens/HistoryScreen.tsx`, `components/TrendChart.tsx` | ✅ XONG — `.ai/parallel-reports/U3.md` |
+| **U4** | Nhật ký | `screens/DiaryScreen.tsx` | 🆕 Sẵn sàng làm ngay |
+| **U5** | Onboarding lần đầu | `screens/OnboardingScreen.tsx` | 🆕 Sẵn sàng làm ngay |
+| **U6** | Cài đặt (UX) + khung giờ bữa ăn (**gộp S-I**) | `screens/SettingsScreen.tsx`, `store/settingsStore.ts`, `domain/food/foodNutrition.ts` (+param tuỳ chọn), `store/energyStore.ts` (1 dòng trong `logFood`) | 🆕 Sẵn sàng làm ngay |
+
+**Đụng file chéo với gói khác (BẮT BUỘC đọc):**
+- **U1 → đã gộp vào S-M** (2026-06-18, lật mô hình pin Năng lượng) — đừng mở U1 riêng, xem mục
+  S-M (S-M viết đè toàn bộ hiển thị pin tổng, kể cả phần U1 định sửa).
+- **U6 ↔ S-M:** cả hai sửa `store/energyStore.ts` → serialize, không chạy cùng lúc. Đề nghị làm
+  S-M xong trước.
+- **U6 ↔ S-F:** cả hai sửa `SettingsScreen.tsx` → không chạy đồng thời.
+- **S-K:** tạm dừng hẳn (mâu thuẫn với S-M), xem mục S-K.
+
+**Tổ hợp chạy song song an toàn gợi ý (1 đợt):** U4 · U5 · S-A. (S-M nên chạy **riêng một mình**
+một đợt — xem mục S-M; S-F/U6 để đợt riêng hoặc xen kẽ sau khi S-M xong.)
+
+**Ràng buộc chung cho mọi gói U:**
+- Trước khi sửa: **mở app trên máy cùng người dùng, chỉ ra CỤ THỂ chỗ "chưa hợp logic"** trong
+  vùng của mình, đề xuất cách sửa bằng tiếng Việt, **ĐỢI người dùng duyệt** rồi mới code
+  (`.ai/CONTEXT.md` mục 3).
+- KHÔNG đụng `package.json`, `App.tsx`, `HomeScreen.tsx`, hay file ngoài danh sách của gói.
+- **U1:** chỉ sửa hiển thị/nhãn/màu/đơn vị. Số tính sai → ghi report, đừng sửa engine. Lưu ý sẵn
+  có 1 phát hiện đã phân tích trước (chưa code) trong `.ai/parallel-reports/U1-FINDINGS.md` —
+  đọc trước khi hỏi người dùng, để khỏi phân tích lại từ đầu.
+- **U6:** giữ `mealTypeForHour`/`mealTypeForTimestamp` có **default** (để test cũ + `FoodLogModal`
+  của U2 không vỡ); giữ chữ ký `logFood` KHÔNG đổi.
+- Báo xong = `npx tsc --noEmit` sạch + `npx jest` xanh + `npx expo export --platform ios` OK +
+  report `.ai/parallel-reports/<mã>.md`.
+
+**Prompt copy-paste — U1 (Pin tổng + con số năng lượng):**
+> 🔁 **Đã gộp vào S-M (2026-06-18) — dùng prompt copy-paste của mục S-M ở trên, đừng dùng prompt
+> dưới đây.** Giữ lại làm tài liệu tham khảo (3 điểm A1/A2/A3 đã phân tích trong U1-FINDINGS.md
+> vẫn còn giá trị — S-M nên đọc qua khi viết lại hiển thị).
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, docs/06-energy-expenditure.md,
+.ai/parallel-reports/U1-FINDINGS.md và .ai/NEXT_SESSIONS.md (mục U1). Nhập vai agent
+mobile-frontend. Vùng: pin tổng "Năng lượng" + con số kcal/%. CHỈ được sửa:
+components/LiveMasterBattery.tsx, components/MasterBattery.tsx, hooks/useLiveEnergyReading.ts —
+KHÔNG đụng file khác, KHÔNG sửa engine domain (số sai thì ghi report). U1-FINDINGS.md đã phân
+tích sẵn 3 điểm (A1 số lẻ rung, A2 thiếu chữ giải nghĩa, A3 màu đỏ ban đêm) — xác nhận lại với
+tôi trên máy rồi mới chọn làm gì, đợi tôi duyệt mới code. Chạy tsc + jest + expo export trước khi
+báo xong. Report vào .ai/parallel-reports/U1.md.
+```
+
+**Prompt copy-paste — U4 (Nhật ký):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md và .ai/NEXT_SESSIONS.md (mục U4). Nhập vai agent
+mobile-frontend. Vùng: màn Nhật ký. CHỈ được sửa: screens/DiaryScreen.tsx — KHÔNG đụng file khác.
+Mở app cùng tôi, chỉ ra chỗ khó dùng rồi đề xuất sửa bằng tiếng Việt, đợi tôi duyệt mới code. Chạy
+tsc + jest + expo export trước khi báo xong. Report vào .ai/parallel-reports/U4.md.
+```
+
+**Prompt copy-paste — U5 (Onboarding):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md và .ai/NEXT_SESSIONS.md (mục U5). Nhập vai agent
+mobile-frontend. Vùng: màn Onboarding lần đầu. CHỈ được sửa: screens/OnboardingScreen.tsx — KHÔNG
+đụng file khác. Mở app cùng tôi (xoá app cài lại để thấy onboarding), chỉ ra chỗ khó hiểu rồi đề
+xuất sửa bằng tiếng Việt, đợi tôi duyệt mới code. Chạy tsc + jest + expo export trước khi báo
+xong. Report vào .ai/parallel-reports/U5.md.
+```
+
+**Prompt copy-paste — U6 (Cài đặt UX + khung giờ bữa ăn, gộp S-I):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, docs/07-food-log.md và .ai/NEXT_SESSIONS.md (mục U6,
+đã gộp S-I — đọc thêm mục "S-I" để biết chi tiết kỹ thuật khung giờ bữa ăn). Nhập vai agent
+mobile-frontend. Hai việc: (a) chỉnh UX màn Cài đặt cho dễ nhìn; (b) cho sửa khung giờ phân loại
+bữa ăn (sáng/trưa/tối) trong Cài đặt. CHỈ được sửa: screens/SettingsScreen.tsx,
+store/settingsStore.ts (thêm mealWindows + persist), domain/food/foodNutrition.ts (thêm param
+tuỳ chọn windows, GIỮ default để test cũ + FoodLogModal không vỡ), store/energyStore.ts (CHỈ 1
+dòng: logFood lấy mealWindows từ settings, KHÔNG đổi chữ ký). KHÔNG đụng file khác. LƯU Ý: KHÔNG
+chạy cùng lúc gói S-K hay S-F (cùng đụng energyStore.ts / SettingsScreen.tsx). Mở app cùng tôi,
+đề xuất sửa bằng tiếng Việt, đợi tôi duyệt mới code. Chạy tsc + jest + expo export trước khi báo
+xong. Report vào .ai/parallel-reports/U6.md.
 ```
 
 ---

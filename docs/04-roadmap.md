@@ -128,9 +128,16 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 **Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | 🟡 Một phần | ⬜ Chưa bắt đầu
 
-> 🚨 **Việc đầu tiên của session tiếp theo:** Xem `.ai/NEXT_SESSIONS.md` — tiếp tục gói **S-A**
-> (xác nhận Home hiện đủ 1 pin tổng + 6 pin nhỏ, rồi test Phase 1/2/thông báo trên điện thoại
-> thật). Các gói code mới sẵn sàng giao song song: **S-L** (ghi cân nặng) bất kỳ lúc nào; **S-F /
-> S-I / S-K** chỉ chạy 1 trong 3 cùng lúc (đụng file chung).
+> 🚨 **Việc đầu tiên của session tiếp theo:** Xem `.ai/NEXT_SESSIONS.md` (file DUY NHẤT cho mọi
+> gói) — đọc trước mục **S-M** (lật mô hình pin Năng lượng sang "đã ăn/mục tiêu", đã chốt với
+> người dùng 2026-06-18, đụng lõi, **CHƯA code**, đề nghị làm MỘT MÌNH 1 đợt). Sẵn sàng làm song
+> song ngay, không đụng ai: **S-A** (test máy, luôn ưu tiên), **U4/U5**. **S-K tạm dừng** (mâu
+> thuẫn với S-M), **U1 đã gộp vào S-M** — đừng mở riêng. **S-F/U6** chờ S-M xong rồi làm tuần tự.
+>
+> 🟢 **(2026-06-18, Session 6)** Đã `git push` hết lên `origin/main` — không còn commit local nào
+> treo lại. U2, U3 (đợt UX) đã xong.
+>
+> 🟢 **(2026-06-18, Session 7)** **S-L** (ghi cân nặng theo thời gian) đã xong. Quyết định lớn
+> **S-M** đã chốt — xem trên.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

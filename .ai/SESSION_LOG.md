@@ -216,6 +216,121 @@ trong `NEXT_SESSIONS.md`). **S-G** để sau cùng.
 
 ---
 
+## Session 6 — 2026-06-18
+
+**Làm gì:** Phiên Opus tiếp nối Session 5. Ba việc theo yêu cầu người dùng: (1) chốt thiết kế cho
+3 mục "tinh chỉnh" S-H còn treo qua trao đổi trực tiếp với người dùng; (2) gộp tài liệu (S-J);
+(3) review tích hợp toàn bộ energy model (S-D + S-H + Food Log + live drain) tìm bug. Sau đó
+người dùng yêu cầu push toàn bộ lên `main` (tự cho phép vì đang làm một mình).
+
+**Kết quả:**
+- Quyết định cùng người dùng cho S-H: rải xả thụ động theo khung **thức/ngủ cố định** (không
+  đọc dữ liệu ngủ thật) → viết spec đầy đủ gói **S-K**; cá nhân hoá MET theo **xu hướng cân nặng
+  thật** (không phải thanh chỉnh tay) → bước 1 là gói **S-L** (ghi cân nặng theo thời gian, dùng
+  bảng `health_signals` có sẵn); **carry-over** năng lượng qua ngày → quyết định **không làm**
+  (đúng ranh giới sức khoẻ, tránh tạo cảm giác "nợ năng lượng").
+- Review tích hợp: không phát hiện đếm trùng kcal (`addIntake`/`addCalories`/`logFood` đều tách
+  biệt đúng thiết kế); không phát hiện lệch giữa hiển thị mượt theo giây và dữ liệu lưu thật
+  (`useLiveEnergyReading` dùng đúng hàm + mốc thời gian mà `tickDrain` dùng). Phát hiện 1 dòng
+  tài liệu sai (`docs/04-roadmap.md` ghi nhầm `resetForNewDay` là cơ chế reset ngày mới — thực ra
+  hàm đó là dead code, cơ chế thật là `App.tsx` tự dò đổi ngày rồi gọi `loadToday`) → đã sửa.
+  Phát hiện 1 lỗi rất nhỏ, mức độ thấp (lệch vài kcal nếu app mở đúng lúc qua nửa đêm, do
+  `tickDrain` và việc dò đổi ngày là 2 timer không đồng bộ) → ghi lại làm việc tiện vá khi làm S-K,
+  không cần gói riêng.
+- Khi chuẩn bị push, phát hiện trong working tree có sẵn nhiều thay đổi **chưa commit** từ một
+  đợt UX riêng (`U1-U6`, tài liệu ở `.ai/NEXT_SESSIONS_UX.md`) đang chạy song song: gói **U2**
+  (sửa bàn phím che nút trong modal "Ghi món ăn") và **U3** (sửa nhãn ngày biểu đồ bị cắt sai +
+  tên pin nhỏ bị cắt chữ trong Lịch sử) đã hoàn thành + có báo cáo riêng; cộng phần đuôi của đợt
+  "polish nhấn" trước đó còn 5 file sửa dở chưa commit. Đã verify lại toàn bộ (`tsc` sạch,
+  `npx jest` 92/92 PASS) rồi commit tách theo từng gói, và **gộp `.ai/NEXT_SESSIONS_UX.md` vào
+  `.ai/NEXT_SESSIONS.md`** (xoá file tạm đó) — U1/U4/U5/U6 giờ không còn bị chặn bởi "chờ commit
+  polish" nữa.
+- **Đã `git push origin session-5-demo-ready:main`** — `main` giờ ở commit `3140f01`, khớp 100%
+  với nhánh làm việc, không còn commit local nào chưa lên remote.
+
+**Vấn đề gặp phải:** Không có lỗi/cản trở thật — chỉ có 1 bất ngờ nhỏ (uncommitted work từ phiên
+UX khác đang chạy song song) cần dừng lại kiểm tra kỹ trước khi gộp vào push, để tránh đẩy nhầm
+việc chưa xong của người khác/phiên khác lên `main`.
+
+**Session tiếp theo phải làm:** Đọc `.ai/NEXT_SESSIONS.md` (giờ là file DUY NHẤT cho mọi gói, kể
+cả U1-U6). Ưu tiên cao nhất vẫn là **S-A** (test máy thật — chưa ai xác nhận Home đủ 7 pin, đổi
+Mode, thông báo pin thấp trên điện thoại thật). Có thể làm song song ngay, không đụng ai: **S-L**,
+**U1**, **U4**, **U5**. Chỉ chạy 1 trong nhóm cùng lúc (đụng file chung): **S-F / U6 / S-K** (U6
+đã gộp S-I). **S-G** để sau cùng (cần dữ liệu cân nặng từ S-L).
+
+---
+
+## Session 7 — 2026-06-18
+
+**Làm gì:** Một phiên Sonnet 4.6 (chat trực tiếp với người dùng, không qua subagent) chạy 2 gói từ
+`.ai/NEXT_SESSIONS.md`: xác nhận lại + code gói **U3** (Lịch sử + biểu đồ) và làm xong gói **S-L**
+(ghi nhận cân nặng theo thời gian).
+
+**Kết quả — U3 (Lịch sử + biểu đồ):**
+- Không có điện thoại để mở app trực tiếp, nên soi code 2 file được giao
+  (`HistoryScreen.tsx`, `TrendChart.tsx`) + tính thử bằng `node -e` để xác minh, tìm ra 3 chỗ
+  chưa hợp lý: (1) nhãn ngày dưới biểu đồ bị cắt sai — `.slice(0,6)` lên chuỗi locale
+  `"Thứ 5, 18/06"` cho ra `"Thứ 5,"` vô nghĩa, không thấy ngày/tháng thật; (2) nhãn pin nhỏ trong
+  thẻ ngày bị cắt giữa từ (`"Khoáng chất".slice(0,4)` → `"Khoá"`, đọc sai nghĩa); (3) badge đầu
+  thẻ ngày (`"82%"`) không có nhãn rõ nghĩa cạnh badge `"NL 86%"`.
+- Trình bày 3 phát hiện bằng tiếng Việt, đợi người dùng duyệt (người dùng xác nhận đồng ý dù
+  không có điện thoại để tự kiểm tra) rồi mới code.
+- Sửa: `TrendChart.tsx` (hàm `dayMonthLabel()` lấy `DD/MM` trực tiếp từ chuỗi `'YYYY-MM-DD'` gốc,
+  bỏ phụ thuộc `formatDisplayDate`/locale), `HistoryScreen.tsx` (map `BATTERY_SHORT_LABELS` cố
+  định theo `battery.id` thay cho cắt chuỗi, badge đổi thành `"DD {pct}%"`).
+- Report: `.ai/parallel-reports/U3.md`.
+
+**Kết quả — S-L (Ghi nhận cân nặng theo thời gian):**
+- Tạo `src/data/repositories/healthSignalsRepository.ts` (`logWeight(kg)` /
+  `getWeightHistory(limit)`), dùng đúng bảng `health_signals` có sẵn trong `schema.ts`
+  (`source='manual'`, `type='weight_kg'`), không đổi schema.
+- Tạo `src/components/WeightLogCard.tsx`: ô nhập số (validate theo `PROFILE_LIMITS.weightKg`
+  20–300kg đã có sẵn) + nút "Ghi nhận hôm nay", danh sách text các lần đã ghi (không vẽ biểu đồ ở
+  gói này), có dòng disclaimer "ghi nhận tự nguyện, không đánh giá" đúng ranh giới sức khoẻ
+  (`.ai/CONTEXT.md` mục 5). Component tự fetch dữ liệu qua `useFocusEffect`, không cần
+  `HistoryScreen` truyền props.
+- Sửa `HistoryScreen.tsx`: chèn `<WeightLogCard />` ngay dưới `<TrendChart>`.
+- Đây là **bước 1** (ghi dữ liệu) cho hướng "hiệu chỉnh cá nhân hoá MET theo xu hướng cân nặng
+  thật" đã chốt với người dùng ở Session 6 — bước 2 (tính hiệu chỉnh) gộp vào **S-G**, cần vài
+  tuần dữ liệu thật trước khi làm.
+- Report: `.ai/parallel-reports/S-L.md`.
+
+**Kiểm tra (cả 2 gói):** `npx tsc --noEmit` sạch · `npx jest` → 92 test PASS / 11 suite (không
+thêm test mới — S-L chỉ là I/O + UI thuần, không có hàm domain mới cần unit test) ·
+`npx expo export --platform ios` → **1426 module** (tăng từ 1424, đúng kỳ vọng do 2 file mới
+của S-L).
+
+**Vấn đề gặp phải:**
+- Không có điện thoại thật trong suốt phiên này → U3 được duyệt dựa trên phân tích code + xác
+  minh bằng Node.js (độ tin cậy cao nhưng chưa thấy thật trên máy — phiên sau nên xác nhận lại
+  khi có điện thoại).
+- Repo này đang có **nhiều phiên khác chạy song song cùng lúc** sửa các file tài liệu dùng chung
+  (`NEXT_SESSIONS.md`, `CONTEXT.md`) — một lần thử sửa `NEXT_SESSIONS.md` bị lỗi "file đã đổi từ
+  lúc đọc" vì một phiên khác đang viết đè (hoá ra họ đã tự cập nhật đúng dòng S-L thành "XONG" và
+  đồng thời chốt một quyết định lớn mới — xem mục dưới). Đã đọc lại file mới nhất rồi mới quyết
+  định không sửa thêm vào đó để tránh đụng nhau.
+
+**Phát hiện thêm (không phải việc của phiên này, ghi lại để phiên sau biết):** Trong lúc làm,
+phát hiện một phiên song song khác đã quyết định một việc lớn với người dùng và ghi vào
+`.ai/NEXT_SESSIONS.md`: **gói S-M** — lật mô hình pin Năng lượng từ "xả từ đầy" sang "đếm lên tới
+mục tiêu" (đã chốt 2026-06-18). Hệ quả: **S-K tạm dừng** (mâu thuẫn mô hình mới), **U1 gộp vào
+S-M**, **U6/S-F nên đợi S-M xong** (cùng đụng `energyStore.ts`/`SettingsScreen.tsx`). Xem
+`.ai/parallel-reports/B1-energy-balance-spec.md` và `.ai/parallel-reports/S-M-energy-redesign-spec.md`
+để biết chi tiết — phiên này không tham gia quyết định đó, chỉ ghi lại để tránh phiên sau bất ngờ.
+
+**Session tiếp theo phải làm:**
+1. Đọc kỹ `.ai/NEXT_SESSIONS.md` bản mới nhất trước khi chọn gói — bảng trạng thái đang đổi nhanh
+   do nhiều phiên song song (S-M vừa được chốt, thay đổi thứ tự ưu tiên của S-K/U1/U6/S-F).
+2. Ưu tiên cao nhất vẫn là **S-A** (test máy thật — chưa ai xác nhận Home đủ 7 pin/Phase 1/2/
+   thông báo trên điện thoại thật).
+3. An toàn làm ngay, không đụng ai: **U4** (Nhật ký), **U5** (Onboarding).
+4. **S-M** là việc lớn, nên làm một mình 1 đợt riêng (đụng lõi `energyStore.ts`/`MasterBattery.tsx`)
+   — không xen với gói nào khác đụng các file đó.
+5. **S-G** vẫn để sau cùng — đã có dữ liệu cân nặng bắt đầu được ghi qua S-L, nhưng cần vài tuần
+   mới đủ dùng.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
