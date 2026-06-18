@@ -8,14 +8,17 @@ export interface BatteryAlert {
   message: string;
 }
 
-export function checkLowBattery(readings: BatteryReading[]): BatteryAlert[] {
+export function checkLowBattery(
+  readings: BatteryReading[],
+  threshold: number = LOW_BATTERY_THRESHOLD
+): BatteryAlert[] {
   return readings
     .filter((r) => r.batteryTypeId !== 'master')
     .map((r) => ({
       batteryTypeId: r.batteryTypeId,
       percentage: toPercentage(r.level, r.capacity),
     }))
-    .filter((r) => r.percentage / 100 < LOW_BATTERY_THRESHOLD)
+    .filter((r) => r.percentage / 100 < threshold)
     .map((r) => ({
       ...r,
       message: buildAlertMessage(r.batteryTypeId, r.percentage),
@@ -24,6 +27,7 @@ export function checkLowBattery(readings: BatteryReading[]): BatteryAlert[] {
 
 function buildAlertMessage(batteryId: string, pct: number): string {
   const names: Record<string, string> = {
+    energy: 'Năng lượng',
     protein: 'Protein',
     carbs: 'Carbs',
     water: 'Nước',

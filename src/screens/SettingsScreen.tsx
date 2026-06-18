@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,18 @@ import {
   Alert,
 } from 'react-native';
 import { useSettingsStore } from '../store/settingsStore';
+import { BodyProfileCard } from '../components/BodyProfileCard';
 import { exportWeeklyData } from '../services/export/excelExportService';
 import { runWeeklyCleanup } from '../services/cleanup/cleanupService';
+import {
+  requestNotificationPermission,
+  scheduleDailyReminder,
+  cancelAllNotifications,
+} from '../services/notifications/notificationService';
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0');
+}
 
 export function SettingsScreen() {
   const {
@@ -19,9 +29,61 @@ export function SettingsScreen() {
     setNotificationsEnabled,
     lowBatteryThreshold,
     setLowBatteryThreshold,
+    reminderHour,
+    reminderMinute,
+    setReminderTime,
   } = useSettingsStore();
 
   const [exporting, setExporting] = useState(false);
+
+  // Keep the OS-scheduled reminder in sync with the persisted setting,
+  // since the reminder is registered with the OS and survives across
+  // app restarts until explicitly cancelled.
+  useEffect(() => {
+    if (notificationsEnabled) {
+      applyReminderSchedule(reminderHour, reminderMinute);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function applyReminderSchedule(hour: number, minute: number) {
+    await cancelAllNotifications();
+    await scheduleDailyReminder(hour, minute);
+  }
+
+  async function handleToggleNotifications(enabled: boolean) {
+    if (enabled) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert(
+          'Thiếu quyền thông báo',
+          'Hãy vào Cài đặt của điện thoại → cấp quyền thông báo cho app này, rồi bật lại.'
+        );
+        return;
+      }
+      setNotificationsEnabled(true);
+      await applyReminderSchedule(reminderHour, reminderMinute);
+    } else {
+      setNotificationsEnabled(false);
+      await cancelAllNotifications();
+    }
+  }
+
+  async function handleReminderHourChange(delta: number) {
+    const newHour = (reminderHour + delta + 24) % 24;
+    setReminderTime(newHour, reminderMinute);
+    if (notificationsEnabled) {
+      await applyReminderSchedule(newHour, reminderMinute);
+    }
+  }
+
+  async function handleReminderMinuteChange(delta: number) {
+    const newMinute = (reminderMinute + delta + 60) % 60;
+    setReminderTime(reminderHour, newMinute);
+    if (notificationsEnabled) {
+      await applyReminderSchedule(reminderHour, newMinute);
+    }
+  }
 
   async function handleExport() {
     setExporting(true);
@@ -56,6 +118,15 @@ export function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Cài đặt</Text>
 
+        {/* Body profile — sizes the energy battery (TDEE) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>HỒ SƠ CƠ THỂ</Text>
+          <Text style={styles.sectionDesc}>
+            Dùng để tính nhu cầu năng lượng (pin Năng lượng). Chỉ tham khảo — không phải tư vấn y tế.
+          </Text>
+          <BodyProfileCard />
+        </View>
+
         {/* Notifications */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>THÔNG BÁO</Text>
@@ -63,9 +134,46 @@ export function SettingsScreen() {
             <Text style={styles.rowLabel}>Bật thông báo</Text>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleToggleNotifications}
               trackColor={{ true: '#00B894' }}
             />
+          </View>
+
+          <Text style={styles.sectionDesc}>
+            Giờ nhắc nhở cập nhật năng lượng mỗi ngày
+          </Text>
+          <View style={styles.timeRow}>
+            <View style={styles.stepperGroup}>
+              <Pressable
+                style={styles.stepperBtn}
+                onPress={() => handleReminderHourChange(-1)}
+              >
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <Text style={styles.timeValue}>{pad(reminderHour)}</Text>
+              <Pressable
+                style={styles.stepperBtn}
+                onPress={() => handleReminderHourChange(1)}
+              >
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.timeColon}>:</Text>
+            <View style={styles.stepperGroup}>
+              <Pressable
+                style={styles.stepperBtn}
+                onPress={() => handleReminderMinuteChange(-15)}
+              >
+                <Text style={styles.stepperBtnText}>−</Text>
+              </Pressable>
+              <Text style={styles.timeValue}>{pad(reminderMinute)}</Text>
+              <Pressable
+                style={styles.stepperBtn}
+                onPress={() => handleReminderMinuteChange(15)}
+              >
+                <Text style={styles.stepperBtnText}>+</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -152,6 +260,27 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: '#00B894', borderColor: '#00B894' },
   chipText: { color: '#aaa', fontWeight: '600' },
   chipTextActive: { color: '#fff' },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a2e',
+    padding: 14,
+    borderRadius: 12,
+  },
+  stepperGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  stepperBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#26263d',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  timeValue: { color: '#fff', fontSize: 20, fontWeight: '700', minWidth: 28, textAlign: 'center' },
+  timeColon: { color: '#fff', fontSize: 20, fontWeight: '700' },
   actionBtn: {
     backgroundColor: '#1a1a2e',
     padding: 14,

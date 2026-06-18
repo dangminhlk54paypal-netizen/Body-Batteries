@@ -15,12 +15,15 @@ import type { DailyLog } from '../types/battery';
 import { todayString, daysAgo, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES } from '../lib/constants';
+import { TrendChart } from '../components/TrendChart';
 
 interface DayData {
   date: string;
   modeId: string;
   readings: BatteryReading[];
   averagePercentage: number;
+  /** Energy battery % for the day, or null when no energy reading exists (e.g. older data). */
+  energyPercentage: number | null;
 }
 
 export function HistoryScreen() {
@@ -56,7 +59,9 @@ export function HistoryScreen() {
     const dateSet = [...new Set(readings.map((r) => r.date))].sort().reverse();
 
     const dayData: DayData[] = dateSet.map((date) => {
-      const dayReadings = readings.filter((r) => r.date === date && r.batteryTypeId !== 'master');
+      const dayReadings = readings.filter(
+        (r) => r.date === date && r.batteryTypeId !== 'master' && r.batteryTypeId !== 'energy'
+      );
       const avg =
         dayReadings.length > 0
           ? Math.round(
@@ -64,11 +69,18 @@ export function HistoryScreen() {
                 dayReadings.length
             )
           : 0;
+
+      const energyReading = readings.find((r) => r.date === date && r.batteryTypeId === 'energy');
+      const energyPercentage = energyReading
+        ? Math.round(toPercentage(energyReading.level, energyReading.capacity))
+        : null;
+
       return {
         date,
         modeId: logMap[date]?.modeId ?? 'maintain',
         readings: dayReadings,
         averagePercentage: avg,
+        energyPercentage,
       };
     });
 
@@ -89,6 +101,8 @@ export function HistoryScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Lịch sử 7 ngày</Text>
 
+        <TrendChart data={chronologicalTrend(days)} energyData={chronologicalEnergyTrend(days)} />
+
         {days.length === 0 && (
           <Text style={styles.empty}>Chưa có dữ liệu nào. Hãy nạp pin đầu tiên!</Text>
         )}
@@ -97,8 +111,15 @@ export function HistoryScreen() {
           <View key={day.date} style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardDate}>{formatDisplayDate(day.date)}</Text>
-              <View style={[styles.avgBadge, avgColor(day.averagePercentage)]}>
-                <Text style={styles.avgText}>{day.averagePercentage}%</Text>
+              <View style={styles.badgeRow}>
+                <View style={[styles.avgBadge, avgColor(day.averagePercentage)]}>
+                  <Text style={styles.avgText}>{day.averagePercentage}%</Text>
+                </View>
+                {day.energyPercentage !== null && (
+                  <View style={[styles.avgBadge, avgColor(day.energyPercentage)]}>
+                    <Text style={styles.avgText}>NL {day.energyPercentage}%</Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -127,6 +148,21 @@ export function HistoryScreen() {
   );
 }
 
+// `days` is sorted newest-first for the card list; the chart reads left-to-right
+// as oldest-to-newest, so reverse it here rather than re-sorting in state.
+function chronologicalTrend(days: DayData[]) {
+  return [...days].reverse().map((d) => ({ date: d.date, averagePercentage: d.averagePercentage }));
+}
+
+// Same ordering as chronologicalTrend, but only includes days that actually
+// have an energy reading (older data may not have one).
+function chronologicalEnergyTrend(days: DayData[]) {
+  return [...days]
+    .reverse()
+    .filter((d) => d.energyPercentage !== null)
+    .map((d) => ({ date: d.date, averagePercentage: d.energyPercentage as number }));
+}
+
 function avgColor(pct: number) {
   if (pct >= 60) return { backgroundColor: '#00B89422' };
   if (pct >= 30) return { backgroundColor: '#FFD93D22' };
@@ -152,6 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardDate: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  badgeRow: { flexDirection: 'row', gap: 6 },
   avgBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,

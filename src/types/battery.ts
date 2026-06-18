@@ -1,5 +1,6 @@
 export type BatteryId =
   | 'master'
+  | 'energy' // calorie-balance battery (Hướng B): charges by eating, drains by metabolism
   | 'protein'
   | 'carbs'
   | 'water'

@@ -88,9 +88,11 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối:** 2026-06-18 (Session 4)
+**Cập nhật lần cuối:** 2026-06-18 (Session 4 + đợt song song S-A…S-E + Hướng B)
 
-**Tóm tắt 1 dòng:** 🎉 App **build thành công lần đầu tiên** (`expo export` iOS = 1403 module). Đã tìm & vá nguyên nhân gốc khiến mọi bundle hỏng (`.watchmanconfig` bắt Watchman bỏ qua `node_modules`) + 6 lỗi logic. Dự án đã **gộp về 1 thư mục duy nhất** `BodyBatteries/` (giữ nguyên git history). Sẵn sàng quét QR test thật.
+**Tóm tắt 1 dòng:** App build OK (bundle 1411 module, 62 unit test PASS). Đã chạy 5 phiên song song (S-B biểu đồ, S-C nhắc nhở, S-D tự xả pin, S-E test — đều ✅; S-A test máy ⏸). Đã thêm **"năng lượng tự xả" Hướng B**: pin tổng = pin Năng lượng/calo (nạp khi ăn, xả theo trao đổi chất BMR + bước chân + buổi tập), có form Hồ sơ cơ thể. **Tất cả CHƯA commit** (đang ở working tree) và CHƯA push.
+
+**⚠️ Người dùng cần làm:** vào Cài đặt → Hồ sơ cơ thể, sửa **tuổi + giới tính thật** (mặc định 30/nam) để BMR đúng. Và hoàn tất test thật trên máy (gói S-A).
 
 **Môi trường máy:**
 - Node.js ✅ v24.16.0 / npm 11.13.0 · Homebrew + Watchman ✅ · `maxfiles` ✅ 65536 · Expo SDK ✅ 54.0.35 · `npm install` ✅

@@ -1,13 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Svg, { Rect, Defs, LinearGradient, Stop, G } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  interpolateColor,
-} from 'react-native-reanimated';
-import { useEffect } from 'react';
+import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
 
 interface Props {
   id: string;
@@ -25,14 +19,25 @@ const CELL_HEIGHT = 100;
 const TERMINAL_H = 6;
 const BORDER_R = 6;
 
+// Animating SVG rect props (not RN styles) via Reanimated keeps the fill
+// transition on the UI thread — no extra dependency (already used elsewhere
+// in the app) and no per-frame JS cost.
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
 export function BatteryCell({ id, name, unit, level, capacity, percentage, color, onPress }: Props) {
-  const fillProgress = useSharedValue(0);
+  const progress = useSharedValue(percentage);
 
   useEffect(() => {
-    fillProgress.value = withTiming(percentage / 100, { duration: 600 });
+    progress.value = withTiming(percentage, { duration: 500 });
   }, [percentage]);
 
-  const fillHeight = CELL_HEIGHT * (percentage / 100);
+  const animatedFillProps = useAnimatedProps(() => {
+    const fillHeight = CELL_HEIGHT * (progress.value / 100);
+    return {
+      height: fillHeight,
+      y: TERMINAL_H + (CELL_HEIGHT - fillHeight) - 2,
+    };
+  });
 
   const levelColor =
     percentage > 50 ? color : percentage > 20 ? '#FFD93D' : '#FF4757';
@@ -69,15 +74,14 @@ export function BatteryCell({ id, name, unit, level, capacity, percentage, color
           strokeWidth={2}
         />
 
-        {/* Fill level */}
+        {/* Fill level — animates smoothly between percentage changes */}
         <G>
-          <Rect
+          <AnimatedRect
             x={2}
-            y={TERMINAL_H + (CELL_HEIGHT - fillHeight) - 2}
             width={CELL_WIDTH - 4}
-            height={fillHeight}
             rx={BORDER_R - 2}
             fill={`url(#grad_${id})`}
+            animatedProps={animatedFillProps}
           />
         </G>
 
@@ -88,7 +92,7 @@ export function BatteryCell({ id, name, unit, level, capacity, percentage, color
       <Text style={styles.percentage}>{percentage}%</Text>
       <Text style={styles.name}>{name}</Text>
       <Text style={styles.level}>
-        {level}{unit}
+        {Math.round(level)}{unit}
       </Text>
     </Pressable>
   );

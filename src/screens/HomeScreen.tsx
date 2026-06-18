@@ -14,8 +14,10 @@ import { MasterBattery } from '../components/MasterBattery';
 import { BatteryStack } from '../components/BatteryStack';
 import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
+import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
+import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
 import type { BatteryState, BatteryId } from '../types/battery';
 import type { BatteryType } from '../types/battery';
 import type { ModeId } from '../types/modes';
@@ -28,6 +30,8 @@ export function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  useLowEnergyWatch();
 
   useEffect(() => {
     loadToday(currentMode);
@@ -58,8 +62,10 @@ export function HomeScreen() {
     setMode(mode);
   }
 
+  // The 6 nutrient sub-batteries (exclude master + the energy battery, which is
+  // shown as the headline MasterBattery in Hướng B).
   const batteryStates: BatteryState[] = readings
-    .filter((r) => r.batteryTypeId !== 'master')
+    .filter((r) => r.batteryTypeId !== 'master' && r.batteryTypeId !== 'energy')
     .map((r) => {
       const type = DEFAULT_BATTERIES.find((b) => b.id === r.batteryTypeId)!;
       return {
@@ -69,6 +75,8 @@ export function HomeScreen() {
         percentage: toPercentage(r.level, r.capacity),
       };
     });
+
+  const energyReading = readings.find((r) => r.batteryTypeId === 'energy');
 
   if (!isLoaded) {
     return (
@@ -98,10 +106,17 @@ export function HomeScreen() {
         {/* Mode selector */}
         <ModeSelector currentMode={currentMode} onChange={handleModeChange} />
 
-        {/* Master battery */}
+        {/* Master battery = energy / calorie balance (Hướng B) */}
         <View style={styles.masterContainer}>
-          <MasterBattery percentage={masterPercentage} />
+          <MasterBattery
+            percentage={masterPercentage}
+            levelKcal={energyReading?.level}
+            capacityKcal={energyReading?.capacity}
+          />
         </View>
+
+        {/* Eat / move quick actions feeding the energy battery */}
+        <EnergyActionsBar />
 
         {/* Sub-batteries */}
         <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp ⚡</Text>

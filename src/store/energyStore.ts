@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { BatteryReading, IntakeEvent, BatteryId } from '../types/battery';
+import type { WorkoutSession } from '../types/energy';
 import {
   applyIntake,
   applyDrain,
@@ -9,6 +10,15 @@ import {
   createDailyReading,
   toPercentage,
 } from '../domain/battery/batteryEngine';
+import {
+  createEnergyReading,
+  reconcileEnergyCapacity,
+  kcalFromMacro,
+  chargeEnergy,
+  burnPassive,
+  burnActivity,
+} from '../domain/energy/energyBalanceEngine';
+import { workoutKcal } from '../domain/energy/metabolismEngine';
 import { getModeById } from '../domain/modes/modeDefinitions';
 import { checkLowBattery, type BatteryAlert } from '../domain/rules/lowBatteryRules';
 import {
@@ -17,27 +27,43 @@ import {
 } from '../data/repositories/batteryRepository';
 import { addIntakeEvent } from '../data/repositories/intakeRepository';
 import { upsertDailyLog } from '../data/repositories/dailyLogRepository';
+import { useSettingsStore } from './settingsStore';
 import { todayString, nowTimestamp } from '../lib/dateUtils';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import type { ModeId } from '../types/modes';
 
 interface EnergyState {
   readings: BatteryReading[];
-  masterPercentage: number;
+  masterPercentage: number; // Hướng B: this is the ENERGY (calorie-balance) battery %
   isLoaded: boolean;
 
   loadToday: (modeId: ModeId) => Promise<void>;
   addIntake: (batteryId: BatteryId, amount: number, note?: string) => Promise<BatteryAlert[]>;
+  addCalories: (kcal: number, note?: string) => Promise<void>;
+  logActivity: (activity: { steps?: number; workouts?: WorkoutSession[] }) => Promise<void>;
   tickDrain: (elapsedHours: number, modeId: ModeId) => Promise<void>;
   resetForNewDay: (modeId: ModeId) => Promise<void>;
 }
 
-// Build the default set of readings for a day in memory (no persistence).
+function currentProfile() {
+  return useSettingsStore.getState().userProfile;
+}
+
+// The master battery (Hướng B) is the energy battery's percentage. Falls back to
+// the nutrient average if no energy reading exists (defensive / old data).
+function energyPercentage(readings: BatteryReading[]): number {
+  const e = readings.find((r) => r.batteryTypeId === 'energy');
+  return e ? toPercentage(e.level, e.capacity) : computeMasterLevel(readings);
+}
+
+// Build the default set of readings for a day in memory (no persistence):
+// the 6 nutrient batteries + the energy battery sized from the user profile.
 function buildDefaultReadings(date: string, modeId: ModeId): BatteryReading[] {
   const mode = getModeById(modeId);
-  return DEFAULT_BATTERIES.filter((b) => b.isActive && b.id !== 'master').map((b) =>
-    createDailyReading(date, b.id as BatteryId, mode, 0)
-  );
+  const nutrients = DEFAULT_BATTERIES.filter(
+    (b) => b.isActive && b.id !== 'master' && b.id !== 'energy'
+  ).map((b) => createDailyReading(date, b.id as BatteryId, mode, 0));
+  return [...nutrients, createEnergyReading(date, currentProfile())];
 }
 
 export const useEnergyStore = create<EnergyState>((set, get) => ({
@@ -48,6 +74,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   loadToday: async (modeId) => {
     const today = todayString();
     const mode = getModeById(modeId);
+    const profile = currentProfile();
 
     try {
       let readings = await getReadingsForDate(today);
@@ -56,25 +83,29 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         // First launch of the day: create fresh readings for this mode.
         readings = buildDefaultReadings(today, modeId);
       } else {
-        // Day already exists: re-apply the current mode's capacities so that
-        // switching mode updates today's targets (level is kept, re-clamped).
+        // Day already exists: re-apply the current mode capacities (nutrients)
+        // and the current profile capacity (energy); keep levels, re-clamped.
         readings = readings.map((r) => {
+          if (r.batteryTypeId === 'energy') return reconcileEnergyCapacity(r, profile);
           const capacity = capacityForMode(r.batteryTypeId, mode);
           return { ...r, capacity, level: clampLevel(r.level, capacity) };
         });
+        // Backfill the energy battery for days created before Hướng B existed.
+        if (!readings.some((r) => r.batteryTypeId === 'energy')) {
+          readings = [...readings, createEnergyReading(today, profile)];
+        }
       }
 
       await upsertReadings(readings);
       await upsertDailyLog({ date: today, modeId });
 
-      const masterPercentage = computeMasterLevel(readings);
-      set({ readings, masterPercentage, isLoaded: true });
+      set({ readings, masterPercentage: energyPercentage(readings), isLoaded: true });
     } catch (e) {
       // Storage unavailable (e.g. SQLite-less web build). Render in-memory
       // defaults so the screen never goes blank.
       console.warn('loadToday failed, using in-memory defaults:', e);
       const readings = buildDefaultReadings(today, modeId);
-      set({ readings, masterPercentage: computeMasterLevel(readings), isLoaded: true });
+      set({ readings, masterPercentage: energyPercentage(readings), isLoaded: true });
     }
   },
 
@@ -86,43 +117,116 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const updated = [...readings];
     updated[idx] = applyIntake(updated[idx], amount);
+    const toPersist: BatteryReading[] = [updated[idx]];
 
-    // Update the UI immediately (optimistic) so the cell fills without waiting
-    // on storage — this also keeps the alert check below on fresh data.
-    const masterPercentage = computeMasterLevel(updated);
-    set({ readings: updated, masterPercentage });
+    // Eating protein/carbs also charges the energy battery (4 kcal/g).
+    const kcal = kcalFromMacro(batteryId, amount);
+    if (kcal > 0) {
+      const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
+      if (ei !== -1) {
+        updated[ei] = chargeEnergy(updated[ei], kcal);
+        toPersist.push(updated[ei]);
+      }
+    }
 
-    // Persist as best-effort; failures (e.g. web) must not break the UI.
+    // Optimistic UI update (master = energy %).
+    set({ readings: updated, masterPercentage: energyPercentage(updated) });
+
     try {
       const ts = nowTimestamp();
-      const event: IntakeEvent = {
-        id: `${batteryId}_${ts}`,
-        timestamp: ts,
-        batteryTypeId: batteryId,
-        amount,
-        note,
-      };
+      const event: IntakeEvent = { id: `${batteryId}_${ts}`, timestamp: ts, batteryTypeId: batteryId, amount, note };
       await addIntakeEvent(event);
-      await upsertReadings([updated[idx]]);
+      await upsertReadings(toPersist);
     } catch (e) {
       console.warn('addIntake persistence failed:', e);
     }
 
-    return checkLowBattery(updated);
+    const { lowBatteryThreshold } = useSettingsStore.getState();
+    // Only alert on the battery just topped up (if it is still low) and the
+    // energy battery. The other nutrient batteries start the day empty and fill
+    // over time, so checking all of them here would fire a burst of "low" alerts
+    // on the very first intake of the day.
+    const relevant = updated.filter(
+      (r) => r.batteryTypeId === batteryId || r.batteryTypeId === 'energy'
+    );
+    return checkLowBattery(relevant, lowBatteryThreshold);
+  },
+
+  // Manually log eaten calories (the "nhập tay" source).
+  addCalories: async (kcal, note = '') => {
+    const { readings } = get();
+    const ei = readings.findIndex((r) => r.batteryTypeId === 'energy');
+    if (ei === -1 || kcal <= 0) return;
+
+    const updated = [...readings];
+    updated[ei] = chargeEnergy(updated[ei], kcal);
+    set({ readings: updated, masterPercentage: energyPercentage(updated) });
+
+    try {
+      const ts = nowTimestamp();
+      await addIntakeEvent({ id: `energy_${ts}`, timestamp: ts, batteryTypeId: 'energy', amount: kcal, note: note || 'calories' });
+      await upsertReadings([updated[ei]]);
+    } catch (e) {
+      console.warn('addCalories persistence failed:', e);
+    }
+  },
+
+  // Log activity (steps and/or workout sessions) — drains the energy battery.
+  logActivity: async ({ steps = 0, workouts = [] }) => {
+    const { readings } = get();
+    const ei = readings.findIndex((r) => r.batteryTypeId === 'energy');
+    if (ei === -1) return;
+
+    const profile = currentProfile();
+    const updated = [...readings];
+    updated[ei] = burnActivity(updated[ei], profile, steps, workouts);
+    set({ readings: updated, masterPercentage: energyPercentage(updated) });
+
+    try {
+      await upsertReadings([updated[ei]]);
+
+      // Record logged activity into intake history so it shows up in the
+      // weekly Excel export (it does not affect battery levels here — that
+      // already happened above via burnActivity).
+      const ts = nowTimestamp();
+      if (steps > 0) {
+        await addIntakeEvent({
+          id: `movement_${ts}`,
+          timestamp: ts,
+          batteryTypeId: 'movement',
+          amount: steps,
+          note: 'steps',
+        });
+      }
+      for (let i = 0; i < workouts.length; i++) {
+        const session = workouts[i];
+        const kcal = workoutKcal(session, profile.weightKg);
+        await addIntakeEvent({
+          id: `workout_${ts}_${i}`,
+          timestamp: ts,
+          batteryTypeId: 'energy',
+          amount: kcal,
+          note: `workout: ${session.type} ${session.minutes}m`,
+        });
+      }
+    } catch (e) {
+      console.warn('logActivity persistence failed:', e);
+    }
   },
 
   tickDrain: async (elapsedHours, modeId) => {
     const { readings } = get();
     const mode = getModeById(modeId);
+    const profile = currentProfile();
 
-    const updated = readings.map((r) =>
-      r.batteryTypeId === 'master'
-        ? r
-        : applyDrain(r, elapsedHours, mode.drainRatePerHour)
-    );
+    const updated = readings.map((r) => {
+      if (r.batteryTypeId === 'master') return r;
+      // Energy battery drains by real passive metabolism; nutrients by mode rate.
+      if (r.batteryTypeId === 'energy') return burnPassive(r, profile, elapsedHours);
+      return applyDrain(r, elapsedHours, mode.drainRatePerHour);
+    });
 
-    const masterPercentage = computeMasterLevel(updated);
-    set({ readings: updated, masterPercentage });
+    set({ readings: updated, masterPercentage: energyPercentage(updated) });
 
     try {
       await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
@@ -135,8 +239,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const today = todayString();
     const readings = buildDefaultReadings(today, modeId);
 
-    const masterPercentage = computeMasterLevel(readings);
-    set({ readings, masterPercentage });
+    set({ readings, masterPercentage: energyPercentage(readings) });
 
     try {
       await upsertReadings(readings);
