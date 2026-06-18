@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { MasterBattery } from '../components/MasterBattery';
+import { LiveMasterBattery } from '../components/LiveMasterBattery';
 import { BatteryStack } from '../components/BatteryStack';
 import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
@@ -27,8 +27,7 @@ import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
 
 export function HomeScreen() {
-  const { readings, masterPercentage, foodLog, isLoaded, loadToday, addIntake, removeFood } =
-    useEnergyStore();
+  const { readings, foodLog, isLoaded, loadToday, addIntake, removeFood } = useEnergyStore();
   const { currentMode, setMode, notificationsEnabled } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
@@ -91,8 +90,6 @@ export function HomeScreen() {
       };
     });
 
-  const energyReading = readings.find((r) => r.batteryTypeId === 'energy');
-
   if (!isLoaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -121,13 +118,9 @@ export function HomeScreen() {
         {/* Mode selector */}
         <ModeSelector currentMode={currentMode} onChange={handleModeChange} />
 
-        {/* Master battery = energy / calorie balance (Hướng B) */}
+        {/* Master battery = energy / calorie balance (Hướng B), ticking live per second */}
         <View style={styles.masterContainer}>
-          <MasterBattery
-            percentage={masterPercentage}
-            levelKcal={energyReading?.level}
-            capacityKcal={energyReading?.capacity}
-          />
+          <LiveMasterBattery />
         </View>
 
         {/* Eat / move quick actions feeding the energy battery */}

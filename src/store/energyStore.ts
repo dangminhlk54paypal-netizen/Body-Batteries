@@ -44,6 +44,11 @@ interface EnergyState {
   readings: BatteryReading[];
   masterPercentage: number; // Hướng B: this is the ENERGY (calorie-balance) battery %
   foodLog: FoodLogEntry[]; // today's logged meals (for the "Hôm nay đã ăn" view)
+  // Timestamp of the last passive-drain tick actually applied to `readings`
+  // (loadToday / tickDrain / resetForNewDay). useLiveEnergyReading uses this to
+  // extrapolate a smooth per-second display between real ticks, without
+  // writing to the store or DB every second.
+  lastDrainSyncAt: number;
   isLoaded: boolean;
 
   loadToday: (modeId: ModeId) => Promise<void>;
@@ -81,6 +86,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   readings: [],
   masterPercentage: 0,
   foodLog: [],
+  lastDrainSyncAt: Date.now(),
   isLoaded: false,
 
   loadToday: async (modeId) => {
@@ -116,6 +122,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         readings,
         masterPercentage: energyPercentage(readings),
         foodLog,
+        lastDrainSyncAt: Date.now(),
         isLoaded: true,
       });
     } catch (e) {
@@ -127,6 +134,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         readings,
         masterPercentage: energyPercentage(readings),
         foodLog: [],
+        lastDrainSyncAt: Date.now(),
         isLoaded: true,
       });
     }
@@ -341,7 +349,11 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       return applyDrain(r, elapsedHours, mode.drainRatePerHour);
     });
 
-    set({ readings: updated, masterPercentage: energyPercentage(updated) });
+    set({
+      readings: updated,
+      masterPercentage: energyPercentage(updated),
+      lastDrainSyncAt: Date.now(),
+    });
 
     try {
       await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
@@ -354,7 +366,12 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const today = todayString();
     const readings = buildDefaultReadings(today, modeId);
 
-    set({ readings, masterPercentage: energyPercentage(readings), foodLog: [] });
+    set({
+      readings,
+      masterPercentage: energyPercentage(readings),
+      foodLog: [],
+      lastDrainSyncAt: Date.now(),
+    });
 
     try {
       await upsertReadings(readings);

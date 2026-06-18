@@ -44,6 +44,17 @@ Khu vực trên Home (dưới các pin nhỏ) — `src/components/TodayMeals.tsx
 - *Giới hạn:* hoàn pin theo kiểu trừ-có-chặn (clamp), nên nếu lúc nạp đã tràn trần
   pin thì hoàn lại chỉ gần đúng — chấp nhận được với công cụ ước lượng.
 
+## 3c. Pin Năng lượng xả mượt theo giây
+`src/hooks/useLiveEnergyReading.ts` + `src/components/LiveMasterBattery.tsx`
+(dùng ở `HomeScreen` thay cho `MasterBattery` render tĩnh):
+- Mỗi giây tính lại `percentage`/`levelKcal` **chỉ để hiển thị**, bằng cách lấy
+  reading đã lưu (`readings`) và ngoại suy thêm phần xả từ lúc `lastDrainSyncAt`
+  (đồng hồ thật, dùng đúng `burnPassive` thuần — không thêm logic mới).
+- **Không** ghi state/DB mỗi giây — `tickDrain` (`useDrainTick.ts`, 30 phút/khi
+  resume) vẫn là nguồn xả thật duy nhất được lưu; `lastDrainSyncAt` cập nhật lại
+  mỗi khi `loadToday` / `tickDrain` / `resetForNewDay` chạy nên không đếm trùng.
+- Tạm dừng interval khi app ở background (`AppState`), giống `useDrainTick.ts`.
+
 ## 4. Lưu trữ & Excel
 - Bảng `food_log` (`schema.ts` + `data/repositories/foodLogRepository.ts`) lưu
   từng bản ghi đầy đủ (món, gram, giờ, loại bữa, kcal, macro, nước, khoáng).
@@ -66,6 +77,9 @@ Khu vực trên Home (dưới các pin nhỏ) — `src/components/TodayMeals.tsx
 - `src/domain/food/foodLogSummary.ts` — gom nhóm theo bữa + tổng ngày.
 - `src/components/FoodLogModal.tsx` — UI ghi món; `TodayMeals.tsx` — xem/xoá món.
   Nút "Ghi món ăn" trong `EnergyActionsBar.tsx`; "Hôm nay đã ăn" trong `HomeScreen.tsx`.
-- `src/store/energyStore.ts` — action `logFood` / `removeFood` + state `foodLog`.
+- `src/components/LiveMasterBattery.tsx` + `src/hooks/useLiveEnergyReading.ts` —
+  hiển thị pin Năng lượng xả mượt theo giây (display-only).
+- `src/store/energyStore.ts` — action `logFood` / `removeFood` + state `foodLog`,
+  `lastDrainSyncAt` (mốc đồng bộ xả thật gần nhất).
 - Test: `foodCsv.test.ts`, `foodDatabase.test.ts`, `foodNutrition.test.ts`,
   `foodLogSummary.test.ts`.
