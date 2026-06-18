@@ -6,6 +6,7 @@ import {
   Modal,
   TextInput,
   FlatList,
+  ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -163,66 +164,72 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 {categoryLabel(selected.category)} · {selected.per100g.energyKcal} kcal / 100g
               </Text>
 
-              <Text style={styles.fieldLabel}>Khối lượng (gram)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ví dụ: 150"
-                placeholderTextColor="#666"
-                keyboardType="decimal-pad"
-                value={grams}
-                onChangeText={setGrams}
-              />
-              <View style={styles.chips}>
-                <Pressable
-                  style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-                  onPress={() => setGrams(String(selected.defaultServingG))}
-                >
-                  <Text style={styles.chipText}>mặc định={selected.defaultServingG}g</Text>
-                </Pressable>
-                {selected.servingPresets.map((p) => (
+              <ScrollView
+                style={styles.entryScroll}
+                contentContainerStyle={styles.entryScrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.fieldLabel}>Khối lượng (gram)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ví dụ: 150"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={grams}
+                  onChangeText={setGrams}
+                />
+                <View style={styles.chips}>
                   <Pressable
-                    key={p.label}
                     style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-                    onPress={() => setGrams(String(p.grams))}
+                    onPress={() => setGrams(String(selected.defaultServingG))}
                   >
-                    <Text style={styles.chipText}>
-                      {p.label}={p.grams}g
-                    </Text>
+                    <Text style={styles.chipText}>mặc định={selected.defaultServingG}g</Text>
                   </Pressable>
-                ))}
-              </View>
-
-              <Text style={styles.fieldLabel}>Giờ ăn → {mealLabel}</Text>
-              <View style={styles.timeRow}>
-                <TextInput
-                  style={[styles.input, styles.timeInput]}
-                  placeholder="HH"
-                  placeholderTextColor="#666"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  value={hour}
-                  onChangeText={setHour}
-                />
-                <Text style={styles.timeColon}>:</Text>
-                <TextInput
-                  style={[styles.input, styles.timeInput]}
-                  placeholder="MM"
-                  placeholderTextColor="#666"
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  value={minute}
-                  onChangeText={setMinute}
-                />
-              </View>
-
-              {preview && (
-                <View style={styles.preview}>
-                  <Text style={styles.previewKcal}>⚡ {preview.energyKcal} kcal</Text>
-                  <Text style={styles.previewMacro}>
-                    P {preview.proteinG}g · C {preview.carbG}g · F {preview.fatG}g
-                  </Text>
+                  {selected.servingPresets.map((p) => (
+                    <Pressable
+                      key={p.label}
+                      style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+                      onPress={() => setGrams(String(p.grams))}
+                    >
+                      <Text style={styles.chipText}>
+                        {p.label}={p.grams}g
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
-              )}
+
+                <Text style={styles.fieldLabel}>Giờ ăn → {mealLabel}</Text>
+                <View style={styles.timeRow}>
+                  <TextInput
+                    style={[styles.input, styles.timeInput]}
+                    placeholder="HH"
+                    placeholderTextColor="#666"
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    value={hour}
+                    onChangeText={setHour}
+                  />
+                  <Text style={styles.timeColon}>:</Text>
+                  <TextInput
+                    style={[styles.input, styles.timeInput]}
+                    placeholder="MM"
+                    placeholderTextColor="#666"
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    value={minute}
+                    onChangeText={setMinute}
+                  />
+                </View>
+
+                {preview && (
+                  <View style={styles.preview}>
+                    <Text style={styles.previewKcal}>⚡ {preview.energyKcal} kcal</Text>
+                    <Text style={styles.previewMacro}>
+                      P {preview.proteinG}g · C {preview.carbG}g · F {preview.fatG}g
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
 
               <View style={styles.row}>
                 <Pressable
@@ -271,6 +278,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#aaa' },
   back: { color: '#4ECDC4', fontSize: 14, fontWeight: '600' },
   fieldLabel: { fontSize: 13, color: '#aaa', marginTop: 4 },
+  entryScroll: { flexShrink: 1 },
+  entryScrollContent: { gap: 12 },
   input: {
     backgroundColor: '#2d2d44',
     borderRadius: 10,
@@ -280,7 +289,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#444',
   },
-  list: { maxHeight: 320 },
+  list: { maxHeight: 320, flexShrink: 1 },
   empty: { color: '#888', textAlign: 'center', paddingVertical: 20 },
   foodRow: {
     flexDirection: 'row',
