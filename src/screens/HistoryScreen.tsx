@@ -16,6 +16,7 @@ import { todayString, daysAgo, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { TrendChart } from '../components/TrendChart';
+import { WeightLogCard } from '../components/WeightLogCard';
 
 // Short labels for the mini bars in each day card. A fixed-length name.slice()
 // used to cut mid-word (e.g. "Khoáng chất" -> "Khoá", which reads as the
@@ -114,6 +115,8 @@ export function HistoryScreen() {
         <Text style={styles.title}>Lịch sử 7 ngày</Text>
 
         <TrendChart data={chronologicalTrend(days)} energyData={chronologicalEnergyTrend(days)} />
+
+        <WeightLogCard />
 
         {days.length === 0 && (
           <Text style={styles.empty}>Chưa có dữ liệu nào. Hãy nạp pin đầu tiên!</Text>
