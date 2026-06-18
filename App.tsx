@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { initDatabase } from './src/data/db/database';
-import { requestNotificationPermission } from './src/services/notifications/notificationService';
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -12,8 +10,13 @@ export default function App() {
   useEffect(() => {
     async function bootstrap() {
       try {
-        await initDatabase();
-        await requestNotificationPermission();
+        if (Platform.OS !== 'web') {
+          // Native-only: SQLite & Notifications không chạy được trên web
+          const { initDatabase } = await import('./src/data/db/database');
+          const { requestNotificationPermission } = await import('./src/services/notifications/notificationService');
+          await initDatabase();
+          await requestNotificationPermission();
+        }
         setReady(true);
       } catch (e) {
         setError(String(e));

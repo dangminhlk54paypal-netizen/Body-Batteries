@@ -15,7 +15,6 @@ import { BatteryStack } from '../components/BatteryStack';
 import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
 import { DEFAULT_BATTERIES } from '../lib/constants';
-import { checkLowBattery } from '../domain/rules/lowBatteryRules';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import type { BatteryState, BatteryId } from '../types/battery';
 import type { BatteryType } from '../types/battery';
@@ -25,7 +24,7 @@ import { formatDisplayDate, todayString } from '../lib/dateUtils';
 
 export function HomeScreen() {
   const { readings, masterPercentage, isLoaded, loadToday, addIntake } = useEnergyStore();
-  const { currentMode, setMode } = useSettingsStore();
+  const { currentMode, setMode, notificationsEnabled } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -48,10 +47,9 @@ export function HomeScreen() {
 
   async function handleIntakeConfirm(amount: number, note: string) {
     if (!selectedBattery) return;
-    await addIntake(selectedBattery.id as BatteryId, amount, note);
-
-    const alerts = checkLowBattery(readings);
-    if (alerts.length > 0) {
+    // addIntake updates state and returns alerts computed from the fresh data.
+    const alerts = await addIntake(selectedBattery.id as BatteryId, amount, note);
+    if (notificationsEnabled && alerts.length > 0) {
       await sendLowBatteryAlerts(alerts);
     }
   }

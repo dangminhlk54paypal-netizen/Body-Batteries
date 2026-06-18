@@ -13,12 +13,12 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 - [x] Cài "Expo Go" trên điện thoại — **XONG** (đã kết nối thành công 1 lần)
 - [x] AI tạo cấu trúc project TypeScript đầy đủ (`App.tsx`, `package.json`, `tsconfig.json`…)
 - [x] Tạo cấu trúc thư mục theo `docs/03-architecture.md` — **XONG** (`src/` với 5 lớp)
-- [ ] Chạy `npm install` rồi `npx expo start` — quét QR, thấy app trên điện thoại — **npm install xong, code đã vá xong 3 lỗi crash (Excel, encryption, SDK version). Sẵn sàng test qua Personal Hotspot.**
+- [ ] Chạy `npm install` rồi `npx expo start` — quét QR, thấy app trên điện thoại — **npm install xong. Session 4 tìm ra & vá nguyên nhân gốc khiến bundle luôn hỏng: `.watchmanconfig` bắt Watchman bỏ qua `node_modules`. Sau khi vá, `expo export` build thành công 1403 module (iOS) — app SẴN SÀNG hiện trên máy. Chỉ còn bước quét QR xác nhận.**
 
 **Tiêu chí hoàn thành:** App hiện lên điện thoại (màn hình Home có viên pin), nạp được Protein rồi đóng/mở app vẫn còn dữ liệu.
 **Agent phụ trách:** `architect`
 
-> 🟡 **Trạng thái:** Môi trường máy 100% xong. Code đã vá lỗi crash. Tiếp theo: nối Personal Hotspot + xác nhận màn hình Home hiện đúng (Session 4).
+> 🟢 **Trạng thái:** Bundle đã verify build OK (iOS + web). Tiếp theo: nối Personal Hotspot/tunnel → quét QR → xác nhận Home hiện 1 pin tổng + 6 pin nhỏ.
 
 ---
 
@@ -103,15 +103,15 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 | Phase | Tên | Code | Test thật | Ghi chú |
 |-------|-----|------|-----------|---------|
-| 0 | Chuẩn bị | ✅ | ⏳ | Môi trường xong, đang test nối qua Personal Hotspot |
-| 1 | MVP màn hình pin | ✅ | ⏳ | Cần chạy app thật, test nạp pin + đóng/mở lại |
-| 2 | Modes & tự động | ✅ | ⏳ | Cần test đổi Mode, nhận thông báo thật |
+| 0 | Chuẩn bị | ✅ | 🟢 | **Bundle build OK (Session 4)** — chỉ còn quét QR xác nhận Home |
+| 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK. Cần chạy thật: nạp pin + đóng/mở lại |
+| 2 | Modes & tự động | ✅ | ⏳ | Đã vá lỗi đổi Mode không cập nhật sức chứa. Cần test thật |
 | 3 | Excel, Diary, dọn dẹp | 🔄 | ⏳ | Còn thiếu biểu đồ xu hướng (victory-native) |
 | 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu |
 | 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu |
 
 **Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | ⬜ Chưa bắt đầu
 
-> 🚨 **Việc đầu tiên của session tiếp theo:** Nối Mac vào Personal Hotspot của iPhone, chạy lại `npx expo start --clear`, xác nhận màn hình Home hiện đúng. Chi tiết đầy đủ trong `.ai/SESSION_LOG.md` (Session 2).
+> 🚨 **Việc đầu tiên của session tiếp theo:** Nối Mac vào Personal Hotspot (hoặc dùng `--tunnel`), chạy `export PATH="/opt/homebrew/bin:$PATH"` rồi `npx expo start`, quét QR — **bundle đã verify OK nên Home phải hiện ra**. Chi tiết trong `.ai/SESSION_LOG.md` (Session 4).
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

@@ -26,15 +26,15 @@
       ]
     },
     "plugins": [
-      "expo-sqlite",
-      "expo-secure-store",
       [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
           "color": "#0d0d1a"
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-secure-store"
     ]
   }
 }

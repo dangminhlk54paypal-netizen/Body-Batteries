@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getReadingsInRange } from '../data/repositories/batteryRepository';
 import { getLogsInRange } from '../data/repositories/dailyLogRepository';
 import type { BatteryReading } from '../types/battery';
@@ -26,18 +27,28 @@ export function HistoryScreen() {
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
+  // Reload every time the tab gains focus so today's new intake shows up
+  // (bottom-tab screens stay mounted, so a one-shot mount effect is not enough).
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [])
+  );
 
   async function loadHistory() {
     const toDate = todayString();
     const fromDate = daysAgo(7);
 
-    const [readings, logs] = await Promise.all([
-      getReadingsInRange(fromDate, toDate),
-      getLogsInRange(fromDate, toDate),
-    ]);
+    let readings: BatteryReading[] = [];
+    let logs: DailyLog[] = [];
+    try {
+      [readings, logs] = await Promise.all([
+        getReadingsInRange(fromDate, toDate),
+        getLogsInRange(fromDate, toDate),
+      ]);
+    } catch (e) {
+      console.warn('loadHistory failed:', e);
+    }
 
     const logMap: Record<string, DailyLog> = {};
     logs.forEach((l) => (logMap[l.date] = l));
