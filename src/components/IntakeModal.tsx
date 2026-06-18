@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   View,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import type { BatteryType } from '../types/battery';
 
 interface Props {
@@ -18,9 +19,25 @@ interface Props {
   onClose: () => void;
 }
 
+// How far below its resting position the sheet starts before sliding up.
+const SHEET_OFFSET = 400;
+
 export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const translateY = useSharedValue(SHEET_OFFSET);
+
+  useEffect(() => {
+    if (visible) {
+      translateY.value = withTiming(0, { duration: 280 });
+    } else {
+      translateY.value = SHEET_OFFSET;
+    }
+  }, [visible]);
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   function handleConfirm() {
     const parsed = parseFloat(amount);
@@ -35,12 +52,12 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
   if (!battery) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.overlay}
       >
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, sheetStyle]}>
           <Text style={styles.title}>Nạp {battery.name}</Text>
           <Text style={styles.subtitle}>Nhập lượng bạn đã nạp ({battery.unit})</Text>
 
@@ -63,17 +80,25 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
           />
 
           <View style={styles.buttons}>
-            <Pressable style={[styles.btn, styles.cancelBtn]} onPress={onClose}>
+            <Pressable
+              style={({ pressed }) => [styles.btn, styles.cancelBtn, pressed && styles.pressed]}
+              onPress={onClose}
+            >
               <Text style={styles.cancelText}>Huỷ</Text>
             </Pressable>
             <Pressable
-              style={[styles.btn, styles.confirmBtn, { backgroundColor: battery.color }]}
+              style={({ pressed }) => [
+                styles.btn,
+                styles.confirmBtn,
+                { backgroundColor: battery.color },
+                pressed && styles.pressed,
+              ]}
               onPress={handleConfirm}
             >
               <Text style={styles.confirmText}>Nạp ⚡</Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -137,5 +162,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

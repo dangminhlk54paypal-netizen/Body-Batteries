@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useEnergyStore } from '../store/energyStore';
 import { MET_TABLE } from '../lib/metabolicConstants';
 import { FoodLogModal } from './FoodLogModal';
@@ -31,6 +32,22 @@ const ACTIVITY_LABELS: Record<ActivityType, string> = {
 };
 const ACTIVITY_TYPES = Object.keys(MET_TABLE) as ActivityType[];
 
+// How far below its resting position a bottom sheet starts before sliding
+// up. Kept local to this file since both inline modals below use it.
+const SHEET_OFFSET = 400;
+
+function useSheetSlide(visible: boolean) {
+  const translateY = useSharedValue(SHEET_OFFSET);
+
+  useEffect(() => {
+    translateY.value = withTiming(visible ? 0 : SHEET_OFFSET, { duration: 280 });
+  }, [visible]);
+
+  return useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+}
+
 export function EnergyActionsBar() {
   const addCalories = useEnergyStore((s) => s.addCalories);
   const logActivity = useEnergyStore((s) => s.logActivity);
@@ -38,6 +55,8 @@ export function EnergyActionsBar() {
   const [foodOpen, setFoodOpen] = useState(false);
   const [calorieOpen, setCalorieOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const calorieSheetStyle = useSheetSlide(calorieOpen);
+  const activitySheetStyle = useSheetSlide(activityOpen);
 
   const [kcal, setKcal] = useState('');
   const [activity, setActivity] = useState<ActivityType>('running');
@@ -66,16 +85,25 @@ export function EnergyActionsBar() {
   return (
     <View style={styles.container}>
       {/* Primary: log a food from the database (food_items.csv) */}
-      <Pressable style={[styles.btn, styles.food]} onPress={() => setFoodOpen(true)}>
+      <Pressable
+        style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
+        onPress={() => setFoodOpen(true)}
+      >
         <Text style={styles.btnText}>🍱 Ghi món ăn (từ danh sách)</Text>
       </Pressable>
 
       {/* Manual fallbacks: kept as supplementary inputs */}
       <View style={styles.bar}>
-        <Pressable style={[styles.btn, styles.eat]} onPress={() => setCalorieOpen(true)}>
+        <Pressable
+          style={({ pressed }) => [styles.btn, styles.eat, pressed && styles.pressed]}
+          onPress={() => setCalorieOpen(true)}
+        >
           <Text style={styles.btnText}>🍽️ Ăn thêm (kcal)</Text>
         </Pressable>
-        <Pressable style={[styles.btn, styles.move]} onPress={() => setActivityOpen(true)}>
+        <Pressable
+          style={({ pressed }) => [styles.btn, styles.move, pressed && styles.pressed]}
+          onPress={() => setActivityOpen(true)}
+        >
           <Text style={styles.btnText}>🏃 Vận động</Text>
         </Pressable>
       </View>
@@ -83,9 +111,9 @@ export function EnergyActionsBar() {
       <FoodLogModal visible={foodOpen} onClose={() => setFoodOpen(false)} />
 
       {/* Manual calories */}
-      <Modal visible={calorieOpen} transparent animationType="slide" onRequestClose={() => setCalorieOpen(false)}>
+      <Modal visible={calorieOpen} transparent animationType="fade" onRequestClose={() => setCalorieOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
-          <View style={styles.sheet}>
+          <Animated.View style={[styles.sheet, calorieSheetStyle]}>
             <Text style={styles.title}>Nạp năng lượng đã ăn</Text>
             <Text style={styles.subtitle}>Nhập số kcal bạn đã ăn (ngoài Protein/Carbs đã ghi)</Text>
             <TextInput
@@ -98,21 +126,27 @@ export function EnergyActionsBar() {
               autoFocus
             />
             <View style={styles.row}>
-              <Pressable style={[styles.modalBtn, styles.cancel]} onPress={() => setCalorieOpen(false)}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
+                onPress={() => setCalorieOpen(false)}
+              >
                 <Text style={styles.cancelText}>Huỷ</Text>
               </Pressable>
-              <Pressable style={[styles.modalBtn, styles.eat]} onPress={confirmCalories}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.eat, pressed && styles.pressed]}
+                onPress={confirmCalories}
+              >
                 <Text style={styles.btnText}>Nạp ⚡</Text>
               </Pressable>
             </View>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
 
       {/* Activity / workout */}
-      <Modal visible={activityOpen} transparent animationType="slide" onRequestClose={() => setActivityOpen(false)}>
+      <Modal visible={activityOpen} transparent animationType="fade" onRequestClose={() => setActivityOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
-          <View style={styles.sheet}>
+          <Animated.View style={[styles.sheet, activitySheetStyle]}>
             <Text style={styles.title}>Ghi vận động</Text>
             <Text style={styles.subtitle}>Chọn môn + số phút (và/hoặc số bước chân)</Text>
             <View style={styles.chips}>
@@ -120,7 +154,11 @@ export function EnergyActionsBar() {
                 <Pressable
                   key={t}
                   onPress={() => setActivity(t)}
-                  style={[styles.chip, activity === t && styles.chipActive]}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    activity === t && styles.chipActive,
+                    pressed && styles.pressed,
+                  ]}
                 >
                   <Text style={[styles.chipText, activity === t && styles.chipTextActive]}>
                     {ACTIVITY_LABELS[t]}
@@ -145,14 +183,20 @@ export function EnergyActionsBar() {
               onChangeText={setSteps}
             />
             <View style={styles.row}>
-              <Pressable style={[styles.modalBtn, styles.cancel]} onPress={() => setActivityOpen(false)}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
+                onPress={() => setActivityOpen(false)}
+              >
                 <Text style={styles.cancelText}>Huỷ</Text>
               </Pressable>
-              <Pressable style={[styles.modalBtn, styles.move]} onPress={confirmActivity}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.move, pressed && styles.pressed]}
+                onPress={confirmActivity}
+              >
                 <Text style={styles.btnText}>Ghi 🔥</Text>
               </Pressable>
             </View>
-          </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
     </View>
@@ -202,4 +246,5 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
   cancel: { backgroundColor: '#2d2d44' },
   cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
+  pressed: { opacity: 0.6 },
 });

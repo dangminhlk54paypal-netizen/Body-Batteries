@@ -56,7 +56,7 @@ export function TodayMeals({ entries, onDelete }: Props) {
                   </View>
                   <Pressable
                     hitSlop={10}
-                    style={styles.deleteBtn}
+                    style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
                     onPress={() => onDelete(e.id)}
                   >
                     <Text style={styles.deleteText}>✕</Text>
@@ -111,4 +111,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteText: { color: '#FF6B6B', fontSize: 14, fontWeight: '700' },
+  pressed: { opacity: 0.5 },
 });

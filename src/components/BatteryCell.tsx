@@ -43,7 +43,10 @@ export function BatteryCell({ id, name, unit, level, capacity, percentage, color
     percentage > 50 ? color : percentage > 20 ? '#FFD93D' : '#FF4757';
 
   return (
-    <Pressable onPress={onPress} style={styles.container}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+    >
       <Svg width={CELL_WIDTH} height={CELL_HEIGHT + TERMINAL_H}>
         <Defs>
           <LinearGradient id={`grad_${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -103,6 +106,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     padding: 8,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   percentage: {
     fontSize: 13,

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useEnergyStore } from '../store/energyStore';
 import { searchFoods } from '../data/food/foodDatabase';
 import { nutritionForGrams, mealTypeForHour } from '../domain/food/foodNutrition';
@@ -37,6 +38,9 @@ function timestampForToday(hour: number, minute: number): number {
   return d.getTime();
 }
 
+// How far below its resting position the sheet starts before sliding up.
+const SHEET_OFFSET = 500;
+
 export function FoodLogModal({ visible, onClose }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
 
@@ -45,6 +49,19 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [grams, setGrams] = useState('');
   const [hour, setHour] = useState('');
   const [minute, setMinute] = useState('');
+  const translateY = useSharedValue(SHEET_OFFSET);
+
+  useEffect(() => {
+    if (visible) {
+      translateY.value = withTiming(0, { duration: 280 });
+    } else {
+      translateY.value = SHEET_OFFSET;
+    }
+  }, [visible]);
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const results = useMemo(() => searchFoods(query), [query]);
 
@@ -85,12 +102,12 @@ export function FoodLogModal({ visible, onClose }: Props) {
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
-        <View style={styles.sheet}>
+        <Animated.View style={[styles.sheet, sheetStyle]}>
           {!selected ? (
             <>
               <Text style={styles.title}>Ghi món ăn</Text>
@@ -112,7 +129,10 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   <Text style={styles.empty}>Không tìm thấy món nào.</Text>
                 }
                 renderItem={({ item }) => (
-                  <Pressable style={styles.foodRow} onPress={() => pickFood(item)}>
+                  <Pressable
+                    style={({ pressed }) => [styles.foodRow, pressed && styles.pressed]}
+                    onPress={() => pickFood(item)}
+                  >
                     <View style={styles.foodRowMain}>
                       <Text style={styles.foodName}>{item.nameVi}</Text>
                       <Text style={styles.foodMeta}>
@@ -123,13 +143,19 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   </Pressable>
                 )}
               />
-              <Pressable style={[styles.modalBtn, styles.cancel]} onPress={handleClose}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
+                onPress={handleClose}
+              >
                 <Text style={styles.cancelText}>Đóng</Text>
               </Pressable>
             </>
           ) : (
             <>
-              <Pressable onPress={() => setSelected(null)}>
+              <Pressable
+                onPress={() => setSelected(null)}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
                 <Text style={styles.back}>‹ Chọn món khác</Text>
               </Pressable>
               <Text style={styles.title}>{selected.nameVi}</Text>
@@ -148,7 +174,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
               />
               <View style={styles.chips}>
                 <Pressable
-                  style={styles.chip}
+                  style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
                   onPress={() => setGrams(String(selected.defaultServingG))}
                 >
                   <Text style={styles.chipText}>mặc định={selected.defaultServingG}g</Text>
@@ -156,7 +182,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 {selected.servingPresets.map((p) => (
                   <Pressable
                     key={p.label}
-                    style={styles.chip}
+                    style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
                     onPress={() => setGrams(String(p.grams))}
                   >
                     <Text style={styles.chipText}>
@@ -199,11 +225,19 @@ export function FoodLogModal({ visible, onClose }: Props) {
               )}
 
               <View style={styles.row}>
-                <Pressable style={[styles.modalBtn, styles.cancel]} onPress={handleClose}>
+                <Pressable
+                  style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
+                  onPress={handleClose}
+                >
                   <Text style={styles.cancelText}>Huỷ</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.modalBtn, styles.eat, !validGrams && styles.disabled]}
+                  style={({ pressed }) => [
+                    styles.modalBtn,
+                    styles.eat,
+                    !validGrams && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
                   onPress={confirm}
                   disabled={!validGrams}
                 >
@@ -212,7 +246,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
               </View>
             </>
           )}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -289,4 +323,5 @@ const styles = StyleSheet.create({
   cancel: { backgroundColor: '#2d2d44' },
   cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  pressed: { opacity: 0.6 },
 });
