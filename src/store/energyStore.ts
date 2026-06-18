@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { BatteryReading, IntakeEvent, BatteryId } from '../types/battery';
 import type { WorkoutSession } from '../types/energy';
+import type { FoodItem, FoodLogEntry } from '../types/food';
+import { nutritionForGrams, mealTypeForTimestamp } from '../domain/food/foodNutrition';
+import { addFoodLogEntry } from '../data/repositories/foodLogRepository';
 import {
   applyIntake,
   applyDrain,
@@ -40,6 +43,7 @@ interface EnergyState {
   loadToday: (modeId: ModeId) => Promise<void>;
   addIntake: (batteryId: BatteryId, amount: number, note?: string) => Promise<BatteryAlert[]>;
   addCalories: (kcal: number, note?: string) => Promise<void>;
+  logFood: (item: FoodItem, grams: number, timestamp: number) => Promise<void>;
   logActivity: (activity: { steps?: number; workouts?: WorkoutSession[] }) => Promise<void>;
   tickDrain: (elapsedHours: number, modeId: ModeId) => Promise<void>;
   resetForNewDay: (modeId: ModeId) => Promise<void>;
@@ -168,6 +172,58 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       await upsertReadings([updated[ei]]);
     } catch (e) {
       console.warn('addCalories persistence failed:', e);
+    }
+  },
+
+  // Log a food from the database (food_items.csv): charges the energy battery by
+  // the food's real kcal and the nutrient batteries (protein/carbs/water/
+  // minerals) by the portion's macros. Unlike addIntake, energy is NOT re-derived
+  // from macros here (that would double-count) — we use the CSV's energy_kcal,
+  // which also accounts for fat (9 kcal/g).
+  logFood: async (item, grams, timestamp) => {
+    const { readings } = get();
+    if (grams <= 0) return;
+
+    const n = nutritionForGrams(item, grams);
+    const mealType = mealTypeForTimestamp(timestamp);
+
+    // Nutrient sub-batteries fed by food (no kcal side-effect — energy is added
+    // once below). water_g ≈ ml; minerals is a coarse mg rollup.
+    const nutrientCharges: Partial<Record<BatteryId, number>> = {
+      protein: n.proteinG,
+      carbs: n.carbG,
+      water: n.waterG,
+      minerals: n.mineralsMg,
+    };
+
+    const updated = readings.map((r) => {
+      if (r.batteryTypeId === 'energy') return chargeEnergy(r, n.energyKcal);
+      const charge = nutrientCharges[r.batteryTypeId];
+      return charge && charge > 0 ? applyIntake(r, charge) : r;
+    });
+
+    set({ readings: updated, masterPercentage: energyPercentage(updated) });
+
+    const entry: FoodLogEntry = {
+      id: `food_${timestamp}_${item.id}`,
+      timestamp,
+      mealType,
+      foodId: item.id,
+      foodNameVi: item.nameVi,
+      grams,
+      energyKcal: n.energyKcal,
+      proteinG: n.proteinG,
+      fatG: n.fatG,
+      carbG: n.carbG,
+      waterG: n.waterG,
+      mineralsMg: n.mineralsMg,
+    };
+
+    try {
+      await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      await addFoodLogEntry(entry);
+    } catch (e) {
+      console.warn('logFood persistence failed:', e);
     }
   },
 

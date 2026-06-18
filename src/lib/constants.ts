@@ -1,4 +1,5 @@
 import type { BatteryType } from '../types/battery';
+import type { MealType } from '../types/food';
 
 export const DEFAULT_BATTERIES: BatteryType[] = [
   {
@@ -75,6 +76,40 @@ export const ENERGY_BATTERY: BatteryType = {
 export const KCAL_PER_GRAM: Partial<Record<BatteryType['id'], number>> = {
   protein: 4,
   carbs: 4,
+};
+
+// Default meal-time windows (local hour, [start, end)). A logged food's meal
+// type is inferred from its eating time; anything outside these windows is a
+// snack. v1: hard-coded — a "sửa khung giờ" form in Settings comes later.
+export interface MealWindow {
+  startHour: number;
+  endHour: number;
+}
+export const DEFAULT_MEAL_WINDOWS: Record<'breakfast' | 'lunch' | 'dinner', MealWindow> = {
+  breakfast: { startHour: 5, endHour: 10 },
+  lunch: { startHour: 10, endHour: 14 },
+  dinner: { startHour: 17, endHour: 21 },
+};
+
+export const MEAL_LABELS: Record<MealType, string> = {
+  breakfast: 'Bữa sáng',
+  lunch: 'Bữa trưa',
+  dinner: 'Bữa tối',
+  snack: 'Bữa phụ',
+};
+
+// Vietnamese labels for the food-database categories (CSV `category` column).
+// Falls back to the raw category string for anything not listed here.
+export const FOOD_CATEGORY_LABELS: Record<string, string> = {
+  grain: 'Tinh bột',
+  meat: 'Thịt',
+  fish: 'Cá & hải sản',
+  egg_dairy: 'Trứng & sữa',
+  legume_nut: 'Đậu & hạt',
+  vegetable: 'Rau củ',
+  fruit: 'Trái cây',
+  fat_sugar: 'Dầu mỡ & đường',
+  dish: 'Món chế biến',
 };
 
 export const LOW_BATTERY_THRESHOLD = 0.2; // 20% — trigger warning below this

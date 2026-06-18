@@ -6,7 +6,9 @@ import * as Sharing from 'expo-sharing';
 import { utils, write } from 'xlsx';
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { getIntakeEventsInRange } from '../../data/repositories/intakeRepository';
+import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
 import { todayString, daysAgo } from '../../lib/dateUtils';
+import { MEAL_LABELS } from '../../lib/constants';
 
 export async function exportWeeklyData(): Promise<void> {
   const toDate = todayString();
@@ -14,6 +16,7 @@ export async function exportWeeklyData(): Promise<void> {
 
   const readings = await getReadingsInRange(fromDate, toDate);
   const intakes = await getIntakeEventsInRange(fromDate, toDate);
+  const foodLog = await getFoodLogInRange(fromDate, toDate);
 
   // Sheet 1: Battery readings
   const readingRows = readings.map((r) => ({
@@ -33,9 +36,25 @@ export async function exportWeeklyData(): Promise<void> {
     Note: e.note,
   }));
 
+  // Sheet 3: Food log (rich per-meal rows — món, gram, loại bữa, kcal, macro)
+  const foodRows = foodLog.map((f) => ({
+    Ngày: new Date(f.timestamp).toLocaleDateString('vi-VN'),
+    Giờ: new Date(f.timestamp).toLocaleTimeString('vi-VN'),
+    'Bữa': MEAL_LABELS[f.mealType],
+    'Món ăn': f.foodNameVi,
+    'Gram': f.grams,
+    'Kcal': f.energyKcal,
+    'Đạm (g)': f.proteinG,
+    'Béo (g)': f.fatG,
+    'Tinh bột (g)': f.carbG,
+    'Nước (ml)': f.waterG,
+    'Khoáng (mg)': f.mineralsMg,
+  }));
+
   const wb = utils.book_new();
   utils.book_append_sheet(wb, utils.json_to_sheet(readingRows), 'Battery Readings');
   utils.book_append_sheet(wb, utils.json_to_sheet(intakeRows), 'Intake Events');
+  utils.book_append_sheet(wb, utils.json_to_sheet(foodRows), 'Food Log');
 
   const wbout = write(wb, { type: 'base64', bookType: 'xlsx' });
 

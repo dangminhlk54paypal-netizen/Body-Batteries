@@ -1,6 +1,7 @@
 import { deleteReadingsBefore } from '../../data/repositories/batteryRepository';
 import { deleteIntakeEventsBefore } from '../../data/repositories/intakeRepository';
 import { deleteLogsBefore } from '../../data/repositories/dailyLogRepository';
+import { deleteFoodLogBefore } from '../../data/repositories/foodLogRepository';
 import { daysAgo } from '../../lib/dateUtils';
 import { DATA_RETENTION_DAYS } from '../../lib/constants';
 
@@ -9,4 +10,5 @@ export async function runWeeklyCleanup(): Promise<void> {
   await deleteReadingsBefore(cutoff);
   await deleteIntakeEventsBefore(cutoff);
   await deleteLogsBefore(cutoff);
+  await deleteFoodLogBefore(cutoff);
 }

@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "gen:food": "node scripts/generate-food-db.js",
+    "start": "npm run gen:food && expo start",
+    "android": "npm run gen:food && expo start --android",
+    "ios": "npm run gen:food && expo start --ios",
+    "web": "npm run gen:food && expo start --web",
     "test": "jest"
   },
   "dependencies": {

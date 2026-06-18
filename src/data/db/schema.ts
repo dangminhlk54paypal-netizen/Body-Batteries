@@ -54,6 +54,25 @@ export const CREATE_DIARY_ENTRIES = `
   );
 `;
 
+// Rich per-meal food log: one row per food eaten, with the portion's computed
+// nutrition snapshotted (so history stays correct if the CSV later changes).
+export const CREATE_FOOD_LOG = `
+  CREATE TABLE IF NOT EXISTS food_log (
+    id TEXT PRIMARY KEY,
+    timestamp INTEGER NOT NULL,
+    meal_type TEXT NOT NULL,
+    food_id TEXT NOT NULL,
+    food_name_vi TEXT NOT NULL,
+    grams REAL NOT NULL,
+    energy_kcal REAL NOT NULL,
+    protein_g REAL NOT NULL,
+    fat_g REAL NOT NULL,
+    carb_g REAL NOT NULL,
+    water_g REAL NOT NULL DEFAULT 0,
+    minerals_mg REAL NOT NULL DEFAULT 0
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -61,4 +80,5 @@ export const ALL_SCHEMAS = [
   CREATE_INTAKE_EVENTS,
   CREATE_HEALTH_SIGNALS,
   CREATE_DIARY_ENTRIES,
+  CREATE_FOOD_LOG,
 ];

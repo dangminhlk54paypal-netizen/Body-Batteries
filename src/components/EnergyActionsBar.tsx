@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { MET_TABLE } from '../lib/metabolicConstants';
+import { FoodLogModal } from './FoodLogModal';
 import type { ActivityType } from '../types/energy';
 
 // Vietnamese labels for the MET-based activity types.
@@ -34,6 +35,7 @@ export function EnergyActionsBar() {
   const addCalories = useEnergyStore((s) => s.addCalories);
   const logActivity = useEnergyStore((s) => s.logActivity);
 
+  const [foodOpen, setFoodOpen] = useState(false);
   const [calorieOpen, setCalorieOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
 
@@ -62,13 +64,23 @@ export function EnergyActionsBar() {
   }
 
   return (
-    <View style={styles.bar}>
-      <Pressable style={[styles.btn, styles.eat]} onPress={() => setCalorieOpen(true)}>
-        <Text style={styles.btnText}>🍽️ Ăn thêm (kcal)</Text>
+    <View style={styles.container}>
+      {/* Primary: log a food from the database (food_items.csv) */}
+      <Pressable style={[styles.btn, styles.food]} onPress={() => setFoodOpen(true)}>
+        <Text style={styles.btnText}>🍱 Ghi món ăn (từ danh sách)</Text>
       </Pressable>
-      <Pressable style={[styles.btn, styles.move]} onPress={() => setActivityOpen(true)}>
-        <Text style={styles.btnText}>🏃 Vận động</Text>
-      </Pressable>
+
+      {/* Manual fallbacks: kept as supplementary inputs */}
+      <View style={styles.bar}>
+        <Pressable style={[styles.btn, styles.eat]} onPress={() => setCalorieOpen(true)}>
+          <Text style={styles.btnText}>🍽️ Ăn thêm (kcal)</Text>
+        </Pressable>
+        <Pressable style={[styles.btn, styles.move]} onPress={() => setActivityOpen(true)}>
+          <Text style={styles.btnText}>🏃 Vận động</Text>
+        </Pressable>
+      </View>
+
+      <FoodLogModal visible={foodOpen} onClose={() => setFoodOpen(false)} />
 
       {/* Manual calories */}
       <Modal visible={calorieOpen} transparent animationType="slide" onRequestClose={() => setCalorieOpen(false)}>
@@ -148,8 +160,10 @@ export function EnergyActionsBar() {
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', gap: 10, paddingHorizontal: 20 },
+  container: { paddingHorizontal: 20, gap: 10 },
+  bar: { flexDirection: 'row', gap: 10 },
   btn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  food: { backgroundColor: '#0984e3' },
   eat: { backgroundColor: '#00B894' },
   move: { backgroundColor: '#FF6B6B' },
   btnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
