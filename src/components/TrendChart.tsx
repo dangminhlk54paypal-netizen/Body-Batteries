@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Line, Polyline, Circle, Text as SvgText } from 'react-native-svg';
-import { formatDisplayDate } from '../lib/dateUtils';
 
 export interface TrendPoint {
   date: string;
@@ -69,7 +68,7 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
             <React.Fragment key={point.date}>
               <Circle cx={x} cy={y} r={4} fill={NUTRIENT_COLOR} />
               <SvgText x={x} y={CHART_HEIGHT - 6} fontSize={9} fill="#666" textAnchor="middle">
-                {formatDisplayDate(point.date).slice(0, 6)}
+                {dayMonthLabel(point.date)}
               </SvgText>
             </React.Fragment>
           );
@@ -111,6 +110,13 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
       )}
     </View>
   );
+}
+
+// `date` is always 'YYYY-MM-DD'; slice it directly instead of going through a
+// locale-formatted weekday string (e.g. "Thứ 5, 18/06"), which a fixed-length
+// .slice() used to cut into a dangling "Thứ 5," with no day/month visible.
+function dayMonthLabel(date: string): string {
+  return `${date.slice(8, 10)}/${date.slice(5, 7)}`;
 }
 
 function xForIndex(index: number, total: number): number {

@@ -17,6 +17,18 @@ import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { TrendChart } from '../components/TrendChart';
 
+// Short labels for the mini bars in each day card. A fixed-length name.slice()
+// used to cut mid-word (e.g. "Khoáng chất" -> "Khoá", which reads as the
+// unrelated word "lock"), so each battery gets a hand-picked short label instead.
+const BATTERY_SHORT_LABELS: Record<string, string> = {
+  protein: 'Đạm',
+  carbs: 'Carb',
+  water: 'Nước',
+  minerals: 'Khoáng',
+  sleep: 'Ngủ',
+  movement: 'Bước',
+};
+
 interface DayData {
   date: string;
   modeId: string;
@@ -113,7 +125,7 @@ export function HistoryScreen() {
               <Text style={styles.cardDate}>{formatDisplayDate(day.date)}</Text>
               <View style={styles.badgeRow}>
                 <View style={[styles.avgBadge, avgColor(day.averagePercentage)]}>
-                  <Text style={styles.avgText}>{day.averagePercentage}%</Text>
+                  <Text style={styles.avgText}>DD {day.averagePercentage}%</Text>
                 </View>
                 {day.energyPercentage !== null && (
                   <View style={[styles.avgBadge, avgColor(day.energyPercentage)]}>
@@ -136,7 +148,7 @@ export function HistoryScreen() {
                         { height: (pct / 100) * 32, backgroundColor: type.color },
                       ]}
                     />
-                    <Text style={styles.miniLabel}>{type.name.slice(0, 4)}</Text>
+                    <Text style={styles.miniLabel}>{BATTERY_SHORT_LABELS[type.id] ?? type.name}</Text>
                   </View>
                 );
               })}
