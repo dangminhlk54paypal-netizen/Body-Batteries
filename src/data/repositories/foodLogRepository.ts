@@ -82,6 +82,11 @@ export async function getFoodLogInRange(
   return rows.map(rowToEntry);
 }
 
+export async function deleteFoodLogEntry(id: string): Promise<void> {
+  const db = getDb();
+  await db.runAsync('DELETE FROM food_log WHERE id = ?', id);
+}
+
 export async function deleteFoodLogBefore(date: string): Promise<void> {
   const db = getDb();
   const cutoffMs = new Date(date + 'T00:00:00').getTime();

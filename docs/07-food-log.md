@@ -31,6 +31,19 @@ nạp bổ sung khi món đã có trong CSV.
 - **Pin dinh dưỡng**: Protein += đạm, Carbs += tinh bột, Nước += `water_g` (≈ ml),
   Khoáng chất += tổng thô các khoáng (mg) — ước lượng thô cho pin "Khoáng chất".
 
+## 3b. Xem lại món đã ăn hôm nay ("Hôm nay đã ăn")
+Khu vực trên Home (dưới các pin nhỏ) — `src/components/TodayMeals.tsx`:
+- **Tổng kcal/ngày** + phân bổ đạm/tinh bột/béo ở đầu mục.
+- Món **nhóm theo bữa** (sáng/trưa/tối/phụ), mỗi bữa có tổng kcal; từng món hiện
+  giờ ăn · gram · kcal.
+- Nút **✕** để xoá món ghi nhầm → có hộp xác nhận; khi xoá, store `removeFood`
+  **hoàn lại** phần đã nạp cho pin Năng lượng + các pin dinh dưỡng.
+- Logic gom nhóm/tổng là hàm thuần `summarizeFoodLog` (`src/domain/food/`, có test).
+- State `foodLog` của hôm nay nằm trong `energyStore` (nạp trong `loadToday`, thêm
+  khi `logFood`, xoá khi `removeFood`, làm rỗng khi `resetForNewDay`).
+- *Giới hạn:* hoàn pin theo kiểu trừ-có-chặn (clamp), nên nếu lúc nạp đã tràn trần
+  pin thì hoàn lại chỉ gần đúng — chấp nhận được với công cụ ước lượng.
+
 ## 4. Lưu trữ & Excel
 - Bảng `food_log` (`schema.ts` + `data/repositories/foodLogRepository.ts`) lưu
   từng bản ghi đầy đủ (món, gram, giờ, loại bữa, kcal, macro, nước, khoáng).
@@ -50,6 +63,9 @@ nạp bổ sung khi món đã có trong CSV.
 - `src/types/food.ts` — `FoodItem`, `FoodLogEntry`, `MealType`, `Nutrition`.
 - `src/data/food/` — `foodCsv.ts`, `foodDatabase.ts`, `foodDatabase.generated.ts`.
 - `src/domain/food/foodNutrition.ts` — tính dinh dưỡng + suy loại bữa.
-- `src/components/FoodLogModal.tsx` — UI; nút trong `EnergyActionsBar.tsx`.
-- `src/store/energyStore.ts` — action `logFood`.
-- Test: `foodCsv.test.ts`, `foodDatabase.test.ts`, `foodNutrition.test.ts`.
+- `src/domain/food/foodLogSummary.ts` — gom nhóm theo bữa + tổng ngày.
+- `src/components/FoodLogModal.tsx` — UI ghi món; `TodayMeals.tsx` — xem/xoá món.
+  Nút "Ghi món ăn" trong `EnergyActionsBar.tsx`; "Hôm nay đã ăn" trong `HomeScreen.tsx`.
+- `src/store/energyStore.ts` — action `logFood` / `removeFood` + state `foodLog`.
+- Test: `foodCsv.test.ts`, `foodDatabase.test.ts`, `foodNutrition.test.ts`,
+  `foodLogSummary.test.ts`.

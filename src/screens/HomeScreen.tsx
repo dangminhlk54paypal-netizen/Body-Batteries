@@ -7,6 +7,7 @@ import {
   ScrollView,
   RefreshControl,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { useSettingsStore } from '../store/settingsStore';
@@ -15,6 +16,7 @@ import { BatteryStack } from '../components/BatteryStack';
 import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
+import { TodayMeals } from '../components/TodayMeals';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
@@ -25,7 +27,8 @@ import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
 
 export function HomeScreen() {
-  const { readings, masterPercentage, isLoaded, loadToday, addIntake } = useEnergyStore();
+  const { readings, masterPercentage, foodLog, isLoaded, loadToday, addIntake, removeFood } =
+    useEnergyStore();
   const { currentMode, setMode, notificationsEnabled } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
@@ -60,6 +63,18 @@ export function HomeScreen() {
 
   function handleModeChange(mode: ModeId) {
     setMode(mode);
+  }
+
+  function handleDeleteFood(id: string) {
+    const entry = foodLog.find((f) => f.id === id);
+    Alert.alert(
+      'Xoá món đã ghi?',
+      entry ? `“${entry.foodNameVi}” sẽ bị xoá và pin được hoàn lại.` : undefined,
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Xoá', style: 'destructive', onPress: () => removeFood(id) },
+      ]
+    );
   }
 
   // The 6 nutrient sub-batteries (exclude master + the energy battery, which is
@@ -121,6 +136,9 @@ export function HomeScreen() {
         {/* Sub-batteries */}
         <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp ⚡</Text>
         <BatteryStack batteries={batteryStates} onPressCell={handleCellPress} />
+
+        {/* Today's logged meals (grouped by meal + daily kcal total) */}
+        <TodayMeals entries={foodLog} onDelete={handleDeleteFood} />
 
         {/* Hint */}
         <Text style={styles.hint}>Kéo xuống để làm mới • Bấm vào pin để nạp</Text>

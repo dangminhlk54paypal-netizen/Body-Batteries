@@ -3,7 +3,11 @@ import type { BatteryReading, IntakeEvent, BatteryId } from '../types/battery';
 import type { WorkoutSession } from '../types/energy';
 import type { FoodItem, FoodLogEntry } from '../types/food';
 import { nutritionForGrams, mealTypeForTimestamp } from '../domain/food/foodNutrition';
-import { addFoodLogEntry } from '../data/repositories/foodLogRepository';
+import {
+  addFoodLogEntry,
+  getFoodLogForDate,
+  deleteFoodLogEntry,
+} from '../data/repositories/foodLogRepository';
 import {
   applyIntake,
   applyDrain,
@@ -18,6 +22,7 @@ import {
   reconcileEnergyCapacity,
   kcalFromMacro,
   chargeEnergy,
+  burnEnergy,
   burnPassive,
   burnActivity,
 } from '../domain/energy/energyBalanceEngine';
@@ -38,12 +43,14 @@ import type { ModeId } from '../types/modes';
 interface EnergyState {
   readings: BatteryReading[];
   masterPercentage: number; // Hướng B: this is the ENERGY (calorie-balance) battery %
+  foodLog: FoodLogEntry[]; // today's logged meals (for the "Hôm nay đã ăn" view)
   isLoaded: boolean;
 
   loadToday: (modeId: ModeId) => Promise<void>;
   addIntake: (batteryId: BatteryId, amount: number, note?: string) => Promise<BatteryAlert[]>;
   addCalories: (kcal: number, note?: string) => Promise<void>;
   logFood: (item: FoodItem, grams: number, timestamp: number) => Promise<void>;
+  removeFood: (id: string) => Promise<void>;
   logActivity: (activity: { steps?: number; workouts?: WorkoutSession[] }) => Promise<void>;
   tickDrain: (elapsedHours: number, modeId: ModeId) => Promise<void>;
   resetForNewDay: (modeId: ModeId) => Promise<void>;
@@ -73,6 +80,7 @@ function buildDefaultReadings(date: string, modeId: ModeId): BatteryReading[] {
 export const useEnergyStore = create<EnergyState>((set, get) => ({
   readings: [],
   masterPercentage: 0,
+  foodLog: [],
   isLoaded: false,
 
   loadToday: async (modeId) => {
@@ -102,14 +110,25 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
       await upsertReadings(readings);
       await upsertDailyLog({ date: today, modeId });
+      const foodLog = await getFoodLogForDate(today);
 
-      set({ readings, masterPercentage: energyPercentage(readings), isLoaded: true });
+      set({
+        readings,
+        masterPercentage: energyPercentage(readings),
+        foodLog,
+        isLoaded: true,
+      });
     } catch (e) {
       // Storage unavailable (e.g. SQLite-less web build). Render in-memory
       // defaults so the screen never goes blank.
       console.warn('loadToday failed, using in-memory defaults:', e);
       const readings = buildDefaultReadings(today, modeId);
-      set({ readings, masterPercentage: energyPercentage(readings), isLoaded: true });
+      set({
+        readings,
+        masterPercentage: energyPercentage(readings),
+        foodLog: [],
+        isLoaded: true,
+      });
     }
   },
 
@@ -202,8 +221,6 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       return charge && charge > 0 ? applyIntake(r, charge) : r;
     });
 
-    set({ readings: updated, masterPercentage: energyPercentage(updated) });
-
     const entry: FoodLogEntry = {
       id: `food_${timestamp}_${item.id}`,
       timestamp,
@@ -219,11 +236,53 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       mineralsMg: n.mineralsMg,
     };
 
+    set((s) => ({
+      readings: updated,
+      masterPercentage: energyPercentage(updated),
+      foodLog: [...s.foodLog, entry],
+    }));
+
     try {
       await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
       await addFoodLogEntry(entry);
     } catch (e) {
       console.warn('logFood persistence failed:', e);
+    }
+  },
+
+  // Undo a logged food: reverse its charge on the energy + nutrient batteries
+  // and remove it from today's log. (Reversal is clamp-based, so a charge that
+  // overflowed the cap when added is only approximately restored — acceptable
+  // for a self-tracking estimate.)
+  removeFood: async (id) => {
+    const { readings, foodLog } = get();
+    const entry = foodLog.find((f) => f.id === id);
+    if (!entry) return;
+
+    const reverseCharges: Partial<Record<BatteryId, number>> = {
+      protein: entry.proteinG,
+      carbs: entry.carbG,
+      water: entry.waterG,
+      minerals: entry.mineralsMg,
+    };
+
+    const updated = readings.map((r) => {
+      if (r.batteryTypeId === 'energy') return burnEnergy(r, entry.energyKcal);
+      const amt = reverseCharges[r.batteryTypeId];
+      return amt && amt > 0 ? applyIntake(r, -amt) : r;
+    });
+
+    set({
+      readings: updated,
+      masterPercentage: energyPercentage(updated),
+      foodLog: foodLog.filter((f) => f.id !== id),
+    });
+
+    try {
+      await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      await deleteFoodLogEntry(id);
+    } catch (e) {
+      console.warn('removeFood persistence failed:', e);
     }
   },
 
@@ -295,7 +354,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const today = todayString();
     const readings = buildDefaultReadings(today, modeId);
 
-    set({ readings, masterPercentage: energyPercentage(readings) });
+    set({ readings, masterPercentage: energyPercentage(readings), foodLog: [] });
 
     try {
       await upsertReadings(readings);
