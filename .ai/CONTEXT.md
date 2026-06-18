@@ -88,31 +88,59 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối:** 2026-06-18 (Session 4 + đợt song song S-A…S-E + Hướng B)
+**Cập nhật lần cuối:** 2026-06-18 (sau Session 5 + đợt song song S-A…S-E + E1-E4 + tư vấn Opus)
 
-**Tóm tắt 1 dòng:** App build OK (bundle 1411 module, 62 unit test PASS). Đã chạy 5 phiên song song (S-B biểu đồ, S-C nhắc nhở, S-D tự xả pin, S-E test — đều ✅; S-A test máy ⏸). Đã thêm **"năng lượng tự xả" Hướng B**: pin tổng = pin Năng lượng/calo (nạp khi ăn, xả theo trao đổi chất BMR + bước chân + buổi tập), có form Hồ sơ cơ thể. **Tất cả CHƯA commit** (đang ở working tree) và CHƯA push.
+**Tóm tắt 1 dòng:** App build OK (bundle **1424 module** iOS, **92 unit test PASS** / 11 suite,
+`tsc` sạch). Pin tổng = pin "Năng lượng" (Hướng B, sức chứa = TDEE). Session 5 thêm **Food Log**
+(ghi món từ `food_items.csv` + xem/xoá "Hôm nay đã ăn"), pin Năng lượng **xả mượt theo giây**
+trên màn hình, và 1 đợt **UI polish** (hiệu ứng nhấn + slide-up cho bottom sheet, chưa có báo cáo
+riêng — commit `4499fab`, tác giả ghi "Claude Opus 4.8"). Đợt song song S-A…S-E + E1-E4 đã chạy
+xong (chi tiết bên dưới). Một phiên Opus (2026-06-18) đã thảo luận với người dùng và chốt hướng
+cho phần "tinh chỉnh" S-H còn treo → 2 gói mới **S-K** (rải xả theo nhịp thức/ngủ) và **S-L** (ghi
+cân nặng theo thời gian) đã được viết spec đầy đủ trong `.ai/NEXT_SESSIONS.md`, sẵn sàng giao
+phiên sau; quyết định **không làm carry-over** (giữ mỗi ngày 1 pin mới). **7 commit local trên
+nhánh `session-5-demo-ready`, CHƯA push lên `origin/main`.**
 
-**⚠️ Người dùng cần làm:** vào Cài đặt → Hồ sơ cơ thể, sửa **tuổi + giới tính thật** (mặc định 30/nam) để BMR đúng. Và hoàn tất test thật trên máy (gói S-A).
+**⚠️ Người dùng cần làm:** vào Cài đặt → Hồ sơ cơ thể, sửa **tuổi + giới tính thật** (mặc định
+vẫn đang là 30/nam — `DEFAULT_USER_PROFILE` trong `settingsStore.ts`) để BMR đúng. Và hoàn tất
+test thật trên máy (gói **S-A** — đã xác nhận server chạy + kết nối được iPhone qua Expo Go, còn
+thiếu: xác nhận Home hiện đủ 7 pin, test Phase 1 lưu dữ liệu, test Phase 2 đổi Mode, test thông
+báo pin thấp — phiên dừng giữa đường để bàn tính năng mới, chưa quay lại).
 
 **Môi trường máy:**
 - Node.js ✅ v24.16.0 / npm 11.13.0 · Homebrew + Watchman ✅ · `maxfiles` ✅ 65536 · Expo SDK ✅ 54.0.35 · `npm install` ✅
-- **Bundle build:** ✅ verify OK cả iOS (1403 module) lẫn web (852 module) bằng `expo export`.
+- **Bundle build:** ✅ verify OK — iOS **1424 module** (`expo export --platform ios`, 2026-06-18).
 - Mạng: eduroam có "client isolation" → dùng Personal Hotspot hoặc `--tunnel`.
-- Git: repo có remote `origin` (GitHub). Session 4 commit "Consolidate..." **mới commit local, CHƯA push** — chờ người dùng duyệt.
+- Git: repo có remote `origin` (GitHub, `dangminhlk54paypal-netizen/Body-Batteries`). Đang ở nhánh
+  **`session-5-demo-ready`**, **7 commit chưa push** so với `origin/main` (Consolidate Session 4 →
+  parallel plan → Session 5 energy/E1-E4 → Food Log (2 commit) → live drain → UI polish).
 - Git hooks: ❌ Chưa cài.
+- Dọn dẹp môi trường (không gấp): S-A ghi nhận ~10 process `expo start --web` cũ còn sót trên các
+  cổng 8082–8093, một số trỏ thư mục cũ đã xoá — có thể `kill` cho gọn, không ảnh hưởng chức năng.
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Code đã vá ở Session 4:** `.watchmanconfig` (→ `{}`, nguyên nhân gốc), `energyStore.ts` (đổi Mode cập nhật sức chứa + try/catch chống màn trống + `addIntake` trả `BatteryAlert[]`), `HomeScreen.tsx` (cảnh báo dùng data mới + tôn trọng nút thông báo), `dateUtils.ts` (ngày theo giờ local), `HistoryScreen.tsx` (`useFocusEffect`), `index.js` (chuẩn Expo), `app.json` (thêm plugin sqlite/secure-store).
+**Việc phải làm KẾ TIẾP:** Xem **`.ai/NEXT_SESSIONS.md`** — bảng tổng quan đã cập nhật trạng thái
+từng gói. Sẵn sàng làm ngay: **S-A** (test máy, luôn ưu tiên), **S-J** (đang làm — chính là việc
+gộp tài liệu này), **S-L** (ghi cân nặng, không đụng ai). Cần làm tuần tự (đụng file chung):
+**S-F / S-I / S-K** — chỉ chạy 1 trong 3 cùng lúc. **S-G** để sau cùng (cần dữ liệu thật từ S-L).
 
-**Việc phải làm KẾ TIẾP:** Xem **`.ai/NEXT_SESSIONS.md`** — kế hoạch chia việc cho NHIỀU phiên Sonnet 4.6 chạy song song (S-A test thật, S-B biểu đồ, S-C nhắc nhở, S-D tự xả pin, S-E unit test). Mỗi phiên chỉ động vào nhóm file riêng để không đụng nhau.
+**Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption/
+metabolicConstants), domain (battery/modes/rules/energy — metabolismEngine + energyBalanceEngine
++ profileValidation/food — foodNutrition + foodLogSummary), data/db + repositories (+ food CSV
+loader), store (energy/settings), services (notifications/export/cleanup), hooks (useDrainTick,
+useLiveEnergyReading, useLowEnergyWatch), components (BatteryCell/MasterBattery/LiveMasterBattery/
+BatteryStack/ModeSelector/IntakeModal/EnergyActionsBar/BodyProfileCard/TrendChart/FoodLogModal/
+TodayMeals), screens (Home/History/Diary/Settings/Onboarding), navigation. Phase 0–3 đầy đủ kể cả
+biểu đồ xu hướng; Phase 2 đầy đủ (nhắc nhở thật + tự xả pin + reset ngày mới).
 
-**Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption), domain (batteryEngine/modeDefinitions/lowBatteryRules), data/db + repositories, store (energy/settings), services (notifications/export/cleanup), components (BatteryCell/MasterBattery/BatteryStack/ModeSelector/IntakeModal), screens (Home/History/Diary/Settings), navigation. Đầy đủ Phase 0–3 (trừ biểu đồ).
-
-**Việc còn thiếu (chi tiết & phân công trong `.ai/NEXT_SESSIONS.md`):**
-- Biểu đồ xu hướng tuần — Phase 3 (S-B)
-- Tự xả pin định kỳ + reset hàng ngày khi mở app — Phase 2 nâng cao (S-D)
-- Nhắc nhở hàng ngày + ngưỡng cảnh báo thật trong Settings — Phase 2 (S-C)
-- Unit test cho domain logic — chất lượng (S-E)
-- Tích hợp Health (HealthKit/Health Connect) — Phase 4 (S-F, làm sau)
-- Lớp thông minh ML — Phase 5 (S-G, làm sau cùng)
+**Việc còn thiếu / sẵn sàng giao phiên sau (chi tiết & prompt copy-paste trong `.ai/NEXT_SESSIONS.md`):**
+- Test thật trên điện thoại — chưa chốt (S-A)
+- Bước chân v1 (nhập số trung bình/ngày, KHÔNG phải HealthKit/Health Connect) (S-F)
+- Khung giờ bữa ăn sửa được trong Cài đặt (S-I)
+- Rải xả pin Năng lượng theo nhịp thức/ngủ (S-K, mới — quyết định 2026-06-18)
+- Ghi nhận cân nặng theo thời gian (S-L, mới — quyết định 2026-06-18)
+- Tích hợp Health thật (HealthKit/Health Connect, cần đổi sang dev client EAS) (S-F v2, làm sau)
+- Lớp thông minh dự báo + hiệu chỉnh cá nhân hoá thật từ dữ liệu cân nặng (S-G, làm SAU CÙNG — cần ~1 tháng dữ liệu)
+- (Mức độ thấp, không gấp) Lệch nhỏ khi app mở đúng lúc qua nửa đêm — xem "Ghi chú review tích
+  hợp" cuối `.ai/NEXT_SESSIONS.md`; tiện thể vá khi làm S-K, không cần gói riêng

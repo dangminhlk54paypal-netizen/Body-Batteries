@@ -149,6 +149,73 @@ và danh sách "file được sửa / không đụng". Việc cấp bách nhất
 
 ---
 
+## Session 5 — 2026-06-18
+
+**Làm gì:** Chạy đợt song song gói S-A…S-E + 4 gói bổ sung E1-E4; thêm Food Log + hiển thị pin
+Năng lượng xả mượt theo giây; UI polish; cuối session một phiên Opus rà soát toàn dự án và thảo
+luận với người dùng để chốt hướng cho phần "tinh chỉnh" S-H còn treo, rồi gộp tài liệu (phiên này).
+
+**Kết quả — đợt song song đợt 1 (S-A…S-E):**
+- ✅ **S-B** Biểu đồ xu hướng tuần — `TrendChart.tsx` (vẽ bằng `react-native-svg` có sẵn, không
+  dùng `victory-native`), chèn vào `HistoryScreen.tsx`.
+- ✅ **S-C** Nhắc nhở hàng ngày + ngưỡng cảnh báo thật — nút bật/tắt trong Settings giờ đặt/huỷ
+  nhắc nhở thật (`reminderHour/Minute` trong `settingsStore`), xin quyền thật.
+- ✅ **S-D** Tự xả pin theo thời gian + reset ngày mới — `useDrainTick.ts` (mỗi 30 phút + khi quay
+  lại từ nền) gọi `tickDrain`/`resetForNewDay` đã có sẵn trong `energyStore`, gắn vào `App.tsx`.
+- ✅ **S-E** Unit test cho domain logic — `jest-expo` + 4 file test mới, không phát hiện bug.
+- ⏸ **S-A** Test thật trên điện thoại — xác nhận server sống + kết nối được iPhone qua Expo Go
+  (cả qua wifi trường có client isolation), nhưng **dừng giữa đường** (xác nhận Home đủ 7 pin,
+  test Phase 1/2, test thông báo pin thấp — CHƯA làm) để bàn tính năng mới với người dùng.
+
+**Kết quả — 4 gói bổ sung (E1-E4, sau đợt 1):**
+- ✅ **E1** Thông báo pin thấp khi xả tự nhiên (không chỉ khi ăn) — `useLowEnergyWatch.ts` mới,
+  chống spam bằng cờ "armed" (chỉ bắn lại khi pin vượt lại ngưỡng rồi tụt xuống lần nữa).
+- ✅ **E2** `logActivity` (bước chân/buổi tập) giờ cũng ghi vào `intake_events` để xuất hiện trong
+  Excel xuất hàng tuần (trước đây chỉ trừ pin, không có audit trail).
+- ✅ **E3** Thêm đường pin Năng lượng (màu hổ phách) vào `TrendChart`, cạnh đường trung bình 6 pin
+  dinh dưỡng (màu xanh) trong màn Lịch sử.
+- ✅ **E4** Màn hình Onboarding lần đầu mở app — nhập đúng cân nặng/chiều cao/tuổi/giới tính thật
+  ngay từ đầu thay vì dùng mặc định 78kg/168cm/30/nam (`hasOnboarded` flag trong `settingsStore`).
+
+**Kết quả — tính năng mới ngoài phạm vi gói gốc (3 commit riêng, sau đợt song song):**
+- Food Log: ghi món ăn có sẵn từ `food_items.csv` (CSV-driven), xem "Hôm nay đã ăn" (gộp theo
+  bữa, tổng kcal/ngày, xoá được) — xem `docs/07-food-log.md`.
+- Pin Năng lượng hiển thị **xả mượt theo giây** trên màn hình (`LiveMasterBattery` +
+  `useLiveEnergyReading`, ngoại suy thuần từ lần tick thật gần nhất — không viết đè/double-count
+  lên dữ liệu lưu thật).
+- UI polish: hiệu ứng nhấn (pressed-state) cho các nút/dòng, slide-up animation cho bottom sheet
+  (Intake/Food/Activity), crossfade cho mode chips — chỉ đổi hiển thị, không đổi logic
+  (commit `4499fab`, chưa có báo cáo riêng trong `parallel-reports/`).
+
+**Kết quả — tư vấn Opus cuối session (rà soát + thảo luận S-H "tinh chỉnh"):**
+Người dùng đã chọn hướng cho 3 mục "chưa rõ spec" còn treo từ Session 4/5:
+1. Rải xả thụ động theo nhịp **thức/ngủ cố định** (không đọc dữ liệu ngủ thật) → spec đầy đủ ở
+   gói mới **S-K** trong `.ai/NEXT_SESSIONS.md`, sẵn sàng giao phiên sau.
+2. Cá nhân hoá hệ số MET/công việc theo **xu hướng cân nặng thật** → bước 1 (ghi dữ liệu cân nặng
+   theo thời gian, dùng bảng `health_signals` có sẵn, không đổi schema) là gói mới **S-L**, sẵn
+   sàng giao ngay; bước 2 (tính hiệu chỉnh) gộp vào **S-G** khi đủ vài tuần dữ liệu.
+3. **Carry-over** năng lượng dư/thiếu qua ngày hôm sau → **quyết định KHÔNG làm**, giữ mỗi ngày là
+   1 pin mới, tránh tạo cảm giác "nợ năng lượng" (đúng ranh giới sức khoẻ, `.ai/CONTEXT.md` mục 5).
+
+**Số liệu xác nhận cuối session (2026-06-18):** `npx tsc --noEmit` sạch · `npx jest` → **92 test
+PASS / 11 suite** · `npx expo export --platform ios` → **1424 module**. Nhánh hiện tại
+`session-5-demo-ready` có **7 commit chưa push** lên `origin/main`.
+
+**Vấn đề / việc còn để lại:**
+- S-A chưa hoàn tất (xem trên) — ưu tiên cao nhất cho phiên sau.
+- ~10 process `expo start --web` cũ còn sót trên máy (cổng 8082–8093) — không ảnh hưởng chức năng,
+  có thể dọn (`kill <pid>`) khi tiện.
+- Hồ sơ cơ thể vẫn đang mặc định 30 tuổi/nam (`DEFAULT_USER_PROFILE`) — người dùng cần tự sửa
+  trong Cài đặt (hoặc qua Onboarding mới — E4 — nếu app coi đây là lần "chưa onboard").
+
+**Session tiếp theo phải làm:** Xem `.ai/NEXT_SESSIONS.md` (đã cập nhật bảng tổng quan +
+trạng thái từng gói). Ưu tiên: tiếp tục **S-A**. Có thể làm song song bất kỳ lúc nào: **S-L**.
+Chỉ chạy 1 trong 3: **S-F**, **S-I**, **S-K** (đụng file chung `metabolicConstants.ts`/
+`metabolismEngine.ts`/`SettingsScreen.tsx`/`energyStore.ts` theo từng cặp — xem "Luật vàng" mục 2
+trong `NEXT_SESSIONS.md`). **S-G** để sau cùng.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

@@ -18,7 +18,9 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 **Tiêu chí hoàn thành:** App hiện lên điện thoại (màn hình Home có viên pin), nạp được Protein rồi đóng/mở app vẫn còn dữ liệu.
 **Agent phụ trách:** `architect`
 
-> 🟢 **Trạng thái:** Bundle đã verify build OK (iOS + web). Tiếp theo: nối Personal Hotspot/tunnel → quét QR → xác nhận Home hiện 1 pin tổng + 6 pin nhỏ.
+> 🟢 **Trạng thái (2026-06-18, gói S-A):** Đã quét QR thật, app chạy được trên iPhone qua Expo Go
+> (kể cả qua wifi trường có client isolation). Còn thiếu: xác nhận Home hiện đúng 1 pin tổng + 6
+> pin nhỏ (việc này dừng giữa đường để bàn tính năng mới — xem `.ai/NEXT_SESSIONS.md` gói S-A).
 
 ---
 
@@ -34,7 +36,8 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 **Tiêu chí hoàn thành:** Bạn nạp Protein, đóng app, mở lại vẫn thấy mức pin đúng.
 **Agent phụ trách:** `mobile-frontend` + `logic-backend`
 
-> 🟡 **Trạng thái:** Code xong 100%. Chưa test trên điện thoại (chờ Node.js).
+> 🟡 **Trạng thái:** Code xong 100% (+92 unit test PASS, gói S-E). Chưa xác nhận đầy đủ test thật
+> trên điện thoại (gói S-A đang dừng giữa đường, xem Phase 0).
 
 ---
 
@@ -44,15 +47,21 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 - [x] Định nghĩa Modes (Training / Maintain / Rest) — **XONG** (`src/domain/modes/modeDefinitions.ts`)
 - [x] Mode thay đổi sức chứa (`capacityMultipliers`) & tốc độ xả (`drainRatePerHour`) — **XONG**
 - [x] `ModeSelector` component + lưu vào `settingsStore` — **XONG**
-- [x] Logic xả pin theo thời gian (`tickDrain` trong `energyStore`) — **XONG**
-- [x] Thông báo "pin sắp cạn" (`notificationService.ts`) — **XONG**
+- [x] Logic xả pin theo thời gian (`tickDrain` trong `energyStore`) — **XONG**, và giờ được GỌI
+  thật theo định kỳ qua `useDrainTick` (mỗi 30 phút + khi quay lại từ nền) — gói **S-D**.
+- [x] Reset hàng ngày khi mở app sang ngày mới (`App.tsx` tự dò đổi ngày mỗi 15 phút +
+  khi mở lại app, rồi gọi `loadToday` — **không phải** `resetForNewDay`, hàm đó hiện
+  chưa được gọi ở đâu cả, xem ghi chú review tích hợp 2026-06-18) — **XONG** (S-D)
+- [x] Thông báo "pin sắp cạn" (`notificationService.ts`) — **XONG**, nút bật/tắt trong Settings đặt
+  & huỷ nhắc nhở hàng ngày thật, ngưỡng cảnh báo người dùng chọn được dùng thật — gói **S-C**.
 - [x] Màn hình Settings: đặt ngưỡng cảnh báo — **XONG** (`src/screens/SettingsScreen.tsx`)
 - [ ] **Test thực tế:** đổi Mode Training → thấy mục tiêu Protein tăng; nhận thông báo thật
 
 **Tiêu chí hoàn thành:** Đổi sang Mode Training thấy mục tiêu Protein tăng; nhận được 1 thông báo nhắc nhở thật.
 **Agent phụ trách:** `logic-backend`
 
-> 🟡 **Trạng thái:** Code xong. Chưa test trên điện thoại.
+> 🟡 **Trạng thái:** Code xong đầy đủ (gồm nhắc nhở thật + tự xả pin định kỳ thật, không còn là
+> placeholder). Chưa xác nhận test thật trên điện thoại (gói S-A).
 
 ---
 
@@ -62,13 +71,20 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 - [x] Xuất Excel (`excelExportService.ts` dùng `xlsx` + `expo-file-system` + `expo-sharing`) — **XONG**
 - [x] Tự xoá dữ liệu > 7 ngày (`cleanupService.ts`) — **XONG**
 - [x] Màn hình Diary mã hoá write-only (`DiaryScreen.tsx` + `encryption.ts`) — **XONG**
-- [ ] Biểu đồ xu hướng tuần (`victory-native`) — **CHƯA LÀM** (để khi test xong các màn kia)
+- [x] Biểu đồ xu hướng tuần — **XONG** (`TrendChart.tsx`, vẽ bằng `react-native-svg` đã có sẵn,
+  KHÔNG dùng `victory-native` như dự kiến ban đầu — gói **S-B**; gói E3 nối thêm đường pin Năng
+  lượng vào cùng biểu đồ)
 - [ ] **Test thực tế:** xuất file Excel ra điện thoại; ghi nhật ký riêng tư
 
 **Tiêu chí hoàn thành:** Bạn xuất được 1 file Excel ra điện thoại; ghi được nhật ký riêng tư.
 **Agent phụ trách:** `logic-backend` + `mobile-frontend`
 
-> 🟡 **Trạng thái:** 3/4 mục xong. Còn biểu đồ xu hướng.
+> 🟡 **Trạng thái:** Code xong đủ 4/4 mục. Chưa xác nhận test thật trên điện thoại (gói S-A).
+>
+> **Đã vượt phạm vi Phase 3 ban đầu (Session 5, chưa có mục riêng trong roadmap):** Food Log
+> (ghi món ăn từ `food_items.csv`, xem/xoá "Hôm nay đã ăn" theo bữa) và pin Năng lượng hiển thị
+> **xả mượt theo giây** (`LiveMasterBattery` + `useLiveEnergyReading`) — xem `docs/07-food-log.md`
+> và `docs/06-energy-expenditure.md`.
 
 ---
 
@@ -103,15 +119,18 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 | Phase | Tên | Code | Test thật | Ghi chú |
 |-------|-----|------|-----------|---------|
-| 0 | Chuẩn bị | ✅ | 🟢 | **Bundle build OK (Session 4)** — chỉ còn quét QR xác nhận Home |
-| 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK. Cần chạy thật: nạp pin + đóng/mở lại |
-| 2 | Modes & tự động | ✅ | ⏳ | Đã vá lỗi đổi Mode không cập nhật sức chứa. Cần test thật |
-| 3 | Excel, Diary, dọn dẹp | 🔄 | ⏳ | Còn thiếu biểu đồ xu hướng (victory-native) |
-| 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu |
-| 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu |
+| 0 | Chuẩn bị | ✅ | 🟡 | Đã quét QR thật trên iPhone qua Expo Go. Còn thiếu xác nhận Home đủ 7 pin |
+| 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK (1424 module). Cần chạy thật: nạp pin + đóng/mở lại |
+| 2 | Modes & tự động | ✅ | ⏳ | Nhắc nhở thật + tự xả pin định kỳ thật đã xong (S-C, S-D). Cần test thật |
+| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5, ngoài phạm vi gốc) |
+| 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu (xem S-F — v1 placeholder nhập tay, chưa phải Health thật) |
+| 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu — cần dữ liệu cân nặng từ S-L trước (xem `.ai/NEXT_SESSIONS.md`) |
 
-**Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | ⬜ Chưa bắt đầu
+**Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | 🟡 Một phần | ⬜ Chưa bắt đầu
 
-> 🚨 **Việc đầu tiên của session tiếp theo:** Nối Mac vào Personal Hotspot (hoặc dùng `--tunnel`), chạy `export PATH="/opt/homebrew/bin:$PATH"` rồi `npx expo start`, quét QR — **bundle đã verify OK nên Home phải hiện ra**. Chi tiết trong `.ai/SESSION_LOG.md` (Session 4).
+> 🚨 **Việc đầu tiên của session tiếp theo:** Xem `.ai/NEXT_SESSIONS.md` — tiếp tục gói **S-A**
+> (xác nhận Home hiện đủ 1 pin tổng + 6 pin nhỏ, rồi test Phase 1/2/thông báo trên điện thoại
+> thật). Các gói code mới sẵn sàng giao song song: **S-L** (ghi cân nặng) bất kỳ lúc nào; **S-F /
+> S-I / S-K** chỉ chạy 1 trong 3 cùng lúc (đụng file chung).
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.
