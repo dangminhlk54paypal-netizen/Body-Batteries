@@ -13,14 +13,19 @@ HOOKS_DIR="$REPO_ROOT/.git/hooks"
 # --- post-commit hook ---
 cat > "$HOOKS_DIR/post-commit" << 'EOF'
 #!/bin/bash
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  ✅ Commit thành công!"
-echo ""
-echo "  💡 Nhớ ghi chép session khi xong việc:"
-echo "     Gõ trong Claude: Chạy skill session-wrapup"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+if git diff-tree --no-commit-id --name-only -r HEAD | grep -q "SESSION_LOG.md"; then
+  echo ""
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "  ✅ Commit thành công & Session Log đã được cập nhật!"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+else
+  echo ""
+  echo "⚠️  CẢNH BÁO: Bạn chưa cập nhật SESSION_LOG.md cho commit này!"
+  echo "  💡 Nhớ ghi chép session khi xong việc:"
+  echo "     Gõ trong Claude: Chạy skill session-wrapup"
+  echo ""
+fi
 EOF
 chmod +x "$HOOKS_DIR/post-commit"
 echo "✅ Đã cài post-commit hook"

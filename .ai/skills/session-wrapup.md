@@ -54,7 +54,7 @@ Thêm một mục mới theo mẫu ở cuối danh sách sessions. Điền đủ
 
 **Kết quả:** [những gì đã đạt được — files tạo, tính năng test thành công, bug sửa...]
 
-**Vấn đề gặp phải:** [lỗi, cản trở, việc phải để lại]
+**Vấn đề gặp phải & Cách giải quyết:** [lỗi, cản trở, hoặc hướng đi đã thử nhưng thất bại. Nếu tìm ra cách sửa lỗi phức tạp lặp lại, hãy nhắc nhở tự động gọi skill `learn-pattern` ngay sau đó]
 
 **Session tiếp theo phải làm:**
 1. [bước cụ thể nhất, theo thứ tự ưu tiên]

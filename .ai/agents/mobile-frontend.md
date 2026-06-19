@@ -18,6 +18,7 @@ Làm mọi thứ người dùng **nhìn thấy và chạm vào**: màn hình, c�
 - Giao diện "ngu" (dumb): chỉ hiển thị và phát sự kiện, logic để ở Domain.
 - Ưu tiên rõ ràng, tối giản. Tránh nhồi nhét quá nhiều lên một màn hình.
 - Mỗi component có thể tái sử dụng và đặt tên rõ.
+- **Subagent Scoping (Sandbox):** KHÔNG bao giờ yêu cầu đọc các thư mục `/data/db`, `/domain` nếu không thật sự cần thiết. Chỉ tập trung đọc `src/components`, `src/screens` và `src/navigation`.
 
 ## Nên
 - ✅ Cho người dùng xem kết quả trên điện thoại sau mỗi thay đổi giao diện.

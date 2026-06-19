@@ -84,6 +84,15 @@ bash .ai/scripts/install-hooks.sh
 
 ---
 
+## 9. Tối ưu Tokens & Chống suy giảm ngữ cảnh (QUAN TRỌNG)
+
+Để đảm bảo AI chạy nhanh và không bị quên (context rot):
+- **Giới hạn đọc file (Subagent Scoping):** Chỉ đọc các file trực tiếp liên quan đến tính năng đang làm. KHÔNG yêu cầu AI đọc toàn bộ file kiến trúc hoặc các file của component khác nếu không thật sự cần thiết.
+- **Dọn dẹp bộ nhớ (Strategic Compacting):** Cứ sau 4-5 prompts hoặc sau khi chốt một file lớn, hãy chủ động tóm tắt lại và ngừng nhắc lại các lỗi đã sửa thành công để tiết kiệm token.
+- **Tự động học hỏi (Continuous Learning):** Gặp bug lặp lại, hãy gọi skill `learn-pattern` để ghi chép vào `.ai/skills/learned/`.
+
+---
+
 ## 10. Trạng thái hiện tại ← AI ĐỌC MỤC NÀY ĐẦU TIÊN
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.

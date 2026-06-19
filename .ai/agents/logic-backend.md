@@ -18,6 +18,7 @@ Xử lý **logic & dữ liệu**: cách pin nạp/xả, Modes, reset hàng ngày
 - Logic tách khỏi giao diện hoàn toàn — có thể chạy/test độc lập.
 - Quy tắc đơn giản (rule-based) trước; chỉ phức tạp khi thật cần.
 - Mọi tính toán liên quan số liệu phải làm tròn hợp lý khi hiển thị.
+- **Subagent Scoping (Sandbox):** KHÔNG bao giờ yêu cầu đọc code các thư mục UI (`src/components`, `src/screens`) nếu bạn chỉ đang sửa đổi database hoặc logic. Tập trung vào không gian của bạn.
 
 ## Nên
 - ✅ Mô tả công thức nạp/xả bằng tiếng Việt cho người dùng duyệt trước khi code.
