@@ -1,5 +1,5 @@
 import type { FoodItem, MealType } from '../../types/food';
-import { DEFAULT_MEAL_WINDOWS } from '../../lib/constants';
+import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../../lib/constants';
 
 // Pure nutrition + meal-classification logic. No I/O, no state — unit-tested.
 
@@ -35,17 +35,24 @@ export function nutritionForGrams(item: FoodItem, grams: number): PortionNutriti
   };
 }
 
-// Classify an eating hour (0–23) into a meal type using the default windows.
-// Anything outside breakfast/lunch/dinner is a snack.
-export function mealTypeForHour(hour: number): MealType {
-  const inWindow = (w: { startHour: number; endHour: number }) =>
-    hour >= w.startHour && hour < w.endHour;
-  if (inWindow(DEFAULT_MEAL_WINDOWS.breakfast)) return 'breakfast';
-  if (inWindow(DEFAULT_MEAL_WINDOWS.lunch)) return 'lunch';
-  if (inWindow(DEFAULT_MEAL_WINDOWS.dinner)) return 'dinner';
+// Classify an eating hour (0–23) into a meal type using the given (or default)
+// windows. Anything outside breakfast/lunch/dinner is a snack.
+// The optional `windows` param lets Settings override the hard-coded defaults.
+// Callers that omit it (FoodLogModal, tests) continue to use DEFAULT_MEAL_WINDOWS.
+export function mealTypeForHour(
+  hour: number,
+  windows: Record<'breakfast' | 'lunch' | 'dinner', MealWindow> = DEFAULT_MEAL_WINDOWS
+): MealType {
+  const inWindow = (w: MealWindow) => hour >= w.startHour && hour < w.endHour;
+  if (inWindow(windows.breakfast)) return 'breakfast';
+  if (inWindow(windows.lunch)) return 'lunch';
+  if (inWindow(windows.dinner)) return 'dinner';
   return 'snack';
 }
 
-export function mealTypeForTimestamp(timestamp: number): MealType {
-  return mealTypeForHour(new Date(timestamp).getHours());
+export function mealTypeForTimestamp(
+  timestamp: number,
+  windows: Record<'breakfast' | 'lunch' | 'dinner', MealWindow> = DEFAULT_MEAL_WINDOWS
+): MealType {
+  return mealTypeForHour(new Date(timestamp).getHours(), windows);
 }

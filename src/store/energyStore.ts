@@ -212,7 +212,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     if (grams <= 0) return;
 
     const n = nutritionForGrams(item, grams);
-    const mealType = mealTypeForTimestamp(timestamp);
+    const mealType = mealTypeForTimestamp(timestamp, useSettingsStore.getState().mealWindows);
 
     // Nutrient sub-batteries fed by food (no kcal side-effect — energy is added
     // once below). water_g ≈ ml; minerals is a coarse mg rollup.
