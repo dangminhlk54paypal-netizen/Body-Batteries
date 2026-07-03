@@ -6,7 +6,7 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { useDrainTick } from './src/hooks/useDrainTick';
 import { useEnergyStore } from './src/store/energyStore';
 import { useSettingsStore } from './src/store/settingsStore';
-import { todayString } from './src/lib/dateUtils';
+import { todayString, energyDayString } from './src/lib/dateUtils';
 import { checkDateChanged } from './src/services/background/dailyResetCheck';
 
 // How often to check for a calendar-day rollover while the app stays open.
@@ -40,17 +40,25 @@ export default function App() {
   // Phase 2: apply foreground battery drain over elapsed time.
   useDrainTick(currentMode, ready);
 
-  // Detect a calendar-day rollover while the app stays open (e.g. left
-  // running overnight) and reload today's battery readings for the new day.
+  // Detect a day rollover while the app stays open (e.g. left running
+  // overnight) and reload the battery readings. Two independent boundaries:
+  // midnight rolls the calendar day (nutrient batteries), 6am rolls the
+  // "energy day" (the calorie ledger — S-Q reset).
   useEffect(() => {
     if (!ready) return;
 
     let lastDate = todayString();
+    let lastEnergyDay = energyDayString();
 
     const checkForNewDay = () => {
       const newDate = checkDateChanged(lastDate);
-      if (newDate) {
-        lastDate = newDate;
+      if (newDate) lastDate = newDate;
+
+      const newEnergyDay = energyDayString();
+      const energyDayChanged = newEnergyDay !== lastEnergyDay;
+      lastEnergyDay = newEnergyDay;
+
+      if (newDate || energyDayChanged) {
         useEnergyStore.getState().loadToday(useSettingsStore.getState().currentMode);
       }
     };

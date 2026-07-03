@@ -2,22 +2,27 @@ import { useEffect, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { canEatNow } from '../domain/energy/energyBalanceEngine';
+import {
+  applyCircadianDrain,
+  satietyPercentage,
+} from '../domain/energy/satietyEngine';
 import { toPercentage } from '../domain/battery/batteryEngine';
 
 export interface LiveEnergyReading {
-  percentage: number; // eaten / goal, 0–100+ (can exceed 100 when eating past the goal)
-  levelKcal?: number; // kcal eaten so far today
-  capacityKcal?: number; // today's kcal goal
-  canEatKcal?: number; // live "còn được ăn ngay" — ticks every second
+  // Headline fullness battery (S-Q): drains with the clock, floors at
+  // SATIETY_FLOOR_PCT — an empty-ish morning is normal, never an alarm.
+  satietyPct: number;
+  // Calorie ledger (S-M): eaten / goal, 0–100+ (can exceed 100 past the goal).
+  ledgerPct: number;
+  levelKcal?: number; // kcal eaten this energy day (6am reset)
+  capacityKcal?: number; // today's safe kcal goal
 }
 
-// Ticks every second (paused while the app is backgrounded). Under the S-M
-// model the energy battery itself no longer drains over time — level/capacity
-// only change when the user eats or logs activity, which already re-renders
-// via the store selector below. This tick instead keeps the live "can eat
-// now" number moving, reusing the same per-second mechanism Session 5 built
-// for the old smooth-drain display (repurposed, not deleted).
+// Ticks every second (paused while the app is backgrounded). The store only
+// persists the satiety reserve every ~20 minutes (tickDrain); this hook
+// re-derives the drained reserve from the persisted anchor on each tick so
+// the headline battery visibly creeps down between store writes, without
+// writing to the store or DB every second.
 export function useLiveEnergyReading(): LiveEnergyReading {
   const energyReading = useEnergyStore((s) => s.readings.find((r) => r.batteryTypeId === 'energy'));
   const profile = useSettingsStore((s) => s.userProfile);
@@ -54,18 +59,19 @@ export function useLiveEnergyReading(): LiveEnergyReading {
     };
   }, []);
 
-  if (!energyReading) return { percentage: 0 };
+  if (!energyReading) return { satietyPct: 0, ledgerPct: 0 };
 
-  // 'YYYY-MM-DD' is parsed as local midnight here (consistent with
-  // formatDisplayDate in lib/dateUtils.ts) — parsing the bare string would be
-  // read as UTC midnight and skew the elapsed-hours count by the timezone offset.
-  const midnightMs = new Date(`${energyReading.date}T00:00:00`).getTime();
-  const elapsedHoursSinceMidnight = Math.max(0, now - midnightMs) / 3_600_000;
+  const liveReserve = applyCircadianDrain(
+    energyReading.satietyReserveKcal ?? 0,
+    profile,
+    energyReading.lastSatietySyncAt ?? now,
+    now
+  );
 
   return {
-    percentage: toPercentage(energyReading.level, energyReading.capacity),
+    satietyPct: satietyPercentage(liveReserve),
+    ledgerPct: toPercentage(energyReading.level, energyReading.capacity),
     levelKcal: energyReading.level,
     capacityKcal: energyReading.capacity,
-    canEatKcal: canEatNow(energyReading, profile, elapsedHoursSinceMidnight),
   };
 }

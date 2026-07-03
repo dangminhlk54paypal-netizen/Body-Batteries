@@ -4,10 +4,14 @@ import Svg, { Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
 
 interface Props {
-  percentage: number; // eaten / goal, 0–100+ (can exceed 100 when eating past the goal)
-  levelKcal?: number; // kcal eaten so far today
-  capacityKcal?: number; // today's kcal goal
-  canEatKcal?: number; // live "còn được ăn ngay" — positive = room left, negative = ahead of pace
+  // Headline fullness battery (S-Q): drains with the clock, engine floors it
+  // at SATIETY_FLOOR_PCT so it never reads fully empty.
+  satietyPct: number;
+  // Calorie ledger line (S-M engine): eaten / goal for this energy day.
+  levelKcal?: number;
+  capacityKcal?: number;
+  // Optional weight-goal line, e.g. "Mục tiêu: giảm về 72 kg (an toàn)".
+  goalLabel?: string;
 }
 
 const W = 120;
@@ -23,10 +27,8 @@ function formatKcal(n: number): string {
   return Math.round(n).toLocaleString('vi-VN');
 }
 
-export function MasterBattery({ percentage, levelKcal, capacityKcal, canEatKcal }: Props) {
-  // The bar itself always caps at 100% — a surplus past the goal is called
-  // out as text ("Ăn dư"), not by overflowing the shape.
-  const fillPercentage = Math.min(100, Math.max(0, percentage));
+export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }: Props) {
+  const fillPercentage = Math.min(100, Math.max(0, satietyPct));
   const isOver = levelKcal != null && capacityKcal != null && levelKcal > capacityKcal;
 
   const progress = useSharedValue(fillPercentage);
@@ -43,10 +45,10 @@ export function MasterBattery({ percentage, levelKcal, capacityKcal, canEatKcal 
     };
   });
 
-  // An empty battery in the morning is normal, not a warning (CONTEXT mục 5)
-  // — no red for low. Amber only marks "ăn dư" (eating past today's goal), a
-  // neutral flag, never a moralizing color.
-  const color = isOver ? '#FFD93D' : '#00B894';
+  // A low fullness battery is normal (mornings, between meals) — the fill is
+  // always the same calm green, never red, at any % (CONTEXT mục 5). Amber is
+  // only used for the neutral "ăn dư" ledger text below, never for the bar.
+  const color = '#00B894';
 
   return (
     <View style={styles.container}>
@@ -75,27 +77,21 @@ export function MasterBattery({ percentage, levelKcal, capacityKcal, canEatKcal 
       </Svg>
 
       <Text style={styles.pct}>{Math.round(fillPercentage)}%</Text>
-      <Text style={styles.label}>Đã ăn hôm nay</Text>
-      {capacityKcal != null && levelKcal != null && (
-        <Text style={styles.kcal}>
-          {formatKcal(levelKcal)} / {formatKcal(capacityKcal)} kcal
-        </Text>
-      )}
-      {isOver && levelKcal != null && capacityKcal != null && (
-        <Text style={styles.overText}>Ăn dư {formatKcal(levelKcal - capacityKcal)} kcal</Text>
-      )}
+      <Text style={styles.label}>Năng lượng cơ thể</Text>
 
-      {canEatKcal != null && (
-        <View style={styles.liveSection}>
-          <View style={styles.divider} />
-          {canEatKcal >= 0 ? (
-            <Text style={styles.livePositive}>Còn được ăn ngay: +{formatKcal(canEatKcal)} kcal</Text>
-          ) : (
-            <Text style={styles.liveOver}>Đang dư: {formatKcal(-canEatKcal)} kcal</Text>
-          )}
-          <Text style={styles.disclaimer}>* Chỉ để tham khảo.</Text>
-        </View>
-      )}
+      <View style={styles.ledgerSection}>
+        <View style={styles.divider} />
+        {capacityKcal != null && levelKcal != null && (
+          <Text style={styles.ledger}>
+            Sổ calo hôm nay: {formatKcal(levelKcal)} / {formatKcal(capacityKcal)} kcal
+          </Text>
+        )}
+        {isOver && levelKcal != null && capacityKcal != null && (
+          <Text style={styles.overText}>Ăn dư {formatKcal(levelKcal - capacityKcal)} kcal</Text>
+        )}
+        {goalLabel != null && <Text style={styles.goal}>{goalLabel}</Text>}
+        <Text style={styles.disclaimer}>* Chỉ để tham khảo.</Text>
+      </View>
     </View>
   );
 }
@@ -114,17 +110,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#aaa',
   },
-  kcal: {
-    fontSize: 12,
-    color: '#00B894',
-    fontWeight: '600',
-  },
-  overText: {
-    fontSize: 12,
-    color: '#FFD93D',
-    fontWeight: '600',
-  },
-  liveSection: {
+  ledgerSection: {
     alignItems: 'center',
     marginTop: 4,
     gap: 4,
@@ -136,15 +122,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
     marginBottom: 4,
   },
-  livePositive: {
+  ledger: {
     fontSize: 13,
     color: '#00B894',
     fontWeight: '600',
   },
-  liveOver: {
-    fontSize: 13,
+  overText: {
+    fontSize: 12,
     color: '#FFD93D',
     fontWeight: '600',
+  },
+  goal: {
+    fontSize: 12,
+    color: '#aaa',
   },
   disclaimer: {
     fontSize: 10,

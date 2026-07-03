@@ -41,3 +41,15 @@ export function formatDisplayDate(dateStr: string): string {
 export function nowTimestamp(): number {
   return Date.now();
 }
+
+// The "energy day" rolls over at 6am instead of midnight: before the reset
+// hour still counts as the previous day (a 1am snack belongs to that day's
+// calorie ledger). ONLY the calorie ledger keys by this — nutrient batteries,
+// History and export keep the calendar day (todayString) untouched.
+export function energyDayString(date: Date = new Date(), resetHour = 6): string {
+  const shifted = new Date(date);
+  if (shifted.getHours() < resetHour) {
+    shifted.setDate(shifted.getDate() - 1);
+  }
+  return dateString(shifted);
+}

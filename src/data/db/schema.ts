@@ -23,9 +23,20 @@ export const CREATE_BATTERY_READINGS = `
     battery_type_id TEXT NOT NULL,
     level REAL NOT NULL DEFAULT 0,
     capacity REAL NOT NULL,
+    activity_bonus_kcal REAL,
+    satiety_reserve_kcal REAL,
+    last_satiety_sync_at INTEGER,
     PRIMARY KEY (date, battery_type_id)
   );
 `;
+
+// Columns added after the first release (S-Q). Existing installs created the
+// table without them, so initDatabase() ALTERs them in one by one if missing.
+export const BATTERY_READINGS_MIGRATION_COLUMNS = [
+  { name: 'activity_bonus_kcal', ddl: 'ALTER TABLE battery_readings ADD COLUMN activity_bonus_kcal REAL' },
+  { name: 'satiety_reserve_kcal', ddl: 'ALTER TABLE battery_readings ADD COLUMN satiety_reserve_kcal REAL' },
+  { name: 'last_satiety_sync_at', ddl: 'ALTER TABLE battery_readings ADD COLUMN last_satiety_sync_at INTEGER' },
+];
 
 export const CREATE_INTAKE_EVENTS = `
   CREATE TABLE IF NOT EXISTS intake_events (

@@ -25,17 +25,24 @@ import {
   burnEnergy,
   growGoalFromActivity,
 } from '../domain/energy/energyBalanceEngine';
-import { workoutKcal } from '../domain/energy/metabolismEngine';
+import {
+  applyCircadianDrain,
+  eatIntoReserve,
+  drainFromWorkout,
+} from '../domain/energy/satietyEngine';
+import { dailyCalorieTarget } from '../domain/energy/weightGoal';
+import { workoutKcal, totalWorkoutKcal } from '../domain/energy/metabolismEngine';
 import { getModeById } from '../domain/modes/modeDefinitions';
 import { checkLowBattery, type BatteryAlert } from '../domain/rules/lowBatteryRules';
 import {
   getReadingsForDate,
+  getLatestEnergyReadingBefore,
   upsertReadings,
 } from '../data/repositories/batteryRepository';
 import { addIntakeEvent } from '../data/repositories/intakeRepository';
 import { upsertDailyLog } from '../data/repositories/dailyLogRepository';
 import { useSettingsStore } from './settingsStore';
-import { todayString, nowTimestamp } from '../lib/dateUtils';
+import { todayString, energyDayString, nowTimestamp } from '../lib/dateUtils';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import type { ModeId } from '../types/modes';
 
@@ -64,21 +71,69 @@ function currentProfile() {
   return useSettingsStore.getState().userProfile;
 }
 
-// The master battery (Hướng B) is the energy battery's percentage. Falls back to
-// the nutrient average if no energy reading exists (defensive / old data).
+// masterPercentage is the calorie LEDGER's percentage (eaten / goal, S-M) —
+// the overeating watch keys off it. The headline satiety % is derived from
+// satietyReserveKcal in useLiveEnergyReading instead. Falls back to the
+// nutrient average if no energy reading exists (defensive / old data).
 function energyPercentage(readings: BatteryReading[]): number {
   const e = readings.find((r) => r.batteryTypeId === 'energy');
   return e ? toPercentage(e.level, e.capacity) : computeMasterLevel(readings);
 }
 
-// Build the default set of readings for a day in memory (no persistence):
-// the 6 nutrient batteries + the energy battery sized from the user profile.
+// The ledger's goal is the SAFE daily calorie target from the weight goal
+// (S-P) — not raw maintenance — plus whatever activity already grew it today.
+function applySafeCalorieTarget(reading: BatteryReading, profile: ReturnType<typeof currentProfile>): BatteryReading {
+  return {
+    ...reading,
+    capacity: dailyCalorieTarget(profile).targetKcal + (reading.activityBonusKcal ?? 0),
+  };
+}
+
+// Bring the satiety reserve up to `nowMs`: drain for the time elapsed since
+// the persisted anchor, then move the anchor. Always computed from the anchor
+// in one span (per-tick accumulation would round each slice to 0 kcal).
+function syncSatietyReserve(
+  reading: BatteryReading,
+  profile: ReturnType<typeof currentProfile>,
+  nowMs: number
+): BatteryReading {
+  const anchor = reading.lastSatietySyncAt ?? nowMs;
+  return {
+    ...reading,
+    satietyReserveKcal: applyCircadianDrain(
+      reading.satietyReserveKcal ?? 0,
+      profile,
+      anchor,
+      nowMs
+    ),
+    lastSatietySyncAt: nowMs,
+  };
+}
+
+// Update the energy reading inside a readings array (it's the only battery
+// with satiety/ledger state; nutrient readings pass through untouched).
+function mapEnergy(
+  readings: BatteryReading[],
+  fn: (r: BatteryReading) => BatteryReading
+): BatteryReading[] {
+  return readings.map((r) => (r.batteryTypeId === 'energy' ? fn(r) : r));
+}
+
+// Build the default set of readings in memory (no persistence): the 6
+// nutrient batteries keyed by the calendar day + the energy battery keyed by
+// the 6am-reset energy day, sized from the safe calorie target.
 function buildDefaultReadings(date: string, modeId: ModeId): BatteryReading[] {
   const mode = getModeById(modeId);
+  const profile = currentProfile();
   const nutrients = DEFAULT_BATTERIES.filter(
     (b) => b.isActive && b.id !== 'master' && b.id !== 'energy'
   ).map((b) => createDailyReading(date, b.id as BatteryId, mode, 0));
-  return [...nutrients, createEnergyReading(date, currentProfile())];
+  const energy: BatteryReading = {
+    ...applySafeCalorieTarget(createEnergyReading(energyDayString(), profile), profile),
+    satietyReserveKcal: 0,
+    lastSatietySyncAt: Date.now(),
+  };
+  return [...nutrients, energy];
 }
 
 export const useEnergyStore = create<EnergyState>((set, get) => ({
@@ -90,29 +145,48 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
   loadToday: async (modeId) => {
     const today = todayString();
+    const energyDay = energyDayString();
     const mode = getModeById(modeId);
     const profile = currentProfile();
 
     try {
-      let readings = await getReadingsForDate(today);
+      const todayRows = await getReadingsForDate(today);
 
-      if (readings.length === 0) {
-        // First launch of the day: create fresh readings for this mode.
-        readings = buildDefaultReadings(today, modeId);
+      // Nutrient batteries: keyed by the calendar day, capacities re-applied
+      // from the current mode (levels kept, re-clamped).
+      let nutrients = todayRows.filter((r) => r.batteryTypeId !== 'energy');
+      if (nutrients.length === 0) {
+        nutrients = DEFAULT_BATTERIES.filter(
+          (b) => b.isActive && b.id !== 'master' && b.id !== 'energy'
+        ).map((b) => createDailyReading(today, b.id as BatteryId, mode, 0));
       } else {
-        // Day already exists: re-apply the current mode capacities (nutrients)
-        // and the current profile capacity (energy); keep levels, re-clamped.
-        readings = readings.map((r) => {
-          if (r.batteryTypeId === 'energy') return reconcileEnergyCapacity(r, profile);
+        nutrients = nutrients.map((r) => {
           const capacity = capacityForMode(r.batteryTypeId, mode);
           return { ...r, capacity, level: clampLevel(r.level, capacity) };
         });
-        // Backfill the energy battery for days created before Hướng B existed.
-        if (!readings.some((r) => r.batteryTypeId === 'energy')) {
-          readings = [...readings, createEnergyReading(today, profile)];
-        }
       }
 
+      // Energy battery: keyed by the 6am-reset energy day, so between
+      // midnight and 6am the ledger keeps counting on "yesterday's" row.
+      const energyRows =
+        energyDay === today ? todayRows : await getReadingsForDate(energyDay);
+      let energy = energyRows.find((r) => r.batteryTypeId === 'energy');
+      if (energy) {
+        energy = applySafeCalorieTarget(reconcileEnergyCapacity(energy, profile), profile);
+      } else {
+        // First launch of this energy day: fresh ledger — but the satiety
+        // reserve is continuous, so carry it (and its drain anchor) over
+        // from the most recent previous energy reading.
+        const prev = await getLatestEnergyReadingBefore(energyDay);
+        energy = {
+          ...applySafeCalorieTarget(createEnergyReading(energyDay, profile), profile),
+          satietyReserveKcal: prev?.satietyReserveKcal ?? 0,
+          lastSatietySyncAt: prev?.lastSatietySyncAt ?? Date.now(),
+        };
+      }
+      energy = syncSatietyReserve(energy, profile, Date.now());
+
+      const readings = [...nutrients, energy];
       await upsertReadings(readings);
       await upsertDailyLog({ date: today, modeId });
       const foodLog = await getFoodLogForDate(today);
@@ -149,12 +223,17 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     updated[idx] = applyIntake(updated[idx], amount);
     const toPersist: BatteryReading[] = [updated[idx]];
 
-    // Eating protein/carbs also charges the energy battery (4 kcal/g).
+    // Eating protein/carbs also charges the calorie ledger (4 kcal/g) and
+    // tops up the satiety reserve (the headline fullness battery).
     const kcal = kcalFromMacro(batteryId, amount);
     if (kcal > 0) {
       const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
       if (ei !== -1) {
         updated[ei] = chargeEnergy(updated[ei], kcal);
+        updated[ei] = {
+          ...updated[ei],
+          satietyReserveKcal: eatIntoReserve(updated[ei].satietyReserveKcal ?? 0, kcal),
+        };
         toPersist.push(updated[ei]);
       }
     }
@@ -188,6 +267,10 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const updated = [...readings];
     updated[ei] = chargeEnergy(updated[ei], kcal);
+    updated[ei] = {
+      ...updated[ei],
+      satietyReserveKcal: eatIntoReserve(updated[ei].satietyReserveKcal ?? 0, kcal),
+    };
     set({ readings: updated, masterPercentage: energyPercentage(updated) });
 
     try {
@@ -221,7 +304,13 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     };
 
     const updated = readings.map((r) => {
-      if (r.batteryTypeId === 'energy') return chargeEnergy(r, n.energyKcal);
+      if (r.batteryTypeId === 'energy') {
+        const charged = chargeEnergy(r, n.energyKcal);
+        return {
+          ...charged,
+          satietyReserveKcal: eatIntoReserve(charged.satietyReserveKcal ?? 0, n.energyKcal),
+        };
+      }
       const charge = nutrientCharges[r.batteryTypeId];
       return charge && charge > 0 ? applyIntake(r, charge) : r;
     });
@@ -272,7 +361,16 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     };
 
     const updated = readings.map((r) => {
-      if (r.batteryTypeId === 'energy') return burnEnergy(r, entry.energyKcal);
+      if (r.batteryTypeId === 'energy') {
+        const burned = burnEnergy(r, entry.energyKcal);
+        // Undo on the reserve floors at 0, mirroring how eating capped at
+        // full — reversal is approximate around the cap/floor, acceptable
+        // for a self-tracking estimate.
+        return {
+          ...burned,
+          satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - entry.energyKcal),
+        };
+      }
       const amt = reverseCharges[r.batteryTypeId];
       return amt && amt > 0 ? applyIntake(r, -amt) : r;
     });
@@ -301,6 +399,16 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const profile = currentProfile();
     const updated = [...readings];
     updated[ei] = growGoalFromActivity(updated[ei], profile, steps, workouts);
+    // A workout also drains the satiety reserve in one lump (training makes
+    // you hungrier). Steps don't — the ambient step average is already part
+    // of the circadian passive burn.
+    const workoutBurn = totalWorkoutKcal(workouts, profile.weightKg);
+    if (workoutBurn > 0) {
+      updated[ei] = {
+        ...updated[ei],
+        satietyReserveKcal: drainFromWorkout(updated[ei].satietyReserveKcal ?? 0, workoutBurn),
+      };
+    }
     set({ readings: updated, masterPercentage: energyPercentage(updated) });
 
     try {
@@ -339,11 +447,13 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const { readings } = get();
     const mode = getModeById(modeId);
 
+    const profile = currentProfile();
+    const nowMs = Date.now();
     const updated = readings.map((r) => {
       if (r.batteryTypeId === 'master') return r;
-      // Energy battery no longer drains over time (S-M) — it only changes
-      // when the user eats or logs activity. Nutrients still drain by mode rate.
-      if (r.batteryTypeId === 'energy') return r;
+      // Energy battery: the ledger (level/capacity) never drains over time
+      // (S-M) — but the satiety reserve does, from its persisted anchor (S-Q).
+      if (r.batteryTypeId === 'energy') return syncSatietyReserve(r, profile, nowMs);
       return applyDrain(r, elapsedHours, mode.drainRatePerHour);
     });
 
@@ -362,7 +472,14 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
   resetForNewDay: async (modeId) => {
     const today = todayString();
-    const readings = buildDefaultReadings(today, modeId);
+    // The satiety reserve is continuous — a new day resets the ledger and
+    // the nutrients, never the reserve.
+    const prevEnergy = get().readings.find((r) => r.batteryTypeId === 'energy');
+    const readings = mapEnergy(buildDefaultReadings(today, modeId), (r) => ({
+      ...r,
+      satietyReserveKcal: prevEnergy?.satietyReserveKcal ?? 0,
+      lastSatietySyncAt: prevEnergy?.lastSatietySyncAt ?? Date.now(),
+    }));
 
     set({
       readings,

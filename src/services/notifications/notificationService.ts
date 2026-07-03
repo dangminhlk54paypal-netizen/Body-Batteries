@@ -42,6 +42,20 @@ export async function sendOvereatingAlert(message: string): Promise<void> {
   });
 }
 
+// S-Q: gentle "maybe eat something" nudge when the satiety reserve has hit
+// its floor during waking hours. Deliberately soft wording — a low fullness
+// battery is normal (mornings, between meals), never an emergency.
+export async function sendEatReminder(message: string): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '🍽️ Nên ăn chút gì nhé',
+      body: message,
+      data: { batteryTypeId: 'energy' },
+    },
+    trigger: null, // show immediately
+  });
+}
+
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<string> {
   const id = await Notifications.scheduleNotificationAsync({
     content: {

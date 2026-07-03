@@ -27,6 +27,14 @@ export interface BatteryReading {
   // steps/workouts, tracked separately so it survives a same-day profile
   // reconcile without losing the activity bonus already earned.
   activityBonusKcal?: number;
+  // Energy battery only (S-Q satiety model): the "fullness" kcal reserve the
+  // headline battery renders. Continuous — carried across days, never reset,
+  // only drained by time/workouts and topped up by eating.
+  satietyReserveKcal?: number;
+  // Unix ms of the last moment circadian drain was applied to the reserve.
+  // Drain is always computed from this persisted anchor (never accumulated
+  // from tiny ticks, which would round to 0 kcal and never drain).
+  lastSatietySyncAt?: number;
 }
 
 export interface DailyLog {

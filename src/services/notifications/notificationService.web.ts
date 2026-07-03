@@ -16,6 +16,10 @@ export async function sendOvereatingAlert(message: string): Promise<void> {
   console.warn('Notifications are not available on web');
 }
 
+export async function sendEatReminder(message: string): Promise<void> {
+  console.warn('Notifications are not available on web');
+}
+
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<string> {
   console.warn('Notifications are not available on web');
   return '';
