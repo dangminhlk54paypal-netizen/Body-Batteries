@@ -44,3 +44,26 @@ export const PROFILE_LIMITS = {
   age: { min: 1, max: 120 },
   averageDailySteps: { min: 0, max: 30000 },
 };
+
+// --- S-O: "satiety" (fullness/hunger) battery constants ---------------------
+// Fixed awake/asleep window used to shape the reserve's passive drain across
+// the day (higher while awake, lower while asleep) — see satietyEngine.ts.
+// Same v1 assumption as S-K: a fixed schedule for everyone, not read from a
+// logged sleep battery.
+export const CIRCADIAN_WINDOW = {
+  wakeHour: 6, // 06:00 — start of the "awake" burn rate
+  sleepHour: 23, // 23:00 — start of the "asleep" burn rate (until wakeHour next day)
+};
+
+// Metabolism runs ~10-15% slower during sleep (lower body temperature, resting
+// muscle) than while awake — general population estimate, not a personal
+// measurement (Ultrahuman/Healthline/Cleveland Clinic, checked 2026-07-04).
+export const SLEEP_BURN_MULTIPLIER = 0.85;
+
+// Capacity of the satiety reserve — roughly "one full meal" in kcal. Eating
+// this much from empty fills the reserve to 100%.
+export const FULLNESS_CAPACITY_KCAL = 1000;
+
+// The satiety % never drops below this floor, even at reserve = 0 — the body
+// always keeps some reserve; this is a gauge floor, not a claim about biology.
+export const SATIETY_FLOOR_PCT = 20;
