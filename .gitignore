@@ -38,3 +38,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# USDA FoodData Central bulk source files (heavy, re-downloadable — see database/README.md)
+database/raw/*.json

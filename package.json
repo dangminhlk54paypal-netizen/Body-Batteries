@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "gen:food": "node scripts/generate-food-db.js",
+    "gen:usda": "node scripts/generate-usda-db.js",
     "start": "npm run gen:food && expo start",
     "android": "npm run gen:food && expo start --android",
     "ios": "npm run gen:food && expo start --ios",
