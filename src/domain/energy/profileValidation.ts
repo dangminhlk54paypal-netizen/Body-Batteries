@@ -6,7 +6,7 @@ import { PROFILE_LIMITS } from '../../lib/metabolicConstants';
 // that keeps that number meaningful for an actual person. Returns a
 // user-facing Vietnamese error message, or null when the profile is valid.
 export function validateUserProfile(p: UserProfile): string | null {
-  const { weightKg, heightCm, age } = PROFILE_LIMITS;
+  const { weightKg, heightCm, age, averageDailySteps } = PROFILE_LIMITS;
 
   if (!Number.isFinite(p.weightKg) || p.weightKg < weightKg.min || p.weightKg > weightKg.max) {
     return `Cân nặng phải từ ${weightKg.min} đến ${weightKg.max} kg.`;
@@ -16,6 +16,10 @@ export function validateUserProfile(p: UserProfile): string | null {
   }
   if (!Number.isFinite(p.age) || p.age < age.min || p.age > age.max) {
     return `Tuổi phải từ ${age.min} đến ${age.max}.`;
+  }
+  const steps = p.averageDailySteps ?? 0;
+  if (!Number.isFinite(steps) || steps < averageDailySteps.min || steps > averageDailySteps.max) {
+    return `Số bước trung bình/ngày phải từ ${averageDailySteps.min} đến ${averageDailySteps.max}.`;
   }
   return null;
 }

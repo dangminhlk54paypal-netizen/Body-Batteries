@@ -37,6 +37,16 @@ describe('passiveDailyBurn', () => {
     expect(passiveDailyBurn({ ...profile, occupation: 'light' })).toBe(2275);
     expect(passiveDailyBurn({ ...profile, occupation: 'active' })).toBe(2528);
   });
+
+  it('adds kcal from average daily steps', () => {
+    // 2022 (passive base) + stepsKcal(8000, 78) = 2022 + 312 = 2334
+    expect(passiveDailyBurn({ ...profile, averageDailySteps: 8000 })).toBe(2022 + 312);
+  });
+
+  it('defaults to zero steps if not provided', () => {
+    expect(passiveDailyBurn(profile)).toBe(2022);
+    expect(passiveDailyBurn({ ...profile, averageDailySteps: undefined })).toBe(2022);
+  });
 });
 
 describe('stepsKcal', () => {

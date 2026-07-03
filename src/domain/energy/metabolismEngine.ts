@@ -20,11 +20,14 @@ export function basalMetabolicRate(p: UserProfile): number {
   return Math.round(base + (p.sex === 'male' ? 5 : -161));
 }
 
-// Passive daily burn = BMR × occupation factor. This is the continuous
-// background expenditure (spread over 24h). It excludes logged steps/workouts
-// to avoid double-counting them.
+// Passive daily burn = BMR × occupation factor + kcal from average daily steps.
+// This is the continuous background expenditure (spread over 24h) plus the
+// steady-state step contribution. It excludes logged steps/workouts beyond
+// the average to avoid double-counting them.
 export function passiveDailyBurn(p: UserProfile): number {
-  return Math.round(basalMetabolicRate(p) * OCCUPATION_FACTORS[p.occupation]);
+  const baseBurn = Math.round(basalMetabolicRate(p) * OCCUPATION_FACTORS[p.occupation]);
+  const avgStepsBurn = stepsKcal(p.averageDailySteps ?? 0, p.weightKg);
+  return baseBurn + avgStepsBurn;
 }
 
 // Kcal from a step count, scaled by body weight. Negative/zero → 0.

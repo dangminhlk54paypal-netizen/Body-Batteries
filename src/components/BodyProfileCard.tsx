@@ -26,6 +26,7 @@ export function BodyProfileCard() {
   const [age, setAge] = useState(String(userProfile.age));
   const [sex, setSex] = useState<Sex>(userProfile.sex);
   const [occupation, setOccupation] = useState<OccupationLevel>(userProfile.occupation);
+  const [averageDailySteps, setAverageDailySteps] = useState(String(userProfile.averageDailySteps ?? 0));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -36,6 +37,7 @@ export function BodyProfileCard() {
     age: parseFloat(age) || userProfile.age,
     sex,
     occupation,
+    averageDailySteps: parseFloat(averageDailySteps) || 0,
   };
   const tdee = passiveDailyBurn(preview);
 
@@ -88,6 +90,12 @@ export function BodyProfileCard() {
           onChange={withReset(setAge)}
         />
       </View>
+
+      <Field
+        label={`Số bước trung bình/ngày (0-${PROFILE_LIMITS.averageDailySteps.max} — tạm thời ước tính, sẽ cập nhật từ dữ liệu thật sau)`}
+        value={averageDailySteps}
+        onChange={withReset(setAverageDailySteps)}
+      />
 
       <Text style={styles.fieldLabel}>Giới tính</Text>
       <View style={styles.chipRow}>

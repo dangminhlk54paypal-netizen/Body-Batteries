@@ -42,4 +42,5 @@ export const PROFILE_LIMITS = {
   weightKg: { min: 20, max: 300 },
   heightCm: { min: 50, max: 250 },
   age: { min: 1, max: 120 },
+  averageDailySteps: { min: 0, max: 30000 },
 };

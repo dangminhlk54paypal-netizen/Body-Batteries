@@ -14,6 +14,7 @@ export interface UserProfile {
   age: number;
   sex: Sex;
   occupation: OccupationLevel;
+  averageDailySteps?: number;
 }
 
 // Deliberate exercise types, each mapped to a MET value in metabolicConstants.
