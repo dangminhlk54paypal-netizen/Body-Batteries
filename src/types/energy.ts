@@ -15,6 +15,11 @@ export interface UserProfile {
   sex: Sex;
   occupation: OccupationLevel;
   averageDailySteps?: number;
+  // Optional weight goal (S-P): desired body weight and, optionally, the
+  // timeframe to reach it. When goalWeeks is omitted, the app picks the
+  // fastest SAFE pace on its own — see domain/energy/weightGoal.ts.
+  goalWeightKg?: number;
+  goalWeeks?: number;
 }
 
 // Deliberate exercise types, each mapped to a MET value in metabolicConstants.

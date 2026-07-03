@@ -4,7 +4,9 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useEnergyStore } from '../store/energyStore';
 import { passiveDailyBurn } from '../domain/energy/metabolismEngine';
 import { validateUserProfile } from '../domain/energy/profileValidation';
+import { dailyCalorieTarget } from '../domain/energy/weightGoal';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
+import { GOAL_WEIGHT_LIMITS, GOAL_WEEKS_LIMITS } from '../lib/weightGoalConstants';
 import type { OccupationLevel, Sex, UserProfile } from '../types/energy';
 
 const SEX_LABELS: { value: Sex; label: string }[] = [
@@ -27,6 +29,12 @@ export function BodyProfileCard() {
   const [sex, setSex] = useState<Sex>(userProfile.sex);
   const [occupation, setOccupation] = useState<OccupationLevel>(userProfile.occupation);
   const [averageDailySteps, setAverageDailySteps] = useState(String(userProfile.averageDailySteps ?? 0));
+  const [goalWeightKg, setGoalWeightKg] = useState(
+    userProfile.goalWeightKg !== undefined ? String(userProfile.goalWeightKg) : ''
+  );
+  const [goalWeeks, setGoalWeeks] = useState(
+    userProfile.goalWeeks !== undefined ? String(userProfile.goalWeeks) : ''
+  );
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -38,8 +46,12 @@ export function BodyProfileCard() {
     sex,
     occupation,
     averageDailySteps: parseFloat(averageDailySteps) || 0,
+    goalWeightKg: goalWeightKg.trim() === '' ? undefined : parseFloat(goalWeightKg),
+    goalWeeks: goalWeeks.trim() === '' ? undefined : parseFloat(goalWeeks),
   };
   const tdee = passiveDailyBurn(preview);
+  const calorieGoal = dailyCalorieTarget(preview);
+  const hasGoal = preview.goalWeightKg !== undefined;
 
   // Any edit invalidates the last save/error feedback so it doesn't go stale.
   function withReset<T>(setter: (v: T) => void) {
@@ -135,6 +147,36 @@ export function BodyProfileCard() {
         Nhu cầu năng lượng ước tính: <Text style={styles.tdeeValue}>{tdee} kcal/ngày</Text>
       </Text>
 
+      <View style={styles.divider} />
+
+      <Text style={styles.fieldLabel}>Mục tiêu cân nặng (không bắt buộc)</Text>
+      <View style={styles.fieldRow}>
+        <Field
+          label={`Cân nặng mong muốn (kg, ${GOAL_WEIGHT_LIMITS.min}-${GOAL_WEIGHT_LIMITS.max})`}
+          value={goalWeightKg}
+          onChange={withReset(setGoalWeightKg)}
+        />
+        <Field
+          label={`Trong bao lâu (tuần, ${GOAL_WEEKS_LIMITS.min}-${GOAL_WEEKS_LIMITS.max} — để trống = tốc độ an toàn nhất)`}
+          value={goalWeeks}
+          onChange={withReset(setGoalWeeks)}
+        />
+      </View>
+
+      {hasGoal && (
+        <View>
+          <Text style={styles.tdee}>
+            Mục tiêu calo/ngày: <Text style={styles.tdeeValue}>{calorieGoal.targetKcal} kcal</Text>
+          </Text>
+          {calorieGoal.wasClamped && (
+            <Text style={styles.noteText}>
+              Để an toàn, app đề xuất mức vừa phải hơn thay vì tốc độ bạn nhập.
+            </Text>
+          )}
+          <Text style={styles.disclaimerText}>Chỉ để tham khảo, không thay thế tư vấn y tế.</Text>
+        </View>
+      )}
+
       {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
       {saved && !error && <Text style={styles.savedText}>✅ Đã lưu hồ sơ.</Text>}
 
@@ -186,6 +228,9 @@ const styles = StyleSheet.create({
   tdee: { color: '#aaa', fontSize: 13, marginTop: 4 },
   tdeeValue: { color: '#00B894', fontWeight: '700' },
   explainer: { color: '#888', fontSize: 12, lineHeight: 17 },
+  divider: { height: 1, backgroundColor: '#333', marginVertical: 2 },
+  noteText: { color: '#FFB020', fontSize: 12, marginTop: 2 },
+  disclaimerText: { color: '#666', fontSize: 11, marginTop: 2, fontStyle: 'italic' },
   errorText: { color: '#FF4757', fontSize: 13 },
   savedText: { color: '#00B894', fontSize: 13 },
   saveBtn: { backgroundColor: '#00B894', padding: 14, borderRadius: 12, alignItems: 'center' },

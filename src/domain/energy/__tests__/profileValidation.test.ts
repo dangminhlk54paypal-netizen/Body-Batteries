@@ -37,4 +37,17 @@ describe('validateUserProfile', () => {
   it('rejects non-finite values', () => {
     expect(validateUserProfile({ ...valid, weightKg: NaN })).toMatch(/Cân nặng/);
   });
+
+  it('accepts a profile with an optional weight goal set', () => {
+    expect(validateUserProfile({ ...valid, goalWeightKg: 72, goalWeeks: 12 })).toBeNull();
+  });
+
+  it('rejects out-of-range goal weight', () => {
+    expect(validateUserProfile({ ...valid, goalWeightKg: 5 })).toMatch(/Cân nặng mong muốn/);
+  });
+
+  it('rejects out-of-range goal weeks', () => {
+    expect(validateUserProfile({ ...valid, goalWeightKg: 72, goalWeeks: 0 })).toMatch(/Thời gian mong muốn/);
+    expect(validateUserProfile({ ...valid, goalWeightKg: 72, goalWeeks: 200 })).toMatch(/Thời gian mong muốn/);
+  });
 });
