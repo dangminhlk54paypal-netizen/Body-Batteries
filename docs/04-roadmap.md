@@ -85,6 +85,13 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > (ghi món ăn từ `food_items.csv`, xem/xoá "Hôm nay đã ăn" theo bữa) và pin Năng lượng hiển thị
 > **xả mượt theo giây** (`LiveMasterBattery` + `useLiveEnergyReading`) — xem `docs/07-food-log.md`
 > và `docs/06-energy-expenditure.md`.
+>
+> **Bổ sung Session 9–10 (2026-06-19 → 07-03), chưa test máy:** (a) **S-F** — field "số bước
+> trung bình/ngày" trong Hồ sơ cơ thể, cộng vào `passiveDailyBurn` (KHÔNG phải đọc bước chân thật
+> — đó là Phase 4 bên dưới, vẫn `[ ]`); (b) **S-N** — pipeline offline USDA FoodData Central
+> (`npm run gen:usda`, danh sách tra cứu `USDA_FOODS` BỔ SUNG món Việt); (c) **U7** — công tắc
+> "Tra cứu USDA (EN)" trong màn ghi món + dịch `name_vi` theo nhu cầu. Xem
+> `.ai/parallel-reports/S-N.md`, `U7.md`, `S-F.md`.
 
 ---
 

@@ -400,6 +400,47 @@ dắt một quyết định lớn về mô hình pin Năng lượng cùng ngư�
 
 ---
 
+## Session 10 — 2026-07-03 (Opus — tuyến dữ liệu thực phẩm USDA + chốt commit tồn đọng)
+
+> Ghi chú số thứ tự: CONTEXT mục 10 đã gọi đợt U4/U5/U6 (2026-06-19) là "Session 9" nhưng
+> SESSION_LOG chưa từng có entry Session 9 → entry này đánh **Session 10** cho khớp, và gộp luôn
+> phần commit tồn đọng của các gói làm ở khoảng 2026-06-19 → 2026-07-03.
+
+**Làm gì:** (1) Tư vấn + viết spec đầy đủ cho việc tích hợp file USDA FoodData Central (6.4MB,
+363 nguyên liệu Mỹ) người dùng tải về; (2) điều phối 3 gói dữ liệu thực phẩm qua NEXT_SESSIONS
+(S-N, U7 A+B); (3) cuối phiên: phát hiện nhiều gói đã xong nhưng **chưa commit**, verify lại toàn
+bộ rồi commit gọn theo gói + chạy session-wrapup.
+
+**Kết quả:**
+- **S-N (XONG):** pipeline offline `scripts/generate-usda-db.js` biến `database/raw/*.json` (6.4MB,
+  đã gitignore) → `database/extract/usda_foundation_foods.csv` gọn + `src/data/food/usdaFoods.ts`
+  (`USDA_FOODS`, `searchUsdaFoods`, 363 món tiếng Anh, **BỔ SUNG** không trộn vào `FOOD_ITEMS`).
+  Tự tính energy Atwater khi thiếu #208 (268/363 món). Không dùng API (bulk offline). Spec:
+  `.ai/parallel-reports/S-N-food-data-usda-spec.md`.
+- **U7 (XONG):** Phần A = công tắc "Món Việt | Tra cứu USDA (EN)" trong `FoodLogModal.tsx` (chỉ 1
+  file; vá bẫy tên rỗng bằng `{...item, nameVi: item.nameEn}` để KHÔNG đụng `energyStore.ts`).
+  Phần B = dịch `name_vi` theo nhu cầu qua file phủ build-time `database/usda_names_vi.csv` join
+  trong `gen:usda` (không làm trình dịch trong app — quá nặng, đã ghi lý do).
+- **S-F (XONG, làm ở phiên song song ~2026-06-19, nay mới commit):** field "số bước trung bình/
+  ngày" trong Hồ sơ cơ thể, cộng vào `passiveDailyBurn` qua `stepsKcal`.
+- Verify "xanh" trước commit: `npx tsc --noEmit` sạch · `npx jest` **103 test PASS / 12 suite** ·
+  `npx expo export --platform ios` OK (bundle 5.36MB).
+
+**Vấn đề gặp phải & Cách giải quyết:** commit gần nhất (`171be68`) bỏ lại **3–4 gói hoàn chỉnh
+chưa lưu** (S-F, S-N, U7) → rủi ro mất công sức. Đã verify xanh rồi commit tách theo gói. S-N và
+U7-B cùng đụng các file dữ liệu USDA (`generate-usda-db.js`, `usdaFoods.ts`, generated, test) nên
+gộp chung 1 commit "data pipeline", không tách nhân tạo.
+
+**Session tiếp theo phải làm:**
+1. **S-A (test máy thật)** — vẫn ưu tiên cao; giờ cần test thêm luồng **U7** (gạt USDA, tìm
+   `beef`/`hummus`, ghi → Nhật ký có tên không rỗng + kcal đúng) — U7/S-N chưa hề chạy trên máy.
+2. **S-M (lật pin Năng lượng)** — việc lớn nhất còn treo, đã chốt hướng nhưng **CHƯA code**; làm
+   một mình 1 đợt, đọc `.ai/parallel-reports/S-M-energy-redesign-spec.md` + xác nhận 3 điểm mục 7.
+3. (Nhỏ) Nhãn category USDA tiếng Anh (`fat_sugar`, `Beverages`…) hiện thô trong UI — gói polish
+   riêng, không gấp (xem `.ai/parallel-reports/U7.md`).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

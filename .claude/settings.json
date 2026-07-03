@@ -9,7 +9,13 @@
       "Bash(git -C /Users/minh/VSCode_Repo/BodyBatteries show 3372fc7 --stat)",
       "Bash(git -C /Users/minh/VSCode_Repo/BodyBatteries show 3372fc7 -- src/components/FoodLogModal.tsx)",
       "Bash(grep -n \"^## 📌 Hướng dẫn viết session log\\\\|^---$\" /Users/minh/VSCode_Repo/BodyBatteries/.ai/SESSION_LOG.md)",
-      "Bash(ps -ax -o pid,etime,command)"
+      "Bash(ps -ax -o pid,etime,command)",
+      "Bash(node -e ' *)",
+      "Bash(mkdir -p database/raw database/extract && git status --short | head -20)",
+      "Bash(git check-ignore *)"
+    ],
+    "additionalDirectories": [
+      "/Users/minh/VSCode_Repo/BodyBatteries/database"
     ]
   },
   "enabledPlugins": {

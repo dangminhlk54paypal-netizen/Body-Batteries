@@ -97,8 +97,16 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối:** 2026-06-18 (Session 7 — tiếp nối Session 6: xong U3 + S-L; quyết định lớn
-S-M đã CHỐT xong với người dùng, đăng ký thành gói chính thức trong `.ai/NEXT_SESSIONS.md`)
+**Cập nhật lần cuối:** 2026-07-03 (Session 10 — Opus: tuyến dữ liệu thực phẩm USDA + chốt commit
+tồn đọng. Xong **S-N** (pipeline USDA offline, BỔ SUNG món Việt), **U7 A+B** (UI tra cứu USDA
+trong ghi món + dịch `name_vi` theo nhu cầu), và commit nốt **S-F** (bước chân trung bình/ngày,
+làm ~2026-06-19). Verify xanh: `tsc` sạch · **103 test PASS / 12 suite** · `expo export` OK. Đã
+commit tách theo gói. **Trước đó — Session 9, 2026-06-19:** xong **U4** (Nhật ký), **U5**
+(Onboarding), **U6** (Cài đặt UX + khung giờ bữa ăn, gộp S-I).)
+
+**⚠️ Việc lớn còn treo (không đổi):** **S-M** (lật pin Năng lượng sang "đã ăn/mục tiêu") vẫn
+**CHƯA code** — ưu tiên số 1 về tính năng. Và **S-A** (test máy thật) nay cần test thêm luồng
+**U7/USDA** (chưa hề chạy trên điện thoại).
 
 **Tóm tắt 1 dòng:** App build OK (`tsc` sạch, **92 unit test PASS** / 11 suite). Pin tổng = pin
 "Năng lượng" (Hướng B, sức chứa = TDEE). Session 5 đã thêm **Food Log**, pin Năng lượng **xả mượt
@@ -154,10 +162,9 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 (lật mô hình pin Năng lượng, đã chốt 2026-06-18) là việc lớn ưu tiên tiếp theo — đọc
 `.ai/parallel-reports/S-M-energy-redesign-spec.md` trước, đề nghị làm MỘT MÌNH 1 đợt (đụng
 `energyStore.ts`/`energyBalanceEngine.ts`/`MasterBattery.tsx`). Sẵn sàng làm song song ngay,
-không đụng ai: **S-A** (test máy, luôn ưu tiên), **U4 / U5**. **S-K đang tạm dừng** (mâu thuẫn
-S-M) và **U1 đã gộp vào S-M** — đừng mở riêng. Cần làm tuần tự sau khi S-M xong (đụng file chung):
-**S-F / U6**. **S-G** để sau cùng (S-L đã xong bước 1 ghi dữ liệu, vẫn cần vài tuần dữ liệu thật
-trước khi dùng).
+không đụng ai: **S-A** (test máy, luôn ưu tiên), **S-F** (bước chân v1). **S-K đang tạm dừng**
+(mâu thuẫn S-M) và **U1 đã gộp vào S-M** — đừng mở riêng. **S-G** để sau cùng (S-L đã xong bước
+1 ghi dữ liệu, vẫn cần vài tuần dữ liệu thật). **U4/U5/U6 đã xong** (xem parallel-reports).
 
 **Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption/
 metabolicConstants), domain (battery/modes/rules/energy — metabolismEngine + energyBalanceEngine
@@ -168,7 +175,8 @@ BatteryStack/ModeSelector/IntakeModal/EnergyActionsBar/BodyProfileCard/TrendChar
 TodayMeals/WeightLogCard), screens (Home/History/Diary/Settings/Onboarding), repositories (+
 healthSignalsRepository), navigation. Phase 0–3 đầy đủ kể cả biểu đồ xu hướng; Phase 2 đầy đủ
 (nhắc nhở thật + tự xả pin + reset ngày mới). UX: U2 (bàn phím modal ghi món) + U3 (nhãn biểu
-đồ/Lịch sử) đã sửa xong. Ghi nhận cân nặng theo thời gian (S-L) đã xong.
+ đồ/Lịch sử) + **U4** (Nhật ký: sửa lỗi ghi đè + UI glassmorphism) + **U5** (Onboarding) + **U6**
+ (Cài đặt UX + khung giờ bữa ăn, gộp S-I) đã sửa xong. Ghi nhận cân nặng theo thời gian (S-L) đã xong.
 
 **Session 8 (Opus, cuối ngày 2026-06-18 — sau khi người dùng đóng hết các phiên song song khác):**
 Kiểm tra lại toàn bộ trạng thái trước khi kết ngày. Xác nhận: không có gói nào bị bỏ dở giữa code
@@ -185,8 +193,8 @@ hiện tại). Chi tiết đầy đủ quá trình chốt quyết định S-M �
   việc lớn ưu tiên nhất, xem spec đầy đủ trong `.ai/parallel-reports/S-M-energy-redesign-spec.md`
 - Test thật trên điện thoại — chưa chốt (S-A)
 - Bước chân v1 (nhập số trung bình/ngày, KHÔNG phải HealthKit/Health Connect) (S-F)
-- Khung giờ bữa ăn sửa được trong Cài đặt + UX Cài đặt (U6, gộp S-I)
-- Đợt UX còn lại: U4 (Nhật ký), U5 (Onboarding). U1 đã gộp vào S-M (đừng mở riêng)
+- ✅ U4 (Nhật ký) — xong 2026-06-19 | ✅ U5 (Onboarding) — xong | ✅ U6 (Cài đặt + khung giờ bữa ăn) — xong
+- U1 đã gộp vào S-M (đừng mở riêng)
 - Tích hợp Health thật (HealthKit/Health Connect, cần đổi sang dev client EAS) (S-F v2, làm sau)
 - Lớp thông minh dự báo + hiệu chỉnh cá nhân hoá thật từ dữ liệu cân nặng (S-G, làm SAU CÙNG — cần
   ~1 tháng dữ liệu; bước 1 ghi dữ liệu cân nặng — S-L — đã xong)

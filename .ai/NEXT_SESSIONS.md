@@ -67,16 +67,17 @@
 | **U1** | Đợt UX: Pin tổng + con số năng lượng (hiển thị) | 🔁 **Đã gộp vào S-M** (2026-06-18) — đừng làm riêng, S-M viết đè toàn bộ hiển thị pin tổng | mobile-frontend | — | xem S-M |
 | **U2** | Đợt UX: Nạp & ghi món (modal/bàn phím/luồng) | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/U2.md` | mobile-frontend | — | không |
 | **U3** | Đợt UX: Lịch sử + biểu đồ | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/U3.md` | mobile-frontend | — | không |
-| **U4** | Đợt UX: Nhật ký | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ✅ | không |
-| **U5** | Đợt UX: Onboarding lần đầu | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ✅ | không |
-| **U6** | Đợt UX: Cài đặt (UX) + khung giờ bữa ăn (gộp S-I) | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | mobile-frontend | ⚠️ KHÔNG song song với S-K (cùng đụng `energyStore.ts`); KHÔNG song song với S-F (cùng đụng `SettingsScreen.tsx`) | không |
+| **U4** | Đợt UX: Nhật ký | ✅ XONG (2026-06-19) — xem `.ai/parallel-reports/U4.md` | mobile-frontend | ✅ | không |
+| **U5** | Đợt UX: Onboarding lần đầu | ✅ XONG (2026-06-19) — xem `.ai/parallel-reports/U5.md` | mobile-frontend | ✅ | không |
+| **U6** | Đợt UX: Cài đặt (UX) + khung giờ bữa ăn (gộp S-I) | ✅ XONG (2026-06-19) — xem `.ai/parallel-reports/U6.md` | mobile-frontend | — | không |
+| **S-N** | Tích hợp dữ liệu dinh dưỡng USDA (FoodData Central) — pipeline offline, BỔ SUNG món Việt | ✅ XONG (2026-07-03) — xem `.ai/parallel-reports/S-N.md` | data-ml + logic-backend | ✅ | không |
+| **U7** | 🆕 UI tra cứu USDA trong ghi món + cơ chế dịch `name_vi` theo nhu cầu | 🆕 Sẵn sàng làm — nối tiếp S-N (đã có `USDA_FOODS`), xem mục U7 bên dưới | mobile-frontend (+ data-ml cho Phần B) | ✅ (Phần A chỉ `FoodLogModal.tsx`; Phần B chỉ script + CSV) | S-N (đã xong) |
 
-> **Đợt mới (song song được ngay, không đụng nhau):** U4, U5 — và S-A (test máy) lúc nào cũng
-> chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
+> **Cập nhật 2026-06-19:** U4, U5, U6 — **đã hoàn thành cả 3** (xem parallel-reports). S-A (test máy)
+> lúc nào cũng chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
 > lượng, quyết định 2026-06-18) — đề nghị làm **MỘT MÌNH 1 đợt riêng**, không xen với gói nào đụng
-> `energyStore.ts`/`MasterBattery.tsx`. Trong lúc S-M chạy: **S-K tạm dừng hẳn** (mâu thuẫn mô
-> hình mới), **U1 gộp vào S-M** (đừng mở riêng), **U6 và S-F nên đợi S-M xong** (cả hai đụng
-> `energyStore.ts`/`SettingsScreen.tsx` mà S-M cũng sửa `energyStore.ts`). S-G để sau cùng (cần
+> `energyStore.ts`/`MasterBattery.tsx`. **S-F** có thể làm ngay song song với S-A. Trong lúc S-M chạy:
+> **S-K tạm dừng hẳn** (mâu thuẫn mô hình mới), **U1 gộp vào S-M** (đừng mở riêng). S-G để sau cùng (cần
 > dữ liệu cân nặng từ S-L, xem mục S-G).
 
 ---
@@ -490,6 +491,184 @@ metabolismEngine.ts, đừng sửa nếu S-F đang chạy. Đây là việc đ�
 khoẻ CONTEXT mục 5 (pin rỗng sáng = bình thường, không hù, từ ngữ trung tính khi ăn vượt). Chạy
 `npx tsc --noEmit` + `npx jest` + `npx expo export --platform ios` trước khi báo xong. Ghi báo cáo
 vào .ai/parallel-reports/S-M.md.
+```
+
+---
+
+## S-N · Tích hợp dữ liệu dinh dưỡng USDA (FoodData Central) — pipeline offline
+
+> ✅ **Hướng đã chốt với người dùng (2026-07-03, tư vấn Opus).** Spec đầy đủ (bảng ánh xạ chất,
+> cảnh báo chất lượng dữ liệu, thuật toán script, cấu trúc thư mục) ở
+> **`.ai/parallel-reports/S-N-food-data-usda-spec.md`** — **ĐỌC FILE ĐÓ TRƯỚC**, mục này chỉ đóng
+> gói/điều phối.
+>
+> ⚠️ **TUYỆT ĐỐI KHÔNG mở/đọc file JSON 6.4MB bằng công cụ đọc file** (tốn hàng chục nghìn token).
+> Chỉ chạm vào nó **qua Node** (`node -e ...` hoặc chính script sẽ viết). Đây là lý do cốt lõi của
+> cả gói: file nặng chỉ được **script chạy máy** đọc, AI không bao giờ đọc.
+
+**Mục tiêu:** biến `FoodData_Central_foundation_food_json_2026-04-30.json` (6.4MB, 363 nguyên liệu
+Mỹ) thành một **danh sách tra cứu gọn nhẹ RIÊNG**, offline, **bổ sung** (không thay thế) danh sách
+món Việt `food_items.csv`. Chỉ làm **pipeline dữ liệu** (script + file gọn + module loader + test),
+**KHÔNG đụng UI** để chạy độc lập, không conflict gói nào.
+
+**File ĐƯỢC sửa / tạo:**
+- TẠO thư mục `database/` với `database/raw/` (chứa file nặng, KHÔNG commit) và `database/extract/`
+  (file gọn, CÓ commit) + `database/README.md` (hướng dẫn cập nhật). **Chuyển** file JSON từ gốc
+  repo vào `database/raw/`.
+- SỬA `.gitignore` — thêm `database/raw/*.json` (đừng để git nuốt file 6.4MB). **Làm bước này ĐẦU
+  TIÊN** trước khi bất kỳ `git add` nào.
+- TẠO `scripts/generate-usda-db.js` (mô hình giống `scripts/generate-food-db.js`, xem spec mục 7).
+- TẠO `database/extract/usda_foundation_foods.csv` (do script sinh — cùng header `food_items.csv`).
+- TẠO `src/data/food/usdaFoods.generated.ts` (do script sinh — `USDA_FOOD_CSV_RAW`).
+- TẠO `src/data/food/usdaFoods.ts` (loader: **tái dùng** `parseFoodCsv`, thêm `searchUsdaFoods`).
+- TẠO `src/data/food/__tests__/usdaFoods.test.ts` (test loader parse đúng, có id `usda_`, energy
+  Atwater đúng cho vài case).
+- SỬA `package.json` — thêm script `"gen:usda": "node scripts/generate-usda-db.js"`.
+
+**KHÔNG đụng:** `food_items.csv` (nguồn món Việt — GIỮ NGUYÊN), `src/data/food/foodDatabase.ts`,
+`src/data/food/foodCsv.ts` (chỉ IMPORT `parseFoodCsv`, KHÔNG sửa), `src/data/food/foodDatabase.generated.ts`,
+`src/store/energyStore.ts`, `App.tsx`, mọi screen/component (KHÔNG làm UI trong gói này — tab tra
+cứu USDA là gói riêng về sau), `src/services/export/*`.
+
+**Ràng buộc (đọc spec cho đầy đủ):**
+- BỔ SUNG, không thay thế: USDA là module RIÊNG (`USDA_FOODS`), KHÔNG trộn vào `FOOD_ITEMS`.
+- `.filter(Boolean)` bỏ 32 phần tử null trong `FoundationFoods` (395 → 363 hợp lệ).
+- Energy: chỉ 95/363 món có #208 → thiếu thì tính **Atwater** `protein*4 + carb*4 + fat*9`, ghi
+  `note = "kcal computed (Atwater)"`. Sugar/fiber thiếu → `0`, **đừng bịa số**.
+- Đơn vị USDA Foundation đã per-100g; micro theo mg — khớp cột app, không cần scale.
+- Offline, KHÔNG dùng API (spec mục 9). KHÔNG cài thư viện mới (xuất Excel dùng `xlsx` đã có).
+
+**Trước khi code, xác nhận 3 điểm với người dùng (spec mục 10):** tên `database/` (chữ thường) OK
+chưa; `gen:usda` chạy tay hay chain vào `npm start`; có xuất `.xlsx` không.
+
+**Tiêu chí hoàn thành:** `npm run gen:usda` sinh ra CSV gọn + `usdaFoods.generated.ts`; `import`
+`USDA_FOODS` cho ra ~363 món có nutrition hợp lệ; `npx tsc --noEmit` sạch; `npx jest` xanh (test
+mới xanh); `npx expo export --platform ios` OK; file 6.4MB KHÔNG bị commit (nằm trong
+`database/raw/`, đã gitignore).
+
+**Prompt copy-paste:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-N-food-data-usda-spec.md (SPEC
+ĐẦY ĐỦ — ĐỌC TRƯỚC) và .ai/NEXT_SESSIONS.md (mục S-N). Nhập vai agent data-ml + logic-backend.
+Nhiệm vụ: viết pipeline offline biến file USDA FoodData Central (database/raw/FoodData_Central_
+foundation_food_json_2026-04-30.json, 6.4MB) thành danh sách tra cứu gọn nhẹ RIÊNG, BỔ SUNG (không
+trộn vào) danh sách món Việt food_items.csv.
+
+⚠️ TUYỆT ĐỐI KHÔNG đọc file JSON 6.4MB bằng công cụ đọc file — chỉ chạm qua Node (node -e ... hoặc
+script). Đọc bằng công cụ đọc file sẽ tốn hàng chục nghìn token.
+
+BƯỚC ĐẦU TIÊN: thêm `database/raw/*.json` vào .gitignore rồi chuyển file JSON vào database/raw/
+(tránh commit nhầm 6.4MB). Sau đó: tạo scripts/generate-usda-db.js (mô hình giống scripts/generate-
+food-db.js) lọc 13 chất theo bảng ánh xạ trong spec, tự tính energy Atwater khi thiếu #208, sinh
+database/extract/usda_foundation_foods.csv (cùng header food_items.csv) + src/data/food/usdaFoods.
+generated.ts; tạo src/data/food/usdaFoods.ts (tái dùng parseFoodCsv, KHÔNG sửa foodCsv.ts) +
+test; thêm script gen:usda vào package.json.
+
+CHỈ tạo/sửa các file liệt kê ở mục S-N. KHÔNG đụng food_items.csv, foodDatabase.ts, foodCsv.ts,
+energyStore.ts, App.tsx, screen/component (KHÔNG làm UI đợt này). Xác nhận 3 điểm ở "mục 10" của
+spec với tôi TRƯỚC khi code, đợi tôi duyệt. Chạy `npm run gen:usda` + `npx tsc --noEmit` + `npx
+jest` + `npx expo export --platform ios` trước khi báo xong; xác nhận file 6.4MB KHÔNG bị git
+theo dõi. Ghi báo cáo vào .ai/parallel-reports/S-N.md. Nói tiếng Việt với tôi, code tiếng Anh.
+```
+
+---
+
+## U7 · UI tra cứu USDA khi ghi món + dịch `name_vi` theo nhu cầu
+
+> 🆕 **Nối tiếp S-N (đã xong).** S-N đã tạo `USDA_FOODS` + `searchUsdaFoods` trong
+> `src/data/food/usdaFoods.ts` (363 nguyên liệu Mỹ, tên tiếng Anh, `nameVi` để trống). Gói này
+> để **lộ dữ liệu đó ra UI** cho người dùng tra cứu khi ghi món, và bổ sung **cơ chế dịch tên
+> Việt theo nhu cầu** (chỉ dịch món thực sự dùng tới, không dịch cả 363 món).
+>
+> Chia **2 phần độc lập** — làm Phần A trước (có giá trị ngay), Phần B khi nào cần:
+
+### Phần A — UI tra cứu USDA (ưu tiên, chỉ 1 file)
+
+**Mục tiêu:** trong màn "Ghi món ăn", thêm công tắc nguồn **"Món Việt | Tra cứu USDA (EN)"**. Chọn
+USDA → tìm trong `searchUsdaFoods`, hiện tên tiếng Anh. Chọn xong ghi món chạy y như món Việt.
+
+**File ĐƯỢC sửa:** CHỈ `src/components/FoodLogModal.tsx`.
+
+**⚠️ Cái bẫy BẮT BUỘC xử lý — tên rỗng:** `logFood` trong `energyStore.ts` chụp lại
+`foodNameVi: item.nameVi` (dòng ~237). Món USDA có `nameVi` **rỗng** → nếu ghi thẳng, Nhật ký/
+Lịch sử sẽ hiện **tên trống**. **Cách vá sạch (KHÔNG đụng `energyStore.ts`):** ngay trong modal,
+trước khi gọi `logFood`, nếu `item.nameVi` rỗng thì truyền một bản sao `{ ...item, nameVi:
+item.nameEn }` (hoặc tên Việt người dùng vừa nhập ở Phần B). Nhờ vậy file lõi giữ nguyên, gói
+độc lập tuyệt đối.
+
+**Ràng buộc:**
+- CHỈ sửa `FoodLogModal.tsx`. Import thêm `searchUsdaFoods`/`USDA_FOODS` từ
+  `../data/food/usdaFoods`. KHÔNG trộn `USDA_FOODS` vào `searchFoods`/`FOOD_ITEMS`.
+- Khi nguồn = USDA: dòng danh sách + tiêu đề chi tiết hiện `item.nameEn` (vì `nameVi` rỗng);
+  khi nguồn = Việt: giữ nguyên `item.nameVi` như hiện tại.
+- `categoryLabel` đã có fallback `?? category` nên category tiếng Anh của USDA
+  (`Beverages`, `Baked Products`…) vẫn hiện được — không cần sửa. Nếu thấy nhãn nào xấu
+  (vd `fat_sugar`), **ghi vào report**, đừng tự thêm key vào `constants.ts` (file dùng chung).
+- Giữ nguyên logic khẩu phần/giờ ăn/preview hiện có — USDA cũng là `FoodItem` nên dùng chung được
+  (`defaultServingG = 100`, không có `servingPresets`).
+- KHÔNG đụng `energyStore.ts`, `foodDatabase.ts`, `usdaFoods.ts`, `constants.ts`, `App.tsx`, hay
+  file nào khác ngoài `FoodLogModal.tsx`.
+
+**Tiêu chí hoàn thành:** gạt sang "USDA", gõ `beef`/`hummus` → hiện danh sách tiếng Anh; chọn +
+nhập gram + ghi → món vào Nhật ký với **tên tiếng Anh (không rỗng)** + kcal đúng. Gạt về "Việt"
+tìm `cơm` vẫn chạy như cũ. `npx tsc --noEmit` sạch; `npx jest` xanh; `npx expo export --platform
+ios` OK.
+
+**Prompt copy-paste — Phần A:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-N-food-data-usda-spec.md (mục 8)
+và .ai/NEXT_SESSIONS.md (mục U7 Phần A). Nhập vai agent mobile-frontend. Nhiệm vụ: trong màn Ghi
+món ăn, thêm công tắc nguồn "Món Việt | Tra cứu USDA (EN)"; khi chọn USDA thì tìm bằng
+searchUsdaFoods (từ src/data/food/usdaFoods.ts, đã có sẵn từ S-N) và hiện tên tiếng Anh nameEn.
+CHỈ được sửa src/components/FoodLogModal.tsx — KHÔNG đụng energyStore.ts, foodDatabase.ts,
+usdaFoods.ts, constants.ts, App.tsx hay file khác. BẮT BUỘC xử lý bẫy tên rỗng: món USDA có nameVi
+rỗng, mà logFood chụp foodNameVi=item.nameVi → trước khi gọi logFood, nếu nameVi rỗng thì truyền
+{ ...item, nameVi: item.nameEn } để Nhật ký không hiện tên trống (KHÔNG sửa energyStore.ts). Đừng
+trộn USDA vào FOOD_ITEMS. Mở app cùng tôi, đề xuất bố cục công tắc bằng tiếng Việt, đợi tôi duyệt
+mới code. Chạy `npx tsc --noEmit` + `npx jest` + `npx expo export --platform ios` trước khi báo
+xong. Ghi báo cáo vào .ai/parallel-reports/U7.md. Nói tiếng Việt, code tiếng Anh.
+```
+
+### Phần B — Dịch `name_vi` theo nhu cầu (build-time, tuỳ chọn, làm sau)
+
+**Mục tiêu:** cho phép dịch dần tên Việt cho **chỉ những món USDA hay dùng**, không dịch cả 363.
+Cơ chế **build-time** (không phải trình sửa trong app — xem "KHÔNG làm" bên dưới).
+
+**Cách làm (file phủ + join lúc sinh):**
+- TẠO `database/usda_names_vi.csv` — 2 cột `id,name_vi` (vd `usda_321358,Hummus (đậu gà nghiền)`).
+  Bắt đầu rỗng/vài dòng mẫu. Đây là nơi dịch dần: cần món nào, thêm 1 dòng.
+- SỬA `scripts/generate-usda-db.js` — **left-join** file phủ này khi sinh: món nào có `id` trong
+  `usda_names_vi.csv` thì điền `name_vi` tương ứng vào cột `name_vi` của
+  `usda_foundation_foods.csv`; không có thì để trống như hiện tại. Chạy lại `npm run gen:usda`
+  **không mất bản dịch** (vì bản dịch nằm ở file phủ, không ở file sinh ra).
+- (Tuỳ chọn) SỬA `searchUsdaFoods` trong `usdaFoods.ts` để tìm cả theo `nameVi` khi đã có bản dịch.
+
+**Vì sao KHÔNG làm trình dịch trong app (chống gold-plating):** để người dùng gõ tên Việt ngay
+trong app rồi lưu sẽ cần ghi xuống bộ nhớ thiết bị (AsyncStorage/DB) + đồng bộ với dữ liệu
+build-time + xử lý xung đột — nặng và không xứng công. Luồng thực tế của dự án: người dùng nói
+"dịch giúp món X" bằng tiếng Việt, một phiên AI thêm 1 dòng vào `usda_names_vi.csv` rồi regenerate.
+Đúng tinh thần "AI biến mô tả tiếng Việt thành file" của CONTEXT mục 2.
+
+**File ĐƯỢC sửa (Phần B):** `database/usda_names_vi.csv` (tạo), `scripts/generate-usda-db.js` (sửa
+join), `src/data/food/usdaFoods.generated.ts` + `database/extract/usda_foundation_foods.csv` (do
+script sinh lại), tuỳ chọn `src/data/food/usdaFoods.ts` (+ test). KHÔNG đụng `food_items.csv`,
+`FoodLogModal.tsx` (Phần A), `energyStore.ts`.
+
+**Tiêu chí hoàn thành (Phần B):** thêm 1 dòng vào `usda_names_vi.csv` → `npm run gen:usda` →
+`USDA_FOODS` món đó có `nameVi` đúng; món chưa dịch vẫn trống; `tsc`/`jest`/`expo export` OK.
+
+**Prompt copy-paste — Phần B:**
+```
+Đọc .ai/parallel-reports/S-N-food-data-usda-spec.md, .ai/parallel-reports/S-N.md và
+.ai/NEXT_SESSIONS.md (mục U7 Phần B). Nhập vai agent data-ml. Nhiệm vụ: thêm cơ chế dịch name_vi
+theo nhu cầu cho danh sách USDA bằng FILE PHỦ build-time (KHÔNG làm trình sửa trong app). Tạo
+database/usda_names_vi.csv (cột id,name_vi, vài dòng mẫu) và sửa scripts/generate-usda-db.js để
+left-join file này khi sinh usda_foundation_foods.csv + usdaFoods.generated.ts (món có id trong
+file phủ thì điền name_vi, không có thì để trống; chạy lại không mất bản dịch). Tuỳ chọn cho
+searchUsdaFoods tìm cả theo nameVi. CHỈ sửa các file này — KHÔNG đụng food_items.csv,
+FoodLogModal.tsx, energyStore.ts. Chạy `npm run gen:usda` + `npx tsc --noEmit` + `npx jest` + `npx
+expo export --platform ios` trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/U7.md (nối
+tiếp Phần A nếu đã có). Nói tiếng Việt, code tiếng Anh.
 ```
 
 ---
