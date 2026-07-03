@@ -14,9 +14,12 @@ import {
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useEnergyStore } from '../store/energyStore';
 import { searchFoods } from '../data/food/foodDatabase';
+import { searchUsdaFoods } from '../data/food/usdaFoods';
 import { nutritionForGrams, mealTypeForHour } from '../domain/food/foodNutrition';
 import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
 import type { FoodItem } from '../types/food';
+
+type FoodSource = 'vi' | 'usda';
 
 interface Props {
   visible: boolean;
@@ -45,6 +48,7 @@ const SHEET_OFFSET = 500;
 export function FoodLogModal({ visible, onClose }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
 
+  const [source, setSource] = useState<FoodSource>('vi');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<FoodItem | null>(null);
   const [grams, setGrams] = useState('');
@@ -64,9 +68,13 @@ export function FoodLogModal({ visible, onClose }: Props) {
     transform: [{ translateY: translateY.value }],
   }));
 
-  const results = useMemo(() => searchFoods(query), [query]);
+  const results = useMemo(
+    () => (source === 'usda' ? searchUsdaFoods(query) : searchFoods(query)),
+    [source, query]
+  );
 
   function reset() {
+    setSource('vi');
     setQuery('');
     setSelected(null);
     setGrams('');
@@ -98,7 +106,10 @@ export function FoodLogModal({ visible, onClose }: Props) {
 
   async function confirm() {
     if (!selected || !validGrams) return;
-    await logFood(selected, gramsNum, timestampForToday(hourNum, minuteNum));
+    // USDA rows have no Vietnamese name yet — fall back to the English name so
+    // the Diary/History never show a blank title (logFood snapshots nameVi).
+    const foodToLog = selected.nameVi ? selected : { ...selected, nameVi: selected.nameEn };
+    await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
     handleClose();
   }
 
@@ -113,6 +124,28 @@ export function FoodLogModal({ visible, onClose }: Props) {
             <>
               <Text style={styles.title}>Ghi món ăn</Text>
               <Text style={styles.subtitle}>Tìm món trong danh sách rồi chọn</Text>
+              <View style={styles.chips}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.chip,
+                    source === 'vi' && styles.chipActive,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setSource('vi')}
+                >
+                  <Text style={styles.chipText}>Món Việt</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.chip,
+                    source === 'usda' && styles.chipActive,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => setSource('usda')}
+                >
+                  <Text style={styles.chipText}>Tra cứu USDA (EN)</Text>
+                </Pressable>
+              </View>
               <TextInput
                 style={styles.input}
                 placeholder="Tìm món (ví dụ: cơm, gà, cá...)"
@@ -135,7 +168,9 @@ export function FoodLogModal({ visible, onClose }: Props) {
                     onPress={() => pickFood(item)}
                   >
                     <View style={styles.foodRowMain}>
-                      <Text style={styles.foodName}>{item.nameVi}</Text>
+                      <Text style={styles.foodName}>
+                        {source === 'usda' ? item.nameEn : item.nameVi}
+                      </Text>
                       <Text style={styles.foodMeta}>
                         {categoryLabel(item.category)} · {item.per100g.energyKcal} kcal/100g
                       </Text>
@@ -159,7 +194,9 @@ export function FoodLogModal({ visible, onClose }: Props) {
               >
                 <Text style={styles.back}>‹ Chọn món khác</Text>
               </Pressable>
-              <Text style={styles.title}>{selected.nameVi}</Text>
+              <Text style={styles.title}>
+                {source === 'usda' ? selected.nameEn : selected.nameVi}
+              </Text>
               <Text style={styles.subtitle}>
                 {categoryLabel(selected.category)} · {selected.per100g.energyKcal} kcal / 100g
               </Text>
@@ -311,6 +348,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#444',
   },
+  chipActive: { backgroundColor: '#00B894', borderColor: '#00B894' },
   chipText: { color: '#ddd', fontSize: 12, fontWeight: '600' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, textAlign: 'center' },
