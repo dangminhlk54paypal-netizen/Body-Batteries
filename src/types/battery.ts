@@ -23,6 +23,10 @@ export interface BatteryReading {
   batteryTypeId: BatteryId;
   level: number;      // current amount (e.g. 45g protein)
   capacity: number;   // max for today based on mode
+  // Energy battery only (S-M model): kcal added to today's goal from logged
+  // steps/workouts, tracked separately so it survives a same-day profile
+  // reconcile without losing the activity bonus already earned.
+  activityBonusKcal?: number;
 }
 
 export interface DailyLog {

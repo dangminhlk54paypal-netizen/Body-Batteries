@@ -4,9 +4,10 @@ import Svg, { Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
 
 interface Props {
-  percentage: number; // 0–100
-  levelKcal?: number; // current energy reserve (kcal) — Hướng B
-  capacityKcal?: number; // daily energy capacity (kcal) — Hướng B
+  percentage: number; // eaten / goal, 0–100+ (can exceed 100 when eating past the goal)
+  levelKcal?: number; // kcal eaten so far today
+  capacityKcal?: number; // today's kcal goal
+  canEatKcal?: number; // live "còn được ăn ngay" — positive = room left, negative = ahead of pace
 }
 
 const W = 120;
@@ -18,12 +19,21 @@ const R = 10;
 // transition on the UI thread — no extra dependency, no per-frame JS cost.
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
-export function MasterBattery({ percentage, levelKcal, capacityKcal }: Props) {
-  const progress = useSharedValue(percentage);
+function formatKcal(n: number): string {
+  return Math.round(n).toLocaleString('vi-VN');
+}
+
+export function MasterBattery({ percentage, levelKcal, capacityKcal, canEatKcal }: Props) {
+  // The bar itself always caps at 100% — a surplus past the goal is called
+  // out as text ("Ăn dư"), not by overflowing the shape.
+  const fillPercentage = Math.min(100, Math.max(0, percentage));
+  const isOver = levelKcal != null && capacityKcal != null && levelKcal > capacityKcal;
+
+  const progress = useSharedValue(fillPercentage);
 
   useEffect(() => {
-    progress.value = withTiming(percentage, { duration: 500 });
-  }, [percentage]);
+    progress.value = withTiming(fillPercentage, { duration: 500 });
+  }, [fillPercentage]);
 
   const animatedFillProps = useAnimatedProps(() => {
     const fillHeight = H * (progress.value / 100);
@@ -33,8 +43,10 @@ export function MasterBattery({ percentage, levelKcal, capacityKcal }: Props) {
     };
   });
 
-  const color =
-    percentage > 60 ? '#00B894' : percentage > 30 ? '#FFD93D' : '#FF4757';
+  // An empty battery in the morning is normal, not a warning (CONTEXT mục 5)
+  // — no red for low. Amber only marks "ăn dư" (eating past today's goal), a
+  // neutral flag, never a moralizing color.
+  const color = isOver ? '#FFD93D' : '#00B894';
 
   return (
     <View style={styles.container}>
@@ -62,12 +74,27 @@ export function MasterBattery({ percentage, levelKcal, capacityKcal }: Props) {
         />
       </Svg>
 
-      <Text style={styles.pct}>{percentage}%</Text>
-      <Text style={styles.label}>Năng lượng tổng</Text>
+      <Text style={styles.pct}>{Math.round(fillPercentage)}%</Text>
+      <Text style={styles.label}>Đã ăn hôm nay</Text>
       {capacityKcal != null && levelKcal != null && (
         <Text style={styles.kcal}>
-          {levelKcal.toFixed(1)} / {Math.round(capacityKcal)} kcal
+          {formatKcal(levelKcal)} / {formatKcal(capacityKcal)} kcal
         </Text>
+      )}
+      {isOver && levelKcal != null && capacityKcal != null && (
+        <Text style={styles.overText}>Ăn dư {formatKcal(levelKcal - capacityKcal)} kcal</Text>
+      )}
+
+      {canEatKcal != null && (
+        <View style={styles.liveSection}>
+          <View style={styles.divider} />
+          {canEatKcal >= 0 ? (
+            <Text style={styles.livePositive}>Còn được ăn ngay: +{formatKcal(canEatKcal)} kcal</Text>
+          ) : (
+            <Text style={styles.liveOver}>Đang dư: {formatKcal(-canEatKcal)} kcal</Text>
+          )}
+          <Text style={styles.disclaimer}>* Chỉ để tham khảo.</Text>
+        </View>
       )}
     </View>
   );
@@ -91,5 +118,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#00B894',
     fontWeight: '600',
+  },
+  overText: {
+    fontSize: 12,
+    color: '#FFD93D',
+    fontWeight: '600',
+  },
+  liveSection: {
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+    width: '100%',
+  },
+  divider: {
+    width: '80%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#333',
+    marginBottom: 4,
+  },
+  livePositive: {
+    fontSize: 13,
+    color: '#00B894',
+    fontWeight: '600',
+  },
+  liveOver: {
+    fontSize: 13,
+    color: '#FFD93D',
+    fontWeight: '600',
+  },
+  disclaimer: {
+    fontSize: 10,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });

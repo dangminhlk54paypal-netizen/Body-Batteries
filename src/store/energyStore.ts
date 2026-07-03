@@ -23,8 +23,7 @@ import {
   kcalFromMacro,
   chargeEnergy,
   burnEnergy,
-  burnPassive,
-  burnActivity,
+  growGoalFromActivity,
 } from '../domain/energy/energyBalanceEngine';
 import { workoutKcal } from '../domain/energy/metabolismEngine';
 import { getModeById } from '../domain/modes/modeDefinitions';
@@ -173,13 +172,11 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     }
 
     const { lowBatteryThreshold } = useSettingsStore.getState();
-    // Only alert on the battery just topped up (if it is still low) and the
-    // energy battery. The other nutrient batteries start the day empty and fill
-    // over time, so checking all of them here would fire a burst of "low" alerts
-    // on the very first intake of the day.
-    const relevant = updated.filter(
-      (r) => r.batteryTypeId === batteryId || r.batteryTypeId === 'energy'
-    );
+    // Only alert on the battery just topped up, if it's still low. The energy
+    // battery is excluded here (S-M): starting the day at 0% eaten is normal,
+    // not something to warn about — its own alert (overeating) is handled by
+    // useLowEnergyWatch instead.
+    const relevant = updated.filter((r) => r.batteryTypeId === batteryId);
     return checkLowBattery(relevant, lowBatteryThreshold);
   },
 
@@ -294,7 +291,8 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     }
   },
 
-  // Log activity (steps and/or workout sessions) — drains the energy battery.
+  // Log activity (steps and/or workout sessions) — grows today's energy goal
+  // (S-M: moving more means more room to eat, it does not touch eaten level).
   logActivity: async ({ steps = 0, workouts = [] }) => {
     const { readings } = get();
     const ei = readings.findIndex((r) => r.batteryTypeId === 'energy');
@@ -302,15 +300,15 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const profile = currentProfile();
     const updated = [...readings];
-    updated[ei] = burnActivity(updated[ei], profile, steps, workouts);
+    updated[ei] = growGoalFromActivity(updated[ei], profile, steps, workouts);
     set({ readings: updated, masterPercentage: energyPercentage(updated) });
 
     try {
       await upsertReadings([updated[ei]]);
 
       // Record logged activity into intake history so it shows up in the
-      // weekly Excel export (it does not affect battery levels here — that
-      // already happened above via burnActivity).
+      // weekly Excel export (it does not affect the battery here — the goal
+      // growth already happened above via growGoalFromActivity).
       const ts = nowTimestamp();
       if (steps > 0) {
         await addIntakeEvent({
@@ -340,12 +338,12 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   tickDrain: async (elapsedHours, modeId) => {
     const { readings } = get();
     const mode = getModeById(modeId);
-    const profile = currentProfile();
 
     const updated = readings.map((r) => {
       if (r.batteryTypeId === 'master') return r;
-      // Energy battery drains by real passive metabolism; nutrients by mode rate.
-      if (r.batteryTypeId === 'energy') return burnPassive(r, profile, elapsedHours);
+      // Energy battery no longer drains over time (S-M) — it only changes
+      // when the user eats or logs activity. Nutrients still drain by mode rate.
+      if (r.batteryTypeId === 'energy') return r;
       return applyDrain(r, elapsedHours, mode.drainRatePerHour);
     });
 

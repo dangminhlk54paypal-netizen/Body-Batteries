@@ -29,6 +29,19 @@ export async function sendLowBatteryAlerts(alerts: BatteryAlert[]): Promise<void
   }
 }
 
+// S-M: neutral "ăn dư" nudge, replacing the old low-battery alert for the
+// energy battery (an empty battery in the morning is normal, not a warning).
+export async function sendOvereatingAlert(message: string): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '🍽️ Ăn dư hôm nay',
+      body: message,
+      data: { batteryTypeId: 'energy' },
+    },
+    trigger: null, // show immediately
+  });
+}
+
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<string> {
   const id = await Notifications.scheduleNotificationAsync({
     content: {
