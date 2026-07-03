@@ -20,5 +20,28 @@
   },
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.ai/scripts/lint-edited-file.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -C \"$CLAUDE_PROJECT_DIR\" status --short src 2>/dev/null | grep -q . && echo '🔔 src/ có thay đổi — chạy: npm run verify (tsc+lint+test), rồi \"Chạy skill session-wrapup\" trước khi kết phiên.' || true"
+          }
+        ]
+      }
+    ]
   }
 }
