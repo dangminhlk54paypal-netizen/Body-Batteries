@@ -45,10 +45,20 @@ App này **KHÔNG phải thiết bị y tế**. Khi làm bất kỳ tính năng 
 
 ## 6. Hệ thống Agents & Skills
 
-- **Agents** (`.ai/agents/`): các "vai trò" AI có thể nhập vai khi cần loại việc chuyên biệt.
-- **Skills** (`.ai/skills/`): các quy trình tái sử dụng cho việc lặp đi lặp lại.
-- Cách gọi: *"Chạy skill session-wrapup"* hoặc *"Dùng agent mobile-frontend"*
-- Xem `.ai/skills/README.md` để biết toàn bộ danh sách.
+> **Nâng cấp 2026-07-03:** hệ agents được "bắc cầu" sang Claude Code native — bản đầy đủ của
+> mỗi agent giờ nằm ở **`.claude/agents/`** (nguồn sự thật DUY NHẤT); `.ai/agents/` chỉ còn
+> con trỏ. Trong Claude Code, agent được spawn tự động chạy song song, mỗi agent context riêng
+> (giải đúng bài toán mục 9). Cần **khởi động lại Claude Code** sau khi sửa file agent/hook.
+
+- **Agents** (`.claude/agents/` — 5 vai: architect, mobile-frontend, logic-backend, data-ml,
+  qa-reviewer): cách gọi *"Dùng agent mobile-frontend làm X"*. Riêng `qa-reviewer` không có
+  quyền sửa file (chỉ báo lỗi — đúng luật "không sửa thầm lặng").
+- **Skills** (`.ai/skills/`): quy trình tái sử dụng (session-wrapup, learn-pattern, ...). Xem
+  `.ai/skills/README.md`. Bài học từ bug lặp lại ghi ở `.ai/skills/learned/`.
+- **Hooks tự động** (`.claude/settings.json`): (1) mỗi lần AI sửa file `.ts` trong `src/` →
+  tự chạy ESLint đúng file đó, có lỗi thì bắt sửa ngay; (2) khi kết phiên mà `src/` có thay
+  đổi → nhắc chạy verify + session-wrapup.
+- **Cổng kiểm tra trước khi báo "xong":** `npm run verify` (= tsc + eslint + jest, 1 lệnh).
 
 ## 7. Điều KHÔNG được làm
 
@@ -97,16 +107,23 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối:** 2026-07-03 (Session 10 — Opus: tuyến dữ liệu thực phẩm USDA + chốt commit
+**Cập nhật lần cuối:** 2026-07-03 (Session 11 — nâng cấp quy trình: 5 native subagent trong
+`.claude/agents/`, hooks tự lint + nhắc wrapup, ESLint (`npm run verify` = tsc+lint+jest), gói
+**L-1** mới dọn 2 lint error tồn đọng. Cùng ngày, một phiên song song **làm xong code S-M** —
+xem `.ai/parallel-reports/S-M.md`, lúc ghi dòng này **chưa commit, chưa test máy**. Chi tiết:
+SESSION_LOG mục Session 11.)
+
+**Trước đó — Session 10** (cùng ngày, Opus: tuyến dữ liệu thực phẩm USDA + chốt commit
 tồn đọng. Xong **S-N** (pipeline USDA offline, BỔ SUNG món Việt), **U7 A+B** (UI tra cứu USDA
 trong ghi món + dịch `name_vi` theo nhu cầu), và commit nốt **S-F** (bước chân trung bình/ngày,
 làm ~2026-06-19). Verify xanh: `tsc` sạch · **103 test PASS / 12 suite** · `expo export` OK. Đã
 commit tách theo gói. **Trước đó — Session 9, 2026-06-19:** xong **U4** (Nhật ký), **U5**
 (Onboarding), **U6** (Cài đặt UX + khung giờ bữa ăn, gộp S-I).)
 
-**⚠️ Việc lớn còn treo (không đổi):** **S-M** (lật pin Năng lượng sang "đã ăn/mục tiêu") vẫn
-**CHƯA code** — ưu tiên số 1 về tính năng. Và **S-A** (test máy thật) nay cần test thêm luồng
-**U7/USDA** (chưa hề chạy trên điện thoại).
+**⚠️ Việc lớn còn treo (cập nhật Session 11):** **S-M** đã **XONG CODE** (phiên song song
+2026-07-03, xem `.ai/parallel-reports/S-M.md`) nhưng **chưa commit + chưa test máy** — ưu tiên
+số 1: verify rồi commit S-M, sau đó test máy. **S-A** (test máy thật) nay gồm cả luồng S-M mới
+lẫn **U7/USDA** (đều chưa hề chạy trên điện thoại).
 
 **Tóm tắt 1 dòng:** App build OK (`tsc` sạch, **92 unit test PASS** / 11 suite). Pin tổng = pin
 "Năng lượng" (Hướng B, sức chứa = TDEE). Session 5 đã thêm **Food Log**, pin Năng lượng **xả mượt
@@ -152,19 +169,19 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 - Git: repo có remote `origin` (GitHub, `dangminhlk54paypal-netizen/Body-Batteries`). Nhánh
   **`session-5-demo-ready`** và **`main`** giờ **giống nhau** (đã push 2026-06-18) — không còn
   commit local nào chưa lên `origin`.
-- Git hooks: ❌ Chưa cài.
+- Git hooks: ✅ Đã cài (nhắc SESSION_LOG sau commit — xác nhận hoạt động 2026-07-03). Hooks
+  Claude Code (tự lint file vừa sửa + nhắc wrapup) cũng đã bật trong `.claude/settings.json`.
 - Dọn dẹp môi trường (không gấp): S-A ghi nhận ~10 process `expo start --web` cũ còn sót trên các
   cổng 8082–8093, một số trỏ thư mục cũ đã xoá — có thể `kill` cho gọn, không ảnh hưởng chức năng.
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP:** Xem **`.ai/NEXT_SESSIONS.md`** (file DUY NHẤT chứa mọi gói). **S-M**
-(lật mô hình pin Năng lượng, đã chốt 2026-06-18) là việc lớn ưu tiên tiếp theo — đọc
-`.ai/parallel-reports/S-M-energy-redesign-spec.md` trước, đề nghị làm MỘT MÌNH 1 đợt (đụng
-`energyStore.ts`/`energyBalanceEngine.ts`/`MasterBattery.tsx`). Sẵn sàng làm song song ngay,
-không đụng ai: **S-A** (test máy, luôn ưu tiên), **S-F** (bước chân v1). **S-K đang tạm dừng**
-(mâu thuẫn S-M) và **U1 đã gộp vào S-M** — đừng mở riêng. **S-G** để sau cùng (S-L đã xong bước
-1 ghi dữ liệu, vẫn cần vài tuần dữ liệu thật). **U4/U5/U6 đã xong** (xem parallel-reports).
+**Việc phải làm KẾ TIẾP (cập nhật Session 11):** Xem **`.ai/NEXT_SESSIONS.md`** (file DUY NHẤT
+chứa mọi gói). Thứ tự: (1) **verify + commit code S-M** đang nằm chưa commit trong working tree;
+(2) **S-A** test máy thật (gồm luồng S-M mới + U7/USDA); (3) **L-1** dọn 2 lint error tồn đọng
+(gói nhỏ, prompt sẵn); (4) **U7** phần còn lại nếu có. **S-F đã xong** (commit 2026-07-03).
+**S-K vẫn tạm dừng** (mâu thuẫn mô hình S-M) và **U1 đã gộp vào S-M** — đừng mở riêng. **S-G**
+để sau cùng (cần vài tuần dữ liệu cân nặng). **U4/U5/U6 đã xong** (xem parallel-reports).
 
 **Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption/
 metabolicConstants), domain (battery/modes/rules/energy — metabolismEngine + energyBalanceEngine

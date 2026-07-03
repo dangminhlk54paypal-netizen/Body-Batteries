@@ -441,6 +441,46 @@ gộp chung 1 commit "data pipeline", không tách nhân tạo.
 
 ---
 
+## Session 11 — 2026-07-03 (Opus + Fable review — nâng cấp quy trình làm việc: subagents native + hooks + ESLint)
+
+**Làm gì:** Theo yêu cầu người dùng "nâng cấp cách làm việc chuyên nghiệp hơn, code không thừa,
+nâng cấp chứ không thay thế": bắc cầu hệ `.ai/` tự xây sang Claude Code native, thêm cổng chất
+lượng ESLint, rồi chạy một lượt review độc lập (model Fable) soát lại chính đợt nâng cấp và vá
+các lỗ hổng tìm thấy.
+
+**Kết quả:**
+- **Commit `c7c0dde` (infra, tách riêng — không dính file S-M):** 5 native subagent trong
+  `.claude/agents/` (qa-reviewer read-only); hook PostToolUse tự lint file `.ts` vừa sửa
+  (`.ai/scripts/lint-edited-file.js`, exit 2 khi có error); hook Stop nhắc verify + wrapup;
+  ESLint 9 + `eslint-config-expo` (dev-only, người dùng duyệt); scripts `lint`/`typecheck`/
+  `verify`; thư mục `.ai/skills/learned/`.
+- **ESLint baseline lần đầu:** 2 error / 22 warning trên 67 file — 2 error thật
+  (`useDrainTick.ts:15` react-hooks/purity, `HistoryScreen.tsx:50` react-hooks/immutability)
+  → đăng ký gói **L-1** trong `NEXT_SESSIONS.md` để dọn (chưa sửa — 2 file không thuộc phiên này).
+- **Review độc lập (Fable) chấm 7/10**, tìm ra và đã vá: (1) commit infra tách khỏi S-M đang
+  trộn trong working tree; (2) baseline bẩn làm hook tự mâu thuẫn luật vàng → gói L-1; (3) nguồn
+  sự thật nhân đôi → `.ai/agents/` thu thành con trỏ sang `.claude/agents/`; (4) tài liệu lệch
+  thực tế → sửa CONTEXT §6/§10, `docs/03-architecture.md` (thêm `hooks/ types/ navigation/
+  domain/energy domain/food data/food`, bảng `food_log`, ghi chú S-M ở Depletion tick), 2 README
+  agents/skills (bổ sung 3 skill thiếu trong bảng), bảng NEXT_SESSIONS (S-F ✅, S-M ✅ code).
+- **Ghi nhận:** một **phiên song song đã làm xong code S-M** hôm nay (xem
+  `.ai/parallel-reports/S-M.md`) — pin Năng lượng giờ đếm LÊN "đã ăn/mục tiêu"; lúc viết entry
+  này code S-M **chưa commit, chưa test máy**.
+
+**Vấn đề gặp phải & Cách giải quyết:** (a) Hook lint chặn theo *file* chứ không theo *diff* —
+file có lỗi tồn đọng sẽ chặn cả sửa đổi vô can → giải bằng gói L-1 đưa baseline về 0 thay vì nới
+hook. (b) `eslint-config-expo` 57 nghiêm hơn "thời" SDK 54 (bộ rule react-hooks mới) — chấp nhận
+vì dev-only, nhưng lỗi purity/immutability có thể lạ mắt. (c) Hai lần suýt vấp file dùng chung
+(`package.json`) khi S-M chạy song song — thoát nhờ diff-check trước khi stage.
+
+**Session tiếp theo phải làm:**
+1. **Commit code S-M** (đang nằm chưa commit trong working tree — kiểm tra `npm run verify`
+   trước) rồi **test máy thật** (S-A giờ gồm: luồng S-M mới + U7/USDA).
+2. **L-1** — sửa 2 lint error tồn đọng (gói nhỏ ~15 phút, prompt có sẵn trong NEXT_SESSIONS).
+3. **Khởi động lại Claude Code** để nạp subagents + hooks mới (chỉ cần 1 lần).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

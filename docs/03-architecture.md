@@ -27,27 +27,40 @@ App được chia thành các lớp rõ ràng để bạn và AI luôn biết "c
 
 ---
 
-## 📁 Cấu trúc thư mục mã nguồn (sẽ tạo ở Phase 0)
+## 📁 Cấu trúc thư mục mã nguồn (cập nhật 2026-07-03 theo code thực tế)
 
 ```
 src/
-├── screens/            # Các màn hình (Home, History, Settings, Diary...)
-├── components/         # Khối tái sử dụng (BatteryCell, BatteryStack...)
-├── store/              # Zustand: energyStore, settingsStore...
+├── screens/            # Các màn hình (Home, History, Settings, Diary, Onboarding)
+├── components/         # Khối tái sử dụng (BatteryCell, MasterBattery, TrendChart...)
+├── navigation/         # Điều hướng tab (React Navigation)
+├── hooks/              # Hook React (useDrainTick, useLiveEnergyReading, useLowEnergyWatch)
+├── store/              # Zustand: energyStore, settingsStore
+├── types/              # Kiểu TypeScript dùng chung (battery, energy...)
 ├── domain/
 │   ├── battery/        # "Battery engine": tính mức pin, nạp, xả
+│   ├── energy/         # metabolismEngine (BMR/TDEE), energyBalanceEngine, profileValidation
+│   ├── food/           # foodNutrition, foodLogSummary (quy đổi món ăn → dinh dưỡng)
 │   ├── modes/          # Định nghĩa các Mode và ảnh hưởng
 │   └── rules/          # Quy tắc nhắc nhở/cảnh báo
 ├── data/
 │   ├── db/             # Khởi tạo SQLite, schema
-│   └── repositories/   # Đọc/ghi dữ liệu (batteryRepo, intakeRepo...)
+│   ├── food/           # Danh sách món ăn (CSV Việt + USDA generated) + loader
+│   └── repositories/   # Đọc/ghi dữ liệu (batteryRepo, intakeRepo, healthSignalsRepo...)
 ├── services/
 │   ├── notifications/  # Nhắc nhở, cảnh báo
+│   ├── background/     # Kiểm tra sang ngày mới (dailyResetCheck)
 │   ├── export/         # Xuất Excel
-│   ├── cleanup/        # Tự xoá dữ liệu > 1 tuần
-│   └── health/         # (sau) Tích hợp đồng hồ/health
-└── lib/                # Tiện ích chung (ngày tháng, mã hoá...)
+│   └── cleanup/        # Tự xoá dữ liệu > 1 tuần
+└── lib/                # Tiện ích chung (ngày tháng, mã hoá, metabolicConstants)
 ```
+
+**Ngoài `src/` (gốc repo):**
+- `scripts/` — script Node sinh dữ liệu món ăn (`gen:food`, `gen:usda`), chạy trước khi start.
+- `database/` — dữ liệu USDA: `raw/` (file gốc 6.4MB, KHÔNG commit) + `extract/` (CSV gọn, có commit).
+- `.ai/` — luật dự án, skills, agents, báo cáo song song. `.claude/` — cấu hình Claude Code
+  (native subagents + hooks lint tự động, xem `.ai/CONTEXT.md` mục 6).
+- `services/health/` chưa tồn tại — sẽ tạo khi tích hợp HealthKit/Health Connect (S-F v2).
 
 ---
 
@@ -97,6 +110,16 @@ Các "bảng" dữ liệu chính lưu trong SQLite. *Tên cột bằng tiếng A
 | `type` | text | steps / heart_rate / sleep / stress |
 | `value` | number | giá trị |
 
+### `food_log` — món ăn đã ghi trong ngày (Session 5+)
+| Cột | Kiểu | Ý nghĩa |
+|-----|------|---------|
+| `id` | text | mã |
+| `timestamp` | number | thời điểm ghi |
+| `meal_type` | text | bữa (sáng/trưa/tối/phụ) |
+| `food_id` / `food_name_vi` | text | món nào (id trong danh sách món + tên tiếng Việt) |
+| `grams` | number | lượng ăn (g) |
+| `energy_kcal`, `protein_g`, `fat_g`, `carb_g`, `water_g`, `minerals_mg` | number | dinh dưỡng đã quy đổi theo lượng |
+
 ### `diary_entries` — nhật ký riêng tư (mã hoá, write-only)
 | Cột | Kiểu | Ý nghĩa |
 |-----|------|---------|
@@ -132,8 +155,8 @@ UI cập nhật → viên pin Protein đầy lên
 
 | Tác vụ | Khi nào chạy | Việc làm |
 |--------|--------------|----------|
-| **Daily reset** | Đầu mỗi ngày | Nạp lại pin theo mục tiêu của Mode |
-| **Depletion tick** | Định kỳ trong ngày | Giảm pin theo thời gian + Mode |
+| **Daily reset** | Đầu mỗi ngày | Tạo pin ngày mới theo mục tiêu của Mode |
+| **Depletion tick** | Định kỳ trong ngày | Giảm các pin nhỏ theo thời gian + Mode. ⚠️ Từ gói S-M (2026-07-03), pin **Năng lượng** KHÔNG còn tự xả — nó đếm LÊN "đã ăn / mục tiêu ngày" |
 | **Low battery check** | Định kỳ | Nếu pin thấp → nhắc nhở |
 | **Weekly export** | Mỗi tuần | Xuất Excel ra điện thoại |
 | **Cleanup** | Sau export | Xoá dữ liệu cũ > 1 tuần khỏi app |

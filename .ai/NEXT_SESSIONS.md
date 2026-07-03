@@ -56,14 +56,14 @@
 | **S-C** | Nhắc nhở hàng ngày + ngưỡng cảnh báo thật (Phase 2) | ✅ XONG (code, chưa test máy) | logic-backend | ✅ | không |
 | **S-D** | Tự xả pin theo thời gian + reset hàng ngày (Phase 2) | ✅ XONG (code, chưa test máy) | logic-backend | ✅ | không |
 | **S-E** | Unit test cho domain logic | ✅ XONG | qa-reviewer | ✅ | không |
-| **S-F** | Bước chân: v1 đặt mức trung bình/ngày (placeholder) | 🆕 Sẵn sàng làm — xem thiết kế bên dưới | logic-backend | ✅ | không |
+| **S-F** | Bước chân: v1 đặt mức trung bình/ngày (placeholder) | ✅ XONG (code ~2026-06-19, commit 2026-07-03 — xem `.ai/parallel-reports/S-F.md`) | logic-backend | — | không |
 | **S-G** | Lớp thông minh dự báo (Phase 5) | ⏸ làm sau cùng | data-ml | ⏸ làm SAU CÙNG | cần ~1 tháng dữ liệu |
 | **S-H** | "Năng lượng tự xả" (metabolism) vào pin — Hướng B | ✅ v1 xong; Session 5 mở rộng thêm Food Log + pin xả mượt/giây | logic-backend + mobile-frontend | — | `docs/06-`, `docs/07-` |
 | **S-I** | Khung giờ bữa ăn sửa được trong Cài đặt | 🔁 Đã gộp vào **U6** (2026-06-18) — đừng chạy riêng, xem mục U6 | mobile-frontend | — | xem U6 |
 | **S-J** | Dọn dẹp tài liệu / gộp báo cáo Session 4+5 | ✅ XONG (2026-06-18, qua tư vấn Opus) | (không cần agent riêng) | ✅ luôn được, không đụng code | không |
 | **S-K** | Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h) | ⏸️ **TẠM DỪNG** (2026-06-18) — mô hình mới ở **S-M** không xả theo thời gian nữa, S-K mất ý nghĩa. Đừng mở gói này trước khi S-M chốt xong code. | logic-backend | — | xem S-M |
 | **S-L** | Ghi nhận cân nặng theo thời gian (tiền đề cho hiệu chỉnh cá nhân hoá thật) | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/S-L.md` | logic-backend | — | không |
-| **S-M** | 🆕 Lật pin Năng lượng sang "đã ăn / mục tiêu" (đếm lên) — đụng lõi | 🆕 Sẵn sàng làm — đã chốt với người dùng 2026-06-18, xem mục S-M bên dưới | logic-backend + mobile-frontend | ⚠️ Làm MỘT MÌNH 1 đợt — tạm hoãn U1/U6/S-K/S-F trong lúc làm | không |
+| **S-M** | Lật pin Năng lượng sang "đã ăn / mục tiêu" (đếm lên) — đụng lõi | ✅ XONG code (2026-07-03, phiên song song — xem `.ai/parallel-reports/S-M.md`); ⚠️ chưa test máy, kiểm tra đã commit chưa trước khi mở gói đụng các file S-M | logic-backend + mobile-frontend | — | không |
 | **U1** | Đợt UX: Pin tổng + con số năng lượng (hiển thị) | 🔁 **Đã gộp vào S-M** (2026-06-18) — đừng làm riêng, S-M viết đè toàn bộ hiển thị pin tổng | mobile-frontend | — | xem S-M |
 | **U2** | Đợt UX: Nạp & ghi món (modal/bàn phím/luồng) | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/U2.md` | mobile-frontend | — | không |
 | **U3** | Đợt UX: Lịch sử + biểu đồ | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/U3.md` | mobile-frontend | — | không |
@@ -72,6 +72,7 @@
 | **U6** | Đợt UX: Cài đặt (UX) + khung giờ bữa ăn (gộp S-I) | ✅ XONG (2026-06-19) — xem `.ai/parallel-reports/U6.md` | mobile-frontend | — | không |
 | **S-N** | Tích hợp dữ liệu dinh dưỡng USDA (FoodData Central) — pipeline offline, BỔ SUNG món Việt | ✅ XONG (2026-07-03) — xem `.ai/parallel-reports/S-N.md` | data-ml + logic-backend | ✅ | không |
 | **U7** | 🆕 UI tra cứu USDA trong ghi món + cơ chế dịch `name_vi` theo nhu cầu | 🆕 Sẵn sàng làm — nối tiếp S-N (đã có `USDA_FOODS`), xem mục U7 bên dưới | mobile-frontend (+ data-ml cho Phần B) | ✅ (Phần A chỉ `FoodLogModal.tsx`; Phần B chỉ script + CSV) | S-N (đã xong) |
+| **L-1** | 🆕 Sửa 2 lint error tồn đọng (đưa baseline ESLint về 0) | 🆕 Sẵn sàng làm — gói nhỏ ~15 phút, xem mục L-1 bên dưới | logic-backend | ✅ (chỉ 2 file, không gói nào khác đụng) | không |
 
 > **Cập nhật 2026-06-19:** U4, U5, U6 — **đã hoàn thành cả 3** (xem parallel-reports). S-A (test máy)
 > lúc nào cũng chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
@@ -669,6 +670,42 @@ searchUsdaFoods tìm cả theo nameVi. CHỈ sửa các file này — KHÔNG đ�
 FoodLogModal.tsx, energyStore.ts. Chạy `npm run gen:usda` + `npx tsc --noEmit` + `npx jest` + `npx
 expo export --platform ios` trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/U7.md (nối
 tiếp Phần A nếu đã có). Nói tiếng Việt, code tiếng Anh.
+```
+
+---
+
+## L-1 · Sửa 2 lint error tồn đọng (đưa baseline ESLint về 0)
+
+> Bối cảnh: từ 2026-07-03 dự án có ESLint (`npm run lint`) + hook tự lint file vừa sửa
+> (`.ai/scripts/lint-edited-file.js`, exit 2 khi file có error). Baseline hiện còn **2 error**
+> tồn đọng — chừng nào chưa sửa, bất kỳ phiên nào chạm vào 2 file này sẽ bị hook chặn dù thay
+> đổi vô can. Gói này dọn dứt điểm để hook chỉ còn bắt lỗi MỚI.
+
+**2 lỗi (ESLint bắt được):**
+1. `src/hooks/useDrainTick.ts:15` — `react-hooks/purity`: `useRef(Date.now())` gọi hàm không
+   thuần trong render. Gợi ý: `useRef<number | null>(null)` rồi gán `Date.now()` trong
+   `useEffect` lần đầu (hoặc lazy-init tương đương). GIỮ NGUYÊN hành vi tick hiện có.
+2. `src/screens/HistoryScreen.tsx:50` — `react-hooks/immutability`: `loadHistory()` được gọi
+   trong `useFocusEffect` TRƯỚC khi khai báo. Gợi ý: chuyển `loadHistory` thành `useCallback`
+   khai báo phía trên `useFocusEffect`.
+
+**File ĐƯỢC sửa:** `src/hooks/useDrainTick.ts`, `src/screens/HistoryScreen.tsx` (+ test liên
+quan nếu có). **KHÔNG đụng:** mọi file khác — đặc biệt các file gói S-M vừa sửa
+(`energyStore.ts`, `energyBalanceEngine.ts`, `useLiveEnergyReading.ts`, `MasterBattery.tsx`...).
+
+**Lưu ý:** 22 warning còn lại (biến thừa, import trùng...) KHÔNG bắt buộc trong gói này —
+sửa tiện tay CHỈ trong 2 file trên, đừng lan ra file khác.
+
+**Tiêu chí hoàn thành:** `npm run verify` xanh (tsc + lint 0 error + jest); hành vi app không
+đổi (drain tick vẫn chạy, màn Lịch sử vẫn load khi focus).
+
+**Prompt copy-paste:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md và .ai/NEXT_SESSIONS.md (gói L-1). Nhập vai agent
+logic-backend. Nhiệm vụ: sửa dứt điểm 2 lint error tồn đọng (useDrainTick.ts:15
+react-hooks/purity, HistoryScreen.tsx:50 react-hooks/immutability) để baseline ESLint về 0
+error. CHỈ sửa 2 file đó (+ test liên quan), KHÔNG đụng file nào khác, GIỮ NGUYÊN hành vi.
+Chạy `npm run verify` trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/L-1.md.
 ```
 
 ---

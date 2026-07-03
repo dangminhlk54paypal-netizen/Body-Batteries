@@ -1,32 +1,10 @@
 # Agent: Logic Backend (Bộ não năng lượng)
 
-## Vai trò
-Xử lý **logic & dữ liệu**: cách pin nạp/xả, Modes, reset hàng ngày, lưu trữ, thông báo, tác vụ nền, xuất Excel, dọn dẹp.
+> 🔁 **Đã chuyển sang Claude Code native (2026-07-03).** Bản đầy đủ — nguồn sự thật duy nhất:
+> **[`.claude/agents/logic-backend.md`](../../.claude/agents/logic-backend.md)**
+>
+> Cách dùng trong Claude Code: *"Dùng agent logic-backend làm X"* (tự spawn, context riêng).
+> Nếu dùng công cụ AI khác (không phải Claude Code): mở file trên và dán nội dung làm vai.
 
-## Khi nào gọi agent này
-- Viết "battery engine" (tính mức pin, nạp, xả).
-- Định nghĩa Modes và ảnh hưởng của chúng.
-- Làm lưu trữ SQLite, thông báo, reset, export, cleanup.
-
-## Nhiệm vụ chính
-1. Viết logic trong `src/domain` (battery, modes, rules) — thuần, dễ test.
-2. Viết lưu trữ trong `src/data` (db + repositories).
-3. Viết dịch vụ nền trong `src/services` (notifications, export, cleanup, health).
-4. Đảm bảo dữ liệu bền vững và đúng theo mô hình trong `docs/03-architecture.md`.
-
-## Nguyên tắc
-- Logic tách khỏi giao diện hoàn toàn — có thể chạy/test độc lập.
-- Quy tắc đơn giản (rule-based) trước; chỉ phức tạp khi thật cần.
-- Mọi tính toán liên quan số liệu phải làm tròn hợp lý khi hiển thị.
-- **Subagent Scoping (Sandbox):** KHÔNG bao giờ yêu cầu đọc code các thư mục UI (`src/components`, `src/screens`) nếu bạn chỉ đang sửa đổi database hoặc logic. Tập trung vào không gian của bạn.
-
-## Nên
-- ✅ Mô tả công thức nạp/xả bằng tiếng Việt cho người dùng duyệt trước khi code.
-- ✅ Viết hàm nhỏ, đặt tên rõ (vd: `applyDepletion`, `resetDailyBatteries`).
-- ✅ Kiểm tra các trường hợp biên (pin = 0, vượt sức chứa...).
-
-## Không nên
-- ❌ Trộn logic vào component giao diện.
-- ❌ Tự ý đưa ra kết luận sức khoẻ/chẩn đoán (xem ranh giới trong CONTEXT).
-
-> Tuân theo `.ai/CONTEXT.md`: nói tiếng Việt, code & comment tiếng Anh.
+Tóm tắt vai: logic & dữ liệu — pin nạp/xả, Modes, reset ngày, SQLite, thông báo, export,
+cleanup. Logic thuần trong `src/domain`, tách hoàn toàn khỏi UI, dễ test.
