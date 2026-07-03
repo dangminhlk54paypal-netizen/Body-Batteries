@@ -61,7 +61,7 @@
 | **S-H** | "Năng lượng tự xả" (metabolism) vào pin — Hướng B | ✅ v1 xong; Session 5 mở rộng thêm Food Log + pin xả mượt/giây | logic-backend + mobile-frontend | — | `docs/06-`, `docs/07-` |
 | **S-I** | Khung giờ bữa ăn sửa được trong Cài đặt | 🔁 Đã gộp vào **U6** (2026-06-18) — đừng chạy riêng, xem mục U6 | mobile-frontend | — | xem U6 |
 | **S-J** | Dọn dẹp tài liệu / gộp báo cáo Session 4+5 | ✅ XONG (2026-06-18, qua tư vấn Opus) | (không cần agent riêng) | ✅ luôn được, không đụng code | không |
-| **S-K** | Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h) | ⏸️ **TẠM DỪNG** (2026-06-18) — mô hình mới ở **S-M** không xả theo thời gian nữa, S-K mất ý nghĩa. Đừng mở gói này trước khi S-M chốt xong code. | logic-backend | — | xem S-M |
+| **S-K** | Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h) | ♻️ **HỒI SINH & GỘP vào S-O** (2026-07-04) — lõi kỹ thuật circadian nay là gói S-O. Đừng mở S-K riêng. | logic-backend | — | xem S-O |
 | **S-L** | Ghi nhận cân nặng theo thời gian (tiền đề cho hiệu chỉnh cá nhân hoá thật) | ✅ XONG (2026-06-18) — xem `.ai/parallel-reports/S-L.md` | logic-backend | — | không |
 | **S-M** | Lật pin Năng lượng sang "đã ăn / mục tiêu" (đếm lên) — đụng lõi | ✅ XONG code (2026-07-03, phiên song song — xem `.ai/parallel-reports/S-M.md`); ⚠️ chưa test máy, kiểm tra đã commit chưa trước khi mở gói đụng các file S-M | logic-backend + mobile-frontend | — | không |
 | **U1** | Đợt UX: Pin tổng + con số năng lượng (hiển thị) | 🔁 **Đã gộp vào S-M** (2026-06-18) — đừng làm riêng, S-M viết đè toàn bộ hiển thị pin tổng | mobile-frontend | — | xem S-M |
@@ -73,6 +73,9 @@
 | **S-N** | Tích hợp dữ liệu dinh dưỡng USDA (FoodData Central) — pipeline offline, BỔ SUNG món Việt | ✅ XONG (2026-07-03) — xem `.ai/parallel-reports/S-N.md` | data-ml + logic-backend | ✅ | không |
 | **U7** | 🆕 UI tra cứu USDA trong ghi món + cơ chế dịch `name_vi` theo nhu cầu | 🆕 Sẵn sàng làm — nối tiếp S-N (đã có `USDA_FOODS`), xem mục U7 bên dưới | mobile-frontend (+ data-ml cho Phần B) | ✅ (Phần A chỉ `FoodLogModal.tsx`; Phần B chỉ script + CSV) | S-N (đã xong) |
 | **L-1** | 🆕 Sửa 2 lint error tồn đọng (đưa baseline ESLint về 0) | 🆕 Sẵn sàng làm — gói nhỏ ~15 phút, xem mục L-1 bên dưới | logic-backend | ✅ (chỉ 2 file, không gói nào khác đụng) | không |
+| **S-O** | 🆕 Pin "no/đói" tụt dần theo nhịp sinh học (hồi sinh S-K) — engine thuần | 🆕 Sẵn sàng làm — xem spec `S-O-satiety-battery-spec.md` + mục S-O/S-P/S-Q bên dưới | logic-backend | ✅ với S-P (file rời) | không |
+| **S-P** | 🆕 Mục tiêu cân nặng → mục tiêu kcal/ngày có thâm hụt an toàn | 🆕 Sẵn sàng làm — xem spec + mục S-O/S-P/S-Q bên dưới | logic-backend | ✅ với S-O (file rời) | không |
+| **S-Q** | 🆕 Lắp ráp 2 đồng hồ (Pin no/đói + Sổ calo) + reset 6h + UI + nhắc nhẹ — ⚠️ đụng lõi | 🆕 Chờ S-O + S-P xong — xem spec + mục S-O/S-P/S-Q bên dưới | logic-backend + mobile-frontend | ⚠️ ĐƠN, sau S-O+S-P | S-O, S-P |
 
 > **Cập nhật 2026-06-19:** U4, U5, U6 — **đã hoàn thành cả 3** (xem parallel-reports). S-A (test máy)
 > lúc nào cũng chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
@@ -315,11 +318,15 @@ liệu thật. Hai hướng đã cân nhắc, người dùng sẽ chọn lại k
 
 ## S-K · Rải xả pin Năng lượng theo nhịp thức/ngủ (thay rải đều 24h)
 
-> ⏸️ **TẠM DỪNG (2026-06-18).** Sau khi viết gói này, người dùng chốt thêm quyết định **S-M**
-> (lật pin Năng lượng sang "đã ăn/mục tiêu", xem mục S-M bên dưới) — mô hình mới **không xả theo
-> thời gian nữa**, nên việc "rải xả không đều theo thức/ngủ" ở đây **mất ý nghĩa**. Giữ nguyên nội
-> dung gói dưới đây làm tài liệu tham khảo (có thể cần lại nếu S-M đổi ý), nhưng **đừng mở gói
-> này** cho tới khi có quyết định mới rõ ràng.
+> ♻️ **ĐÃ HỒI SINH & GỘP vào S-O (2026-07-04).** Ý tưởng "rải xả theo nhịp thức/ngủ" của gói này
+> nay là **lõi của gói S-O** (Pin no/đói tụt dần) trong bộ nâng cấp **S-O + S-P + S-Q** — xem
+> `.ai/parallel-reports/S-O-satiety-battery-spec.md` và mục **S-O/S-P/S-Q** ở cuối file này.
+> **Đừng mở S-K riêng nữa.** Phần kỹ thuật `passiveBurnKcalBetween` + hằng số circadian + bất biến
+> "tổng 24h = passiveDailyBurn" mô tả dưới đây vẫn đúng và được **tái dùng trực tiếp trong S-O**.
+>
+> _(Lịch sử: tạm dừng 2026-06-18 vì tưởng mâu thuẫn với S-M "không xả theo thời gian". 2026-07-04
+> người dùng chốt mô hình 2 đồng hồ: Sổ calo đếm lên (S-M) + Pin no/đói tụt dần (S-K hồi sinh) —
+> hai cái bổ sung nhau, không mâu thuẫn.)_
 
 **Quyết định đã chốt với người dùng (2026-06-18):** chọn khung thức/ngủ **cố định** (không
 đọc giờ ngủ thật từ pin "Ngủ" — đơn giản hơn, không phụ thuộc người dùng ghi ngủ đều đặn).
@@ -438,6 +445,13 @@ trước khi code.
 ---
 
 ## S-M · Lật pin Năng lượng sang "đã ăn / mục tiêu" (đếm lên) — ⚠️ đụng lõi
+
+> ✅ **XONG (2026-07-03) — xem `.ai/parallel-reports/S-M.md`.** ♻️ **2026-07-04: đổi vai.** Người
+> dùng chốt mô hình **2 đồng hồ** (bộ nâng cấp **S-O + S-P + S-Q**): engine S-M này **được GIỮ
+> LẠI** làm lớp **"Sổ calo hôm nay"** (đếm lên, nay reset **6h sáng** + mục tiêu từ cân nặng mong
+> muốn), còn **pin chính (headline) chuyển sang "Pin no/đói" tụt dần** (gói S-O). Không vứt bỏ
+> S-M — chỉ hạ nó xuống thành dòng phụ dưới pin no. Xem
+> `.ai/parallel-reports/S-O-satiety-battery-spec.md`.
 
 > ✅ **Hướng đã chốt với người dùng (2026-06-18).** Spec đầy đủ (định nghĩa số, hình UI, ảnh
 > hưởng dây chuyền) đã viết sẵn ở **`.ai/parallel-reports/S-M-energy-redesign-spec.md`** — đọc
@@ -946,7 +960,145 @@ ngày mới. Kết quả:
     đáng kể, app chỉ "tham khảo" không phải thiết bị đo chính xác y tế).
   - Phần dễ thấy nhất (nếu có): nếu người dùng đang mở app đúng lúc giao thừa, pin có thể tiếp
     tục tụt thêm vài phút trước khi "nhảy" lên đầy cho ngày mới, thay vì làm mới ngay tại 0h.
-  - **Đề xuất:** không cần gói riêng. Khi nào có session làm **S-K** (gói đó đã đổi `burnPassive`
-    sang nhận `fromMs`/`toMs` thay vì `elapsedHours`), tiện thể có thể chặn `toMs` lại ở mốc nửa
-    đêm cùng lúc — sửa miễn phí, không tốn thêm gói riêng. Nếu không ai đụng S-K trong thời gian
-    dài, có thể bỏ qua vì mức độ ảnh hưởng quá nhỏ.
+  - **Đề xuất:** không cần gói riêng. Khi nào có session làm **S-K/S-O** (đã đổi drain sang nhận
+    `fromMs`/`toMs` thay vì `elapsedHours`), tiện thể có thể chặn `toMs` lại ở mốc nửa đêm/6h cùng
+    lúc — sửa miễn phí. Nếu không ai đụng thời gian dài, bỏ qua vì ảnh hưởng quá nhỏ.
+
+---
+
+## 🔋 S-O + S-P + S-Q · Nâng cấp "2 đồng hồ": Pin no/đói tụt dần + Sổ calo ngày + Mục tiêu cân nặng
+
+> ✅ **Hướng đã chốt với người dùng (2026-07-04).** Spec đầy đủ (mô hình, công thức, cơ sở sinh
+> học đã websearch, hình UI, ranh giới sức khoẻ) ở **`.ai/parallel-reports/S-O-satiety-battery-spec.md`**
+> — **ĐỌC FILE ĐÓ TRƯỚC.** Mục này chỉ đóng gói/điều phối.
+>
+> **Bối cảnh 1 dòng:** app tách làm **2 thang đo**: (1) **Pin no/đói** (headline, %, TỤT DẦN theo
+> giờ + nhịp sinh học, ăn để nạp, sàn 15-20%) — hồi sinh ý tưởng S-K; (2) **Sổ calo hôm nay**
+> (đếm lên "đã ăn/mục tiêu", reset **6h sáng**, mục tiêu từ cân nặng mong muốn) — chính là engine
+> **S-M** đã xong, đổi vai thành dòng phụ. Hai cái bổ sung nhau.
+>
+> **Thứ tự bắt buộc:** Đợt 1 chạy **S-O ∥ S-P** (song song, file rời tuyệt đối). Đợt 2 chạy
+> **S-Q một mình** (cần satietyEngine của S-O + weightGoal của S-P). Sau đó **S-A** test máy.
+
+### S-O · Pin no/đói engine + nhịp xả sinh học (thuần) — agent `logic-backend`
+
+**Mục tiêu:** viết engine THUẦN cho pin no/đói: reserve kcal tụt theo nhịp thức/ngủ, ăn thì nạp,
+ánh xạ ra % có sàn. Bất biến quan trọng nhất: **tích phân xả đúng 24h = `passiveDailyBurn`**.
+
+**File ĐƯỢC tạo/sửa:**
+- TẠO `src/domain/energy/satietyEngine.ts` — hàm thuần: `circadianBurnKcal(profile, fromMs, toMs)`
+  (rải theo thức 6h-23h / ngủ ×0.85, tổng 24h = `passiveDailyBurn`), `chargeSatiety(reserve, kcal)`,
+  `drainSatiety(reserve, profile, fromMs, toMs)`, `satietyPercentage(reserve)` (sàn `SATIETY_FLOOR_PCT`).
+- TẠO `src/domain/energy/__tests__/satietyEngine.test.ts` — **test bất biến 24h** (bất kỳ giờ bắt
+  đầu nào, tổng xả 1 ngày tròn = `passiveDailyBurn`, sai số làm tròn), test sàn/trần, test thức>ngủ.
+- TẠO `src/types/satiety.ts` (nếu cần kiểu `SatietyState`).
+- SỬA `src/lib/metabolicConstants.ts` — thêm `CIRCADIAN_WINDOW = { wakeHour: 6, sleepHour: 23 }`,
+  `SLEEP_BURN_MULTIPLIER` (~0.85), `FULLNESS_CAPACITY_KCAL` (~900-1000), `SATIETY_FLOOR_PCT` (15-20).
+
+**KHÔNG đụng:** `energyStore.ts`, `MasterBattery.tsx`, `useLiveEnergyReading.ts`, `types/battery.ts`,
+`types/energy.ts` (của S-P), `weightGoalConstants.ts` (của S-P), `App.tsx`, mọi screen/component.
+Chỉ ĐỌC `metabolismEngine.ts` (`passiveBurnPerHour`/`passiveDailyBurn`), đừng sửa.
+
+**Xác nhận với người dùng trước khi code (spec mục 7):** `FULLNESS_CAPACITY_KCAL`, `SATIETY_FLOOR_PCT`,
+hệ số ngủ 0.85.
+
+**Prompt copy-paste — S-O:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-O-satiety-battery-spec.md (SPEC
+ĐẦY ĐỦ — ĐỌC TRƯỚC) và .ai/NEXT_SESSIONS.md (mục S-O). Nhập vai agent logic-backend. Nhiệm vụ:
+viết engine THUẦN cho pin no/đói (satietyEngine.ts): reserve kcal tụt theo nhịp thức/ngủ
+(circadianBurnKcal, thức 6-23h / ngủ ×0.85), ăn nạp reserve, ánh xạ % có sàn. CHỈ tạo:
+domain/energy/satietyEngine.ts (+test), types/satiety.ts; CHỈ sửa lib/metabolicConstants.ts (thêm
+hằng số circadian + fullness). KHÔNG đụng energyStore.ts, MasterBattery.tsx, useLiveEnergyReading.ts,
+types/battery.ts, types/energy.ts, App.tsx. Chỉ ĐỌC metabolismEngine.ts. Viết test BẤT BIẾN: tổng
+xả đúng 24h tròn (bất kỳ giờ bắt đầu) = passiveDailyBurn — tiêu chí quan trọng nhất. Xác nhận
+FULLNESS_CAPACITY_KCAL + SATIETY_FLOOR_PCT + hệ số ngủ với tôi trước khi code. Chạy tsc + jest +
+expo export trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/S-O.md.
+```
+
+### S-P · Mục tiêu cân nặng → mục tiêu kcal/ngày an toàn — agent `logic-backend`
+
+**Mục tiêu:** nhập cân nặng mong muốn → tính mục tiêu kcal/ngày có thâm hụt, **chặn cứng an toàn**
+(không dưới BMR, thâm hụt ≤ 20% & ≤ 750 kcal). Đây thành `capacity` của Sổ calo (S-Q lắp sau).
+
+**File ĐƯỢC tạo/sửa:**
+- TẠO `src/domain/energy/weightGoal.ts` (+ `__tests__`) — `dailyCalorieTarget(profile, goal)`:
+  maintenance = `passiveDailyBurn`, deficit = `7700 × Δkg / (goalWeeks×7)`, kẹp an toàn, floor BMR.
+- TẠO `src/lib/weightGoalConstants.ts` — `MAX_DEFICIT_PCT` (0.20), `MAX_DEFICIT_KCAL` (750),
+  giới hạn `goalWeeks`.
+- SỬA `src/types/energy.ts` — thêm `goalWeightKg?: number`, `goalWeeks?: number` vào `UserProfile`.
+- SỬA `src/domain/energy/profileValidation.ts` — validate goal (trong khoảng hợp lệ).
+- SỬA `src/components/BodyProfileCard.tsx` — thêm ô "Cân nặng mong muốn" (+ "trong bao lâu"), hiện
+  mục tiêu kcal/ngày tính ra + ghi chú nếu bị kẹp an toàn. Kèm "Chỉ để tham khảo."
+
+**KHÔNG đụng:** `metabolicConstants.ts` (của S-O — dùng file `weightGoalConstants.ts` riêng),
+`types/satiety.ts`, `satietyEngine.ts`, `energyStore.ts`, `SettingsScreen.tsx` (chỉ sửa component
+con `BodyProfileCard.tsx`), `App.tsx`, `MasterBattery.tsx`.
+
+**Xác nhận với người dùng trước khi code (spec mục 7):** ngưỡng an toàn (20%/750/không dưới BMR),
+có nhập "thời gian mong muốn" hay app tự chọn tốc độ an toàn.
+
+**Prompt copy-paste — S-P:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-O-satiety-battery-spec.md (SPEC
+ĐẦY ĐỦ — ĐỌC TRƯỚC, mục 1C) và .ai/NEXT_SESSIONS.md (mục S-P). Nhập vai agent logic-backend.
+Nhiệm vụ: tính mục tiêu kcal/ngày từ cân nặng mong muốn, CÓ CHẶN CỨNG AN TOÀN (không dưới BMR,
+thâm hụt ≤20% & ≤750 kcal). CHỈ tạo: domain/energy/weightGoal.ts (+test), lib/weightGoalConstants.ts;
+CHỈ sửa: types/energy.ts (thêm goalWeightKg/goalWeeks), domain/energy/profileValidation.ts,
+components/BodyProfileCard.tsx. KHÔNG đụng metabolicConstants.ts (đó là của S-O — dùng file hằng số
+riêng), satietyEngine.ts, energyStore.ts, SettingsScreen.tsx, App.tsx, MasterBattery.tsx. Tuân thủ
+ranh giới sức khoẻ CONTEXT mục 5: kẹp mục tiêu an toàn, không cổ vũ nhịn, kèm "chỉ tham khảo". Xác
+nhận ngưỡng an toàn với tôi trước khi code. Chạy tsc + jest + expo export trước khi báo xong. Ghi
+báo cáo vào .ai/parallel-reports/S-P.md.
+```
+
+### S-Q · Lắp ráp 2 đồng hồ + reset 6h + UI + nhắc nhẹ — ⚠️ ĐƠN, sau S-O+S-P — agents `logic-backend + mobile-frontend`
+
+**Mục tiêu:** ghép satietyEngine (S-O) + weightGoal (S-P) vào store + hook + UI. Pin chính hiển
+thị **pin no/đói** (từ reserve, tick mỗi giây/mỗi 20 phút), dòng phụ hiển thị **Sổ calo** (S-M giữ
+nguyên, đổi capacity sang mục tiêu S-P + reset 6h). Nhắc nhẹ khi pin no thấp lâu (không hù).
+
+**File ĐƯỢC sửa:**
+- `src/types/battery.ts` — thêm `satietyReserveKcal?: number` vào energy reading.
+- `src/store/energyStore.ts` — lưu/cập nhật reserve (charge khi ăn/log món, drain trong `tickDrain`
+  qua `drainSatiety`, trừ khi tập); Sổ calo dùng `energyDayString` (reset 6h) + capacity =
+  `dailyCalorieTarget`.
+- `src/lib/dateUtils.ts` — thêm `energyDayString(date, resetHour=6)` (**KHÔNG sửa** `todayString`).
+- `src/hooks/useLiveEnergyReading.ts` — trả cả `satietyPct` (tick sống) + Sổ calo.
+- `src/hooks/useDrainTick.ts` — gọi drain satiety định kỳ (đã có khung tick).
+- `src/hooks/useLowEnergyWatch.ts` — đổi thành nhắc NHẸ khi pin no thấp lâu (giữ chống spam).
+- `src/components/MasterBattery.tsx` + `LiveMasterBattery.tsx` — layout 2 đồng hồ (hình UI spec mục 2).
+- `src/services/notifications/notificationService.ts` (+`.web.ts`) — hàm nhắc nhẹ "nên ăn".
+- (Nếu cần) `App.tsx` — mốc kiểm tra sang "ngày năng lượng" theo 6h.
+
+**KHÔNG đụng:** `satietyEngine.ts`/`metabolicConstants.ts` (S-O — chỉ gọi), `weightGoal.ts`/
+`weightGoalConstants.ts`/`BodyProfileCard.tsx` (S-P — chỉ gọi), `FoodLogModal.tsx`, `settingsStore.ts`,
+`SettingsScreen.tsx`, `foodDatabase.ts`/`usdaFoods.ts`.
+
+**Xác nhận với người dùng trước khi code (spec mục 7):** hình UI 2 đồng hồ, reset 6h chỉ cho Sổ calo
+(spec đề xuất) hay toàn app — **test mốc 6h trên máy**.
+
+**Prompt copy-paste — S-Q:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-O-satiety-battery-spec.md (SPEC
+ĐẦY ĐỦ — ĐỌC TRƯỚC), .ai/parallel-reports/S-M.md (engine Sổ calo giữ lại) và .ai/NEXT_SESSIONS.md
+(mục S-Q). Nhập vai agent logic-backend + mobile-frontend. Điều kiện: S-O + S-P đã xong & commit.
+Nhiệm vụ: lắp 2 đồng hồ — pin chính = pin no/đói (từ satietyEngine, tick sống), dòng phụ = Sổ calo
+(engine S-M, capacity = dailyCalorieTarget của S-P, reset 6h qua energyDayString mới). Nhắc nhẹ khi
+pin no thấp lâu (không hù). CHỈ sửa: types/battery.ts, store/energyStore.ts, lib/dateUtils.ts (thêm
+energyDayString, KHÔNG sửa todayString), hooks/useLiveEnergyReading.ts + useDrainTick.ts +
+useLowEnergyWatch.ts, components/MasterBattery.tsx + LiveMasterBattery.tsx,
+services/notifications/notificationService.ts(+.web.ts), App.tsx nếu cần. KHÔNG sửa satietyEngine.ts,
+metabolicConstants.ts, weightGoal.ts, BodyProfileCard.tsx, FoodLogModal.tsx, settingsStore.ts,
+SettingsScreen.tsx (chỉ GỌI). Ranh giới sức khoẻ CONTEXT mục 5: pin sáng thấp có sàn = bình thường,
+không đỏ/hù. Xác nhận hình UI + mốc 6h với tôi, tốt nhất mở app cùng tôi, đợi duyệt trước khi code.
+Chạy tsc + jest + expo export trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/S-Q.md.
+```
+
+**Đụng file chéo (BẮT BUỘC đọc):**
+- **S-O ∥ S-P** an toàn: S-O đụng `metabolicConstants.ts` + file mới `satietyEngine.ts`/`types/satiety.ts`;
+  S-P đụng `weightGoalConstants.ts` (mới) + `types/energy.ts` + `weightGoal.ts` + `profileValidation.ts`
+  + `BodyProfileCard.tsx`. **Không trùng file nào.**
+- **S-Q ĐƠN:** đụng `energyStore.ts` + `MasterBattery.tsx` + nhiều hook → không chạy cùng bất kỳ gói
+  nào khác đụng các file này (giống S-M trước đây). Chờ S-O+S-P commit xong mới mở S-Q.
+- **U6/S-I** (nếu mở lại) đụng `energyStore.ts` → serialize với S-Q.

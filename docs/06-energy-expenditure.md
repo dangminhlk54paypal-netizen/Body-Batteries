@@ -106,3 +106,40 @@ chỉ là giá trị khởi tạo ban đầu; mỗi người dùng tự sửa đ
   - Cân nặng: 20–300 kg · Chiều cao: 50–250 cm · Tuổi: 1–120.
 - `BodyProfileCard.tsx` hiển thị khoảng hợp lệ ngay trên nhãn ô nhập, giải
   thích ngắn gọn ý nghĩa của BMR, và báo lỗi/thành công rõ ràng khi lưu.
+
+---
+
+## 6. Tiến hoá mô hình pin Năng lượng (mốc thời gian)
+
+Ý nghĩa pin tổng đã đổi qua 3 mốc — ghi lại để không nhầm khi đọc code cũ:
+
+1. **Hướng B (v1, Session 5):** pin = "còn lại", **đầu ngày đầy 100%**, trao đổi chất xả dần,
+   ăn nạp lại. Vấn đề: ăn dư bị clamp mất, không bao giờ thấy "vượt nhu cầu".
+2. **S-M (2026-07-03):** lật sang **"đã ăn / mục tiêu"**, đầu ngày **rỗng 0%**, đếm LÊN khi ăn;
+   pin KHÔNG tự xả theo thời gian; vận động cộng vào mục tiêu; ăn vượt → "ăn dư". Xem
+   `.ai/parallel-reports/S-M.md`.
+3. **S-O/S-P/S-Q — "2 đồng hồ" (chốt 2026-07-04, đang triển khai):** tách làm hai thang đo bổ
+   sung nhau (xem spec đầy đủ `.ai/parallel-reports/S-O-satiety-battery-spec.md`):
+
+### 6A. Pin no/đói (headline) — gói S-O (hồi sinh S-K)
+- Bình "dự trữ no" (kcal) → ánh xạ **%**, **tụt dần theo giờ** theo **nhịp sinh học** (thức
+  6h-23h đốt bình thường, ngủ ×**0.85** — ngủ đốt ít hơn ~10-15%, có cơ sở nghiên cứu).
+- Ăn → nạp reserve (bữa 600-900 kcal → ~90-95%); giữa bữa tụt (đói quay lại); tập → tụt thêm.
+- Có **sàn 15-20%** (không về 0 — cơ thể luôn có mỡ/cơ dự trữ). Sáng dậy thấp = **bình thường**,
+  chỉ nhắc **nhẹ** "nên ăn", KHÔNG hù/đỏ (ranh giới sức khoẻ — CONTEXT mục 5).
+- **Bất biến:** tích phân xả đúng 24h = `passiveDailyBurn(profile)` (không lệch khỏi TDEE).
+
+### 6B. Sổ calo hôm nay (dòng phụ) — engine S-M giữ lại
+- `đã ăn / mục tiêu` (kcal), **đếm lên, reset 6h sáng** (`energyDayString`, không phải nửa đêm).
+- Mục tiêu = **`dailyCalorieTarget`** từ cân nặng mong muốn (gói S-P), không còn = TDEE thô.
+
+### 6C. Mục tiêu cân nặng → kcal an toàn — gói S-P
+- `maintenance = passiveDailyBurn`; thâm hụt = `7700 × Δkg / (goalWeeks×7)` (1 kg mỡ ≈ 7700 kcal).
+- **Chặn cứng an toàn:** thâm hụt ≤ 20% & ≤ 750 kcal/ngày, mục tiêu **không bao giờ < BMR**.
+  Đặt mục tiêu quá đà → app tự kẹp về mức an toàn, nói nhẹ, không chê (CONTEXT mục 5).
+
+### Cơ sở sinh học (websearch 2026-07-04)
+- Ngủ đốt ~85-90% BMR; RMR đỉnh giữa trưa, thấp nhất đêm khuya.
+- TEF (hiệu ứng nhiệt thức ăn) ~10% năng lượng ngày; protein 20-30% > carb 5-15% > mỡ 0-5%
+  (v1 chưa mô hình riêng TEF — bản sau cho bữa nhiều protein "no lâu hơn").
+- 1 kg mỡ ≈ 7700 kcal. Tất cả là **ước lượng chung, không phải đo y tế**.

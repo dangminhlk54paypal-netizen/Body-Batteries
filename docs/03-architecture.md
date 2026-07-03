@@ -39,7 +39,7 @@ src/
 ├── types/              # Kiểu TypeScript dùng chung (battery, energy...)
 ├── domain/
 │   ├── battery/        # "Battery engine": tính mức pin, nạp, xả
-│   ├── energy/         # metabolismEngine (BMR/TDEE), energyBalanceEngine, profileValidation
+│   ├── energy/         # metabolismEngine (BMR/TDEE), energyBalanceEngine (sổ calo), satietyEngine (pin no/đói), weightGoal (mục tiêu kcal), profileValidation
 │   ├── food/           # foodNutrition, foodLogSummary (quy đổi món ăn → dinh dưỡng)
 │   ├── modes/          # Định nghĩa các Mode và ảnh hưởng
 │   └── rules/          # Quy tắc nhắc nhở/cảnh báo
@@ -156,7 +156,7 @@ UI cập nhật → viên pin Protein đầy lên
 | Tác vụ | Khi nào chạy | Việc làm |
 |--------|--------------|----------|
 | **Daily reset** | Đầu mỗi ngày | Tạo pin ngày mới theo mục tiêu của Mode |
-| **Depletion tick** | Định kỳ trong ngày | Giảm các pin nhỏ theo thời gian + Mode. ⚠️ Từ gói S-M (2026-07-03), pin **Năng lượng** KHÔNG còn tự xả — nó đếm LÊN "đã ăn / mục tiêu ngày" |
+| **Depletion tick** | Định kỳ trong ngày | Giảm các pin nhỏ theo thời gian + Mode. ⚠️ S-M (2026-07-03): "Sổ calo" đếm LÊN, không tự xả. ♻️ S-O/S-P/S-Q (2026-07-04, đang làm): **Pin no/đói** (headline) TỤT DẦN lại theo nhịp sinh học (thức/ngủ), có sàn 15-20%; **Sổ calo** (dòng phụ) đếm lên, **reset 6h sáng** |
 | **Low battery check** | Định kỳ | Nếu pin thấp → nhắc nhở |
 | **Weekly export** | Mỗi tuần | Xuất Excel ra điện thoại |
 | **Cleanup** | Sau export | Xoá dữ liệu cũ > 1 tuần khỏi app |
