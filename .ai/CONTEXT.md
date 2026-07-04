@@ -107,14 +107,20 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**🔋 CHỐT MỚI 2026-07-04 — nâng cấp "2 đồng hồ" (ưu tiên tính năng số 1 tiếp theo):** người dùng
-chốt mô hình pin mới, hoà giải S-M + S-K (không lật lại). Pin chính (headline) = **"Pin no/đói"**
-tụt dần theo nhịp sinh học, ăn để nạp, sàn 15-20% (hồi sinh S-K). Dòng phụ = **"Sổ calo hôm nay"**
-đếm lên, reset **6h sáng**, mục tiêu từ **cân nặng mong muốn có thâm hụt an toàn** (engine S-M giữ
-lại, đổi vai). Đóng thành 3 gói **S-O** (satiety engine, thuần) ∥ **S-P** (mục tiêu cân nặng) →
-rồi **S-Q** (lắp ráp, đơn). Spec đầy đủ: `.ai/parallel-reports/S-O-satiety-battery-spec.md`; đóng
-gói + prompt: `.ai/NEXT_SESSIONS.md` mục S-O/S-P/S-Q. **S-M** (đã xong code, chưa test máy) → hạ
-xuống thành lớp Sổ calo. **S-K** → hồi sinh & gộp vào S-O.
+**Cập nhật lần cuối: 2026-07-04 (Session 12).** Nâng cấp "2 đồng hồ" đã **XONG CODE và ĐÃ COMMIT**
+(`S-M`·`S-O`·`S-P`·`S-Q` — commit `136fd23`/`3efee07`/`139f10c`/`0aeb1c8`/`1476254`): pin chính
+(headline) = **"Pin no/đói"** tụt dần theo nhịp sinh học (sàn 20%, xả nhanh lúc thức 6h–23h chậm
+lúc ngủ), ăn để nạp; dòng phụ = **"Sổ calo hôm nay"** đếm lên, reset **6h sáng** (`energyDayString`
+— CHỈ áp cho sổ calo, mọi thứ khác vẫn theo nửa đêm `todayString`), mục tiêu tự tính từ **cân nặng
+mong muốn có thâm hụt/thặng dư an toàn** (kẹp min(20% duy trì, 750kcal), không dưới BMR). Chi tiết:
+`.ai/parallel-reports/S-M.md`, `S-O.md`, `S-P.md`, `S-Q.md`. **Chưa test máy thật.**
+
+**🆕 Cùng ngày, thêm gói S-R — dàn "pin vi chất" mới trên Home** (dẫn xuất từ nhật ký món, KHÔNG
+đổi DB/schema): nhóm "nạp cho đủ" (Chất xơ/Sắt/Canxi/Chất béo nổi bật + Kali/Magie/Kẽm ở "Xem
+thêm") và nhóm "giữ ngưỡng" (Natri/Đường, nhãn nhẹ khi vượt — không tô đỏ). Mốc theo giới/tuổi từ
+hồ sơ; xem lại được 7 ngày gần nhất (tận dụng `food_log` sẵn có, không bảng mới). Vitamin (A, B12,
+B9, C, D) **hoãn lại** — món Việt trong CSV chưa có dữ liệu vitamin thật. Chi tiết:
+`.ai/parallel-reports/S-R.md`. **Chưa test máy thật.**
 
 **Cập nhật lần cuối:** 2026-07-03 (Session 11 — nâng cấp quy trình: 5 native subagent trong
 `.claude/agents/`, hooks tự lint + nhắc wrapup, ESLint (`npm run verify` = tsc+lint+jest), gói

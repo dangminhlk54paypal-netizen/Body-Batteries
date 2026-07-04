@@ -92,6 +92,13 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > (`npm run gen:usda`, danh sách tra cứu `USDA_FOODS` BỔ SUNG món Việt); (c) **U7** — công tắc
 > "Tra cứu USDA (EN)" trong màn ghi món + dịch `name_vi` theo nhu cầu. Xem
 > `.ai/parallel-reports/S-N.md`, `U7.md`, `S-F.md`.
+>
+> **Nâng cấp lớn Session 11–12 (2026-07-03 → 07-04), CHƯA test máy:** pin Năng lượng đổi mô hình
+> — headline giờ là **"Pin no/đói"** tụt dần theo nhịp sinh học (sàn 20%), dòng phụ **"Sổ calo hôm
+> nay"** đếm lên reset **6h sáng**, mục tiêu tự tính từ cân nặng mong muốn (gói **S-M+S-O+S-P+S-Q**
+> — xem `.ai/parallel-reports/S-M.md`/`S-O.md`/`S-P.md`/`S-Q.md`). Cùng lúc thêm dàn **"pin vi
+> chất"** mới (Chất xơ/Sắt/Canxi/Chất béo/Kali/Magie/Kẽm/Natri/Đường) dẫn xuất từ nhật ký món,
+> KHÔNG đổi DB (gói **S-R** — xem `.ai/parallel-reports/S-R.md`).
 
 ---
 
@@ -135,16 +142,19 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 **Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | 🟡 Một phần | ⬜ Chưa bắt đầu
 
-> 🚨 **Việc đầu tiên của session tiếp theo:** Xem `.ai/NEXT_SESSIONS.md` (file DUY NHẤT cho mọi
-> gói) — đọc trước mục **S-M** (lật mô hình pin Năng lượng sang "đã ăn/mục tiêu", đã chốt với
-> người dùng 2026-06-18, đụng lõi, **CHƯA code**, đề nghị làm MỘT MÌNH 1 đợt). Sẵn sàng làm song
-> song ngay, không đụng ai: **S-A** (test máy, luôn ưu tiên), **U4/U5**. **S-K tạm dừng** (mâu
-> thuẫn với S-M), **U1 đã gộp vào S-M** — đừng mở riêng. **S-F/U6** chờ S-M xong rồi làm tuần tự.
+> 🚨 **Việc đầu tiên của session tiếp theo (cập nhật Session 12, 2026-07-04):** **S-A — test máy
+> thật** là ưu tiên số 1 hiện tại, vì code đã dồn khá nhiều đợt chưa hề chạy trên điện thoại: mô
+> hình "2 đồng hồ" (S-M/S-O/S-P/S-Q — đặc biệt xác nhận mốc reset Sổ calo lúc 6h sáng) và dàn
+> "pin vi chất" (S-R — xác nhận màu trung tính khi dưới/vượt mốc + chọn lại ngày cũ). Sau đó: nếu
+> muốn làm tiếp vitamin cho S-R thì cần một gói tra cứu dinh dưỡng thật cho món Việt trước (xem
+> `.ai/parallel-reports/S-R.md`). **L-1** (2 lint error tồn đọng) vẫn còn treo, gói nhỏ.
 >
 > 🟢 **(2026-06-18, Session 6)** Đã `git push` hết lên `origin/main` — không còn commit local nào
 > treo lại. U2, U3 (đợt UX) đã xong.
 >
-> 🟢 **(2026-06-18, Session 7)** **S-L** (ghi cân nặng theo thời gian) đã xong. Quyết định lớn
-> **S-M** đã chốt — xem trên.
+> 🟢 **(2026-06-18, Session 7)** **S-L** (ghi cân nặng theo thời gian) đã xong.
+>
+> 🟢 **(2026-07-04, Session 11–12)** **S-M/S-O/S-P/S-Q** (nâng cấp "2 đồng hồ") và **S-R** (pin
+> vi chất) đã xong code, commit xong — xem chi tiết ở khối "Nâng cấp lớn Session 11–12" trên.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

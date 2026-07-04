@@ -481,6 +481,51 @@ vì dev-only, nhưng lỗi purity/immutability có thể lạ mắt. (c) Hai l�
 
 ---
 
+## Session 12 — 2026-07-04 (nâng cấp "2 đồng hồ" hoàn tất + Pin vi chất S-R)
+
+**Làm gì:** Từ sau Session 11, các gói **S-M · S-O · S-P · S-Q** (nâng cấp "2 đồng hồ": pin
+no/đói tụt dần theo nhịp sinh học làm headline + Sổ calo hôm nay đếm lên, reset 6h sáng) đã được
+code và **commit tách gói** (`136fd23` S-M, `3efee07` S-O, `139f10c` S-P, `0aeb1c8` docs,
+`1476254` S-Q) — chưa có entry riêng ở đây, ghi gộp lại để log không bị hổng (chi tiết đầy đủ ở
+`.ai/parallel-reports/S-M.md`, `S-O.md`, `S-P.md`, `S-Q.md`). Tiếp đó, phiên này làm **S-R** — pin
+vi chất (micronutrient) dẫn xuất từ nhật ký món.
+
+**Kết quả:**
+- **S-M/S-O/S-P/S-Q (đã commit trước phiên này):** pin Năng lượng đổi vai thành pin "no/đói"
+  tụt dần (sàn 20%, xả theo nhịp thức 6h–23h/ngủ), Sổ calo hôm nay reset lúc 6h sáng thay vì nửa
+  đêm, mục tiêu kcal/ngày tự tính từ cân nặng mong muốn (thâm hụt/thặng dư an toàn, kẹp min(20%,
+  750kcal), không dưới BMR). Chưa test máy thật.
+- **S-R (làm trong phiên này):** dàn "pin vi chất" mới trên Home, tính từ nhật ký món (không đổi
+  DB/schema) — nhóm "nạp cho đủ" (Chất xơ/Sắt/Canxi/Chất béo nổi bật, Kali/Magie/Kẽm ở "Xem
+  thêm") + nhóm "giữ ngưỡng" (Natri/Đường, nhãn nhẹ "vượt ngưỡng gợi ý" khi vượt — không tô đỏ).
+  Mốc tham khảo theo giới/tuổi từ hồ sơ. Có xem lại 7 ngày gần nhất (tận dụng `food_log` đã lưu
+  sẵn qua `getFoodLogInRange`, không cần bảng mới). Quyết định kỹ thuật đáng chú ý: **không tái
+  dùng `BatteryCell.tsx`** cho các pin này vì nó tự tô đỏ/vàng khi % thấp — vi phạm ranh giới sức
+  khoẻ ("dưới mốc = còn trống, trung tính"); viết cell hiển thị riêng trong `MicroBatteryStack.tsx`
+  luôn giữ đúng 1 màu cố định. Vitamin (A, B12, B9, C, D) **hoãn lại** — món Việt trong CSV không
+  có dữ liệu vitamin thật, không muốn hiện số bịa. Chi tiết đầy đủ:
+  `.ai/parallel-reports/S-R.md`.
+- Verify xanh trước commit: `npx tsc --noEmit` sạch · `npx jest` **155 test PASS / 15 suite** ·
+  `npx expo export --platform ios` OK (1435 module).
+
+**Vấn đề gặp phải & Cách giải quyết:** spec S-R gốc đề xuất mốc cố định + không lịch sử + không
+đụng ngoài vài file — người dùng khi xác nhận lại muốn mở rộng thêm (mốc theo giới/tuổi, lịch sử
+7 ngày, cả vitamin). Đã kiểm tra thực tế trước khi đồng ý mở rộng: lịch sử 7 ngày khả thi *không*
+cần đổi schema (dữ liệu đã có sẵn trong retention 7 ngày) nên làm luôn; vitamin thì dữ liệu không
+tồn tại cho món Việt (chỉ có ở 363 nguyên liệu thô Mỹ trong USDA JSON) — đã trình bày rõ giới hạn
+này và người dùng đồng ý hoãn thay vì hiện số bịa.
+
+**Session tiếp theo phải làm:**
+1. **S-A (test máy thật)** — giờ tồn đọng cả 5 luồng mới chưa test: S-M/S-O/S-P/S-Q (2 đồng hồ,
+   đặc biệt mốc reset 6h) và S-R (pin vi chất, đặc biệt xác nhận màu không đỏ khi dưới mốc + chọn
+   lại ngày cũ đúng dữ liệu).
+2. **Vitamin cho món Việt** (nếu muốn làm tiếp S-R) — cần một gói tra cứu dinh dưỡng thật cho 73
+   món trong `food_items.csv` trước khi bật lại pin vitamin (không thể trích từ USDA JSON vì đó
+   là nguyên liệu Mỹ, không phải món Việt).
+3. **L-1** — vẫn còn treo từ Session 11 (2 lint error tồn đọng, gói nhỏ, prompt có sẵn).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
