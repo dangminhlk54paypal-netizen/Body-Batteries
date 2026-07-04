@@ -17,9 +17,11 @@ import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
+import { MicroBatteryStack } from '../components/MicroBatteryStack';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
+import { useMicroBatteryHistory } from '../hooks/useMicroBatteryHistory';
 import type { BatteryState, BatteryId } from '../types/battery';
 import type { BatteryType } from '../types/battery';
 import type { ModeId } from '../types/modes';
@@ -28,12 +30,13 @@ import { formatDisplayDate, todayString } from '../lib/dateUtils';
 
 export function HomeScreen() {
   const { readings, foodLog, isLoaded, loadToday, addIntake, removeFood } = useEnergyStore();
-  const { currentMode, setMode, notificationsEnabled } = useSettingsStore();
+  const { currentMode, setMode, notificationsEnabled, userProfile } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
   useLowEnergyWatch();
+  const microBattery = useMicroBatteryHistory(foodLog, userProfile);
 
   useEffect(() => {
     loadToday(currentMode);
@@ -129,6 +132,14 @@ export function HomeScreen() {
         {/* Sub-batteries */}
         <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp ⚡</Text>
         <BatteryStack batteries={batteryStates} onPressCell={handleCellPress} />
+
+        {/* Micronutrient batteries derived from today's (or a past 7-day) food log */}
+        <MicroBatteryStack
+          states={microBattery.states}
+          dates={microBattery.dates}
+          selectedDate={microBattery.selectedDate}
+          onSelectDate={microBattery.setSelectedDate}
+        />
 
         {/* Today's logged meals (grouped by meal + daily kcal total) */}
         <TodayMeals entries={foodLog} onDelete={handleDeleteFood} />

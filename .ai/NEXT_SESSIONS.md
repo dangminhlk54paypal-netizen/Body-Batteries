@@ -76,6 +76,7 @@
 | **S-O** | 🆕 Pin "no/đói" tụt dần theo nhịp sinh học (hồi sinh S-K) — engine thuần | 🆕 Sẵn sàng làm — xem spec `S-O-satiety-battery-spec.md` + mục S-O/S-P/S-Q bên dưới | logic-backend | ✅ với S-P (file rời) | không |
 | **S-P** | 🆕 Mục tiêu cân nặng → mục tiêu kcal/ngày có thâm hụt an toàn | 🆕 Sẵn sàng làm — xem spec + mục S-O/S-P/S-Q bên dưới | logic-backend | ✅ với S-O (file rời) | không |
 | **S-Q** | 🆕 Lắp ráp 2 đồng hồ (Pin no/đói + Sổ calo) + reset 6h + UI + nhắc nhẹ — ⚠️ đụng lõi | 🆕 Chờ S-O + S-P xong — xem spec + mục S-O/S-P/S-Q bên dưới | logic-backend + mobile-frontend | ⚠️ ĐƠN, sau S-O+S-P | S-O, S-P |
+| **S-R** | 🆕 Pin vi chất THẬT (Đạm/Xơ/Sắt/Canxi… + Muối/Đường) dẫn xuất từ nhật ký món, tận dụng dữ liệu USDA/CSV có sẵn | 🆕 ĐỀ XUẤT (chưa chốt) — xem spec `S-R-micronutrient-batteries-spec.md` + mục S-R bên dưới | logic-backend + mobile-frontend | ⚠️ sau S-Q (chỉ vì đụng Home) | S-Q (chỉ tránh đụng Home) |
 
 > **Cập nhật 2026-06-19:** U4, U5, U6 — **đã hoàn thành cả 3** (xem parallel-reports). S-A (test máy)
 > lúc nào cũng chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
@@ -1102,3 +1103,55 @@ Chạy tsc + jest + expo export trước khi báo xong. Ghi báo cáo vào .ai/p
 - **S-Q ĐƠN:** đụng `energyStore.ts` + `MasterBattery.tsx` + nhiều hook → không chạy cùng bất kỳ gói
   nào khác đụng các file này (giống S-M trước đây). Chờ S-O+S-P commit xong mới mở S-Q.
 - **U6/S-I** (nếu mở lại) đụng `energyStore.ts` → serialize với S-Q.
+
+---
+
+## S-R · Pin vi chất THẬT từ nhật ký món (tận dụng dữ liệu USDA/CSV) — agents `logic-backend + mobile-frontend`
+
+> 🆕 ĐỀ XUẤT 2026-07-04 — **chưa chốt với người dùng**. Spec ĐẦY ĐỦ (đọc TRƯỚC):
+> `.ai/parallel-reports/S-R-micronutrient-batteries-spec.md`. Ý tưởng: biến các "pin nhỏ" từ ý
+> niệm thành pin vi chất thật, nạp bằng dữ liệu dinh dưỡng per-100g đã có sẵn (không cần đổi DB).
+
+**Mục tiêu:** mỗi món đã ghi hôm nay → tra dinh dưỡng → cộng dồn → hiển thị dàn **pin vi chất**:
+nhóm "nạp cho đủ" (Đạm/Chất xơ/Sắt/Canxi/Kali/Magie/Kẽm) + nhóm "giữ trong ngưỡng" (Muối/Đường).
+Pin là **lớp dẫn xuất chỉ-hôm-nay**, reset theo ngày lịch — KHÔNG tạo reading DB mới, KHÔNG đổi schema.
+
+**File ĐƯỢC sửa (gần như toàn file MỚI):**
+- `src/types/nutrition.ts` (mới) — `MicronutrientId`, `NutrientTarget`, `MicroBatteryState`.
+- `src/lib/nutrientTargets.ts` (mới) — mốc tham khảo ngày + loại (`goal`/`limit`) + hiển thị (tên VI, đơn vị, màu, icon).
+- `src/domain/nutrition/microBatteryEngine.ts` (+ `__tests__/`, mới) — thuần: cộng dồn từ `FoodLogEntry[]`
+  qua hàm `lookup(foodId)`, xuất `MicroBatteryState[]` (goal `current/target`, limit `current/cap`+`over`).
+- `src/components/MicroBatteryStack.tsx` (mới) — render dàn pin (dùng lại hình BatteryCell), nhóm goal/limit + "Chỉ để tham khảo."
+- `src/screens/HomeScreen.tsx` — CHỈ chèn: đọc nhật ký món hôm nay + hàm tra DB → truyền vào engine → render stack.
+
+**KHÔNG đụng:** `energyStore.ts`, `satietyEngine.ts`, `weightGoal.ts`, `energyBalanceEngine.ts`,
+`MasterBattery.tsx`/`LiveMasterBattery.tsx`, `dateUtils.ts` (KHÔNG dùng `energyDayString` — vi chất
+theo ngày lịch), `types/battery.ts` (KHÔNG mở rộng `BatteryId`), DB schema/repositories,
+`foodDatabase.ts`, `FoodLogModal.tsx`, `settingsStore.ts`.
+
+**Xác nhận với người dùng trước khi code (spec mục 7):** danh sách pin nổi bật + trong "Xem thêm";
+mốc cố định v1 hay theo giới/tuổi; chỗ đặt trên Home; xác nhận v1 KHÔNG lưu lịch sử vi chất (không đụng DB).
+
+**Prompt copy-paste — S-R:**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-R-micronutrient-batteries-spec.md
+(SPEC ĐẦY ĐỦ — ĐỌC TRƯỚC) và .ai/NEXT_SESSIONS.md (mục S-R). Nhập vai agent logic-backend +
+mobile-frontend. Điều kiện: nên chạy SAU khi S-Q merge (chỉ để tránh đụng HomeScreen). Nhiệm vụ:
+làm pin vi chất DẪN XUẤT từ nhật ký món hôm nay — engine thuần microBatteryEngine.ts cộng dồn
+per-100g qua hàm lookup(foodId), 2 loại pin: "nạp cho đủ" (Đạm/Xơ/Sắt/Canxi/Kali/Magie/Kẽm) và
+"giữ trong ngưỡng" (Muối/Đường). CHỈ tạo/sửa: types/nutrition.ts (mới), lib/nutrientTargets.ts
+(mới), domain/nutrition/microBatteryEngine.ts + test (mới), components/MicroBatteryStack.tsx (mới),
+chèn đọc dữ liệu vào screens/HomeScreen.tsx. KHÔNG đụng energyStore.ts, satietyEngine.ts,
+weightGoal.ts, MasterBattery/LiveMasterBattery.tsx, dateUtils.ts, types/battery.ts (KHÔNG mở rộng
+BatteryId), DB/repositories, foodDatabase.ts, FoodLogModal.tsx, settingsStore.ts. Ranh giới sức
+khoẻ CONTEXT mục 5: goal dưới mốc = "còn trống" trung tính (không đỏ/không "thiếu chất"); limit
+vượt mốc = "vượt ngưỡng gợi ý" trung tính (không "xấu"). Mọi màn kèm "Chỉ để tham khảo." Xác nhận
+danh sách pin + chỗ đặt trên Home với tôi, tốt nhất mở app cùng tôi, đợi duyệt trước khi code. Chạy
+tsc + jest + expo export trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/S-R.md.
+```
+
+**Đụng file chéo (BẮT BUỘC đọc):**
+- Toàn bộ file mới, **chỉ chung `HomeScreen.tsx` với S-Q** → chạy S-R **sau khi S-Q merge**.
+- KHÔNG đụng lõi năng lượng/satiety → an toàn với mọi gói khác miễn không mở cùng lúc gói sửa Home.
+- Đây là bước 1 của hướng "chiều sâu dinh dưỡng"; "pin đa dạng" + "chất lượng bữa ăn 2 chiều"
+  (Nutri-Score/NOVA) là các gói nối tiếp SAU S-R (chưa đóng gói — xem bản phân tích 2026-07-04).
