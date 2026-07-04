@@ -524,6 +524,12 @@ này và người dùng đồng ý hoãn thay vì hiện số bịa.
    là nguyên liệu Mỹ, không phải món Việt).
 3. **L-1** — vẫn còn treo từ Session 11 (2 lint error tồn đọng, gói nhỏ, prompt có sẵn).
 
+> 🟡 **Đóng phiên 2026-07-04:** người dùng **chủ động dời việc test máy (S-A) sang một buổi
+> khác** — không phải bỏ dở/quên. Code của cả "2 đồng hồ" (S-M/S-O/S-P/S-Q) lẫn S-R đã commit +
+> push lên `origin/session-5-demo-ready` đầy đủ, verify xanh (`tsc`/`jest`/`expo export`), chỉ còn
+> thiếu bước cầm điện thoại lên xác nhận. Phiên sau bắt đầu thẳng vào S-A, không cần code gì thêm
+> trước đó.
+
 ---
 
 ## 📌 Hướng dẫn viết session log
