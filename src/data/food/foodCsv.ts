@@ -8,6 +8,10 @@ import type { FoodItem, Nutrition, ServingPreset } from '../../types/food';
 //   energy_kcal, water_g, protein_g, fat_g, carb_g, fiber_g, sugar_g,
 //   calcium_mg, iron_mg, sodium_mg, potassium_mg, magnesium_mg, zinc_mg,
 //   source, note
+//
+// An optional `name_de` column (German name, search-only) may also be
+// present anywhere in the header — looked up by name like every other
+// column, so a missing column (older CSVs / short rows) just yields ''.
 
 // Split one CSV line into fields, honoring double-quoted fields that may
 // contain commas (e.g. "White rice, cooked"). Doubled quotes ("") inside a
@@ -104,12 +108,15 @@ export function parseFoodCsv(raw: string): FoodItem[] {
       potassiumMg: num(at(c, 'potassium_mg')),
       magnesiumMg: num(at(c, 'magnesium_mg')),
       zincMg: num(at(c, 'zinc_mg')),
+      epaMg: num(at(c, 'epa_mg')),
+      dhaMg: num(at(c, 'dha_mg')),
     };
 
     items.push({
       id,
       nameVi: at(c, 'name_vi').trim(),
       nameEn: at(c, 'name_en').trim(),
+      nameDe: at(c, 'name_de').trim(),
       category: at(c, 'category').trim(),
       defaultServingG: num(at(c, 'default_serving_g')) || 100,
       servingPresets: parseServingPresets(at(c, 'serving_presets')),

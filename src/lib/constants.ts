@@ -110,6 +110,9 @@ export const FOOD_CATEGORY_LABELS: Record<string, string> = {
   fruit: 'Trái cây',
   fat_sugar: 'Dầu mỡ & đường',
   dish: 'Món chế biến',
+  drink: 'Đồ uống',
+  supplement: 'Thực phẩm chức năng',
+  snack: 'Bánh & ăn vặt',
 };
 
 export const LOW_BATTERY_THRESHOLD = 0.2; // 20% — trigger warning below this

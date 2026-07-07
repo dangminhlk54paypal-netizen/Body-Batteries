@@ -15,6 +15,10 @@
  * everything else stays blank. Re-running never loses a translation because
  * translations live in the cover file, not in the generated output.
  *
+ * German names (search-only — the user shops in German supermarkets) work
+ * the same way via database/usda_names_de.csv (id,name_de), left-joined
+ * into a `name_de` column appended to the output header.
+ *
  * Run by hand: `npm run gen:usda`. Not chained into `npm start` (USDA data
  * rarely changes; see database/README.md to add a newer bulk file).
  */
@@ -27,6 +31,7 @@ const extractDir = path.join(root, 'database', 'extract');
 const csvOutPath = path.join(extractDir, 'usda_foundation_foods.csv');
 const tsOutPath = path.join(root, 'src', 'data', 'food', 'usdaFoods.generated.ts');
 const namesViPath = path.join(root, 'database', 'usda_names_vi.csv');
+const namesDePath = path.join(root, 'database', 'usda_names_de.csv');
 
 // USDA nutrient.number -> app CSV column (all values are already per 100 g;
 // minerals are already in mg — no unit scaling needed). See
@@ -147,6 +152,23 @@ function loadNamesVi() {
   return map;
 }
 
+// Load database/usda_names_de.csv (id,name_de) the same way as
+// loadNamesVi() above — a separate cover file for German (search-only)
+// names. Missing file is not an error — just an empty map.
+function loadNamesDe() {
+  if (!fs.existsSync(namesDePath)) return {};
+  const lines = fs
+    .readFileSync(namesDePath, 'utf8')
+    .split(/\r?\n/)
+    .filter((l) => l.trim().length > 0);
+  const map = {};
+  for (let i = 1; i < lines.length; i++) {
+    const [id, nameDe] = splitCsvLine(lines[i]);
+    if (id && id.trim()) map[id.trim()] = (nameDe || '').trim();
+  }
+  return map;
+}
+
 function nutrientMapFor(food) {
   const byNumber = {};
   for (const n of food.foodNutrients) {
@@ -157,7 +179,7 @@ function nutrientMapFor(food) {
   return byNumber;
 }
 
-function buildRow(food, namesVi) {
+function buildRow(food, namesVi, namesDe) {
   const byNumber = nutrientMapFor(food);
 
   const values = {};
@@ -204,6 +226,7 @@ function buildRow(food, namesVi) {
     values.zinc_mg,
     'USDA-FDC',
     note,
+    namesDe[id] || '', // name_de — filled via left-join with database/usda_names_de.csv, else blank
   ];
 
   return { line: row.map(csvField).join(','), kcalComputed };
@@ -214,18 +237,21 @@ function main() {
   const raw = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
   const foods = (raw.FoundationFoods || []).filter(Boolean);
   const namesVi = loadNamesVi();
+  const namesDe = loadNamesDe();
 
   const header =
-    'id,name_vi,name_en,category,default_serving_g,serving_presets,energy_kcal,water_g,protein_g,fat_g,carb_g,fiber_g,sugar_g,calcium_mg,iron_mg,sodium_mg,potassium_mg,magnesium_mg,zinc_mg,source,note';
+    'id,name_vi,name_en,category,default_serving_g,serving_presets,energy_kcal,water_g,protein_g,fat_g,carb_g,fiber_g,sugar_g,calcium_mg,iron_mg,sodium_mg,potassium_mg,magnesium_mg,zinc_mg,source,note,name_de';
   const lines = [header];
   let kcalComputedCount = 0;
   let translatedCount = 0;
+  let translatedDeCount = 0;
 
   for (const food of foods) {
-    const { line, kcalComputed } = buildRow(food, namesVi);
+    const { line, kcalComputed } = buildRow(food, namesVi, namesDe);
     lines.push(line);
     if (kcalComputed) kcalComputedCount++;
     if (namesVi[`usda_${food.fdcId}`]) translatedCount++;
+    if (namesDe[`usda_${food.fdcId}`]) translatedDeCount++;
   }
 
   const csv = lines.join('\n') + '\n';
@@ -246,7 +272,7 @@ export const USDA_FOOD_CSV_RAW = \`${escaped}\`;
   fs.writeFileSync(tsOutPath, out, 'utf8');
 
   console.log(
-    `gen:usda → ${path.relative(root, csvOutPath)} + ${path.relative(root, tsOutPath)} (${foods.length} food rows, ${kcalComputedCount} kcal computed, ${translatedCount} name_vi translated)`
+    `gen:usda → ${path.relative(root, csvOutPath)} + ${path.relative(root, tsOutPath)} (${foods.length} food rows, ${kcalComputedCount} kcal computed, ${translatedCount} name_vi translated, ${translatedDeCount} name_de translated)`
   );
 }
 

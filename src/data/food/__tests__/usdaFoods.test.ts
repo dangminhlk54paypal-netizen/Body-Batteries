@@ -1,4 +1,5 @@
 import { USDA_FOODS, getUsdaFoodById, searchUsdaFoods } from '../usdaFoods';
+import { FOOD_ITEMS } from '../foodDatabase';
 
 // Smoke test over the USDA FoodData Central bulk pipeline
 // (database/raw/*.json -> scripts/generate-usda-db.js -> usdaFoods.generated.ts).
@@ -44,19 +45,33 @@ describe('USDA foods database (generated CSV)', () => {
     expect(hummus!.nameVi).toBe('Hummus (đậu gà nghiền)');
   });
 
-  it('leaves name_vi blank for foods not listed in usda_names_vi.csv', () => {
-    const beans = getUsdaFoodById('usda_747430');
-    expect(beans!.nameVi).toBe('');
-  });
-
   it('search also matches by the translated Vietnamese name', () => {
     expect(searchUsdaFoods('đậu gà').some((f) => f.id === 'usda_321358')).toBe(true);
   });
 
+  it('has a non-empty name_vi for every one of the 363 rows (full cover file)', () => {
+    // database/usda_names_vi.csv now translates all 363 ids (see
+    // scripts/generate-usda-db.js's left-join) — no row should be blank.
+    for (const f of USDA_FOODS) {
+      expect(f.nameVi.trim().length).toBeGreaterThan(0);
+    }
+  });
+
   it('does not mix into the Vietnamese food_items.csv database', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { FOOD_ITEMS } = require('../foodDatabase');
-    const overlap = FOOD_ITEMS.filter((f: { id: string }) => f.id.startsWith('usda_'));
+    const overlap = FOOD_ITEMS.filter((f) => f.id.startsWith('usda_'));
     expect(overlap.length).toBe(0);
+  });
+
+  it('fills name_de from database/usda_names_de.csv via build-time left-join', () => {
+    const hummus = getUsdaFoodById('usda_321358');
+    expect(hummus!.nameDe).toBe('Hummus');
+  });
+
+  it('has a non-empty name_de for every one of the 363 rows (full cover file)', () => {
+    // database/usda_names_de.csv now translates all 363 ids (see
+    // scripts/generate-usda-db.js's left-join) — no row should be blank.
+    for (const f of USDA_FOODS) {
+      expect((f.nameDe ?? '').trim().length).toBeGreaterThan(0);
+    }
   });
 });

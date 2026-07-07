@@ -1,0 +1,364 @@
+id,name_de
+usda_321358,Hummus
+usda_321360,Cherrytomaten (roh)
+usda_321611,"Grüne Bohnen (Dose, abgetropft)"
+usda_323121,"Frankfurter Würstchen (Rind, roh)"
+usda_323294,"Mandeln (trocken geröstet, gesalzen)"
+usda_323505,Grünkohl (roh)
+usda_323604,"Vollei (gefroren, pasteurisiert)"
+usda_323697,"Eiweiß (gefroren, pasteurisiert)"
+usda_323793,Eiweißpulver (getrocknet)
+usda_324317,"Zwiebelringe (paniert, tiefgekühlt)"
+usda_324653,Gewürzgurken (Dill)
+usda_325036,Parmesan (gerieben)
+usda_325198,Schmelzkäse (American Cheese)
+usda_325287,Grapefruitsaft (ungesüßt)
+usda_325430,Pfirsiche (roh)
+usda_325524,"Sonnenblumenkerne (geröstet, gesalzen)"
+usda_326196,"Grünkohl (tiefgekühlt, gekocht)"
+usda_326698,Senf (mittelscharf)
+usda_327046,"Kiwi (grün, roh)"
+usda_327357,Nektarinen (roh)
+usda_328637,Cheddar-Käse
+usda_328841,"Hüttenkäse (fettarm, 2%)"
+usda_329370,Mozzarella (teilentrahmt)
+usda_329490,Volleipulver
+usda_329596,"Eigelb (gefroren, pasteurisiert)"
+usda_329716,Eigelbpulver
+usda_330137,"Griechischer Joghurt (0%, natur)"
+usda_330415,"Griechischer Joghurt (Erdbeere, 0%)"
+usda_330458,Kokosöl
+usda_331897,"Hähnchenunterschenkel (gegart, ohne Knochen)"
+usda_331960,"Hähnchenbrust (gegart, ohne Haut)"
+usda_332282,"Pasta-Sauce (Tomate, fertig)"
+usda_332397,Kochschinken (aufgeschnitten)
+usda_332791,Oliven grün (gefüllt mit Paprika)
+usda_333008,"Haferkekse (weich, mit Rosinen)"
+usda_333281,"Tomaten (Dose, gewürfelt)"
+usda_333374,Schellfisch (roh)
+usda_333476,Seelachs (roh)
+usda_334194,"Thunfisch (Dose, in Wasser, abgetropft)"
+usda_334536,"Gebratener Reis (chinesisch, ohne Fleisch)"
+usda_334628,Tamale (Schwein)
+usda_334720,Pupusas (mit Bohnen)
+usda_746758,"Rinderfilet (gebraten, mager)"
+usda_746759,"Roastbeef-Steak (roh, mager)"
+usda_746760,"Rinderrolle (roh, mager)"
+usda_746761,"Oberschale vom Rind (roh, mager)"
+usda_746762,"Porterhouse-Steak (roh, mager)"
+usda_746763,"T-Bone-Steak (gegrillt, mager)"
+usda_746764,Karotten (tiefgekühlt)
+usda_746765,Queso Seco (trockener Weißkäse)
+usda_746766,Ricotta (Vollmilch)
+usda_746767,Schweizer Käse (Emmentaler)
+usda_746768,Feigen (getrocknet)
+usda_746769,Römersalat (roh)
+usda_746770,Cantaloupe-Melone (roh)
+usda_746771,Navelorangen (roh)
+usda_746772,"Milch (1% Fett, angereichert)"
+usda_746773,Birnen Bartlett (roh)
+usda_746774,Süß-Sauer-Schweinefleisch (chinesisch)
+usda_746775,Speisesalz (jodiert)
+usda_746776,Magermilch (angereichert)
+usda_746777,Salsa-Sauce (fertig)
+usda_746778,"Milch (2% Fett, angereichert)"
+usda_746779,"Frühstückswurst (Rind, vorgegart)"
+usda_746780,"Italienische Bratwurst (Schwein, mild)"
+usda_746781,"Chorizo (Schwein, gebraten)"
+usda_746782,"Vollmilch (3,25% Fett)"
+usda_746783,"Frühstückswürstchen (Pute, roh)"
+usda_746784,Zucker (kristallin)
+usda_746785,"Putenhack (mager, gebraten)"
+usda_746952,"Schinken (aufgeschnitten, Restaurant)"
+usda_747429,American Cheese (Restaurant)
+usda_747430,Bohnen mittelrot (getrocknet)
+usda_747431,Bohnen rot (getrocknet)
+usda_747432,Flor-de-Mayo-Bohnen (getrocknet)
+usda_747433,Bohnen braun (getrocknet)
+usda_747434,Bohnen hellbraun (getrocknet)
+usda_747435,Bohnen hell (getrocknet)
+usda_747436,Carioca-Bohnen (getrocknet)
+usda_747437,Wachtelbohnen (getrocknet)
+usda_747438,Kidneybohnen hell (getrocknet)
+usda_747439,Bohnen rosa (getrocknet)
+usda_747440,Kidneybohnen dunkel (getrocknet)
+usda_747441,Weiße Bohnen (getrocknet)
+usda_747442,Weiße Bohnen klein (getrocknet)
+usda_747443,Bohnen klein rot (getrocknet)
+usda_747444,Schwarze Bohnen (getrocknet)
+usda_747445,Pinto-Bohnen (getrocknet)
+usda_747446,Great-Northern-Bohnen (getrocknet)
+usda_747447,Brokkoli (roh)
+usda_747693,Ketchup
+usda_747997,Eiweiß (Größe L)
+usda_748236,Eigelb (Größe L)
+usda_748278,Rapsöl
+usda_748323,Maiskeimöl
+usda_748366,Sojaöl
+usda_748608,Olivenöl (extra vergine)
+usda_748967,Vollei (Größe L)
+usda_749420,"Bacon (gebraten, Restaurant)"
+usda_789828,Butter (ungesalzen)
+usda_789890,Weizenmehl Type 405 (angereichert)
+usda_789951,"Weizenmehl (ungebleicht, angereichert)"
+usda_790018,Weizenmehl (ungebleicht)
+usda_790085,Vollkorn-Weizenmehl
+usda_790146,Weizenmehl Type 550 (Brotmehl)
+usda_790214,Reismehl (weiß)
+usda_790276,"Maismehl (gelb, fein)"
+usda_790508,Butter (gesalzen)
+usda_790577,Rote Zwiebeln (roh)
+usda_790646,Gelbe Zwiebeln (roh)
+usda_1104647,Knoblauch (roh)
+usda_1104705,Sojamehl (entfettet)
+usda_1104766,Sojamehl (vollfett)
+usda_1104812,Reismehl (braun)
+usda_1104867,Klebreismehl
+usda_1104913,Feinmehl (Backmehl)
+usda_1104962,Weiße Zwiebeln (roh)
+usda_1105073,Bananen (überreif)
+usda_1105314,Bananen (reif)
+usda_1750339,Äpfel Red Delicious (mit Schale)
+usda_1750340,Äpfel Fuji (mit Schale)
+usda_1750341,Äpfel Gala (mit Schale)
+usda_1750342,Äpfel Granny Smith (mit Schale)
+usda_1750343,Äpfel Honeycrisp (mit Schale)
+usda_1750348,Erdnussöl
+usda_1750349,Sonnenblumenöl
+usda_1750350,Distelöl
+usda_1750351,Olivenöl (mild/extra light)
+usda_1999626,Igelstachelbart-Pilz
+usda_1999627,Austernpilz
+usda_1999628,Shiitake-Pilze
+usda_1999629,Champignons weiß
+usda_1999630,"Sojamilch (ungesüßt, haltbar)"
+usda_1999631,"Mandelmilch (ungesüßt, haltbar)"
+usda_1999632,Baby-Spinat
+usda_1999633,Spinat (ausgewachsen)
+usda_1999634,Roma-Tomate
+usda_2003586,Mehl Type 00
+usda_2003587,Dinkelvollkornmehl
+usda_2003588,Hartweizengrieß (grob)
+usda_2003589,Hartweizengrieß (fein)
+usda_2003590,"Apfelsaft (aus Konzentrat, mit Vitamin C)"
+usda_2003591,"Orangensaft (ohne Fruchtfleisch, gekühlt)"
+usda_2003592,Traubensaft rot (mit Vitamin C)
+usda_2003593,Traubensaft weiß (mit Vitamin C)
+usda_2003594,Cranberrysaft (aus Konzentrat)
+usda_2003595,Grapefruitsaft rot (gekühlt)
+usda_2003596,Tomatensaft (mit Zutaten)
+usda_2003597,"Orangensaft (frisch gepresst, gekühlt)"
+usda_2003598,Portobello-Pilz
+usda_2003599,Kräuterseitling
+usda_2003600,Enoki-Pilz
+usda_2003601,Braune Champignons (Crimini)
+usda_2003602,Maitake-Pilz
+usda_2003603,Buchenpilz (Shimeji)
+usda_2003604,Pioppini-Pilz
+usda_2257044,"Sojamilch (gesüßt, gekühlt)"
+usda_2257045,"Mandelmilch (ungesüßt, gekühlt)"
+usda_2257046,"Hafermilch (ungesüßt, gekühlt)"
+usda_2258586,"Karotten (ausgewachsen, roh)"
+usda_2258587,Baby-Karotten (roh)
+usda_2258588,Paprika grün (roh)
+usda_2258589,Paprika gelb (roh)
+usda_2258590,Paprika rot (roh)
+usda_2258591,Paprika orange (roh)
+usda_2259792,Buttermilch (fettarm)
+usda_2259793,"Joghurt (natur, Vollmilch)"
+usda_2259794,"Griechischer Joghurt (natur, Vollmilch)"
+usda_2259795,"Parmesan (gerieben, gekühlt)"
+usda_2259796,"Feta (Vollmilch, gekrümelt)"
+usda_2261420,Mandelmehl
+usda_2261421,Hafermehl (Vollkorn)
+usda_2261422,Kartoffelmehl
+usda_2262072,Erdnussbutter (cremig)
+usda_2262073,Sesambutter / Tahin (cremig)
+usda_2262074,Mandelbutter (cremig)
+usda_2262075,Leinsamen (gemahlen)
+usda_2346384,Hüttenkäse (vollfett)
+usda_2346385,"Frischkäse (vollfett, Block)"
+usda_2346386,Schlagsahne
+usda_2346387,Saure Sahne (vollfett)
+usda_2346388,Eisbergsalat (roh)
+usda_2346389,Römersalat grün (roh)
+usda_2346390,Blattsalat rot (roh)
+usda_2346391,Blattsalat grün (roh)
+usda_2346392,Pinienkerne (roh)
+usda_2346393,"Mandeln (ganz, roh)"
+usda_2346394,"Walnüsse (Hälften, roh)"
+usda_2346395,"Pekannüsse (Hälften, roh)"
+usda_2346396,Haferflocken (kernig)
+usda_2346397,Haferflocken (Stahlschnitt)
+usda_2346398,Ananas (roh)
+usda_2346399,"Süßkirschen (dunkelrot, roh)"
+usda_2346400,Grüne Bohnen (roh)
+usda_2346401,Kartoffeln mehligkochend (geschält)
+usda_2346402,Kartoffeln rot (geschält)
+usda_2346403,Kartoffeln festkochend (geschält)
+usda_2346404,Süßkartoffeln (geschält)
+usda_2346405,Staudensellerie (roh)
+usda_2346406,"Gurke (mit Schale, roh)"
+usda_2346407,Weißkohl (roh)
+usda_2346408,Rotkohl (roh)
+usda_2346409,Erdbeeren (roh)
+usda_2346410,Himbeeren (roh)
+usda_2346411,Blaubeeren (roh)
+usda_2346412,Weintrauben rot (kernlos)
+usda_2346413,Weintrauben grün (kernlos)
+usda_2346414,Apfelmus (ungesüßt)
+usda_2512371,Amaranthmehl
+usda_2512372,Quinoamehl
+usda_2512373,Sorghummehl
+usda_2512374,Buchweizenmehl
+usda_2512375,Roggenmehl
+usda_2512376,Gerstenmehl
+usda_2512377,Maniokmehl
+usda_2512378,Buchweizen (Vollkorn)
+usda_2512379,Hirse (Vollkorn)
+usda_2512380,"Reis braun (Langkorn, roh)"
+usda_2512381,"Reis weiß (Langkorn, roh)"
+usda_2514743,"Rinderhack (90% mager, roh)"
+usda_2514744,"Rinderhack (80% mager, roh)"
+usda_2514745,Schweinehack (roh)
+usda_2514746,Hähnchenhack (roh)
+usda_2514747,"Putenhack (93% mager, roh)"
+usda_2515373,Paranüsse (roh)
+usda_2515374,Cashewkerne (roh)
+usda_2515375,Haselnüsse (roh)
+usda_2515376,Erdnüsse (roh)
+usda_2515377,Kastanienmehl
+usda_2515378,Macadamianüsse (roh)
+usda_2515379,Pistazien (roh)
+usda_2515380,Kürbiskerne (roh)
+usda_2515381,Sonnenblumenkerne (roh)
+usda_2515382,Kokosmehl
+usda_2644281,Cannellini-Bohnen (getrocknet)
+usda_2644282,Kichererbsen (getrocknet)
+usda_2644283,Linsen (getrocknet)
+usda_2644284,Schwarzaugenbohnen (getrocknet)
+usda_2644285,"Schwarze Bohnen (Dose, abgetropft)"
+usda_2644286,"Weiße Bohnen (Dose, abgetropft)"
+usda_2644287,"Cannellini-Bohnen (Dose, abgetropft)"
+usda_2644288,"Kichererbsen (Dose, abgetropft)"
+usda_2644289,"Kidneybohnen dunkelrot (Dose, abgetropft)"
+usda_2644290,"Kidneybohnen hellrot (Dose, abgetropft)"
+usda_2644291,"Erbsen grün (Dose, abgetropft)"
+usda_2644292,"Pinto-Bohnen (Dose, abgetropft)"
+usda_2644293,"Schwarzaugenbohnen (Dose, abgetropft)"
+usda_2644294,"Great-Northern-Bohnen (Dose, abgetropft)"
+usda_2646168,"Schweinelende (ohne Knochen, roh)"
+usda_2646169,"Schweinefilet (ohne Knochen, roh)"
+usda_2646170,"Hähnchenbrust (ohne Haut/Knochen, roh)"
+usda_2646171,"Hähnchenschenkel (ohne Haut/Knochen, roh)"
+usda_2646172,"Rib-Eye-Steak (ohne Knochen, roh)"
+usda_2646173,"Oberschale vom Rind (ohne Knochen, roh)"
+usda_2646174,"Rinderschulterbraten (ohne Knochen, roh)"
+usda_2646175,"Flanksteak (ohne Knochen, roh)"
+usda_2647437,"Joghurt (natur, fettfrei)"
+usda_2647438,Monterey-Jack-Käse
+usda_2647439,"Scheibenkäse (American, einzeln verpackt)"
+usda_2647440,Provolone (in Scheiben)
+usda_2647441,Oaxaca-Käse
+usda_2647442,Queso Fresco
+usda_2647443,Cotija-Käse
+usda_2684440,"Rotlachs (wild, roh)"
+usda_2684441,"Atlantiklachs (Zucht, roh)"
+usda_2684442,"Tilapia (Zucht, roh)"
+usda_2684443,"Garnelen (Zucht, roh)"
+usda_2684444,"Kabeljau (wild, roh)"
+usda_2684445,"Wels / Pangasius (Zucht, roh)"
+usda_2684446,"Krabbenfleisch (pasteurisiert, gekühlt)"
+usda_2685568,"Zucchini (mit Schale, roh)"
+usda_2685569,"Gelber Sommerkürbis (mit Schale, roh)"
+usda_2685570,Butternut-Kürbis (roh)
+usda_2685571,Eichelkürbis (roh)
+usda_2685572,Pak Choi (roh)
+usda_2685573,Blumenkohl (roh)
+usda_2685574,Kohlgemüse / Collard Greens (roh)
+usda_2685575,Rosenkohl (roh)
+usda_2685576,Rote Bete (roh)
+usda_2685577,Aubergine (roh)
+usda_2685578,"Tomaten ganz (Dose, gesalzen)"
+usda_2685579,Tomatensauce (Dose)
+usda_2685580,"Tomatenmark (Dose, ungesalzen)"
+usda_2685581,Tomaten passiert (Dose)
+usda_2685582,Tomatenpüree (Dose)
+usda_2710815,"Aprikose (mit Schale, roh)"
+usda_2710816,Honigmelone (roh)
+usda_2710817,"Kochbananen (reif, roh)"
+usda_2710818,"Kochbananen (unreif, roh)"
+usda_2710819,Chiasamen (roh)
+usda_2710820,Bulgur (roh)
+usda_2710821,Wildreis (roh)
+usda_2710822,Baby-Rucola (roh)
+usda_2710823,Grüner Spargel (roh)
+usda_2710824,"Avocado Hass (geschält, roh)"
+usda_2710825,Schwarzer Reis (roh)
+usda_2710826,"Zuckermais (frisch, roh)"
+usda_2710827,"Einkorn (Getreide, roh)"
+usda_2710828,"Farro (geschält, roh)"
+usda_2710829,"Fonio (Getreide, roh)"
+usda_2710830,Khorasan-Weizen / Kamut (roh)
+usda_2710831,"Kiwi (grün, geschält, roh)"
+usda_2710832,"Mandarine (kernlos, geschält)"
+usda_2710833,Mango Tommy Atkins (geschält)
+usda_2710834,Mango Ataulfo (geschält)
+usda_2710835,Maismehl (Masa Harina)
+usda_2710836,"Birne Anjou (mit Schale, roh)"
+usda_2710837,"Pflaume dunkel (mit Schale, roh)"
+usda_2710838,Roter Reis (roh)
+usda_2710839,"Sorghumkleie (weiß, roh)"
+usda_2710840,"Sorghummehl (weiß, geschält)"
+usda_2710841,"Sorghum (weiß, geschält, roh)"
+usda_2710842,"Sorghum (Vollkorn, weiß, roh)"
+usda_2710843,"Kochbananen (überreif, roh)"
+usda_2727566,"Hähnchenschenkel (mit Haut, roh)"
+usda_2727567,"Hähnchenoberschenkel (mit Haut, roh)"
+usda_2727568,"Hähnchenflügel (mit Haut, roh)"
+usda_2727569,"Hähnchenbrust (mit Haut, roh)"
+usda_2727570,Lammhack (roh)
+usda_2727571,Bisonhack (roh)
+usda_2727572,NY-Strip-Steak (roh)
+usda_2727573,Filetsteak (roh)
+usda_2727574,Rumpsteak (roh)
+usda_2727575,Schweinekotelett (roh)
+usda_2727576,"Schweinebauch (mit Schwarte, roh)"
+usda_2727577,"Pawpaw (geschält, entkernt, roh)"
+usda_2727578,"Back-Kürbis (geschält, entkernt)"
+usda_2727579,"Spaghettikürbis (geschält, entkernt)"
+usda_2727580,"Kohlrübe (geschält, roh)"
+usda_2727581,Brombeeren (roh)
+usda_2727582,"Tomatillos (geschält, roh)"
+usda_2727583,Chinakohl (roh)
+usda_2727584,Lauch / Porree (roh)
+usda_2727585,Frühlingszwiebel (roh)
+usda_2727586,"Schalotten (geschält, roh)"
+usda_2727587,Pflaumensaft (haltbar)
+usda_2727588,Granatapfelsaft (aus Konzentrat)
+usda_2727589,Sauerkirschsaft (aus Konzentrat)
+usda_2747652,"Sardellen (in Olivenöl, Dose, abgetropft)"
+usda_2747653,Rote-Bete-Blätter (roh)
+usda_2747654,"Pazifischer Kabeljau (tiefgekühlt, wild)"
+usda_2747655,Fenchel (roh)
+usda_2747656,"Heilbutt (tiefgekühlt, wild)"
+usda_2747657,"Hummerschwanz (tiefgekühlt, wild)"
+usda_2747658,"Mahi-Mahi (tiefgekühlt, wild)"
+usda_2747659,Pastinaken (roh)
+usda_2747660,"Pepperoni gelb (entkernt, roh)"
+usda_2747661,"Jalapeño (entkernt, roh)"
+usda_2747662,"Poblano-Chili (entkernt, roh)"
+usda_2747663,"Serrano-Chili (entkernt, roh)"
+usda_2747664,Radicchio (roh)
+usda_2747665,Radieschen (roh)
+usda_2747666,"Jakobsmuscheln klein (tiefgekühlt, wild)"
+usda_2747667,"Jakobsmuscheln (tiefgekühlt, wild)"
+usda_2747668,"Chilenischer Seebarsch (tiefgekühlt, wild)"
+usda_2747669,"Schnapper (tiefgekühlt, wild)"
+usda_2747670,Schneekrabbenbeine (tiefgekühlt)
+usda_2747671,Tintenfischtuben / Calamari (tiefgekühlt)
+usda_2747672,"Schwertfisch (tiefgekühlt, wild)"
+usda_2747673,"Gelbflossenthunfisch (tiefgekühlt, wild)"
+usda_2747674,Weiße Rüben (roh)
+usda_2747675,"Wassermelone (kernlos, ohne Schale, roh)"
+usda_2747676,"Wassermelonenschale (kernlos, roh)"

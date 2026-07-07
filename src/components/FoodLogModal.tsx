@@ -13,13 +13,10 @@ import {
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useEnergyStore } from '../store/energyStore';
-import { searchFoods } from '../data/food/foodDatabase';
-import { searchUsdaFoods } from '../data/food/usdaFoods';
+import { searchAllFoods } from '../data/food/foodSearch';
 import { nutritionForGrams, mealTypeForHour } from '../domain/food/foodNutrition';
 import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
 import type { FoodItem } from '../types/food';
-
-type FoodSource = 'vi' | 'usda';
 
 interface Props {
   visible: boolean;
@@ -28,6 +25,14 @@ interface Props {
 
 function categoryLabel(category: string): string {
   return FOOD_CATEGORY_LABELS[category] ?? category;
+}
+
+// Vietnamese name is the main line, English name the small second line.
+// Falls back to the English name as the main line for the rare item still
+// missing a Vietnamese translation (sub is then omitted — nothing to add).
+function displayNames(item: FoodItem): { main: string; sub: string | null } {
+  if (item.nameVi) return { main: item.nameVi, sub: item.nameEn || null };
+  return { main: item.nameEn, sub: null };
 }
 
 function pad2(n: number): string {
@@ -48,7 +53,6 @@ const SHEET_OFFSET = 500;
 export function FoodLogModal({ visible, onClose }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
 
-  const [source, setSource] = useState<FoodSource>('vi');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<FoodItem | null>(null);
   const [grams, setGrams] = useState('');
@@ -62,19 +66,15 @@ export function FoodLogModal({ visible, onClose }: Props) {
     } else {
       translateY.value = SHEET_OFFSET;
     }
-  }, [visible]);
+  }, [visible, translateY]);
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
-  const results = useMemo(
-    () => (source === 'usda' ? searchUsdaFoods(query) : searchFoods(query)),
-    [source, query]
-  );
+  const results = useMemo(() => searchAllFoods(query), [query]);
 
   function reset() {
-    setSource('vi');
     setQuery('');
     setSelected(null);
     setGrams('');
@@ -119,33 +119,23 @@ export function FoodLogModal({ visible, onClose }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
       >
+        {/* Tapping the dark area above the sheet also closes it — the user must
+            never be trapped in this modal. */}
+        <Pressable style={styles.overlayDismiss} onPress={handleClose} />
         <Animated.View style={[styles.sheet, sheetStyle]}>
           {!selected ? (
             <>
-              <Text style={styles.title}>Ghi món ăn</Text>
-              <Text style={styles.subtitle}>Tìm món trong danh sách rồi chọn</Text>
-              <View style={styles.chips}>
+              <View style={styles.headerRow}>
+                <Text style={styles.title}>Ghi món ăn</Text>
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.chip,
-                    source === 'vi' && styles.chipActive,
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => setSource('vi')}
+                  onPress={handleClose}
+                  hitSlop={12}
+                  style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
                 >
-                  <Text style={styles.chipText}>Món Việt</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.chip,
-                    source === 'usda' && styles.chipActive,
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => setSource('usda')}
-                >
-                  <Text style={styles.chipText}>Tra cứu USDA (EN)</Text>
+                  <Text style={styles.closeX}>✕</Text>
                 </Pressable>
               </View>
+              <Text style={styles.subtitle}>Tìm món trong danh sách rồi chọn</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Tìm món (ví dụ: cơm, gà, cá...)"
@@ -162,22 +152,24 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 ListEmptyComponent={
                   <Text style={styles.empty}>Không tìm thấy món nào.</Text>
                 }
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={({ pressed }) => [styles.foodRow, pressed && styles.pressed]}
-                    onPress={() => pickFood(item)}
-                  >
-                    <View style={styles.foodRowMain}>
-                      <Text style={styles.foodName}>
-                        {source === 'usda' ? item.nameEn : item.nameVi}
-                      </Text>
-                      <Text style={styles.foodMeta}>
-                        {categoryLabel(item.category)} · {item.per100g.energyKcal} kcal/100g
-                      </Text>
-                    </View>
-                    <Text style={styles.foodChevron}>›</Text>
-                  </Pressable>
-                )}
+                renderItem={({ item }) => {
+                  const { main, sub } = displayNames(item);
+                  return (
+                    <Pressable
+                      style={({ pressed }) => [styles.foodRow, pressed && styles.pressed]}
+                      onPress={() => pickFood(item)}
+                    >
+                      <View style={styles.foodRowMain}>
+                        <Text style={styles.foodName}>{main}</Text>
+                        {sub ? <Text style={styles.foodNameEn}>{sub}</Text> : null}
+                        <Text style={styles.foodMeta}>
+                          {categoryLabel(item.category)} · {item.per100g.energyKcal} kcal/100g
+                        </Text>
+                      </View>
+                      <Text style={styles.foodChevron}>›</Text>
+                    </Pressable>
+                  );
+                }}
               />
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
@@ -188,15 +180,30 @@ export function FoodLogModal({ visible, onClose }: Props) {
             </>
           ) : (
             <>
-              <Pressable
-                onPress={() => setSelected(null)}
-                style={({ pressed }) => pressed && styles.pressed}
-              >
-                <Text style={styles.back}>‹ Chọn món khác</Text>
-              </Pressable>
-              <Text style={styles.title}>
-                {source === 'usda' ? selected.nameEn : selected.nameVi}
-              </Text>
+              <View style={styles.headerRow}>
+                <Pressable
+                  onPress={() => setSelected(null)}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Text style={styles.back}>‹ Chọn món khác</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleClose}
+                  hitSlop={12}
+                  style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
+                >
+                  <Text style={styles.closeX}>✕</Text>
+                </Pressable>
+              </View>
+              {(() => {
+                const { main, sub } = displayNames(selected);
+                return (
+                  <>
+                    <Text style={styles.title}>{main}</Text>
+                    {sub ? <Text style={styles.foodNameEn}>{sub}</Text> : null}
+                  </>
+                );
+              })()}
               <Text style={styles.subtitle}>
                 {categoryLabel(selected.category)} · {selected.per100g.energyKcal} kcal / 100g
               </Text>
@@ -303,6 +310,17 @@ function clampInt(n: number, min: number, max: number): number {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  overlayDismiss: { flex: 1 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2d2d44',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeX: { color: '#aaa', fontSize: 15, fontWeight: '700' },
   sheet: {
     backgroundColor: '#1a1a2e',
     borderTopLeftRadius: 20,
@@ -337,6 +355,7 @@ const styles = StyleSheet.create({
   },
   foodRowMain: { flex: 1 },
   foodName: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  foodNameEn: { color: '#999', fontSize: 12, marginTop: 1 },
   foodMeta: { color: '#888', fontSize: 12, marginTop: 2 },
   foodChevron: { color: '#555', fontSize: 22, paddingLeft: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -348,7 +367,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#444',
   },
-  chipActive: { backgroundColor: '#00B894', borderColor: '#00B894' },
   chipText: { color: '#ddd', fontSize: 12, fontWeight: '600' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, textAlign: 'center' },

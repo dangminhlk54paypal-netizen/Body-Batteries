@@ -34,6 +34,10 @@ export interface Nutrition {
   potassiumMg: number;
   magnesiumMg: number;
   zincMg: number;
+  // Omega-3 fatty acids (CSV columns epa_mg/dha_mg). Optional: only fatty
+  // fish and fish-oil supplements declare them; absent means "not tracked".
+  epaMg?: number;
+  dhaMg?: number;
 }
 
 // One row of the food database (one dish/ingredient).
@@ -41,6 +45,10 @@ export interface FoodItem {
   id: string;
   nameVi: string;
   nameEn: string;
+  // German name — search-only (the user shops in German supermarkets).
+  // Display stays Vietnamese-main/English-sub; nameDe never appears in the
+  // UI. Optional: not every catalog row has a translation yet.
+  nameDe?: string;
   category: string;
   defaultServingG: number;
   servingPresets: ServingPreset[];
