@@ -10,6 +10,8 @@ interface Props {
   dates: DateOption[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  // e.g. "Khuyến nghị chung cho nam ~30 tuổi" — derived from the user profile.
+  recommendNote?: string;
 }
 
 const CELL_WIDTH = 56;
@@ -28,7 +30,17 @@ function byIds(states: MicroBatteryState[], ids: string[]): MicroBatteryState[] 
 // (see CONTEXT.md §5 + S-R spec §6), so this cell always renders the
 // nutrient's own fixed color regardless of level.
 function MicroCell({ state }: { state: MicroBatteryState }) {
-  const fillHeight = CELL_HEIGHT * (state.percentage / 100);
+  // The tank drawing tops out at 100%; anything past that is conveyed by the
+  // real percentage figure (e.g. 134%) plus the caption below.
+  const fillHeight = CELL_HEIGHT * (Math.min(state.percentage, 100) / 100);
+  const caption =
+    state.kind === 'limit'
+      ? state.over
+        ? 'vượt ngưỡng gợi ý'
+        : 'trong ngưỡng'
+      : state.over
+        ? 'vượt khuyến nghị'
+        : null;
   return (
     <View style={styles.cell}>
       <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
@@ -39,7 +51,7 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
           height={CELL_HEIGHT}
           rx={BORDER_R}
           fill="#1a1a2e"
-          stroke="#333"
+          stroke={state.over ? state.color : '#333'}
           strokeWidth={2}
         />
         {fillHeight > 0 && (
@@ -59,14 +71,22 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
         {state.current}
         {state.unit}
       </Text>
-      {state.kind === 'limit' && (
-        <Text style={styles.cellCaption}>{state.over ? 'vượt ngưỡng gợi ý' : 'trong ngưỡng'}</Text>
-      )}
+      <Text style={styles.cellTarget}>
+        KN {state.target}
+        {state.unit}/ngày
+      </Text>
+      {caption && <Text style={styles.cellCaption}>{caption}</Text>}
     </View>
   );
 }
 
-export function MicroBatteryStack({ states, dates, selectedDate, onSelectDate }: Props) {
+export function MicroBatteryStack({
+  states,
+  dates,
+  selectedDate,
+  onSelectDate,
+  recommendNote,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const prominent = byIds(states, PROMINENT_GOAL_IDS);
@@ -79,6 +99,7 @@ export function MicroBatteryStack({ states, dates, selectedDate, onSelectDate }:
         <Text style={styles.title}>Vi chất đã nạp</Text>
         <Text style={styles.disclaimer}>Chỉ để tham khảo.</Text>
       </View>
+      {recommendNote && <Text style={styles.recommendNote}>{recommendNote}</Text>}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
         {dates.map((d) => {
@@ -196,6 +217,16 @@ const styles = StyleSheet.create({
   cellAmount: {
     fontSize: 9,
     color: '#666',
+  },
+  cellTarget: {
+    fontSize: 8,
+    color: '#5a5a7a',
+    textAlign: 'center',
+  },
+  recommendNote: {
+    fontSize: 10,
+    color: '#666',
+    paddingHorizontal: 20,
   },
   cellCaption: {
     fontSize: 8,

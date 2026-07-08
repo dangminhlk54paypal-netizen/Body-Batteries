@@ -74,19 +74,47 @@ describe('computeMicroBatteries', () => {
     expect(fiber.over).toBe(false);
   });
 
-  it('clamps a goal-type battery at 100% without setting over', () => {
-    const entries: LoggedPortion[] = [{ foodId: 'spinach', grams: 5000 }]; // 100g fiber, way over target
+  it('lets a goal-type battery exceed 100% and flags it as over', () => {
+    const entries: LoggedPortion[] = [{ foodId: 'spinach', grams: 2000 }]; // 40g fiber vs 25g goal
     const [fiber] = computeMicroBatteries(entries, lookup, [FIBER_GOAL]);
-    expect(fiber.percentage).toBe(100);
-    expect(fiber.over).toBe(false);
+    expect(fiber.percentage).toBe(160);
+    expect(fiber.over).toBe(true);
   });
 
-  it('flags a limit-type battery as over when it exceeds the cap', () => {
+  it('caps the displayed percentage at 999 for extreme entries', () => {
+    const entries: LoggedPortion[] = [{ foodId: 'spinach', grams: 50000 }]; // 1000g fiber
+    const [fiber] = computeMicroBatteries(entries, lookup, [FIBER_GOAL]);
+    expect(fiber.percentage).toBe(999);
+    expect(fiber.over).toBe(true);
+  });
+
+  it('flags a limit-type battery as over with its real ratio when it exceeds the cap', () => {
     const entries: LoggedPortion[] = [{ foodId: 'bread', grams: 1000 }]; // 4000mg sodium
     const [sodium] = computeMicroBatteries(entries, lookup, [SODIUM_LIMIT]);
     expect(sodium.current).toBe(4000);
-    expect(sodium.percentage).toBe(100);
+    expect(sodium.percentage).toBe(Math.round((100 * 4000) / 2300));
     expect(sodium.over).toBe(true);
+  });
+
+  it('sums omega-3 as EPA+DHA and treats foods without the columns as 0', () => {
+    const fishOil = food('fish_oil', nutrition({ epaMg: 49180, dhaMg: 32787 }));
+    const omegaLookup = (id: string) => (id === 'fish_oil' ? fishOil : FOODS[id]);
+    const OMEGA_GOAL: NutrientTarget = {
+      id: 'omega3',
+      kind: 'goal',
+      nameVi: 'Omega-3 (EPA+DHA)',
+      unit: 'mg',
+      color: '#000',
+      value: 500,
+    };
+    const entries: LoggedPortion[] = [
+      { foodId: 'fish_oil', grams: 1.22 }, // 1 capsule ≈ 600 EPA + 400 DHA
+      { foodId: 'spinach', grams: 100 }, // no epa/dha columns → contributes 0
+    ];
+    const [omega] = computeMicroBatteries(entries, omegaLookup, [OMEGA_GOAL]);
+    expect(omega.current).toBeCloseTo(1000, 0);
+    expect(omega.percentage).toBe(200);
+    expect(omega.over).toBe(true);
   });
 
   it('keeps a limit-type battery under 100% and not over when within the cap', () => {

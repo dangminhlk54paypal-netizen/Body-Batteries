@@ -90,6 +90,17 @@ const NUTRIENT_TABLE: NutrientMeta[] = [
     female: { young: 8, older: 8 },
   },
   {
+    // Combined EPA+DHA. 250–500 mg/day is the common adult reference range
+    // (EFSA/ISSFAL); we use the upper mark. Chỉ để tham khảo.
+    id: 'omega3',
+    kind: 'goal',
+    nameVi: 'Omega-3 (EPA+DHA)',
+    unit: 'mg',
+    color: '#54A0FF',
+    male: { young: 500, older: 500 },
+    female: { young: 500, older: 500 },
+  },
+  {
     id: 'sodium',
     kind: 'limit',
     nameVi: 'Natri (muối)',
@@ -113,7 +124,7 @@ const NUTRIENT_TABLE: NutrientMeta[] = [
 // default, the rest tucked behind "Xem thêm", and limit-type pins in their
 // own neutral-labelled row.
 export const PROMINENT_GOAL_IDS: MicronutrientId[] = ['fiber', 'iron', 'calcium', 'fat'];
-export const MORE_GOAL_IDS: MicronutrientId[] = ['potassium', 'magnesium', 'zinc'];
+export const MORE_GOAL_IDS: MicronutrientId[] = ['potassium', 'magnesium', 'zinc', 'omega3'];
 export const LIMIT_IDS: MicronutrientId[] = ['sodium', 'sugar'];
 
 function valueFor(meta: NutrientMeta, sex: Sex, bracket: AgeBracket): number {

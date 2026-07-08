@@ -11,7 +11,8 @@ export type MicronutrientId =
   | 'magnesium'
   | 'zinc'
   | 'sodium'
-  | 'sugar';
+  | 'sugar'
+  | 'omega3';
 
 // 'goal': eating more is better, up to `value` (empty/under = neutral "still
 // room", never shown as a deficiency). 'limit': staying under `value` is the
@@ -35,6 +36,6 @@ export interface MicroBatteryState {
   color: string;
   current: number;
   target: number; // same meaning as NutrientTarget.value
-  percentage: number; // 0–100, clamped
-  over: boolean; // limit-type only: true when current exceeds target
+  percentage: number; // real ratio of target, may exceed 100 (capped at 999)
+  over: boolean; // true when current exceeds target (goal: past recommendation; limit: past cap)
 }

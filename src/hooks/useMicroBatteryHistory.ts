@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
-import { getFoodById } from '../data/food/foodDatabase';
+import { getAnyFoodById } from '../data/food/foodLookup';
 import { computeMicroBatteries } from '../domain/nutrition/microBatteryEngine';
 import { nutrientTargetsForProfile } from '../lib/nutrientTargets';
 import { daysAgo, formatDisplayDate, isToday, todayString } from '../lib/dateUtils';
@@ -50,7 +50,7 @@ export function useMicroBatteryHistory(todayFoodLog: FoodLogEntry[], profile: Us
   const targets = useMemo(() => nutrientTargetsForProfile(profile), [profile]);
 
   const states: MicroBatteryState[] = useMemo(
-    () => computeMicroBatteries(entries, getFoodById, targets),
+    () => computeMicroBatteries(entries, getAnyFoodById, targets),
     [entries, targets]
   );
 

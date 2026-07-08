@@ -17,8 +17,11 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-function clampPct(n: number): number {
-  return Math.max(0, Math.min(100, Math.round(n)));
+// Real ratio of target, allowed past 100% so over-consumption stays visible
+// (e.g. 134% fiber). Capped at 999 so one extreme entry can't blow up the UI.
+function pctOf(current: number, target: number): number {
+  if (target <= 0) return 0;
+  return Math.max(0, Math.min(999, Math.round((100 * current) / target)));
 }
 
 function per100gValue(p: Nutrition, id: MicronutrientId): number {
@@ -41,6 +44,9 @@ function per100gValue(p: Nutrition, id: MicronutrientId): number {
       return p.sodiumMg;
     case 'sugar':
       return p.sugarG;
+    case 'omega3':
+      // Combined EPA+DHA — only rows that declare epa_mg/dha_mg contribute.
+      return (p.epaMg ?? 0) + (p.dhaMg ?? 0);
   }
 }
 
@@ -64,8 +70,8 @@ export function computeMicroBatteries(
 
   return targets.map((target) => {
     const current = round1(totals[target.id] ?? 0);
-    const over = target.kind === 'limit' && current > target.value;
-    const percentage = over ? 100 : clampPct((100 * current) / target.value);
+    const over = current > target.value;
+    const percentage = pctOf(current, target.value);
 
     return {
       id: target.id,

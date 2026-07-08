@@ -18,12 +18,12 @@ import { IntakeModal } from '../components/IntakeModal';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
 import { MicroBatteryStack } from '../components/MicroBatteryStack';
+import { SupplementQuickLog } from '../components/SupplementQuickLog';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
 import { useMicroBatteryHistory } from '../hooks/useMicroBatteryHistory';
-import type { BatteryState, BatteryId } from '../types/battery';
-import type { BatteryType } from '../types/battery';
+import type { BatteryState, BatteryId, BatteryType } from '../types/battery';
 import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
@@ -40,7 +40,11 @@ export function HomeScreen() {
 
   useEffect(() => {
     loadToday(currentMode);
-  }, [currentMode]);
+    // loadToday is a zustand store action — its identity is stable across
+    // renders (defined once in the store creator), so including it here is
+    // safe and doesn't change when this effect re-runs (only currentMode
+    // changing does).
+  }, [currentMode, loadToday]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -139,7 +143,13 @@ export function HomeScreen() {
           dates={microBattery.dates}
           selectedDate={microBattery.selectedDate}
           onSelectDate={microBattery.setSelectedDate}
+          recommendNote={`KN = mức khuyến nghị chung cho ${
+            userProfile.sex === 'male' ? 'nam' : 'nữ'
+          } ${userProfile.age} tuổi — không phải chỉ định y tế.`}
         />
+
+        {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
+        <SupplementQuickLog todayLog={foodLog} />
 
         {/* Today's logged meals (grouped by meal + daily kcal total) */}
         <TodayMeals entries={foodLog} onDelete={handleDeleteFood} />
