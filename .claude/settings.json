@@ -17,7 +17,8 @@
       "Skill(run:*)",
       "Bash(npx eas-cli *)",
       "Bash(npx expo-doctor *)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "Bash(git rev-list *)"
     ],
     "additionalDirectories": [
       "/Users/minh/VSCode_Repo/BodyBatteries/database"
