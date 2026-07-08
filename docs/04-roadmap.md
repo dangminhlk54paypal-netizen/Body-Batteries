@@ -156,5 +156,7 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 >
 > 🟢 **(2026-07-04, Session 11–12)** **S-M/S-O/S-P/S-Q** (nâng cấp "2 đồng hồ") và **S-R** (pin
 > vi chất) đã xong code, commit xong — xem chi tiết ở khối "Nâng cấp lớn Session 11–12" trên.
+>
+> 🟢 **(2026-07-07, Session 13)** **U7 vượt spec** (toàn bộ 363 tên USDA dịch tiếng Việt, tìm kiếm gộp song ngữ), **L-1** (0 lint error), **Excel export 6 sheet** (thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá"), **food_items.csv** (73→90 món + 3 category + 2 cột EPA/DHA), sửa bug pin vi chất (`foodLookup.ts`), thêm Omega-3 pin + nạp nhanh supplement. Verify: 188/188 test, 19 suite, 0 lint error. **Tất cả chưa commit.**
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

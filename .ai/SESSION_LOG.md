@@ -532,6 +532,30 @@ này và người dùng đồng ý hoãn thay vì hiện số bịa.
 
 ---
 
+## Session 13 — 2026-07-07
+
+**Làm gì:** Nâng cấp EAS/Expo Go, mở rộng danh mục thực phẩm + pin vi chất, Excel export 6 sheet, hoàn tất U7 vượt spec, sửa 2 lint error (L-1).
+
+**Kết quả (tất cả chưa commit):**
+- **EAS/Expo Go chuẩn bị chạy trên iPhone:** `eas.json` mới, `app.json` thêm `runtimeVersion` = `sdkVersion`, hướng dẫn `docs/HUONG-DAN-DUNG-TREN-IPHONE.md`.
+- **FoodLogModal:** thêm nút ✕ + bấm overlay để thoát (hết kẹt màn nhập món).
+- **`food_items.csv`:** 73 → 90 món (đồ uống, thực phẩm chức năng, bánh siêu thị Đức) + 3 category mới (`drink`/`supplement`/`snack`) + 2 cột mới `epa_mg`/`dha_mg`.
+- **Bug pin vi chất:** bỏ sót món ghi từ USDA → sửa `src/data/food/foodLookup.ts` (`getAnyFoodById`, bắt buộc cho mọi tính toán từ food log).
+- **Pin vi chất:** vượt 100% theo tỷ lệ thật (trần 999%), dòng "KN …/ngày" dưới mỗi pin, pin Omega-3 EPA+DHA mới (mục tiêu 500mg), ô nạp nhanh thực phẩm chức năng `SupplementQuickLog.tsx`.
+- **U7 vượt spec:** 363 tên USDA dịch tiếng Việt (toàn bộ `database/usda_names_vi.csv`), tìm kiếm gộp song ngữ `src/data/food/foodSearch.ts` (searchAllFoods — index bỏ dấu, ưu tiên khớp đúng dấu, món Việt trước).
+- **Excel export 6 sheet:** thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá" (nguồn NIH/WHO/DGA, xem `docs/excel-report.md`); module thuần `nutritionAssessment.ts` + `dailyNutritionSummary.ts`.
+- **L-1 hoàn tất:** 2 lint error sửa xong (HistoryScreen `loadHistory` hoisting, useDrainTick `useRef` trong render).
+- **Verify (trước khi commit):** `npx tsc --noEmit` sạch · `npx jest` → **188 test PASS / 19 suite** · 0 lint error.
+
+**Vấn đề gặp phải:** không có (code lành).
+
+**Session tiếp theo phải làm:**
+1. **Commit từng gói riêng:** U7 (U7-A + U7-B gộp 1 commit), L-1, Excel export, food_items.csv + foodLookup.ts sửa, EAS config, FoodLogModal nút ✕, Omega-3 pin, nạp nhanh supplement.
+2. **W-1** (dọn 23 lint warning về 0, sửa tickDrain xả qua nửa đêm) + **G-1** (thêm `name_de` 3 ngôn ngữ tìm kiếm) — chạy song parallel, agent nền.
+3. **S-A** test máy thật sau khi W-1+G-1 xong + tất cả commit.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
