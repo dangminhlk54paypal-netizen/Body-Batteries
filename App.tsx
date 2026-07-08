@@ -26,8 +26,17 @@ export default function App() {
           // Native-only: SQLite & Notifications không chạy được trên web
           const { initDatabase } = await import('./src/data/db/database');
           const { requestNotificationPermission } = await import('./src/services/notifications/notificationService');
+          const { loadCustomFoodsIntoRegistry } = await import('./src/data/food/customFoodRegistry');
+          const { loadOverridesIntoRegistry } = await import('./src/data/food/foodOverrideRegistry');
           await initDatabase();
           await requestNotificationPermission();
+          // Hydrate the custom-foods search/lookup registry (see
+          // customFoodRegistry.ts). Defensive internally — never throws.
+          await loadCustomFoodsIntoRegistry();
+          // Hydrate the food-override registry (user-corrected nutrition that
+          // shadows the catalog at lookup time — see foodOverrideRegistry.ts).
+          // Defensive internally — never throws.
+          await loadOverridesIntoRegistry();
         }
         setReady(true);
       } catch (e) {
@@ -73,6 +82,20 @@ export default function App() {
       clearInterval(interval);
       subscription.remove();
     };
+  }, [ready]);
+
+  // Once per calendar month: auto-export the previous month's workbook to the
+  // app document folder, then ASK (never silently) whether to clear old data.
+  // Fully defensive — maybeRunMonthlyExport swallows its own errors.
+  useEffect(() => {
+    if (!ready || Platform.OS === 'web') return;
+    (async () => {
+      const { maybeRunMonthlyExport, confirmAndCleanupAfterExport } = await import(
+        './src/services/export/monthlyAutoExport'
+      );
+      const res = await maybeRunMonthlyExport();
+      if (res.ran && res.filename) confirmAndCleanupAfterExport(res.filename);
+    })();
   }, [ready]);
 
   if (error) {

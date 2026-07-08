@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSettingsStore } from '../store/settingsStore';
 import { BodyProfileCard } from '../components/BodyProfileCard';
-import { exportWeeklyData } from '../services/export/excelExportService';
+import { exportWeeklyData, exportMonthlyData } from '../services/export/excelExportService';
 import { runWeeklyCleanup } from '../services/cleanup/cleanupService';
 import {
   requestNotificationPermission,
@@ -181,10 +181,21 @@ export function SettingsScreen() {
     }
   }
 
+  async function handleExportMonthly() {
+    setExporting(true);
+    try {
+      await exportMonthlyData();
+    } catch {
+      Alert.alert('Lỗi', 'Không thể xuất file. Thử lại sau.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function handleCleanup() {
     Alert.alert(
       'Xoá dữ liệu cũ',
-      'Dữ liệu hơn 7 ngày sẽ bị xoá VĨNH VIỄN và không thể khôi phục.\n\nHãy bấm "Xuất Excel" trước để giữ lại bản lưu. Bạn có chắc muốn xoá?',
+      'Dữ liệu hơn 35 ngày sẽ bị xoá VĨNH VIỄN và không thể khôi phục.\n\nHãy bấm "Xuất Excel" trước để giữ lại bản lưu. Bạn có chắc muốn xoá?',
       [
         { text: 'Huỷ', style: 'cancel' },
         {
@@ -336,11 +347,21 @@ export function SettingsScreen() {
           </Pressable>
 
           <Pressable
+            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+            onPress={handleExportMonthly}
+            disabled={exporting}
+          >
+            <Text style={styles.actionBtnText}>
+              {exporting ? 'Đang xuất...' : '📊 Xuất Excel 30 ngày gần nhất'}
+            </Text>
+          </Pressable>
+
+          <Pressable
             style={({ pressed }) => [styles.actionBtn, styles.dangerBtn, pressed && styles.pressed]}
             onPress={handleCleanup}
           >
             <Text style={[styles.actionBtnText, styles.dangerText]}>
-              🗑️ Xoá dữ liệu cũ hơn 7 ngày
+              🗑️ Xoá dữ liệu cũ hơn 35 ngày
             </Text>
           </Pressable>
         </View>

@@ -38,6 +38,30 @@ export function formatDisplayDate(dateStr: string): string {
   });
 }
 
+const DMY_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+// Formats a YYYY-MM-DD date string as "D-MMM-YYYY" (no leading zero on the
+// day, 3-letter English month, e.g. "1-Apr-2021"). Used by the Excel export
+// (Daily Totals / Food Entries sheets) which needs an English, sortable-ish
+// date label independent of the device locale.
+export function formatDMY(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getDate()}-${DMY_MONTHS[d.getMonth()]}-${d.getFullYear()}`;
+}
+
 export function nowTimestamp(): number {
   return Date.now();
 }

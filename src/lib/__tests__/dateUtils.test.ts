@@ -5,6 +5,7 @@ import {
   isToday,
   daysBetween,
   energyDayString,
+  formatDMY,
 } from '../dateUtils';
 
 describe('dateString', () => {
@@ -86,5 +87,20 @@ describe('daysBetween', () => {
 
   it('returns 0 for the same date', () => {
     expect(daysBetween('2026-06-01', '2026-06-01')).toBe(0);
+  });
+});
+
+describe('formatDMY', () => {
+  it('formats with no leading zero on the day', () => {
+    expect(formatDMY('2021-04-01')).toBe('1-Apr-2021');
+  });
+
+  it('formats a two-digit day unchanged', () => {
+    expect(formatDMY('2021-04-15')).toBe('15-Apr-2021');
+  });
+
+  it('uses 3-letter English month names for every month', () => {
+    expect(formatDMY('2026-01-05')).toBe('5-Jan-2026');
+    expect(formatDMY('2026-12-25')).toBe('25-Dec-2026');
   });
 });

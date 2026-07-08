@@ -1,6 +1,7 @@
 import type { FoodItem } from '../../types/food';
 import { FOOD_ITEMS } from './foodDatabase';
 import { USDA_FOODS } from './usdaFoods';
+import { getCustomFoods } from './customFoodRegistry';
 
 // Merged, precomputed food search — replaces the old two-tab "Món Việt" /
 // "Tra cứu USDA (EN)" picker with one search box that finds a food by its
@@ -23,7 +24,7 @@ const VN_COUNT = FOOD_ITEMS.length;
 // marks (U+0300–U+036F), which we then drop. đ/Đ are NOT decomposed by NFD
 // (they're independent Unicode letters, not base+diacritic), so they need an
 // explicit replace. "Cơm trắng" -> "com trang", "Đậu" -> "dau".
-function normalize(s: string): string {
+export function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
@@ -62,7 +63,11 @@ interface SearchEntry {
   haystack: string;
 }
 
-const SEARCH_INDEX: SearchEntry[] = ALL_FOODS.map((item, index) => {
+// Builds one precomputed search entry for a food item. Shared by the
+// module-load-time catalog index below AND the per-call custom-food index
+// (custom foods can be added mid-session, so they can't be precomputed once
+// at module load like the build-time catalog).
+function buildSearchEntry(item: FoodItem, isVietnamese: boolean): SearchEntry {
   const normNameVi = normalize(item.nameVi);
   const normNameEn = normalize(item.nameEn);
   const normCategory = normalize(item.category);
@@ -74,13 +79,17 @@ const SEARCH_INDEX: SearchEntry[] = ALL_FOODS.map((item, index) => {
   const expandedNameDe = expandUmlauts(item.nameDe ?? '');
   return {
     item,
-    isVietnamese: index < VN_COUNT,
+    isVietnamese,
     normNameVi,
     normNameEn,
     rawNameVi: item.nameVi.toLowerCase(),
     haystack: `${normNameVi} ${normNameEn} ${normCategory} ${normNameDe} ${expandedNameDe}`,
   };
-});
+}
+
+const SEARCH_INDEX: SearchEntry[] = ALL_FOODS.map((item, index) =>
+  buildSearchEntry(item, index < VN_COUNT)
+);
 
 // Ranking tier for one entry against the (already normalized) whole query —
 // lower is better. 0 = the name matches the query exactly, 1 = the name
@@ -95,32 +104,22 @@ function nameTier(entry: SearchEntry, normQuery: string): number {
   return 2;
 }
 
-// Search the merged catalog. Every whitespace-separated token in the query
-// must appear somewhere in an item's normalized haystack (nameVi + nameEn +
-// category + nameDe, the latter in both its umlaut-dropped and
-// umlaut-expanded forms), so "com trang" matches "Cơm trắng", "ca hoi" /
-// "salmon" both match the same salmon row, and "broetchen" / "brotchen" both
-// match "Brötchen". Ranking (exact/prefix before mid-string, Vietnamese
-// catalog before USDA) considers only nameVi/nameEn — a German-only match
-// still surfaces, just not boosted to the top tiers. Empty query returns
-// everything, Vietnamese catalog first. O(items) per call over precomputed
-// strings (453 items total — fast per keystroke).
-export function searchAllFoods(query: string): FoodItem[] {
-  const normQuery = normalize(query);
-  const tokens = normQuery.split(/\s+/).filter(Boolean);
-
+// Ranks one already-filtered index (either the custom-food entries or the
+// built-in catalog entries) against a query, applying the same tier/accent
+// rules as before the custom-foods layer was added. Extracted so
+// searchAllFoods() can rank the two indexes independently and concatenate
+// them (custom first) rather than interleaving by tier.
+function rankIndex(
+  index: SearchEntry[],
+  normQuery: string,
+  tokens: string[],
+  rawTokens: string[]
+): FoodItem[] {
   const matches =
     tokens.length === 0
-      ? SEARCH_INDEX
-      : SEARCH_INDEX.filter((entry) => tokens.every((t) => entry.haystack.includes(t)));
+      ? index
+      : index.filter((entry) => tokens.every((t) => entry.haystack.includes(t)));
 
-  // When the query itself carries diacritics ("gà" ≠ "ga"), the user has told
-  // us exactly which word they mean — rank names that match with diacritics
-  // intact above accent-stripped coincidences (otherwise "gà" would list
-  // "gạo …" rice rows, whose stripped prefix "ga" wins, above the chicken
-  // dishes the user is after). Accent-less queries are unaffected.
-  const rawQuery = query.toLowerCase().trim();
-  const rawTokens = rawQuery !== normQuery ? rawQuery.split(/\s+/).filter(Boolean) : [];
   const accentHit = (entry: SearchEntry): boolean =>
     rawTokens.length > 0 && rawTokens.every((t) => entry.rawNameVi.includes(t));
 
@@ -133,4 +132,48 @@ export function searchAllFoods(query: string): FoodItem[] {
       return 0; // stable sort: keep original catalog order for remaining ties
     })
     .map((ranked) => ranked.entry.item);
+}
+
+// Search the merged catalog PLUS the user's own custom foods
+// (customFoodRegistry.ts — a runtime, SQLite-backed layer on top of the
+// build-time-generated catalog). Every whitespace-separated token in the
+// query must appear somewhere in an item's normalized haystack (nameVi +
+// nameEn + category + nameDe, the latter in both its umlaut-dropped and
+// umlaut-expanded forms), so "com trang" matches "Cơm trắng", "ca hoi" /
+// "salmon" both match the same salmon row, and "broetchen" / "brotchen" both
+// match "Brötchen". Ranking (exact/prefix before mid-string, Vietnamese
+// catalog before USDA) considers only nameVi/nameEn — a German-only match
+// still surfaces, just not boosted to the top tiers. Custom foods are ranked
+// among themselves the same way, then listed BEFORE the built-in catalog
+// entirely (the user's own saved food beats a same-tier generic catalog
+// match) — deduped by id defensively, though ids should never collide in
+// practice. Empty query returns everything, custom foods first, then
+// Vietnamese catalog, then USDA.
+export function searchAllFoods(query: string): FoodItem[] {
+  const normQuery = normalize(query);
+  const tokens = normQuery.split(/\s+/).filter(Boolean);
+
+  // When the query itself carries diacritics ("gà" ≠ "ga"), the user has told
+  // us exactly which word they mean — rank names that match with diacritics
+  // intact above accent-stripped coincidences (otherwise "gà" would list
+  // "gạo …" rice rows, whose stripped prefix "ga" wins, above the chicken
+  // dishes the user is after). Accent-less queries are unaffected.
+  const rawQuery = query.toLowerCase().trim();
+  const rawTokens = rawQuery !== normQuery ? rawQuery.split(/\s+/).filter(Boolean) : [];
+
+  // Custom foods live in the runtime registry (can change mid-session), so
+  // their search entries are built fresh per call — the list is small
+  // (one user's own additions), so this stays cheap.
+  const customIndex = getCustomFoods().map((item) => buildSearchEntry(item, true));
+  const customResults = rankIndex(customIndex, normQuery, tokens, rawTokens);
+  const catalogResults = rankIndex(SEARCH_INDEX, normQuery, tokens, rawTokens);
+
+  const seen = new Set<string>();
+  const combined: FoodItem[] = [];
+  for (const item of [...customResults, ...catalogResults]) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    combined.push(item);
+  }
+  return combined;
 }

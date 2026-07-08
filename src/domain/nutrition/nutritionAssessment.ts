@@ -127,6 +127,14 @@ export const ASSESSMENT_RULES: Record<MicronutrientId, NutrientAssessmentRule> =
     overAdviceVi: 'Đường đã vượt ngưỡng gợi ý — thử giảm nước ngọt, bánh kẹo hoặc trà sữa.',
     sourceUrl: 'https://www.who.int/news-room/fact-sheets/detail/sugars-and-dental-caries',
   },
+  salt: {
+    // Derived from sodium (salt g = sodium mg × 2.5 / 1000) — see
+    // per100gValue('salt') in microBatteryEngine.ts.
+    id: 'salt',
+    overThreshold: 1.0,
+    overAdviceVi: 'Muối đã vượt ngưỡng gợi ý — thử giảm nước mắm, muối chấm, đồ hộp hoặc mì gói.',
+    sourceUrl: 'https://www.who.int/news-room/fact-sheets/detail/salt-reduction',
+  },
 };
 
 // Fixed display order for rows/sheets that enumerate every rule.
@@ -141,6 +149,7 @@ export const ASSESSMENT_ORDER: MicronutrientId[] = [
   'omega3',
   'sodium',
   'sugar',
+  'salt',
 ];
 
 export const DISCLAIMER_VI = 'Chỉ để tham khảo — không phải tư vấn y tế.';

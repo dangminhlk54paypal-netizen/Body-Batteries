@@ -1,6 +1,24 @@
 import { ALL_FOODS, searchAllFoods } from '../foodSearch';
 import { FOOD_ITEMS } from '../foodDatabase';
 import { USDA_FOODS } from '../usdaFoods';
+import { setCustomFoods } from '../customFoodRegistry';
+import type { FoodItem } from '../../../types/food';
+
+const EMPTY_NUTRITION = {
+  energyKcal: 0,
+  waterG: 0,
+  proteinG: 0,
+  fatG: 0,
+  carbG: 0,
+  fiberG: 0,
+  sugarG: 0,
+  calciumMg: 0,
+  ironMg: 0,
+  sodiumMg: 0,
+  potassiumMg: 0,
+  magnesiumMg: 0,
+  zincMg: 0,
+};
 
 // Merged bilingual search over FOOD_ITEMS (Vietnamese dish catalog) +
 // USDA_FOODS (USDA ingredient catalog) — the single search box that replaced
@@ -143,6 +161,74 @@ describe('foodSearch', () => {
       // Sanity: the known Vietnamese "gà" dishes are found at all.
       const ids = results.map((f) => f.id);
       expect(ids).toEqual(expect.arrayContaining(['chicken_breast', 'chicken_thigh']));
+    });
+  });
+
+  describe('custom foods (runtime registry, S-* foundation)', () => {
+    afterEach(() => {
+      setCustomFoods([]); // don't leak custom-food state into other test blocks
+    });
+
+    it('surfaces a registered custom food that matches the query', () => {
+      const custom: FoodItem = {
+        id: 'custom_grandma_pho',
+        nameVi: 'Phở bà nấu',
+        nameEn: "Grandma's pho",
+        category: 'custom',
+        defaultServingG: 500,
+        servingPresets: [],
+        per100g: { ...EMPTY_NUTRITION, energyKcal: 60 },
+        source: 'custom',
+        note: '',
+      };
+      setCustomFoods([custom]);
+
+      const results = searchAllFoods('pho ba nau');
+      expect(results.some((f) => f.id === 'custom_grandma_pho')).toBe(true);
+    });
+
+    it('ranks a custom food above a same-tier catalog food', () => {
+      // "Cơm trắng" (rice_white_cooked) is an exact-name catalog match for
+      // "cơm trắng". A custom food with the SAME exact name should still
+      // rank above it — the user's own entry beats the generic catalog one.
+      const custom: FoodItem = {
+        id: 'custom_com_trang_nha',
+        nameVi: 'Cơm trắng',
+        nameEn: 'My white rice',
+        category: 'custom',
+        defaultServingG: 150,
+        servingPresets: [],
+        per100g: { ...EMPTY_NUTRITION, energyKcal: 130 },
+        source: 'custom',
+        note: '',
+      };
+      setCustomFoods([custom]);
+
+      const results = searchAllFoods('cơm trắng');
+      const customIndex = results.findIndex((f) => f.id === 'custom_com_trang_nha');
+      const catalogIndex = results.findIndex((f) => f.id === 'rice_white_cooked');
+      expect(customIndex).toBeGreaterThanOrEqual(0);
+      expect(catalogIndex).toBeGreaterThanOrEqual(0);
+      expect(customIndex).toBeLessThan(catalogIndex);
+    });
+
+    it('lists custom foods first on an empty query', () => {
+      const custom: FoodItem = {
+        id: 'custom_snack_bar',
+        nameVi: 'Thanh snack tự làm',
+        nameEn: 'Homemade snack bar',
+        category: 'custom',
+        defaultServingG: 40,
+        servingPresets: [],
+        per100g: { ...EMPTY_NUTRITION, energyKcal: 180 },
+        source: 'custom',
+        note: '',
+      };
+      setCustomFoods([custom]);
+
+      const results = searchAllFoods('');
+      expect(results[0].id).toBe('custom_snack_bar');
+      expect(results.length).toBe(ALL_FOODS.length + 1);
     });
   });
 });

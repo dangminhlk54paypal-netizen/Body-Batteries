@@ -14,7 +14,16 @@ import {
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useEnergyStore } from '../store/energyStore';
 import { searchAllFoods } from '../data/food/foodSearch';
+import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
+import { getAnyFoodById } from '../data/food/foodLookup';
+import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { nutritionForGrams, mealTypeForHour } from '../domain/food/foodNutrition';
+import {
+  buildCustomFoodItem,
+  isValidCustomFoodInput,
+  EMPTY_CUSTOM_FOOD_INPUT,
+  type CustomFoodInput,
+} from '../domain/food/customFoodInput';
 import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
 import type { FoodItem } from '../types/food';
 
@@ -58,6 +67,17 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [grams, setGrams] = useState('');
   const [hour, setHour] = useState('');
   const [minute, setMinute] = useState('');
+  // "Thêm món mới" sub-state: shown when a search finds nothing and the user
+  // wants to define a custom food. `adding` gates a third branch alongside
+  // the search list and the selected-entry view.
+  const [adding, setAdding] = useState(false);
+  const [customInput, setCustomInput] = useState<CustomFoodInput>(EMPTY_CUSTOM_FOOD_INPUT);
+  const [showMicros, setShowMicros] = useState(false);
+  // Guards against a fast double-tap on "Lưu món" firing saveCustomFood()
+  // twice before the first save/navigation completes.
+  const [savingCustomFood, setSavingCustomFood] = useState(false);
+  // "Sửa thành phần": opens the nutrition-override editor for the selected food.
+  const [editingNutrition, setEditingNutrition] = useState(false);
   const translateY = useSharedValue(SHEET_OFFSET);
 
   useEffect(() => {
@@ -80,6 +100,10 @@ export function FoodLogModal({ visible, onClose }: Props) {
     setGrams('');
     setHour('');
     setMinute('');
+    setAdding(false);
+    setCustomInput(EMPTY_CUSTOM_FOOD_INPUT);
+    setShowMicros(false);
+    setSavingCustomFood(false);
   }
 
   function handleClose() {
@@ -89,10 +113,42 @@ export function FoodLogModal({ visible, onClose }: Props) {
 
   function pickFood(item: FoodItem) {
     const now = new Date();
-    setSelected(item);
-    setGrams(String(item.defaultServingG));
+    // searchAllFoods returns the raw catalog/custom item — resolve it through
+    // getAnyFoodById so any user "Sửa thành phần" override applies to the
+    // preview AND to logFood (which snapshots the nutrition at log time).
+    const resolved = getAnyFoodById(item.id) ?? item;
+    setSelected(resolved);
+    setGrams(String(resolved.defaultServingG));
     setHour(pad2(now.getHours()));
     setMinute(pad2(now.getMinutes()));
+  }
+
+  // Opens the "add custom food" form, prefilled with the search query.
+  function startAddingCustomFood() {
+    setCustomInput({ ...EMPTY_CUSTOM_FOOD_INPUT, name: query });
+    setShowMicros(false);
+    setSavingCustomFood(false);
+    setAdding(true);
+  }
+
+  function updateCustomField<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
+    setCustomInput((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const customValid = isValidCustomFoodInput(customInput);
+
+  // Builds the FoodItem, persists it via the registry (SQLite + searchable
+  // immediately), then hands off into the existing selected-entry view so
+  // the user picks grams/time and logs through the existing confirm().
+  async function saveCustomFood() {
+    if (!customValid || savingCustomFood) return;
+    setSavingCustomFood(true);
+    const item = buildCustomFoodItem(customInput);
+    await addCustomFoodAndRegister(item);
+    setAdding(false);
+    // No need to reset savingCustomFood here — the view transitions away via
+    // pickFood()/setSelected, unmounting the "Lưu món" button.
+    pickFood(item);
   }
 
   const gramsNum = parseFloat(grams);
@@ -123,7 +179,259 @@ export function FoodLogModal({ visible, onClose }: Props) {
             never be trapped in this modal. */}
         <Pressable style={styles.overlayDismiss} onPress={handleClose} />
         <Animated.View style={[styles.sheet, sheetStyle]}>
-          {!selected ? (
+          {adding ? (
+            <>
+              <View style={styles.headerRow}>
+                <Pressable
+                  onPress={() => setAdding(false)}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Text style={styles.back}>‹ Quay lại</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleClose}
+                  hitSlop={12}
+                  style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
+                >
+                  <Text style={styles.closeX}>✕</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.title}>Thêm món mới</Text>
+              <Text style={styles.subtitle}>Nhập dinh dưỡng tính cho mỗi 100g</Text>
+
+              <ScrollView
+                style={styles.entryScroll}
+                contentContainerStyle={styles.entryScrollContent}
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.fieldLabel}>Tên món</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ví dụ: Canh chua cá lóc"
+                  placeholderTextColor="#666"
+                  value={customInput.name}
+                  onChangeText={(v) => updateCustomField('name', v)}
+                  autoFocus
+                />
+
+                <Text style={styles.fieldLabel}>Nhóm</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="dish, snack, drink..."
+                  placeholderTextColor="#666"
+                  value={customInput.category}
+                  onChangeText={(v) => updateCustomField('category', v)}
+                />
+
+                <Text style={styles.fieldLabel}>Khẩu phần mặc định (gram)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="100"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={customInput.defaultServingG}
+                  onChangeText={(v) => updateCustomField('defaultServingG', v)}
+                />
+
+                <Text style={styles.fieldLabel}>Kcal / 100g</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ví dụ: 150"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={customInput.energyKcal}
+                  onChangeText={(v) => updateCustomField('energyKcal', v)}
+                />
+
+                <Text style={styles.fieldLabel}>Đạm (g) / 100g</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={customInput.proteinG}
+                  onChangeText={(v) => updateCustomField('proteinG', v)}
+                />
+
+                <Text style={styles.fieldLabel}>Béo (g) / 100g</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={customInput.fatG}
+                  onChangeText={(v) => updateCustomField('fatG', v)}
+                />
+
+                <Text style={styles.fieldLabel}>Carbs (Carbohydrate) / 100g</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={customInput.carbG}
+                  onChangeText={(v) => updateCustomField('carbG', v)}
+                />
+
+                {/* Sugar/fiber are a breakdown OF carbG above, not an addition
+                    to it — buildCustomFoodItem stores them as separate
+                    informational micros and never adds them into carbG. */}
+                <View style={styles.carbBreakdown}>
+                  <Text style={styles.carbBreakdownNote}>
+                    Đường và chất xơ đã nằm TRONG Carbs — nhập để theo dõi chi
+                    tiết, không cộng thêm.
+                  </Text>
+
+                  <Text style={styles.fieldLabelNested}>Đường (g) / 100g</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0"
+                    placeholderTextColor="#666"
+                    keyboardType="decimal-pad"
+                    value={customInput.sugarG}
+                    onChangeText={(v) => updateCustomField('sugarG', v)}
+                  />
+
+                  <Text style={styles.fieldLabelNested}>Chất xơ (g) / 100g</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="0"
+                    placeholderTextColor="#666"
+                    keyboardType="decimal-pad"
+                    value={customInput.fiberG}
+                    onChangeText={(v) => updateCustomField('fiberG', v)}
+                  />
+                </View>
+
+                <Text style={styles.fieldLabel}>Nước (ml) / 100g</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0"
+                  placeholderTextColor="#666"
+                  keyboardType="decimal-pad"
+                  value={customInput.waterG}
+                  onChangeText={(v) => updateCustomField('waterG', v)}
+                />
+
+                <Pressable
+                  style={({ pressed }) => [styles.chip, styles.microsToggle, pressed && styles.pressed]}
+                  onPress={() => setShowMicros((v) => !v)}
+                >
+                  <Text style={styles.chipText}>
+                    {showMicros ? '▾ Ẩn vi chất' : '▸ Thêm vi chất'}
+                  </Text>
+                </Pressable>
+                <Text style={styles.microsHint}>
+                  Bỏ trống vi chất → món này không đóng góp vào các pin vi chất.
+                </Text>
+
+                {showMicros && (
+                  <>
+                    <Text style={styles.fieldLabel}>Canxi (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.calciumMg}
+                      onChangeText={(v) => updateCustomField('calciumMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>Sắt (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.ironMg}
+                      onChangeText={(v) => updateCustomField('ironMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>Natri (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.sodiumMg}
+                      onChangeText={(v) => updateCustomField('sodiumMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>Kali (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.potassiumMg}
+                      onChangeText={(v) => updateCustomField('potassiumMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>Magie (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.magnesiumMg}
+                      onChangeText={(v) => updateCustomField('magnesiumMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>Kẽm (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.zincMg}
+                      onChangeText={(v) => updateCustomField('zincMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>EPA (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.epaMg}
+                      onChangeText={(v) => updateCustomField('epaMg', v)}
+                    />
+
+                    <Text style={styles.fieldLabel}>DHA (mg) / 100g</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="0"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={customInput.dhaMg}
+                      onChangeText={(v) => updateCustomField('dhaMg', v)}
+                    />
+                  </>
+                )}
+              </ScrollView>
+
+              <View style={styles.row}>
+                <Pressable
+                  style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
+                  onPress={() => setAdding(false)}
+                >
+                  <Text style={styles.cancelText}>Huỷ</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.modalBtn,
+                    styles.eat,
+                    (!customValid || savingCustomFood) && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={saveCustomFood}
+                  disabled={!customValid || savingCustomFood}
+                >
+                  <Text style={styles.btnText}>Lưu món</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : !selected ? (
             <>
               <View style={styles.headerRow}>
                 <Text style={styles.title}>Ghi món ăn</Text>
@@ -150,7 +458,17 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 keyExtractor={(item) => item.id}
                 keyboardShouldPersistTaps="handled"
                 ListEmptyComponent={
-                  <Text style={styles.empty}>Không tìm thấy món nào.</Text>
+                  <View>
+                    <Text style={styles.empty}>Không tìm thấy món nào.</Text>
+                    {query.trim().length > 0 && (
+                      <Pressable
+                        style={({ pressed }) => [styles.addNewBtn, pressed && styles.pressed]}
+                        onPress={startAddingCustomFood}
+                      >
+                        <Text style={styles.addNewText}>➕ Thêm món mới: &apos;{query.trim()}&apos;</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 }
                 renderItem={({ item }) => {
                   const { main, sub } = displayNames(item);
@@ -207,6 +525,12 @@ export function FoodLogModal({ visible, onClose }: Props) {
               <Text style={styles.subtitle}>
                 {categoryLabel(selected.category)} · {selected.per100g.energyKcal} kcal / 100g
               </Text>
+              <Pressable
+                onPress={() => setEditingNutrition(true)}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <Text style={styles.editLink}>✎ Sửa thành phần</Text>
+              </Pressable>
 
               <ScrollView
                 style={styles.entryScroll}
@@ -299,6 +623,18 @@ export function FoodLogModal({ visible, onClose }: Props) {
           )}
         </Animated.View>
       </KeyboardAvoidingView>
+      {selected && (
+        <FoodNutritionEditModal
+          visible={editingNutrition}
+          mode="edit"
+          initialFood={selected}
+          onClose={() => setEditingNutrition(false)}
+          onSaved={(item) => {
+            // Reflect the override immediately in the entry preview.
+            setSelected(getAnyFoodById(item.id) ?? item);
+          }}
+        />
+      )}
     </Modal>
   );
 }
@@ -332,7 +668,18 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '700', color: '#fff' },
   subtitle: { fontSize: 14, color: '#aaa' },
   back: { color: '#4ECDC4', fontSize: 14, fontWeight: '600' },
+  editLink: { color: '#54A0FF', fontSize: 13, fontWeight: '600', marginTop: 2 },
   fieldLabel: { fontSize: 13, color: '#aaa', marginTop: 4 },
+  fieldLabelNested: { fontSize: 12, color: '#999', marginTop: 4 },
+  carbBreakdown: {
+    marginTop: 4,
+    paddingLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: '#2d2d44',
+    gap: 8,
+  },
+  carbBreakdownNote: { fontSize: 11, color: '#777', lineHeight: 15 },
+  microsHint: { fontSize: 11, color: '#777', marginTop: -4 },
   entryScroll: { flexShrink: 1 },
   entryScrollContent: { gap: 12 },
   input: {
@@ -346,6 +693,18 @@ const styles = StyleSheet.create({
   },
   list: { maxHeight: 320, flexShrink: 1 },
   empty: { color: '#888', textAlign: 'center', paddingVertical: 20 },
+  addNewBtn: {
+    marginTop: 4,
+    marginHorizontal: 16,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: '#2d2d44',
+    borderWidth: 1,
+    borderColor: '#4ECDC4',
+  },
+  addNewText: { color: '#4ECDC4', fontSize: 15, fontWeight: '700' },
+  microsToggle: { alignSelf: 'flex-start' },
   foodRow: {
     flexDirection: 'row',
     alignItems: 'center',

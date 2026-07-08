@@ -35,7 +35,7 @@ export function TodayMeals({ entries, onDelete }: Props) {
       ) : (
         <>
           <Text style={styles.macroLine}>
-            Đạm {summary.totalProteinG}g · Tinh bột {summary.totalCarbG}g · Béo{' '}
+            Đạm {summary.totalProteinG}g · Carbs {summary.totalCarbG}g · Béo{' '}
             {summary.totalFatG}g
           </Text>
           {summary.groups.map((group) => (

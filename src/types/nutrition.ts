@@ -12,7 +12,11 @@ export type MicronutrientId =
   | 'zinc'
   | 'sodium'
   | 'sugar'
-  | 'omega3';
+  | 'omega3'
+  // Derived from sodium (salt g = sodium mg × 2.5 / 1000) — see
+  // src/lib/nutrientTargets.ts and per100gValue in microBatteryEngine.ts.
+  // Not a stored field on Nutrition; it auto-updates whenever sodium does.
+  | 'salt';
 
 // 'goal': eating more is better, up to `value` (empty/under = neutral "still
 // room", never shown as a deficiency). 'limit': staying under `value` is the

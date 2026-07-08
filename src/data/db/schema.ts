@@ -84,6 +84,72 @@ export const CREATE_FOOD_LOG = `
   );
 `;
 
+// User-added foods that aren't in the build-time-generated catalog
+// (foodDatabase.generated.ts / usdaFoods.generated.ts). One row per food,
+// per-100g nutrition mirroring the `Nutrition` type. See
+// src/data/repositories/customFoodsRepository.ts for the row<->FoodItem
+// mapping and src/data/food/customFoodRegistry.ts for the runtime search
+// index that makes these searchable without an app reload.
+export const CREATE_CUSTOM_FOODS = `
+  CREATE TABLE IF NOT EXISTS custom_foods (
+    id TEXT PRIMARY KEY,
+    name_vi TEXT,
+    name_en TEXT,
+    category TEXT,
+    default_serving_g REAL,
+    energy_kcal REAL,
+    water_g REAL,
+    protein_g REAL,
+    fat_g REAL,
+    carb_g REAL,
+    fiber_g REAL,
+    sugar_g REAL,
+    calcium_mg REAL,
+    iron_mg REAL,
+    sodium_mg REAL,
+    potassium_mg REAL,
+    magnesium_mg REAL,
+    zinc_mg REAL,
+    epa_mg REAL,
+    dha_mg REAL,
+    created_at INTEGER
+  );
+`;
+
+// User edits to a food's nutrition that SHADOW the build-time-generated
+// catalog (foodDatabase.generated.ts / usdaFoods.generated.ts) or a custom
+// food, WITHOUT modifying those generated files. One row per overridden food,
+// keyed by the id of the food being corrected (food_id). Per-100g nutrition
+// mirroring the `Nutrition` type. At lookup time getAnyFoodById() merges an
+// override on top of the base food so the user's corrected values win. See
+// src/data/repositories/foodOverrideMapper.ts for the row<->FoodItem mapping
+// and src/data/food/foodOverrideRegistry.ts for the runtime sync registry.
+export const CREATE_FOOD_OVERRIDES = `
+  CREATE TABLE IF NOT EXISTS food_overrides (
+    food_id TEXT PRIMARY KEY,
+    name_vi TEXT,
+    name_en TEXT,
+    category TEXT,
+    default_serving_g REAL,
+    energy_kcal REAL,
+    water_g REAL,
+    protein_g REAL,
+    fat_g REAL,
+    carb_g REAL,
+    fiber_g REAL,
+    sugar_g REAL,
+    calcium_mg REAL,
+    iron_mg REAL,
+    sodium_mg REAL,
+    potassium_mg REAL,
+    magnesium_mg REAL,
+    zinc_mg REAL,
+    epa_mg REAL,
+    dha_mg REAL,
+    updated_at INTEGER
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -92,4 +158,6 @@ export const ALL_SCHEMAS = [
   CREATE_HEALTH_SIGNALS,
   CREATE_DIARY_ENTRIES,
   CREATE_FOOD_LOG,
+  CREATE_CUSTOM_FOODS,
+  CREATE_FOOD_OVERRIDES,
 ];

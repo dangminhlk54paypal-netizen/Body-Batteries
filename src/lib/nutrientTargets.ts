@@ -118,14 +118,32 @@ const NUTRIENT_TABLE: NutrientMeta[] = [
     male: { young: 60, older: 60 },
     female: { young: 50, older: 50 },
   },
+  {
+    // Salt is DERIVED from sodium (salt g = sodium mg × 2.5 / 1000), never a
+    // stored field — see per100gValue('salt') in microBatteryEngine.ts. It
+    // auto-updates from any logged food's sodium, no data-entry change
+    // needed. Daily reference mark: WHO adult guidance, 5 g/day. Chỉ để
+    // tham khảo.
+    id: 'salt',
+    kind: 'limit',
+    nameVi: 'Muối (NaCl)',
+    unit: 'g',
+    color: '#E17055',
+    male: { young: 5, older: 5 },
+    female: { young: 5, older: 5 },
+  },
 ];
 
 // Curated grouping for the Home UI: a few prominent goal pins shown by
-// default, the rest tucked behind "Xem thêm", and limit-type pins in their
-// own neutral-labelled row.
+// default, the rest tucked behind "Xem thêm", limit-type pins in their own
+// neutral-labelled row, and salt+electrolytes grouped together in their own
+// "Muối & điện giải" section (see MicroBatteryStack.tsx). sodium/potassium/
+// magnesium moved out of MORE_GOAL_IDS/LIMIT_IDS into ELECTROLYTE_IDS so
+// each nutrient renders in exactly one group — no duplicates.
 export const PROMINENT_GOAL_IDS: MicronutrientId[] = ['fiber', 'iron', 'calcium', 'fat'];
-export const MORE_GOAL_IDS: MicronutrientId[] = ['potassium', 'magnesium', 'zinc', 'omega3'];
-export const LIMIT_IDS: MicronutrientId[] = ['sodium', 'sugar'];
+export const MORE_GOAL_IDS: MicronutrientId[] = ['zinc', 'omega3'];
+export const LIMIT_IDS: MicronutrientId[] = ['sugar'];
+export const ELECTROLYTE_IDS: MicronutrientId[] = ['salt', 'sodium', 'potassium', 'magnesium'];
 
 function valueFor(meta: NutrientMeta, sex: Sex, bracket: AgeBracket): number {
   return sex === 'male' ? meta.male[bracket] : meta.female[bracket];

@@ -140,4 +140,36 @@ describe('computeMicroBatteries', () => {
     const [fiber] = computeMicroBatteries(entries, lookup, [FIBER_GOAL]);
     expect(fiber.current).toBe(2);
   });
+
+  it('derives salt from sodium (salt g = sodium mg × 2.5 / 1000), never a stored field', () => {
+    // bread declares 400mg sodium/100g → 100g bread has 400mg sodium.
+    const entries: LoggedPortion[] = [{ foodId: 'bread', grams: 100 }];
+    const SALT_LIMIT: NutrientTarget = {
+      id: 'salt',
+      kind: 'limit',
+      nameVi: 'Muối (NaCl)',
+      unit: 'g',
+      color: '#000',
+      value: 5,
+    };
+    const [salt] = computeMicroBatteries(entries, lookup, [SALT_LIMIT]);
+    expect(salt.current).toBeCloseTo((400 * 2.5) / 1000, 3); // 1 g salt
+    expect(salt.over).toBe(false);
+  });
+
+  it('salt pin appears automatically whenever sodium is logged, with no separate data entry', () => {
+    // 1000g bread → 4000mg sodium → 10g salt, over the 5g reference cap.
+    const entries: LoggedPortion[] = [{ foodId: 'bread', grams: 1000 }];
+    const SALT_LIMIT: NutrientTarget = {
+      id: 'salt',
+      kind: 'limit',
+      nameVi: 'Muối (NaCl)',
+      unit: 'g',
+      color: '#000',
+      value: 5,
+    };
+    const [salt] = computeMicroBatteries(entries, lookup, [SALT_LIMIT]);
+    expect(salt.current).toBe(10);
+    expect(salt.over).toBe(true);
+  });
 });

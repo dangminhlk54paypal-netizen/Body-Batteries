@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import type { MicroBatteryState } from '../types/nutrition';
-import { PROMINENT_GOAL_IDS, MORE_GOAL_IDS, LIMIT_IDS } from '../lib/nutrientTargets';
+import { PROMINENT_GOAL_IDS, MORE_GOAL_IDS, LIMIT_IDS, ELECTROLYTE_IDS } from '../lib/nutrientTargets';
 import type { DateOption } from '../hooks/useMicroBatteryHistory';
+import { OverdoseNotice } from './OverdoseNotice';
 
 interface Props {
   states: MicroBatteryState[];
@@ -92,6 +93,7 @@ export function MicroBatteryStack({
   const prominent = byIds(states, PROMINENT_GOAL_IDS);
   const more = byIds(states, MORE_GOAL_IDS);
   const limits = byIds(states, LIMIT_IDS);
+  const electrolytes = byIds(states, ELECTROLYTE_IDS);
 
   return (
     <View style={styles.container}>
@@ -147,6 +149,19 @@ export function MicroBatteryStack({
           </ScrollView>
         </View>
       )}
+
+      {electrolytes.length > 0 && (
+        <View style={styles.limitSection}>
+          <Text style={styles.limitLabel}>Muối & điện giải</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+            {electrolytes.map((s) => (
+              <MicroCell key={s.id} state={s} />
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <OverdoseNotice states={states} />
     </View>
   );
 }

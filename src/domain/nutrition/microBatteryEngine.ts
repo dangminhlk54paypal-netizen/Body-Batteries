@@ -47,6 +47,12 @@ function per100gValue(p: Nutrition, id: MicronutrientId): number {
     case 'omega3':
       // Combined EPA+DHA — only rows that declare epa_mg/dha_mg contribute.
       return (p.epaMg ?? 0) + (p.dhaMg ?? 0);
+    case 'salt':
+      // Derived from sodium, NOT a stored field — 2.5 g NaCl per 1 g sodium
+      // (standard salt<->sodium conversion). This means salt auto-updates
+      // whenever any food (built-in, USDA, or custom) logs sodium — no
+      // separate data-entry path needed.
+      return (p.sodiumMg * 2.5) / 1000;
   }
 }
 

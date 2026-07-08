@@ -27,7 +27,8 @@ export function WeightLogCard() {
     const parsed = parseFloat(weightText);
     const { min, max } = PROFILE_LIMITS.weightKg;
     if (isNaN(parsed) || parsed < min || parsed > max) return;
-    await logWeight(parsed);
+    const rounded = Math.round(parsed * 10) / 10;
+    await logWeight(rounded);
     setWeightText('');
     await loadEntries();
   }
@@ -64,7 +65,7 @@ export function WeightLogCard() {
             <Text style={styles.entryDate}>
               {formatDisplayDate(dateString(new Date(e.timestamp)))}
             </Text>
-            <Text style={styles.entryValue}>{e.value} kg</Text>
+            <Text style={styles.entryValue}>{e.value.toFixed(1)} kg</Text>
           </View>
         ))
       )}

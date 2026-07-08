@@ -117,7 +117,9 @@ export const FOOD_CATEGORY_LABELS: Record<string, string> = {
 
 export const LOW_BATTERY_THRESHOLD = 0.2; // 20% — trigger warning below this
 
-export const DATA_RETENTION_DAYS = 7;
+// ~1 month of history so the monthly Excel export always has a full previous
+// calendar month to write before old data is (optionally) cleaned up.
+export const DATA_RETENTION_DAYS = 35;
 
 export const DRAIN_TICK_INTERVAL_MS = 30 * 60 * 1000; // every 30 min
 

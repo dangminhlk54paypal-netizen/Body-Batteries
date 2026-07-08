@@ -1,25 +1,45 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { FOOD_ITEMS } from '../data/food/foodDatabase';
-import type { FoodLogEntry } from '../types/food';
+import { getCustomFoods } from '../data/food/customFoodRegistry';
+import { getAnyFoodById } from '../data/food/foodLookup';
+import { FoodNutritionEditModal } from './FoodNutritionEditModal';
+import type { FoodItem, FoodLogEntry } from '../types/food';
 
 // One-tap logging for supplement-category foods (fish oil, whey, vitamins…).
 // Each tap logs one default serving through the normal logFood flow, so the
 // dose lands in the food log (deletable in TodayMeals) and its minerals/
 // omega-3 feed the micronutrient batteries above — going past 100% there is
 // how "đã nạp thừa" shows up.
+//
+// The list now includes user-added custom supplements, and a "➕" chip opens
+// the nutrition editor to add a new one. Each chip also has a discreet "✎" to
+// edit that supplement's nutrition (saved as an override so the correction
+// applies everywhere). Logging is override-aware via getAnyFoodById.
 
 interface Props {
   todayLog: FoodLogEntry[];
 }
 
-const SUPPLEMENTS = FOOD_ITEMS.filter((f) => f.category === 'supplement');
+const BUILT_IN_SUPPLEMENTS = FOOD_ITEMS.filter((f) => f.category === 'supplement');
 
 export function SupplementQuickLog({ todayLog }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
 
-  if (SUPPLEMENTS.length === 0) return null;
+  // Bumped after add/edit so the memoised list re-reads the custom registry.
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [adding, setAdding] = useState(false);
+  const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
+
+  const supplements = useMemo(() => {
+    const custom = getCustomFoods().filter((f) => f.category === 'supplement');
+    const byId = new Map<string, FoodItem>();
+    for (const item of [...BUILT_IN_SUPPLEMENTS, ...custom]) byId.set(item.id, item);
+    // Reflect any override (edited name/nutrition) in what we display + log.
+    return [...byId.values()].map((item) => getAnyFoodById(item.id) ?? item);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTick]);
 
   function countToday(foodId: string): number {
     return todayLog.filter((e) => e.foodId === foodId).length;
@@ -33,31 +53,68 @@ export function SupplementQuickLog({ todayLog }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
       >
-        {SUPPLEMENTS.map((item) => {
+        {supplements.map((item) => {
           const count = countToday(item.id);
           return (
             <Pressable
               key={item.id}
-              onPress={() => logFood(item, item.defaultServingG, Date.now())}
+              onPress={() => {
+                // Log the override-aware item so edited nutrition applies.
+                const resolved = getAnyFoodById(item.id) ?? item;
+                logFood(resolved, resolved.defaultServingG, Date.now());
+              }}
               style={({ pressed }) => [
                 styles.chip,
                 count > 0 && styles.chipLogged,
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.chipName}>{item.nameVi}</Text>
+              <View style={styles.chipHeader}>
+                <Text style={styles.chipName} numberOfLines={1}>
+                  {item.nameVi}
+                </Text>
+                <Pressable
+                  onPress={() => setEditingFood(item)}
+                  hitSlop={10}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Text style={styles.chipEdit}>✎</Text>
+                </Pressable>
+              </View>
               <Text style={[styles.chipMeta, count > 0 && styles.chipMetaLogged]}>
                 {count > 0 ? `hôm nay ×${count}` : 'chưa nạp hôm nay'}
               </Text>
             </Pressable>
           );
         })}
+
+        <Pressable
+          onPress={() => setAdding(true)}
+          style={({ pressed }) => [styles.chip, styles.chipAdd, pressed && styles.pressed]}
+        >
+          <Text style={styles.chipAddText}>➕ Thêm{'\n'}TPCN</Text>
+        </Pressable>
       </ScrollView>
       <Text style={styles.hint}>
         Mỗi lần bấm = 1 liều mặc định (VD: 1 viên dầu cá 1220mg = 600mg EPA + 400mg DHA).
         Liều nạp cộng thẳng vào pin vi chất ở trên — pin vượt 100% nghĩa là đã quá mức
         khuyến nghị. Bấm nhầm thì xoá trong danh sách bữa ăn bên dưới.
       </Text>
+
+      <FoodNutritionEditModal
+        visible={adding}
+        mode="add"
+        presetCategory="supplement"
+        onClose={() => setAdding(false)}
+        onSaved={() => setRefreshTick((t) => t + 1)}
+      />
+      <FoodNutritionEditModal
+        visible={editingFood !== null}
+        mode="edit"
+        initialFood={editingFood ?? undefined}
+        onClose={() => setEditingFood(null)}
+        onSaved={() => setRefreshTick((t) => t + 1)}
+      />
     </View>
   );
 }
@@ -84,14 +141,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333',
     gap: 2,
+    minWidth: 120,
+  },
+  chipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   chipLogged: {
     borderColor: '#54A0FF',
+  },
+  chipAdd: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderStyle: 'dashed',
+    borderColor: '#54A0FF',
+    minWidth: 90,
+  },
+  chipAddText: {
+    color: '#54A0FF',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   chipName: {
     color: '#ddd',
     fontSize: 13,
     fontWeight: '600',
+    flexShrink: 1,
+  },
+  chipEdit: {
+    color: '#888',
+    fontSize: 13,
   },
   chipMeta: {
     color: '#666',
