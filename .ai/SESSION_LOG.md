@@ -556,6 +556,44 @@ này và người dùng đồng ý hoãn thay vì hiện số bịa.
 
 ---
 
+## Session 14 — 2026-07-08
+
+**Làm gì:** (1) Excel export nhiều sheet ("Daily Totals" + "Food Entries") + mở rộng danh sách món khi nhập món chưa khớp; (2) 8 hạng mục feedback người dùng (cân nặng, xuất tháng, Muối, sửa dinh dưỡng món, đổi nhãn Carbs, quản lý TPCN, cảnh báo vượt mức). Điều phối qua nhiều subagent song song (sonnet/haiku), tự làm inline 1 gói khi agent bị chặn bởi giới hạn phiên. Chốt bằng 1 lượt QA-reviewer review toàn diff + sửa bug tìm được, rồi commit.
+
+**Kết quả (tất cả ĐÃ COMMIT, commit `9da940a`, nhánh `session-5-demo-ready`, CHƯA push lên origin):**
+- **Excel đa-sheet:** sheet mới "Daily Totals" (tổng theo ngày + cân nặng carry-forward) và "Food Entries" (chi tiết từng món, hàng trống ngăn cách ngày) — `src/domain/nutrition/excelSheets.ts` (thuần, có test), `formatDMY` trong `dateUtils.ts`. Giới hạn kỹ thuật ghi rõ: thư viện `xlsx` bản miễn phí KHÔNG tô màu/viền ô được — dùng hàng trống thay thế.
+- **Món tự thêm (`custom_foods`):** bảng SQLite mới + `customFoodRegistry.ts` (persist + tìm lại ngay, bền qua restart) + form "➕ Thêm món mới" trong `FoodLogModal.tsx` khi tìm không thấy.
+- **Cân nặng làm tròn 1 số thập phân** — `WeightLogCard.tsx`.
+- **Xuất Excel tháng + giữ dữ liệu 35 ngày:** `DATA_RETENTION_DAYS` 7→35, nút "Xuất Excel 30 ngày", tự xuất hàng tháng đặt tên `your_daily_batteries_body_on_MM_YYYY.xlsx` lúc khởi động (`monthlyAutoExport.ts` + `monthRange.ts`), **chỉ xoá dữ liệu cũ sau khi người dùng xác nhận** — không có đường xoá thầm lặng.
+- **Pin "Muối & điện giải":** Muối suy ra từ Natri (×2.5/1000, không lưu field riêng) nên tự cập nhật theo mọi món ghi; gộp hiển thị Muối/Natri/Kali/Magie cùng nhóm (`nutrientTargets.ts`, `microBatteryEngine.ts`, `MicroBatteryStack.tsx`).
+- **Sửa thành phần dinh dưỡng món (`food_overrides`):** bảng override riêng (không đụng file catalog generated), merge trong `getAnyFoodById` — sửa 1 lần áp dụng khắp nơi (pin vi chất, tổng kết ngày, Excel). Nút "✎ Sửa thành phần" trong `FoodLogModal.tsx`, modal dùng chung `FoodNutritionEditModal.tsx`.
+- **Đổi nhãn "Tinh bột" → "Carbs (Carbohydrate)"** cho MACRO (3 chỗ: `TodayMeals.tsx`, `FoodLogModal.tsx`, 2 header Excel) — **giữ nguyên** "Tinh bột" cho category `grain` (món ăn). Xác nhận không hề có cộng đôi đường vào carbs.
+- **Quản lý TPCN:** `SupplementQuickLog.tsx` gộp TPCN tự thêm, log theo giá trị đã sửa (override-aware), nút ➕ thêm mới + ✎ sửa liều lượng từng loại.
+- **Cảnh báo vượt Upper-Limit:** `upperLimits.ts` + `overdoseWarning.ts` (thuần) + `OverdoseNotice.tsx` — ngôn ngữ "chỉ để tham khảo", không chẩn đoán, đúng ranh giới sức khoẻ mục 5.
+- **QA review (2 lượt)** tìm & vá tổng **5 bug tích hợp** trước khi commit: số âm không bị chặn ở form món tự thêm, `defaultServingG` âm khoá nút ghi món vô lý, id trùng khi double-tap "Lưu món", `pickFood` không resolve override (sửa dinh dưỡng không áp dụng khi ghi lại qua tìm kiếm), merge override xoá mất `servingPresets`/`nameDe` của món gốc sau restart app.
+- **Verify cuối cùng:** `npx tsc --noEmit` sạch · `npm run lint` sạch · `npx jest` → **249 test PASS / 27 suite**.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Một subagent (`mobile-frontend`) bị dừng giữa chừng do **chạm giới hạn phiên Claude** (reset theo giờ Berlin) trước khi viết code — chỉ mới đọc context. Tự hoàn thiện gói đó **inline** (không spawn lại) vì đã có đủ context + API backend từ agent trước, tránh mất thời gian dựng lại context cho agent mới.
+- Repo có PostToolUse hook chặn ESLint `react-hooks/*` lỗi ngay khi ghi file — gặp 2 lỗi lặp lại (`set-state-in-effect` khi seed form theo prop, `purity` khi gọi `Date.now()` trong hàm thân component). Đã ghi thành memory lâu dài (`eslint-react-hooks-rules` trong hệ thống memory Claude Code) để phiên/agent sau tránh lặp lại.
+- Retention 7 ngày mâu thuẫn với yêu cầu "xuất Excel tối đa 1 tháng" (không đủ dữ liệu để xuất) — đã hỏi người dùng, chốt nới lên 35 ngày trước khi code.
+- "Salt" trùng khái niệm với Natri/Kali đã có sẵn — đã hỏi người dùng, chốt hướng "nhóm Muối & điện giải" (Muối suy ra từ Natri, không phải field lưu riêng) trước khi code.
+
+**Việc còn tồn đọng (không chặn, ghi lại từ QA để phiên sau cân nhắc):**
+- Xuất Excel tự động hàng tháng chỉ xuất **đúng 1 tháng liền trước** — nếu người dùng không mở app quá 1 tháng, tháng ở giữa bị bỏ sót vĩnh viễn (không tự lặp bù).
+- `FoodNutritionEditModal` là Modal lồng trong Modal của `FoodLogModal` — cần test tay kỹ nút Back cứng Android.
+- Form "thêm món mới" bị trùng lặp code giữa `FoodLogModal.tsx` (nhánh `adding`) và `FoodNutritionEditModal.tsx` (`mode="add"`) — nên gộp lại 1 chỗ khi có dịp refactor.
+- `OverdoseNotice` có thể hiện đồng thời 2 dòng gần giống nhau (Muối + Natri) khi vượt ngưỡng — không phải lỗi cộng dồn, chỉ hơi rườm.
+
+**Session tiếp theo phải làm:**
+1. **S-A mở rộng — test máy thật TOÀN BỘ backlog** (chưa hề chạy trên điện thoại lần nào): mô hình "2 đồng hồ" (S-M/S-O/S-P/S-Q), pin vi chất (S-R), và **toàn bộ Session 14** (Excel đa-sheet, món tự thêm, sửa thành phần, Muối, TPCN, cảnh báo UL, cân nặng làm tròn, xuất tháng). Checklist test tay tiếng Việt đầy đủ đã có trong báo cáo QA của Session 14 (yêu cầu người dùng cung cấp lại nếu cần, hoặc đọc lại transcript session này).
+2. Trong lúc test tay #4 (sửa thành phần), **ưu tiên xác nhận lại bug đã vá** (`pickFood` resolve override) — vì đây là bug QA tìm thấy sau khi code đã "xong", rủi ro cao nhất trong đợt này.
+3. Nếu ổn sau test tay → `git push` lên `origin/session-5-demo-ready` (hiện đang **ahead 1 commit**, chưa push).
+4. Cân nhắc xử lý 4 việc tồn đọng ở trên (không gấp, không chặn release).
+5. **L-1/W-1/G-1** (từ Session 13) — kiểm tra lại xem đã xong trong các commit trước Session 14 chưa (git log cho thấy có vẻ đã commit riêng — xác nhận lại rồi xoá khỏi backlog nếu đúng).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

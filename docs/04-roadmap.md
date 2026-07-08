@@ -99,6 +99,14 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > — xem `.ai/parallel-reports/S-M.md`/`S-O.md`/`S-P.md`/`S-Q.md`). Cùng lúc thêm dàn **"pin vi
 > chất"** mới (Chất xơ/Sắt/Canxi/Chất béo/Kali/Magie/Kẽm/Natri/Đường) dẫn xuất từ nhật ký món,
 > KHÔNG đổi DB (gói **S-R** — xem `.ai/parallel-reports/S-R.md`).
+>
+> **Session 14 (2026-07-08), ĐÃ COMMIT (`9da940a`) nhưng CHƯA test máy:** Excel đa-sheet mới
+> ("Daily Totals"/"Food Entries") + món tự thêm khi ghi chưa khớp (`custom_foods`, bền qua
+> restart) + **sửa thành phần dinh dưỡng món** qua bảng override (`food_overrides`, áp dụng khắp
+> nơi qua `getAnyFoodById`) + pin **"Muối & điện giải"** (Muối suy từ Natri, tự cập nhật) + đổi
+> nhãn macro "Tinh bột"→"Carbs (Carbohydrate)" (giữ nguyên tên nhóm món "grain") + quản lý TPCN
+> (thêm/sửa/log) + cảnh báo vượt Upper-Limit tham khảo. Verify: 249 test PASS, tsc/lint sạch. Chi
+> tiết đầy đủ + 5 bug đã vá: `.ai/SESSION_LOG.md` Session 14.
 
 ---
 
@@ -136,7 +144,7 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 | 0 | Chuẩn bị | ✅ | 🟡 | Đã quét QR thật trên iPhone qua Expo Go. Còn thiếu xác nhận Home đủ 7 pin |
 | 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK (1424 module). Cần chạy thật: nạp pin + đóng/mở lại |
 | 2 | Modes & tự động | ✅ | ⏳ | Nhắc nhở thật + tự xả pin định kỳ thật đã xong (S-C, S-D). Cần test thật |
-| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5, ngoài phạm vi gốc) |
+| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5) + Excel đa-sheet/override/Muối/TPCN (Session 14, ngoài phạm vi gốc) |
 | 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu (xem S-F — v1 placeholder nhập tay, chưa phải Health thật) |
 | 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu — cần dữ liệu cân nặng từ S-L trước (xem `.ai/NEXT_SESSIONS.md`) |
 
@@ -157,6 +165,12 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > 🟢 **(2026-07-04, Session 11–12)** **S-M/S-O/S-P/S-Q** (nâng cấp "2 đồng hồ") và **S-R** (pin
 > vi chất) đã xong code, commit xong — xem chi tiết ở khối "Nâng cấp lớn Session 11–12" trên.
 >
-> 🟢 **(2026-07-07, Session 13)** **U7 vượt spec** (toàn bộ 363 tên USDA dịch tiếng Việt, tìm kiếm gộp song ngữ), **L-1** (0 lint error), **Excel export 6 sheet** (thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá"), **food_items.csv** (73→90 món + 3 category + 2 cột EPA/DHA), sửa bug pin vi chất (`foodLookup.ts`), thêm Omega-3 pin + nạp nhanh supplement. Verify: 188/188 test, 19 suite, 0 lint error. **Tất cả chưa commit.**
+> 🟢 **(2026-07-07, Session 13)** **U7 vượt spec** (toàn bộ 363 tên USDA dịch tiếng Việt, tìm kiếm gộp song ngữ), **L-1** (0 lint error), **Excel export 6 sheet** (thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá"), **food_items.csv** (73→90 món + 3 category + 2 cột EPA/DHA), sửa bug pin vi chất (`foodLookup.ts`), thêm Omega-3 pin + nạp nhanh supplement. Verify: 188/188 test, 19 suite, 0 lint error. (Đã commit ở các commit riêng trước Session 14.)
+>
+> 🟢 **(2026-07-08, Session 14, ĐÃ COMMIT `9da940a`, chưa push)** Excel đa-sheet (Daily Totals/Food
+> Entries), món tự thêm bền qua restart, sửa thành phần dinh dưỡng món (override), pin Muối & điện
+> giải, đổi nhãn Carbs, quản lý TPCN, cảnh báo vượt Upper-Limit. 2 lượt QA vá **5 bug tích hợp**
+> trước commit. Verify: **249/249 test**, tsc/lint sạch. Chi tiết: `.ai/SESSION_LOG.md` Session 14.
+> **Chưa test máy** — backlog test tay giờ gồm cả nội dung Session 11–14.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

@@ -107,7 +107,27 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-07 (Session 13).** Hoàn tất **U7 vượt spec** (363 tên USDA dịch tiếng Việt toàn bộ trong `database/usda_names_vi.csv`, tìm kiếm gộp song ngữ `foodSearch.ts` — index bỏ dấu, ưu tiên khớp đúng dấu, món Việt trước), sửa dứt điểm **L-1** (0 lint error, 2 lỗi hoisting đã sửa), **Excel export 6 sheet** (thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá"), mở rộng **`food_items.csv`** (73→90 món + 3 category mới + 2 cột EPA/DHA), sửa bug pin vi chất (`foodLookup.ts` getAnyFoodById bắt buộc), thêm **Omega-3 pin** (EPA+DHA 500mg) + **ô nạp nhanh supplement**. Khởi động **W-1** (dọn 23 warning) + **G-1** (thêm `name_de` 3 ngôn ngữ) chạy song parallel, agent nền. Verify trước commit: **188 test PASS / 19 suite**, 0 lint error. **TẤT CẢ CHƯA COMMIT.**
+**Cập nhật lần cuối: 2026-07-08 (Session 14).** Hai việc gộp trong 1 phiên, **ĐÃ COMMIT** (`9da940a`,
+nhánh `session-5-demo-ready`, **chưa push origin — ahead 1 commit**): (1) **Excel đa-sheet** — thêm
+"Daily Totals" + "Food Entries" (`excelSheets.ts` thuần + `formatDMY`), và **món tự thêm khi tìm
+không thấy** (`custom_foods` — persist + tìm lại được, bền qua restart). (2) **8 hạng mục feedback
+người dùng**: cân nặng làm tròn 1 số thập phân; retention 7→35 ngày + nút xuất Excel 30 ngày + tự
+xuất hàng tháng `your_daily_batteries_body_on_MM_YYYY.xlsx` (xoá dữ liệu cũ CHỈ sau khi người dùng
+xác nhận); pin **"Muối & điện giải"** (Muối suy ra từ Natri×2.5/1000, tự cập nhật); **sửa thành phần
+dinh dưỡng món** qua bảng `food_overrides` (merge trong `getAnyFoodById`, áp dụng khắp nơi); đổi nhãn
+macro **"Tinh bột"→"Carbs (Carbohydrate)"** (giữ nguyên category `grain`="Tinh bột", xác nhận không
+cộng đôi đường); **quản lý TPCN** (thêm/sửa/log qua `SupplementQuickLog.tsx`); **cảnh báo vượt
+Upper-Limit** (`upperLimits.ts`/`overdoseWarning.ts`/`OverdoseNotice.tsx`, ngôn ngữ "chỉ để tham
+khảo"). QA-reviewer 2 lượt tìm & vá **5 bug tích hợp** (số âm không chặn, id trùng double-tap,
+`pickFood` không resolve override, merge override xoá mất servingPresets/nameDe món gốc — chi tiết
+`.ai/SESSION_LOG.md` Session 14). Verify cuối: `tsc` sạch · `npm run lint` sạch · **249 test PASS /
+27 suite**. **CHƯA test máy thật** (người dùng chủ động dời sang buổi khác, giống thói quen các
+session trước — xem S-A trong `.ai/NEXT_SESSIONS.md`, nay backlog test tay đã phình to thêm rất
+nhiều so với lần ghi trước). Ghi chú vận hành: gặp giới hạn phiên Claude giữa lúc 1 subagent đang
+chạy → tự hoàn thiện inline thay vì spawn lại; 2 lỗi ESLint `react-hooks/*` lặp lại đã ghi vào
+memory Claude Code (`eslint-react-hooks-rules`) để tránh lặp ở phiên sau.
+
+**Trước đó — Cập nhật 2026-07-07 (Session 13).** Hoàn tất **U7 vượt spec** (363 tên USDA dịch tiếng Việt toàn bộ trong `database/usda_names_vi.csv`, tìm kiếm gộp song ngữ `foodSearch.ts` — index bỏ dấu, ưu tiên khớp đúng dấu, món Việt trước), sửa dứt điểm **L-1** (0 lint error, 2 lỗi hoisting đã sửa), **Excel export 6 sheet** (thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá"), mở rộng **`food_items.csv`** (73→90 món + 3 category mới + 2 cột EPA/DHA), sửa bug pin vi chất (`foodLookup.ts` getAnyFoodById bắt buộc), thêm **Omega-3 pin** (EPA+DHA 500mg) + **ô nạp nhanh supplement**. Khởi động **W-1** (dọn 23 warning) + **G-1** (thêm `name_de` 3 ngôn ngữ) chạy song parallel, agent nền. Verify trước commit: **188 test PASS / 19 suite**, 0 lint error. **TẤT CẢ CHƯA COMMIT.**
 
 Trước đó — **Session 12 (2026-07-04):** Nâng cấp "2 đồng hồ" **XONG CODE + ĐÃ COMMIT** (`S-M`·`S-O`·`S-P`·`S-Q`): pin chính = **"Pin no/đói"** tụt dần (sàn 20%, thức 6h–23h/ngủ); dòng phụ = **"Sổ calo"** đếm lên reset 6h sáng, mục tiêu từ cân nặng mong muốn (thâm hụt an toàn). **Chưa test máy.** Cùng lúc **S-R** (pin vi chất dẫn xuất từ nhật ký) hoàn tất code. Chi tiết: `.ai/parallel-reports/S-M.md`/`S-O.md`/`S-P.md`/`S-Q.md`/`S-R.md`.
 
@@ -170,9 +190,10 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 - **Bundle build:** ✅ verify OK ở Session 7 — iOS **1426 module** (`expo export --platform ios`,
   tăng từ 1424 do 2 file mới của gói S-L).
 - Mạng: eduroam có "client isolation" → dùng Personal Hotspot hoặc `--tunnel`.
-- Git: repo có remote `origin` (GitHub, `dangminhlk54paypal-netizen/Body-Batteries`). Nhánh
-  **`session-5-demo-ready`** và **`main`** giờ **giống nhau** (đã push 2026-06-18) — không còn
-  commit local nào chưa lên `origin`.
+- Git: repo có remote `origin` (GitHub, `dangminhlk54paypal-netizen/Body-Batteries`). **Cập nhật
+  2026-07-08 (Session 14): nhánh `session-5-demo-ready` đang ahead 1 commit so với
+  `origin/session-5-demo-ready` (`9da940a` chưa push)** — đoạn "giống nhau, không còn commit nào
+  treo" bên dưới đã LỖI THỜI kể từ đây, giữ lại chỉ để tham khảo lịch sử.
 - Git hooks: ✅ Đã cài (nhắc SESSION_LOG sau commit — xác nhận hoạt động 2026-07-03). Hooks
   Claude Code (tự lint file vừa sửa + nhắc wrapup) cũng đã bật trong `.claude/settings.json`.
 - Dọn dẹp môi trường (không gấp): S-A ghi nhận ~10 process `expo start --web` cũ còn sót trên các
@@ -180,24 +201,33 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (cập nhật Session 11):** Xem **`.ai/NEXT_SESSIONS.md`** (file DUY NHẤT
-chứa mọi gói). Thứ tự: (1) **verify + commit code S-M** đang nằm chưa commit trong working tree;
-(2) **S-A** test máy thật (gồm luồng S-M mới + U7/USDA); (3) **L-1** dọn 2 lint error tồn đọng
-(gói nhỏ, prompt sẵn); (4) **U7** phần còn lại nếu có. **S-F đã xong** (commit 2026-07-03).
-**S-K vẫn tạm dừng** (mâu thuẫn mô hình S-M) và **U1 đã gộp vào S-M** — đừng mở riêng. **S-G**
-để sau cùng (cần vài tuần dữ liệu cân nặng). **U4/U5/U6 đã xong** (xem parallel-reports).
+**Việc phải làm KẾ TIẾP (cập nhật Session 14, 2026-07-08):** **S-A mở rộng — test máy thật** là
+việc số 1 duy nhất còn chặn, vì backlog chưa test đã dồn qua nhiều session (S-M/S-O/S-P/S-Q, S-R,
+và toàn bộ Session 14 — Excel đa-sheet/món tự thêm/sửa thành phần/Muối/TPCN/cảnh báo UL). Checklist
+test tay chi tiết nằm trong `.ai/SESSION_LOG.md` mục Session 14 (báo cáo QA gốc). Sau khi test tay
+ổn → `git push` (hiện ahead 1 commit, chưa push). `.ai/NEXT_SESSIONS.md` (hệ thống gói S-x/U-x cũ)
+**đã lỗi thời một phần** — Session 14 làm việc trực tiếp theo feedback người dùng, không theo gói
+cũ; kiểm tra lại L-1/W-1/G-1 xem đã xong trong commit nào trước Session 14 chưa rồi dọn khỏi file
+đó. **S-G** vẫn để sau cùng (cần vài tuần dữ liệu cân nặng).
 
 **Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption/
-metabolicConstants), domain (battery/modes/rules/energy — metabolismEngine + energyBalanceEngine
-+ profileValidation/food — foodNutrition + foodLogSummary), data/db + repositories (+ food CSV
-loader), store (energy/settings), services (notifications/export/cleanup), hooks (useDrainTick,
-useLiveEnergyReading, useLowEnergyWatch), components (BatteryCell/MasterBattery/LiveMasterBattery/
-BatteryStack/ModeSelector/IntakeModal/EnergyActionsBar/BodyProfileCard/TrendChart/FoodLogModal/
-TodayMeals/WeightLogCard), screens (Home/History/Diary/Settings/Onboarding), repositories (+
-healthSignalsRepository), navigation. Phase 0–3 đầy đủ kể cả biểu đồ xu hướng; Phase 2 đầy đủ
-(nhắc nhở thật + tự xả pin + reset ngày mới). UX: U2 (bàn phím modal ghi món) + U3 (nhãn biểu
- đồ/Lịch sử) + **U4** (Nhật ký: sửa lỗi ghi đè + UI glassmorphism) + **U5** (Onboarding) + **U6**
- (Cài đặt UX + khung giờ bữa ăn, gộp S-I) đã sửa xong. Ghi nhận cân nặng theo thời gian (S-L) đã xong.
+metabolicConstants/upperLimits), domain (battery/modes/rules/energy — metabolismEngine +
+energyBalanceEngine + profileValidation/food — foodNutrition + foodLogSummary + customFoodInput/
+nutrition — dailyNutritionSummary + nutritionAssessment + microBatteryEngine + overdoseWarning +
+excelSheets), data/db + repositories (+ food CSV loader + customFoodsRepository + foodOverrides
+Repository + healthSignalsRepository), data/food (customFoodRegistry + foodOverrideRegistry +
+foodLookup + foodSearch), store (energy/settings), services (notifications/export — excelExport
+Service + monthlyAutoExport + monthRange/cleanup), hooks (useDrainTick, useLiveEnergyReading,
+useLowEnergyWatch), components (BatteryCell/MasterBattery/LiveMasterBattery/BatteryStack/
+ModeSelector/IntakeModal/EnergyActionsBar/BodyProfileCard/TrendChart/FoodLogModal/
+FoodNutritionEditModal/OverdoseNotice/SupplementQuickLog/TodayMeals/WeightLogCard/
+MicroBatteryStack), screens (Home/History/Diary/Settings/Onboarding), navigation. Phase 0–3 đầy đủ
+kể cả biểu đồ xu hướng; Phase 2 đầy đủ (nhắc nhở thật + tự xả pin + reset ngày mới). UX: U2 (bàn
+phím modal ghi món) + U3 (nhãn biểu đồ/Lịch sử) + **U4** (Nhật ký: sửa lỗi ghi đè + UI
+glassmorphism) + **U5** (Onboarding) + **U6** (Cài đặt UX + khung giờ bữa ăn, gộp S-I) đã sửa
+xong. Ghi nhận cân nặng theo thời gian (S-L) đã xong. **Session 14** thêm: Excel đa-sheet, món tự
+thêm + sửa thành phần (override), pin Muối & điện giải, quản lý TPCN, cảnh báo vượt Upper-Limit —
+xem chi tiết `.ai/SESSION_LOG.md` Session 14.
 
 **Session 8 (Opus, cuối ngày 2026-06-18 — sau khi người dùng đóng hết các phiên song song khác):**
 Kiểm tra lại toàn bộ trạng thái trước khi kết ngày. Xác nhận: không có gói nào bị bỏ dở giữa code
