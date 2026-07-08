@@ -8,19 +8,19 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return false;
 }
 
-export async function sendLowBatteryAlerts(alerts: BatteryAlert[]): Promise<void> {
+export async function sendLowBatteryAlerts(_alerts: BatteryAlert[]): Promise<void> {
   console.warn('Notifications are not available on web');
 }
 
-export async function sendOvereatingAlert(message: string): Promise<void> {
+export async function sendOvereatingAlert(_message: string): Promise<void> {
   console.warn('Notifications are not available on web');
 }
 
-export async function sendEatReminder(message: string): Promise<void> {
+export async function sendEatReminder(_message: string): Promise<void> {
   console.warn('Notifications are not available on web');
 }
 
-export async function scheduleDailyReminder(hour: number, minute: number): Promise<string> {
+export async function scheduleDailyReminder(_hour: number, _minute: number): Promise<string> {
   console.warn('Notifications are not available on web');
   return '';
 }

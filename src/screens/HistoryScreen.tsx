@@ -10,8 +10,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { getReadingsInRange } from '../data/repositories/batteryRepository';
 import { getLogsInRange } from '../data/repositories/dailyLogRepository';
-import type { BatteryReading } from '../types/battery';
-import type { DailyLog } from '../types/battery';
+import type { BatteryReading, DailyLog } from '../types/battery';
 import { todayString, daysAgo, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES } from '../lib/constants';
@@ -42,14 +41,6 @@ interface DayData {
 export function HistoryScreen() {
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Reload every time the tab gains focus so today's new intake shows up
-  // (bottom-tab screens stay mounted, so a one-shot mount effect is not enough).
-  useFocusEffect(
-    useCallback(() => {
-      loadHistory();
-    }, [])
-  );
 
   async function loadHistory() {
     const toDate = todayString();
@@ -100,6 +91,14 @@ export function HistoryScreen() {
     setDays(dayData);
     setLoading(false);
   }
+
+  // Reload every time the tab gains focus so today's new intake shows up
+  // (bottom-tab screens stay mounted, so a one-shot mount effect is not enough).
+  useFocusEffect(
+    useCallback(() => {
+      loadHistory();
+    }, [])
+  );
 
   if (loading) {
     return (

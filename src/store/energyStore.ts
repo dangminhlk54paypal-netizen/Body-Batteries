@@ -12,6 +12,7 @@ import {
   applyIntake,
   applyDrain,
   capacityForMode,
+  clampElapsedHoursAtMidnight,
   clampLevel,
   computeMasterLevel,
   createDailyReading,
@@ -449,12 +450,20 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const profile = currentProfile();
     const nowMs = Date.now();
+    const fromMs = nowMs - elapsedHours * 3_600_000;
+    // Nutrient batteries are keyed by calendar day; if this tick spans
+    // midnight, only drain the portion before the boundary so the extra
+    // minutes don't get persisted onto yesterday's stored reading (see
+    // clampElapsedHoursAtMidnight for the full rationale). The energy/satiety
+    // reserve below is unaffected -- it already drains from an explicit
+    // fromMs/toMs anchor and is continuous across day boundaries by design.
+    const nutrientElapsedHours = clampElapsedHoursAtMidnight(fromMs, nowMs);
     const updated = readings.map((r) => {
       if (r.batteryTypeId === 'master') return r;
       // Energy battery: the ledger (level/capacity) never drains over time
       // (S-M) — but the satiety reserve does, from its persisted anchor (S-Q).
       if (r.batteryTypeId === 'energy') return syncSatietyReserve(r, profile, nowMs);
-      return applyDrain(r, elapsedHours, mode.drainRatePerHour);
+      return applyDrain(r, nutrientElapsedHours, mode.drainRatePerHour);
     });
 
     set({

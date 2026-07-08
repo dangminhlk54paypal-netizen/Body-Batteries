@@ -41,7 +41,7 @@ function useSheetSlide(visible: boolean) {
 
   useEffect(() => {
     translateY.value = withTiming(visible ? 0 : SHEET_OFFSET, { duration: 280 });
-  }, [visible]);
+  }, [visible, translateY]);
 
   return useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

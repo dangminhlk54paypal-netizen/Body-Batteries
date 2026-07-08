@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Text, StyleSheet, Pressable } from 'react-native';
 import Svg, { Rect, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
 
@@ -24,12 +24,12 @@ const BORDER_R = 6;
 // in the app) and no per-frame JS cost.
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
-export function BatteryCell({ id, name, unit, level, capacity, percentage, color, onPress }: Props) {
+export function BatteryCell({ id, name, unit, level, percentage, color, onPress }: Props) {
   const progress = useSharedValue(percentage);
 
   useEffect(() => {
     progress.value = withTiming(percentage, { duration: 500 });
-  }, [percentage]);
+  }, [percentage, progress]);
 
   const animatedFillProps = useAnimatedProps(() => {
     const fillHeight = CELL_HEIGHT * (progress.value / 100);

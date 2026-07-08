@@ -38,6 +38,35 @@ export function applyDrain(
   return { ...reading, level: Math.round(newLevel * 10) / 10 };
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
+// Caps an elapsed-drain interval [fromMs, toMs) so it never crosses a local
+// midnight boundary. Nutrient batteries (protein/carbs/water/...) are keyed
+// by calendar day and only get a fresh row once `loadToday` notices the day
+// rolled over (checked every ~15 min, see App.tsx). Until then the in-memory
+// `readings` still carry yesterday's `date`, so a drain tick that spans
+// midnight (e.g. fired at 00:05 for a tick that started at 23:50) must only
+// drain the portion that actually happened before midnight -- otherwise the
+// extra minutes get persisted onto yesterday's stored reading, corrupting
+// its final level. The portion after midnight is intentionally dropped here:
+// once `loadToday` refreshes to the new day, that day's reading starts fresh
+// and the next drain tick picks up from there.
+export function clampElapsedHoursAtMidnight(fromMs: number, toMs: number): number {
+  if (toMs <= fromMs) return 0;
+  const from = new Date(fromMs);
+  const nextMidnight = new Date(
+    from.getFullYear(),
+    from.getMonth(),
+    from.getDate() + 1,
+    0,
+    0,
+    0,
+    0
+  ).getTime();
+  const cappedToMs = Math.min(toMs, nextMidnight);
+  return (cappedToMs - fromMs) / HOUR_MS;
+}
+
 // Compute master battery level from sub-batteries (weighted average)
 export function computeMasterLevel(readings: BatteryReading[]): number {
   const active = readings.filter((r) => r.batteryTypeId !== 'master');

@@ -46,7 +46,7 @@ function ModeChip({
 
   useEffect(() => {
     progress.value = withTiming(active ? 1 : 0, { duration: 250 });
-  }, [active]);
+  }, [active, progress]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(progress.value, [0, 1], [INACTIVE_BG, mode.color]),

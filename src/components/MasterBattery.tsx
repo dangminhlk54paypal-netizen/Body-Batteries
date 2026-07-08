@@ -35,7 +35,7 @@ export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }
 
   useEffect(() => {
     progress.value = withTiming(fillPercentage, { duration: 500 });
-  }, [fillPercentage]);
+  }, [fillPercentage, progress]);
 
   const animatedFillProps = useAnimatedProps(() => {
     const fillHeight = H * (progress.value / 100);

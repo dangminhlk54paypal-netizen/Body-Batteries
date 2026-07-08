@@ -33,7 +33,7 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
     } else {
       translateY.value = SHEET_OFFSET;
     }
-  }, [visible]);
+  }, [visible, translateY]);
 
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

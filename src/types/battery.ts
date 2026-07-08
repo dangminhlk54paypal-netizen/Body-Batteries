@@ -1,3 +1,5 @@
+import type { ModeId } from './modes';
+
 export type BatteryId =
   | 'master'
   | 'energy' // calorie-balance battery (Hướng B): charges by eating, drains by metabolism
@@ -69,6 +71,3 @@ export interface BatteryState {
   capacity: number;
   percentage: number; // 0–100
 }
-
-// Re-export to keep imports clean
-import type { ModeId } from './modes';

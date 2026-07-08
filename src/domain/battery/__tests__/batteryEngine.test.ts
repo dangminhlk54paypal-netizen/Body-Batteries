@@ -1,5 +1,6 @@
 import {
   capacityForMode,
+  clampElapsedHoursAtMidnight,
   clampLevel,
   toPercentage,
   applyIntake,
@@ -92,6 +93,36 @@ describe('applyDrain', () => {
   it('clamps the level at 0 instead of going negative', () => {
     const result = applyDrain(reading({ level: 5, capacity: 100 }), 10, 0.05);
     expect(result.level).toBe(0);
+  });
+});
+
+describe('clampElapsedHoursAtMidnight', () => {
+  it('returns the full elapsed hours when the interval stays within one day', () => {
+    const from = new Date(2026, 5, 18, 20, 0, 0, 0).getTime(); // 20:00
+    const to = new Date(2026, 5, 18, 22, 0, 0, 0).getTime(); // 22:00
+    expect(clampElapsedHoursAtMidnight(from, to)).toBe(2);
+  });
+
+  it('caps a tick that spans midnight at the day boundary (regression: tickDrain past midnight)', () => {
+    // A tick fired for the 23:50 -> 00:20 window (30 min elapsed) must only
+    // count the 10 minutes before midnight -- the rest belongs to the new
+    // day's fresh reading, not yesterday's.
+    const from = new Date(2026, 5, 18, 23, 50, 0, 0).getTime();
+    const to = new Date(2026, 5, 19, 0, 20, 0, 0).getTime();
+    const hours = clampElapsedHoursAtMidnight(from, to);
+    expect(hours).toBeCloseTo(10 / 60, 10);
+  });
+
+  it('returns 0 when the interval starts exactly at midnight (nothing left for the old day)', () => {
+    const from = new Date(2026, 5, 19, 0, 0, 0, 0).getTime();
+    const to = new Date(2026, 5, 19, 0, 30, 0, 0).getTime();
+    expect(clampElapsedHoursAtMidnight(from, to)).toBe(0.5);
+  });
+
+  it('returns 0 for a non-positive interval', () => {
+    const t = new Date(2026, 5, 18, 12, 0, 0, 0).getTime();
+    expect(clampElapsedHoursAtMidnight(t, t)).toBe(0);
+    expect(clampElapsedHoursAtMidnight(t, t - 1000)).toBe(0);
   });
 });
 
