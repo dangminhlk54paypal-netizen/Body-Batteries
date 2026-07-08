@@ -12,14 +12,16 @@
       "Bash(ps -ax -o pid,etime,command)",
       "Bash(node -e ' *)",
       "Bash(mkdir -p database/raw database/extract && git status --short | head -20)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(npx eas-cli *)",
+      "Bash(npx expo-doctor *)",
+      "Bash(python3)"
     ],
     "additionalDirectories": [
       "/Users/minh/VSCode_Repo/BodyBatteries/database"
     ]
-  },
-  "enabledPlugins": {
-    "expo@claude-plugins-official": true
   },
   "hooks": {
     "PostToolUse": [
@@ -43,5 +45,8 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
   }
 }
