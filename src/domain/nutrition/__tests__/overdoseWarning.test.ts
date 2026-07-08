@@ -57,4 +57,13 @@ describe('computeOverdoseWarnings', () => {
     const warnings = computeOverdoseWarnings(micros);
     expect(warnings.map((w) => w.id).sort()).toEqual(['iron', 'sodium']);
   });
+
+  it('suppresses the redundant sodium warning when salt (derived from sodium) already exceeds its limit', () => {
+    const micros = [
+      micro({ id: 'sodium', nameVi: 'Natri', unit: 'mg', current: 3000 }),
+      micro({ id: 'salt', nameVi: 'Muối (NaCl)', unit: 'g', current: 7.5 }),
+    ];
+    const warnings = computeOverdoseWarnings(micros);
+    expect(warnings.map((w) => w.id)).toEqual(['salt']);
+  });
 });

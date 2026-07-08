@@ -17,6 +17,7 @@ import { searchAllFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
+import { CustomFoodFields } from './food/CustomFoodFields';
 import { nutritionForGrams, mealTypeForHour } from '../domain/food/foodNutrition';
 import {
   buildCustomFoodItem,
@@ -204,210 +205,13 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 contentContainerStyle={styles.entryScrollContent}
                 keyboardShouldPersistTaps="handled"
               >
-                <Text style={styles.fieldLabel}>Tên món</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ví dụ: Canh chua cá lóc"
-                  placeholderTextColor="#666"
-                  value={customInput.name}
-                  onChangeText={(v) => updateCustomField('name', v)}
-                  autoFocus
+                <CustomFoodFields
+                  input={customInput}
+                  onChange={updateCustomField}
+                  showMicros={showMicros}
+                  onToggleMicros={() => setShowMicros((v) => !v)}
+                  autoFocusName
                 />
-
-                <Text style={styles.fieldLabel}>Nhóm</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="dish, snack, drink..."
-                  placeholderTextColor="#666"
-                  value={customInput.category}
-                  onChangeText={(v) => updateCustomField('category', v)}
-                />
-
-                <Text style={styles.fieldLabel}>Khẩu phần mặc định (gram)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="100"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={customInput.defaultServingG}
-                  onChangeText={(v) => updateCustomField('defaultServingG', v)}
-                />
-
-                <Text style={styles.fieldLabel}>Kcal / 100g</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ví dụ: 150"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={customInput.energyKcal}
-                  onChangeText={(v) => updateCustomField('energyKcal', v)}
-                />
-
-                <Text style={styles.fieldLabel}>Đạm (g) / 100g</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={customInput.proteinG}
-                  onChangeText={(v) => updateCustomField('proteinG', v)}
-                />
-
-                <Text style={styles.fieldLabel}>Béo (g) / 100g</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={customInput.fatG}
-                  onChangeText={(v) => updateCustomField('fatG', v)}
-                />
-
-                <Text style={styles.fieldLabel}>Carbs (Carbohydrate) / 100g</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={customInput.carbG}
-                  onChangeText={(v) => updateCustomField('carbG', v)}
-                />
-
-                {/* Sugar/fiber are a breakdown OF carbG above, not an addition
-                    to it — buildCustomFoodItem stores them as separate
-                    informational micros and never adds them into carbG. */}
-                <View style={styles.carbBreakdown}>
-                  <Text style={styles.carbBreakdownNote}>
-                    Đường và chất xơ đã nằm TRONG Carbs — nhập để theo dõi chi
-                    tiết, không cộng thêm.
-                  </Text>
-
-                  <Text style={styles.fieldLabelNested}>Đường (g) / 100g</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="0"
-                    placeholderTextColor="#666"
-                    keyboardType="decimal-pad"
-                    value={customInput.sugarG}
-                    onChangeText={(v) => updateCustomField('sugarG', v)}
-                  />
-
-                  <Text style={styles.fieldLabelNested}>Chất xơ (g) / 100g</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="0"
-                    placeholderTextColor="#666"
-                    keyboardType="decimal-pad"
-                    value={customInput.fiberG}
-                    onChangeText={(v) => updateCustomField('fiberG', v)}
-                  />
-                </View>
-
-                <Text style={styles.fieldLabel}>Nước (ml) / 100g</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="0"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={customInput.waterG}
-                  onChangeText={(v) => updateCustomField('waterG', v)}
-                />
-
-                <Pressable
-                  style={({ pressed }) => [styles.chip, styles.microsToggle, pressed && styles.pressed]}
-                  onPress={() => setShowMicros((v) => !v)}
-                >
-                  <Text style={styles.chipText}>
-                    {showMicros ? '▾ Ẩn vi chất' : '▸ Thêm vi chất'}
-                  </Text>
-                </Pressable>
-                <Text style={styles.microsHint}>
-                  Bỏ trống vi chất → món này không đóng góp vào các pin vi chất.
-                </Text>
-
-                {showMicros && (
-                  <>
-                    <Text style={styles.fieldLabel}>Canxi (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.calciumMg}
-                      onChangeText={(v) => updateCustomField('calciumMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>Sắt (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.ironMg}
-                      onChangeText={(v) => updateCustomField('ironMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>Natri (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.sodiumMg}
-                      onChangeText={(v) => updateCustomField('sodiumMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>Kali (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.potassiumMg}
-                      onChangeText={(v) => updateCustomField('potassiumMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>Magie (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.magnesiumMg}
-                      onChangeText={(v) => updateCustomField('magnesiumMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>Kẽm (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.zincMg}
-                      onChangeText={(v) => updateCustomField('zincMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>EPA (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.epaMg}
-                      onChangeText={(v) => updateCustomField('epaMg', v)}
-                    />
-
-                    <Text style={styles.fieldLabel}>DHA (mg) / 100g</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="0"
-                      placeholderTextColor="#666"
-                      keyboardType="decimal-pad"
-                      value={customInput.dhaMg}
-                      onChangeText={(v) => updateCustomField('dhaMg', v)}
-                    />
-                  </>
-                )}
               </ScrollView>
 
               <View style={styles.row}>
@@ -670,16 +474,6 @@ const styles = StyleSheet.create({
   back: { color: '#4ECDC4', fontSize: 14, fontWeight: '600' },
   editLink: { color: '#54A0FF', fontSize: 13, fontWeight: '600', marginTop: 2 },
   fieldLabel: { fontSize: 13, color: '#aaa', marginTop: 4 },
-  fieldLabelNested: { fontSize: 12, color: '#999', marginTop: 4 },
-  carbBreakdown: {
-    marginTop: 4,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: '#2d2d44',
-    gap: 8,
-  },
-  carbBreakdownNote: { fontSize: 11, color: '#777', lineHeight: 15 },
-  microsHint: { fontSize: 11, color: '#777', marginTop: -4 },
   entryScroll: { flexShrink: 1 },
   entryScrollContent: { gap: 12 },
   input: {
@@ -704,7 +498,6 @@ const styles = StyleSheet.create({
     borderColor: '#4ECDC4',
   },
   addNewText: { color: '#4ECDC4', fontSize: 15, fontWeight: '700' },
-  microsToggle: { alignSelf: 'flex-start' },
   foodRow: {
     flexDirection: 'row',
     alignItems: 'center',

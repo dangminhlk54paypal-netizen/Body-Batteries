@@ -594,6 +594,41 @@ này và người dùng đồng ý hoãn thay vì hiện số bịa.
 
 ---
 
+## Session 15 — 2026-07-08 (dọn việc tồn đọng nhỏ từ Session 14)
+
+**Làm gì:** Theo yêu cầu người dùng, xử lý 3 mục nhỏ còn treo từ Session 14 trước khi test máy
+thật: (1) xác nhận L-1/W-1/G-1 đã xong, (2) gộp code trùng lặp form "Thêm món mới", (3) gọn cảnh
+báo Muối/Natri hiện trùng nhau. Khảo sát bằng 2 Explore agent song song trước khi sửa.
+
+**Kết quả:**
+- **L-1/W-1/G-1 xác nhận xong** — không cần sửa gì thêm: `npm run lint` sạch 0 lỗi/0 cảnh báo,
+  `database/usda_names_de.csv` có dữ liệu tiếng Đức + `food_items.csv` có cột `name_de`. Đóng hẳn
+  3 mục này khỏi backlog.
+- **Gộp UI trùng lặp form "Thêm món mới":** tạo `src/components/food/CustomFoodFields.tsx` (component
+  trình bày thuần, ~250 dòng JSX các trường tên/nhóm/khẩu phần/macro/carb breakdown/toggle vi
+  chất/8 trường vi chất) dùng chung bởi `FoodLogModal.tsx` (nhánh `adding`) và
+  `FoodNutritionEditModal.tsx` (cả `mode="edit"` lẫn `mode="add"`, kể cả khi gọi từ
+  `SupplementQuickLog.tsx`). **Chỉ gộp phần trình bày** — logic lưu/điều hướng sau khi lưu (mỗi
+  file chuyển hướng khác nhau thật sự) vẫn giữ riêng ở từng file, đúng theo khảo sát ban đầu.
+- **Gọn cảnh báo vượt mức Muối/Natri:** `overdoseWarning.ts` giờ bỏ qua cảnh báo `sodium` khi
+  `salt` (suy ra từ chính natri, cùng 1 số đo) đã vượt ngưỡng cùng lúc — chỉ còn 1 dòng "Muối"
+  thay vì 2 dòng gần giống nhau. Thêm test case xác nhận trong `overdoseWarning.test.ts`.
+- **Verify xanh:** `npx tsc --noEmit` sạch · `npx jest` → **250 test PASS / 27 suite** · `npm run
+  lint` sạch · `npx expo export --platform ios` OK (1455 module).
+
+**Vấn đề gặp phải:** không có — cả 2 việc đều đúng như dự đoán từ khảo sát ban đầu, không phát
+sinh bất ngờ khi code.
+
+**Việc còn tồn đọng (không đổi so với Session 14, chưa xử lý đợt này):**
+- Xuất Excel tự động hàng tháng chỉ xuất đúng 1 tháng liền trước (bỏ sót nếu không mở app >1 tháng).
+- `FoodNutritionEditModal` lồng trong `FoodLogModal` — cần test tay nút Back cứng Android.
+
+**Session tiếp theo phải làm:**
+1. **S-A — test máy thật TOÀN BỘ backlog** (vẫn là việc ưu tiên #1, xem chi tiết ở cuối Session 14).
+2. Nếu ổn sau test tay → `git push` lên `origin/session-5-demo-ready` (hiện ahead vài commit).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

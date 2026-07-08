@@ -26,7 +26,20 @@ function buildMessage(nameVi: string, current: number, limit: number, unit: stri
 export function computeOverdoseWarnings(micros: MicroBatteryState[]): OverdoseWarning[] {
   const warnings: OverdoseWarning[] = [];
 
+  // Salt is purely derived from sodium (salt_g = sodium_mg * 2.5/1000, see
+  // microBatteryEngine.ts) and its UL is the same sodium UL converted to
+  // grams (see upperLimits.ts) — so crossing one always crosses the other at
+  // the exact same measurement. Showing both is redundant; salt is the more
+  // user-facing label (shown first in the "Muối & điện giải" group), so skip
+  // sodium whenever salt already fired.
+  const saltExceeds = micros.some((m) => {
+    const ul = UPPER_LIMITS[m.id];
+    return m.id === 'salt' && ul && m.current > ul.value;
+  });
+
   for (const micro of micros) {
+    if (micro.id === 'sodium' && saltExceeds) continue;
+
     const ul = UPPER_LIMITS[micro.id];
     if (!ul) continue; // no defined upper limit for this nutrient — never fires
     if (micro.current <= ul.value) continue;
