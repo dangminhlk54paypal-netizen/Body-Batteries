@@ -8,13 +8,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { MODES } from '../domain/modes/modeDefinitions';
 import type { ModeId, ModeDefinition } from '../types/modes';
+import { colors } from '../lib/theme';
 
 interface Props {
   currentMode: ModeId;
   onChange: (mode: ModeId) => void;
 }
 
-const INACTIVE_BG = '#2d2d44';
+const INACTIVE_BG = colors.bgElevated;
 
 export function ModeSelector({ currentMode, onChange }: Props) {
   return (
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
   chip: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   chipInner: {
@@ -85,11 +86,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   chipText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
   chipTextActive: {
-    color: '#fff',
+    color: colors.textPrimary,
   },
 });

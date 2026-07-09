@@ -8,6 +8,7 @@ import {
 } from '../data/repositories/healthSignalsRepository';
 import { dateString, formatDisplayDate } from '../lib/dateUtils';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
+import { colors } from '../lib/theme';
 
 export function WeightLogCard() {
   const [weightText, setWeightText] = useState('');
@@ -44,7 +45,7 @@ export function WeightLogCard() {
         <TextInput
           style={styles.input}
           placeholder="Ví dụ: 65"
-          placeholderTextColor="#666"
+          placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
           value={weightText}
           onChangeText={setWeightText}
@@ -75,42 +76,42 @@ export function WeightLogCard() {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2d2d44',
+    borderColor: colors.bgElevated,
     padding: 16,
     gap: 10,
   },
-  title: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 12, color: '#888', lineHeight: 17 },
+  title: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 12, color: colors.textTertiary, lineHeight: 17 },
   inputRow: { flexDirection: 'row', gap: 8 },
   input: {
     flex: 1,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 12,
     fontSize: 15,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   btn: {
-    backgroundColor: '#6C5CE7',
+    backgroundColor: colors.accentAlt,
     borderRadius: 10,
     paddingHorizontal: 14,
     justifyContent: 'center',
   },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
   pressed: { opacity: 0.6 },
-  empty: { color: '#555', fontSize: 13 },
+  empty: { color: colors.textFaint, fontSize: 13 },
   entryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderTopColor: '#2d2d44',
+    borderTopColor: colors.bgElevated,
   },
-  entryDate: { color: '#ccc', fontSize: 13 },
-  entryValue: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  entryDate: { color: colors.textSoft, fontSize: 13 },
+  entryValue: { color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
 });

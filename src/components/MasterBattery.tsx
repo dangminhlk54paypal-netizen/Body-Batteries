@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
+import { colors } from '../lib/theme';
 
 interface Props {
   // Headline fullness battery (S-Q): drains with the clock, engine floors it
@@ -48,7 +49,7 @@ export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }
   // A low fullness battery is normal (mornings, between meals) — the fill is
   // always the same calm green, never red, at any % (CONTEXT mục 5). Amber is
   // only used for the neutral "ăn dư" ledger text below, never for the bar.
-  const color = '#00B894';
+  const color = colors.accent;
 
   return (
     <View style={styles.container}>
@@ -61,10 +62,10 @@ export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }
         </Defs>
 
         {/* Terminal */}
-        <Rect x={W * 0.35} y={0} width={W * 0.3} height={TERMINAL_H} rx={3} fill="#555" />
+        <Rect x={W * 0.35} y={0} width={W * 0.3} height={TERMINAL_H} rx={3} fill={colors.textFaint} />
 
         {/* Body */}
-        <Rect x={0} y={TERMINAL_H} width={W} height={H} rx={R} fill="#1a1a2e" stroke="#333" strokeWidth={2.5} />
+        <Rect x={0} y={TERMINAL_H} width={W} height={H} rx={R} fill={colors.bgCard} stroke={colors.borderSubtle} strokeWidth={2.5} />
 
         {/* Fill — animates smoothly between percentage changes */}
         <AnimatedRect
@@ -104,11 +105,11 @@ const styles = StyleSheet.create({
   pct: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   label: {
     fontSize: 13,
-    color: '#aaa',
+    color: colors.textSecondary,
   },
   ledgerSection: {
     alignItems: 'center',
@@ -119,26 +120,26 @@ const styles = StyleSheet.create({
   divider: {
     width: '80%',
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#333',
+    backgroundColor: colors.borderSubtle,
     marginBottom: 4,
   },
   ledger: {
     fontSize: 13,
-    color: '#00B894',
+    color: colors.accent,
     fontWeight: '600',
   },
   overText: {
     fontSize: 12,
-    color: '#FFD93D',
+    color: colors.warning,
     fontWeight: '600',
   },
   goal: {
     fontSize: 12,
-    color: '#aaa',
+    color: colors.textSecondary,
   },
   disclaimer: {
     fontSize: 10,
-    color: '#666',
+    color: colors.textMuted,
     fontStyle: 'italic',
   },
 });

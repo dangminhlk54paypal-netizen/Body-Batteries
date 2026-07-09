@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Text, StyleSheet, Pressable } from 'react-native';
 import Svg, { Rect, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
+import { colors } from '../lib/theme';
 
 interface Props {
   id: string;
@@ -40,7 +41,7 @@ export function BatteryCell({ id, name, unit, level, percentage, color, onPress 
   });
 
   const levelColor =
-    percentage > 50 ? color : percentage > 20 ? '#FFD93D' : '#FF4757';
+    percentage > 50 ? color : percentage > 20 ? colors.warning : colors.dangerStrong;
 
   return (
     <Pressable
@@ -62,7 +63,7 @@ export function BatteryCell({ id, name, unit, level, percentage, color, onPress 
           width={CELL_WIDTH * 0.4}
           height={TERMINAL_H}
           rx={2}
-          fill="#555"
+          fill={colors.textFaint}
         />
 
         {/* Body outline */}
@@ -72,8 +73,8 @@ export function BatteryCell({ id, name, unit, level, percentage, color, onPress 
           width={CELL_WIDTH}
           height={CELL_HEIGHT}
           rx={BORDER_R}
-          fill="#1a1a2e"
-          stroke="#333"
+          fill={colors.bgCard}
+          stroke={colors.borderSubtle}
           strokeWidth={2}
         />
 
@@ -113,15 +114,15 @@ const styles = StyleSheet.create({
   percentage: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   name: {
     fontSize: 11,
-    color: '#aaa',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   level: {
     fontSize: 10,
-    color: '#666',
+    color: colors.textMuted,
   },
 });

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import type { BatteryType } from '../types/battery';
+import { colors } from '../lib/theme';
 
 interface Props {
   battery: BatteryType | null;
@@ -64,7 +65,7 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
           <TextInput
             style={styles.input}
             placeholder={`Ví dụ: 30`}
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             value={amount}
             onChangeText={setAmount}
@@ -74,7 +75,7 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
           <TextInput
             style={[styles.input, styles.noteInput]}
             placeholder="Ghi chú (tuỳ chọn)"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             value={note}
             onChangeText={setNote}
           />
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
@@ -120,20 +121,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: '#aaa',
+    color: colors.textSecondary,
   },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   noteInput: {
     fontSize: 14,
@@ -150,16 +151,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
   },
   confirmBtn: {},
   cancelText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   confirmText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },

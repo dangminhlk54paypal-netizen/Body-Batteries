@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Line, Polyline, Circle, Text as SvgText } from 'react-native-svg';
+import { colors } from '../lib/theme';
 
 export interface TrendPoint {
   date: string;
@@ -18,8 +19,8 @@ const CHART_PADDING_X = 24;
 const CHART_PADDING_TOP = 16;
 const CHART_PADDING_BOTTOM = 28;
 const GRID_LINES = [0, 25, 50, 75, 100];
-const NUTRIENT_COLOR = '#00B894';
-const ENERGY_COLOR = '#FFD93D';
+const NUTRIENT_COLOR = colors.accent;
+const ENERGY_COLOR = colors.warning;
 
 export function TrendChart({ data, energyData }: TrendChartProps) {
   if (data.length < 2) {
@@ -46,7 +47,7 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
               y1={y}
               x2={320 - CHART_PADDING_X}
               y2={y}
-              stroke="#2d2d44"
+              stroke={colors.bgElevated}
               strokeWidth={1}
             />
           );
@@ -67,7 +68,7 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
           return (
             <React.Fragment key={point.date}>
               <Circle cx={x} cy={y} r={4} fill={NUTRIENT_COLOR} />
-              <SvgText x={x} y={CHART_HEIGHT - 6} fontSize={9} fill="#666" textAnchor="middle">
+              <SvgText x={x} y={CHART_HEIGHT - 6} fontSize={9} fill={colors.textMuted} textAnchor="middle">
                 {dayMonthLabel(point.date)}
               </SvgText>
             </React.Fragment>
@@ -133,10 +134,10 @@ function yForValue(value: number): number {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2d2d44',
+    borderColor: colors.bgElevated,
     paddingVertical: 8,
   },
   emptyContainer: {
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: { color: '#555', fontSize: 13 },
+  emptyText: { color: colors.textFaint, fontSize: 13 },
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -154,5 +155,5 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { color: '#999', fontSize: 11 },
+  legendLabel: { color: colors.textDim, fontSize: 11 },
 });

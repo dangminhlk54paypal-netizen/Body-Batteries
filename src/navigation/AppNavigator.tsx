@@ -5,6 +5,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { DiaryScreen } from '../screens/DiaryScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { colors } from '../lib/theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,11 +19,11 @@ export function AppNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#1a1a2e',
-          borderTopColor: '#2d2d44',
+          backgroundColor: colors.bgCard,
+          borderTopColor: colors.bgElevated,
         },
-        tabBarActiveTintColor: '#00B894',
-        tabBarInactiveTintColor: '#555',
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textFaint,
         tabBarLabelStyle: { fontSize: 11 },
       }}
     >

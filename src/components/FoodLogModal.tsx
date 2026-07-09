@@ -28,6 +28,7 @@ import {
 } from '../domain/food/customFoodInput';
 import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
 import type { FoodItem } from '../types/food';
+import { colors } from '../lib/theme';
 
 interface Props {
   visible: boolean;
@@ -288,7 +289,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
               <TextInput
                 style={styles.input}
                 placeholder="Tìm món (ví dụ: cơm, gà, cá...)"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textMuted}
                 value={query}
                 onChangeText={setQuery}
                 autoFocus
@@ -386,7 +387,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
                     <TextInput
                       style={styles.input}
                       placeholder="Ví dụ: 1"
-                      placeholderTextColor="#666"
+                      placeholderTextColor={colors.textMuted}
                       keyboardType="decimal-pad"
                       value={portionCount}
                       onChangeText={setPortionCount}
@@ -398,7 +399,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
                     <TextInput
                       style={styles.input}
                       placeholder="Ví dụ: 150"
-                      placeholderTextColor="#666"
+                      placeholderTextColor={colors.textMuted}
                       keyboardType="decimal-pad"
                       value={grams}
                       onChangeText={setGrams}
@@ -430,7 +431,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   <TextInput
                     style={[styles.input, styles.timeInput]}
                     placeholder="HH"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     maxLength={2}
                     value={hour}
@@ -440,7 +441,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   <TextInput
                     style={[styles.input, styles.timeInput]}
                     placeholder="MM"
-                    placeholderTextColor="#666"
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     maxLength={2}
                     value={minute}
@@ -511,89 +512,89 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeX: { color: '#aaa', fontSize: 15, fontWeight: '700' },
+  closeX: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
   sheet: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
     maxHeight: '85%',
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 14, color: '#aaa' },
-  back: { color: '#4ECDC4', fontSize: 14, fontWeight: '600' },
-  editLink: { color: '#54A0FF', fontSize: 13, fontWeight: '600', marginTop: 2 },
-  fieldLabel: { fontSize: 13, color: '#aaa', marginTop: 4 },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 14, color: colors.textSecondary },
+  back: { color: colors.mint, fontSize: 14, fontWeight: '600' },
+  editLink: { color: colors.info, fontSize: 13, fontWeight: '600', marginTop: 2 },
+  fieldLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
   entryScroll: { flexShrink: 1 },
   entryScrollContent: { gap: 12 },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   list: { maxHeight: 320, flexShrink: 1 },
-  empty: { color: '#888', textAlign: 'center', paddingVertical: 20 },
+  empty: { color: colors.textTertiary, textAlign: 'center', paddingVertical: 20 },
   addNewBtn: {
     marginTop: 4,
     marginHorizontal: 16,
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: '#4ECDC4',
+    borderColor: colors.mint,
   },
-  addNewText: { color: '#4ECDC4', fontSize: 15, fontWeight: '700' },
+  addNewText: { color: colors.mint, fontSize: 15, fontWeight: '700' },
   foodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
+    borderBottomColor: colors.bgElevated,
   },
   foodRowMain: { flex: 1 },
-  foodName: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  foodNameEn: { color: '#999', fontSize: 12, marginTop: 1 },
-  foodMeta: { color: '#888', fontSize: 12, marginTop: 2 },
-  foodChevron: { color: '#555', fontSize: 22, paddingLeft: 8 },
+  foodName: { color: colors.textPrimary, fontSize: 15, fontWeight: '600' },
+  foodNameEn: { color: colors.textDim, fontSize: 12, marginTop: 1 },
+  foodMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 2 },
+  foodChevron: { color: colors.textFaint, fontSize: 22, paddingLeft: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
-  chipText: { color: '#ddd', fontSize: 12, fontWeight: '600' },
+  chipText: { color: colors.textLight, fontSize: 12, fontWeight: '600' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, textAlign: 'center' },
-  timeColon: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  timeColon: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
   preview: {
-    backgroundColor: '#16213e',
+    backgroundColor: colors.bgHighlight,
     borderRadius: 12,
     padding: 14,
     gap: 4,
     borderWidth: 1,
-    borderColor: '#00B894',
+    borderColor: colors.accent,
   },
-  previewKcal: { color: '#00B894', fontSize: 18, fontWeight: '800' },
-  previewMacro: { color: '#ccc', fontSize: 13 },
+  previewKcal: { color: colors.accent, fontSize: 18, fontWeight: '800' },
+  previewMacro: { color: colors.textSoft, fontSize: 13 },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  eat: { backgroundColor: '#00B894' },
+  eat: { backgroundColor: colors.accent },
   disabled: { opacity: 0.4 },
-  cancel: { backgroundColor: '#2d2d44' },
-  cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: colors.bgElevated },
+  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  btnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

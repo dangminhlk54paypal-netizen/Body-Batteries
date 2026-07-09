@@ -18,6 +18,7 @@ import { getDb } from '../data/db/database';
 import { encryptDiary } from '../lib/encryption';
 import { saveDiaryEntry } from '../data/repositories/dailyLogRepository';
 import { todayString, formatDisplayDate } from '../lib/dateUtils';
+import { colors } from '../lib/theme';
 
 // Base64 helper definitions for safe decryption compatibility
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -173,7 +174,7 @@ export function DiaryScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6C5CE7" />
+          <ActivityIndicator size="large" color={colors.accentAlt} />
           <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
         </View>
       </SafeAreaView>
@@ -214,7 +215,7 @@ export function DiaryScreen() {
             <Text style={styles.lockText}>
               Nhật ký được mã hoá ngay khi lưu.{'\n'}
               App không thể đọc lại nội dung.{'\n'}
-              <Text style={{ fontWeight: '600', color: '#9E9EFE' }}>
+              <Text style={{ fontWeight: '600', color: colors.accentAltLighter }}>
                 Bảo vệ riêng tư tuyệt đối cho bạn.
               </Text>
             </Text>
@@ -254,7 +255,7 @@ export function DiaryScreen() {
                   ]}
                   multiline
                   placeholder="Hôm nay bạn cảm thấy thế nào?"
-                  placeholderTextColor="#777"
+                  placeholderTextColor={colors.textSubtle}
                   value={text}
                   onChangeText={setText}
                   textAlignVertical="top"
@@ -294,7 +295,7 @@ export function DiaryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    color: '#888',
+    color: colors.textTertiary,
     fontSize: 14,
   },
   scroll: {
@@ -320,12 +321,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.textPrimary,
     letterSpacing: 0.5,
   },
   date: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textTertiary,
     marginTop: 4,
   },
   badge: {
@@ -347,10 +348,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   badgeTextSaved: {
-    color: '#00B894',
+    color: colors.accent,
   },
   badgeTextNew: {
-    color: '#a29bfe',
+    color: colors.accentAltLight,
   },
   lockBox: {
     backgroundColor: 'rgba(108, 92, 231, 0.05)',
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
   },
   lockText: {
-    color: '#a29bfe',
+    color: colors.accentAltLight,
     fontSize: 13,
     lineHeight: 20,
     flex: 1,
@@ -375,28 +376,28 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   input: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 16,
     padding: 18,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     minHeight: 220,
     borderWidth: 1,
-    borderColor: '#2d2d44',
+    borderColor: colors.bgElevated,
     lineHeight: 26,
   },
   inputFocused: {
-    borderColor: '#6C5CE7',
+    borderColor: colors.accentAlt,
   },
   charCount: {
     position: 'absolute',
     bottom: 12,
     right: 16,
     fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
   },
   saveBtn: {
-    backgroundColor: '#6C5CE7',
+    backgroundColor: colors.accentAlt,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -405,7 +406,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   saveBtnText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   successCard: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
@@ -430,10 +431,10 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   successSubtitle: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
@@ -442,32 +443,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   newEntryBtn: {
-    backgroundColor: '#6C5CE7',
+    backgroundColor: colors.accentAlt,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
   newEntryText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   historyBtn: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.borderSubtle,
   },
   historyText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   disclaimer: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
     lineHeight: 18,
     textAlign: 'center',
     marginTop: 10,

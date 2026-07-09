@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { MicroBatteryState } from '../types/nutrition';
 import { computeOverdoseWarnings } from '../domain/nutrition/overdoseWarning';
+import { colors } from '../lib/theme';
 
 interface Props {
   // Reuse the same micronutrient states MicroBatteryStack already computed —
@@ -34,19 +35,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: '#2a1f1a',
+    backgroundColor: colors.overdoseBg,
     borderWidth: 1,
-    borderColor: '#5a4030',
+    borderColor: colors.overdoseBorder,
     gap: 4,
   },
   title: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#E17055',
+    color: colors.overdoseTitle,
   },
   message: {
     fontSize: 10,
-    color: '#c9a892',
+    color: colors.overdoseText,
     lineHeight: 14,
   },
 });

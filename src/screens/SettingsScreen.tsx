@@ -19,6 +19,7 @@ import {
   cancelAllNotifications,
 } from '../services/notifications/notificationService';
 import type { MealWindow } from '../lib/constants';
+import { colors } from '../lib/theme';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -214,9 +215,9 @@ export function SettingsScreen() {
     label: string;
     color: string;
   }[] = [
-    { key: 'breakfast', label: 'Bữa sáng', color: '#FFB347' },
-    { key: 'lunch', label: 'Bữa trưa', color: '#00B894' },
-    { key: 'dinner', label: 'Bữa tối', color: '#6C5CE7' },
+    { key: 'breakfast', label: 'Bữa sáng', color: colors.mealBreakfast },
+    { key: 'lunch', label: 'Bữa trưa', color: colors.accent },
+    { key: 'dinner', label: 'Bữa tối', color: colors.accentAlt },
   ];
 
   return (
@@ -250,7 +251,7 @@ export function SettingsScreen() {
             <Switch
               value={notificationsEnabled}
               onValueChange={handleToggleNotifications}
-              trackColor={{ true: '#00B894' }}
+              trackColor={{ true: colors.accent }}
             />
           </View>
 
@@ -376,48 +377,48 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d0d1a' },
+  container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 20, paddingBottom: 48 },
 
   // ── Title ──────────────────────────────────────────────────────────────────
   titleWrap: { marginBottom: 20 },
-  title: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  subtitle: { fontSize: 13, color: '#555', marginTop: 2 },
+  title: { fontSize: 26, fontWeight: '800', color: colors.textPrimary },
+  subtitle: { fontSize: 13, color: colors.textFaint, marginTop: 2 },
 
   // ── Divider ────────────────────────────────────────────────────────────────
-  divider: { height: 1, backgroundColor: '#1e1e30', marginVertical: 20 },
+  divider: { height: 1, backgroundColor: colors.divider, marginVertical: 20 },
 
   // ── Section ────────────────────────────────────────────────────────────────
   section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sectionIcon: { fontSize: 14 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#888', letterSpacing: 1.5 },
-  sectionDesc: { fontSize: 13, color: '#666', lineHeight: 18 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.textTertiary, letterSpacing: 1.5 },
+  sectionDesc: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
 
   // ── Switch row ─────────────────────────────────────────────────────────────
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     padding: 14,
     borderRadius: 12,
   },
-  rowLabel: { fontSize: 15, color: '#fff' },
+  rowLabel: { fontSize: 15, color: colors.textPrimary },
 
   // ── Chips ──────────────────────────────────────────────────────────────────
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.borderSubtle,
   },
-  chipActive: { backgroundColor: '#00B894', borderColor: '#00B894' },
-  chipText: { color: '#aaa', fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipText: { color: colors.textSecondary, fontWeight: '600' },
+  chipTextActive: { color: colors.textPrimary },
 
   // ── Reminder time row ──────────────────────────────────────────────────────
   timeRow: {
@@ -425,11 +426,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     padding: 14,
     borderRadius: 12,
   },
-  timeColon: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  timeColon: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
 
   // ── Stepper (shared) ───────────────────────────────────────────────────────
   stepperGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -437,52 +438,52 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#26263d',
+    backgroundColor: colors.bgAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  timeValue: { color: '#fff', fontSize: 20, fontWeight: '700', minWidth: 28, textAlign: 'center' },
+  stepperBtnText: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
+  timeValue: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', minWidth: 28, textAlign: 'center' },
 
   // ── Meal window card ───────────────────────────────────────────────────────
   mealWindowCard: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#262640',
+    borderColor: colors.borderAlt,
     overflow: 'hidden',
   },
   mealRow: { paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
-  mealDivider: { height: 1, backgroundColor: '#26263d' },
+  mealDivider: { height: 1, backgroundColor: colors.bgAlt },
   mealLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mealDot: { width: 8, height: 8, borderRadius: 4 },
-  mealLabel: { fontSize: 14, color: '#ccc', fontWeight: '600', width: 76 },
+  mealLabel: { fontSize: 14, color: colors.textSoft, fontWeight: '600', width: 76 },
   mealSteppers: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flexWrap: 'wrap',
   },
-  mealArrow: { color: '#555', fontSize: 16, marginHorizontal: 2 },
-  mealUnit: { color: '#555', fontSize: 13 },
-  mealWarning: { fontSize: 11, color: '#FF6B6B', marginTop: 2 },
+  mealArrow: { color: colors.textFaint, fontSize: 16, marginHorizontal: 2 },
+  mealUnit: { color: colors.textFaint, fontSize: 13 },
+  mealWarning: { fontSize: 11, color: colors.danger, marginTop: 2 },
 
   // ── Action buttons ────────────────────────────────────────────────────────
   actionBtn: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.borderSubtle,
   },
-  dangerBtn: { borderColor: '#FF4757' },
-  actionBtnText: { color: '#fff', fontSize: 14 },
-  dangerText: { color: '#FF4757' },
+  dangerBtn: { borderColor: colors.dangerStrong },
+  actionBtnText: { color: colors.textPrimary, fontSize: 14 },
+  dangerText: { color: colors.dangerStrong },
 
   // ── Disclaimer ────────────────────────────────────────────────────────────
   disclaimer: {
     fontSize: 12,
-    color: '#555',
+    color: colors.textFaint,
     lineHeight: 18,
     marginTop: 16,
   },

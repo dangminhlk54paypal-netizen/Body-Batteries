@@ -21,6 +21,7 @@ import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import type { FoodItem } from '../types/food';
+import { colors } from '../lib/theme';
 
 // Reusable modal for two flows:
 //  - mode 'edit': correct an existing food's nutrition. Saved as a food OVERRIDE
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   overlayDismiss: { flex: 1 },
   sheet: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
@@ -199,21 +200,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeX: { color: '#aaa', fontSize: 15, fontWeight: '700' },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 13, color: '#aaa' },
+  closeX: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 13, color: colors.textSecondary },
   scroll: { flexShrink: 1 },
   scrollContent: { gap: 10 },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  save: { backgroundColor: '#00B894' },
+  save: { backgroundColor: colors.accent },
   disabled: { opacity: 0.4 },
-  cancel: { backgroundColor: '#2d2d44' },
-  cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: colors.bgElevated },
+  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  btnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

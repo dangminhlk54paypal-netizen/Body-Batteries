@@ -29,6 +29,7 @@ import type { BatteryState, BatteryId, BatteryType } from '../types/battery';
 import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
+import { colors } from '../lib/theme';
 
 export function HomeScreen() {
   const {
@@ -151,11 +152,11 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d0d1a" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.textPrimary} />
         }
       >
         {/* Header */}
@@ -223,7 +224,7 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 16,
   },
   scroll: {
@@ -246,11 +247,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   headerDate: {
     fontSize: 14,
-    color: '#888',
+    color: colors.textTertiary,
   },
   masterContainer: {
     alignItems: 'center',
@@ -258,13 +259,13 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textTertiary,
     paddingHorizontal: 20,
     marginBottom: -12,
   },
   hint: {
     fontSize: 11,
-    color: '#555',
+    color: colors.textFaint,
     textAlign: 'center',
     paddingHorizontal: 20,
   },

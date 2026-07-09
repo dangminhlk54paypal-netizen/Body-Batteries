@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import type { IntakeEvent } from '../types/battery';
+import { colors } from '../lib/theme';
 
 interface Props {
   entries: IntakeEvent[];
@@ -73,26 +74,26 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  sectionLabel: { fontSize: 13, color: '#888' },
+  sectionLabel: { fontSize: 13, color: colors.textTertiary },
   card: {
-    backgroundColor: '#16213e',
+    backgroundColor: colors.bgHighlight,
     borderRadius: 14,
     padding: 14,
     gap: 8,
   },
-  empty: { color: '#888', fontSize: 13, lineHeight: 19 },
+  empty: { color: colors.textTertiary, fontSize: 13, lineHeight: 19 },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entryMain: { flex: 1 },
-  entryName: { color: '#eee', fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: '#888', fontSize: 12, marginTop: 1 },
+  entryName: { color: colors.textBright, fontSize: 14, fontWeight: '500' },
+  entryMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 1 },
   deleteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: '#FF6B6B', fontSize: 14, fontWeight: '700' },
+  deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
 });

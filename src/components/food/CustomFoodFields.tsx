@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import type { CustomFoodInput } from '../../domain/food/customFoodInput';
 import type { PortionUnit } from '../../types/food';
+import { colors } from '../../lib/theme';
 
 // Shared field-rendering body for the "add/edit a custom food" form, used by
 // both FoodLogModal's inline "Thêm món mới" branch and FoodNutritionEditModal
@@ -63,7 +64,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder="Ví dụ: Canh chua cá lóc"
-        placeholderTextColor="#666"
+        placeholderTextColor={colors.textMuted}
         value={input.name}
         onChangeText={(v) => onChange('name', v)}
         autoFocus={autoFocusName}
@@ -73,7 +74,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder="dish, snack, supplement..."
-        placeholderTextColor="#666"
+        placeholderTextColor={colors.textMuted}
         value={input.category}
         onChangeText={(v) => onChange('category', v)}
       />
@@ -108,7 +109,7 @@ export function CustomFoodFields({
           <TextInput
             style={styles.input}
             placeholder="Ví dụ: 5"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             value={input.servingWeightG}
             onChangeText={(v) => onChange('servingWeightG', v)}
@@ -120,7 +121,7 @@ export function CustomFoodFields({
           <TextInput
             style={styles.input}
             placeholder="100"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             value={input.defaultServingG}
             onChangeText={(v) => onChange('defaultServingG', v)}
@@ -136,7 +137,7 @@ export function CustomFoodFields({
           <TextInput
             style={styles.input}
             placeholder="0"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             value={input[f.key]}
             onChangeText={(v) => onChange(f.key, v)}
@@ -148,7 +149,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder="0"
-        placeholderTextColor="#666"
+        placeholderTextColor={colors.textMuted}
         keyboardType="decimal-pad"
         value={input.carbG}
         onChangeText={(v) => onChange('carbG', v)}
@@ -165,7 +166,7 @@ export function CustomFoodFields({
         <TextInput
           style={styles.input}
           placeholder="0"
-          placeholderTextColor="#666"
+          placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
           value={input.sugarG}
           onChangeText={(v) => onChange('sugarG', v)}
@@ -174,7 +175,7 @@ export function CustomFoodFields({
         <TextInput
           style={styles.input}
           placeholder="0"
-          placeholderTextColor="#666"
+          placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
           value={input.fiberG}
           onChangeText={(v) => onChange('fiberG', v)}
@@ -185,7 +186,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder="0"
-        placeholderTextColor="#666"
+        placeholderTextColor={colors.textMuted}
         keyboardType="decimal-pad"
         value={input.waterG}
         onChangeText={(v) => onChange('waterG', v)}
@@ -210,7 +211,7 @@ export function CustomFoodFields({
             <TextInput
               style={styles.input}
               placeholder="0"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={input[f.key]}
               onChangeText={(v) => onChange(f.key, v)}
@@ -222,51 +223,51 @@ export function CustomFoodFields({
 }
 
 const styles = StyleSheet.create({
-  fieldLabel: { fontSize: 13, color: '#aaa', marginTop: 4 },
-  fieldLabelNested: { fontSize: 12, color: '#999', marginTop: 4 },
+  fieldLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  fieldLabelNested: { fontSize: 12, color: colors.textDim, marginTop: 4 },
   unitRow: { flexDirection: 'row', gap: 8 },
   unitChip: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
     alignItems: 'center',
   },
   unitChipActive: {
-    backgroundColor: '#16213e',
-    borderColor: '#00B894',
+    backgroundColor: colors.bgHighlight,
+    borderColor: colors.accent,
   },
-  unitChipText: { color: '#aaa', fontSize: 13, fontWeight: '600' },
-  unitChipTextActive: { color: '#00B894' },
+  unitChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  unitChipTextActive: { color: colors.accent },
   carbBreakdown: {
     borderLeftWidth: 2,
-    borderLeftColor: '#2d2d44',
+    borderLeftColor: colors.bgElevated,
     paddingLeft: 12,
     gap: 8,
   },
-  carbBreakdownNote: { fontSize: 11, color: '#777', lineHeight: 15 },
-  microsHint: { fontSize: 11, color: '#777', marginTop: -4 },
+  carbBreakdownNote: { fontSize: 11, color: colors.textSubtle, lineHeight: 15 },
+  microsHint: { fontSize: 11, color: colors.textSubtle, marginTop: -4 },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   microsToggle: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
     marginTop: 4,
   },
-  chipText: { color: '#ddd', fontSize: 12, fontWeight: '600' },
+  chipText: { color: colors.textLight, fontSize: 12, fontWeight: '600' },
   pressed: { opacity: 0.6 },
 });

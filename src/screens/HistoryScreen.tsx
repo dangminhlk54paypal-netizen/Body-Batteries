@@ -16,6 +16,7 @@ import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { TrendChart } from '../components/TrendChart';
 import { WeightLogCard } from '../components/WeightLogCard';
+import { colors } from '../lib/theme';
 
 // Short labels for the mini bars in each day card. A fixed-length name.slice()
 // used to cut mid-word (e.g. "Khoáng chất" -> "Khoá", which reads as the
@@ -103,7 +104,7 @@ export function HistoryScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color="#fff" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={colors.textPrimary} style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
@@ -178,37 +179,37 @@ function chronologicalEnergyTrend(days: DayData[]) {
 }
 
 function avgColor(pct: number) {
-  if (pct >= 60) return { backgroundColor: '#00B89422' };
-  if (pct >= 30) return { backgroundColor: '#FFD93D22' };
-  return { backgroundColor: '#FF475722' };
+  if (pct >= 60) return { backgroundColor: colors.successBgSoft };
+  if (pct >= 30) return { backgroundColor: colors.warningBgSoft };
+  return { backgroundColor: colors.dangerBgSoft };
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d0d1a' },
+  container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 20, gap: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '800', color: '#fff' },
-  empty: { color: '#555', fontSize: 14, textAlign: 'center', marginTop: 40 },
+  title: { fontSize: 26, fontWeight: '800', color: colors.textPrimary },
+  empty: { color: colors.textFaint, fontSize: 14, textAlign: 'center', marginTop: 40 },
   card: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 14,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#2d2d44',
+    borderColor: colors.bgElevated,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardDate: { fontSize: 15, fontWeight: '600', color: '#fff' },
+  cardDate: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
   badgeRow: { flexDirection: 'row', gap: 6 },
   avgBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
   },
-  avgText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  avgText: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
   batteryRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', height: 48 },
   miniCell: { alignItems: 'center', flex: 1 },
   miniBar: {
@@ -216,5 +217,5 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     minHeight: 2,
   },
-  miniLabel: { fontSize: 8, color: '#666', marginTop: 2 },
+  miniLabel: { fontSize: 8, color: colors.textMuted, marginTop: 2 },
 });

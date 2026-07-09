@@ -8,6 +8,7 @@ import { dailyCalorieTarget } from '../domain/energy/weightGoal';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
 import { GOAL_WEIGHT_LIMITS, GOAL_WEEKS_LIMITS } from '../lib/weightGoalConstants';
 import type { OccupationLevel, Sex, UserProfile } from '../types/energy';
+import { colors } from '../lib/theme';
 
 const SEX_LABELS: { value: Sex; label: string }[] = [
   { value: 'male', label: 'Nam' },
@@ -194,46 +195,46 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholderTextColor="#666" />
+      <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholderTextColor={colors.textMuted} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#1a1a2e', borderRadius: 12, padding: 14, gap: 12 },
+  card: { backgroundColor: colors.bgCard, borderRadius: 12, padding: 14, gap: 12 },
   fieldRow: { flexDirection: 'row', gap: 10 },
   field: { flex: 1, gap: 6 },
-  fieldLabel: { fontSize: 12, color: '#888' },
+  fieldLabel: { fontSize: 12, color: colors.textTertiary },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#26263d',
+    backgroundColor: colors.bgAlt,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
-  chipActive: { backgroundColor: '#00B894', borderColor: '#00B894' },
-  chipText: { color: '#aaa', fontWeight: '600', fontSize: 13 },
-  chipTextActive: { color: '#fff' },
-  tdee: { color: '#aaa', fontSize: 13, marginTop: 4 },
-  tdeeValue: { color: '#00B894', fontWeight: '700' },
-  explainer: { color: '#888', fontSize: 12, lineHeight: 17 },
-  divider: { height: 1, backgroundColor: '#333', marginVertical: 2 },
-  noteText: { color: '#FFB020', fontSize: 12, marginTop: 2 },
-  disclaimerText: { color: '#666', fontSize: 11, marginTop: 2, fontStyle: 'italic' },
-  errorText: { color: '#FF4757', fontSize: 13 },
-  savedText: { color: '#00B894', fontSize: 13 },
-  saveBtn: { backgroundColor: '#00B894', padding: 14, borderRadius: 12, alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipText: { color: colors.textSecondary, fontWeight: '600', fontSize: 13 },
+  chipTextActive: { color: colors.textPrimary },
+  tdee: { color: colors.textSecondary, fontSize: 13, marginTop: 4 },
+  tdeeValue: { color: colors.accent, fontWeight: '700' },
+  explainer: { color: colors.textTertiary, fontSize: 12, lineHeight: 17 },
+  divider: { height: 1, backgroundColor: colors.borderSubtle, marginVertical: 2 },
+  noteText: { color: colors.amber, fontSize: 12, marginTop: 2 },
+  disclaimerText: { color: colors.textMuted, fontSize: 11, marginTop: 2, fontStyle: 'italic' },
+  errorText: { color: colors.dangerStrong, fontSize: 13 },
+  savedText: { color: colors.accent, fontSize: 13 },
+  saveBtn: { backgroundColor: colors.accent, padding: 14, borderRadius: 12, alignItems: 'center' },
+  saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

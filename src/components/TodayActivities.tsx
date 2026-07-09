@@ -3,6 +3,7 @@ import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingVi
 import { ACTIVITY_LABELS, ACTIVITY_TYPES } from './EnergyActionsBar';
 import { formatTimeHHmm, parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityLogEntry, ActivityType } from '../types/energy';
+import { colors } from '../lib/theme';
 
 interface Props {
   entries: ActivityLogEntry[];
@@ -149,7 +150,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             <TextInput
               style={styles.input}
               placeholder="Số phút tập (ví dụ: 45)"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={editMinutes}
               onChangeText={setEditMinutes}
@@ -157,7 +158,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             <TextInput
               style={styles.input}
               placeholder="Số bước chân (tuỳ chọn)"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={editSteps}
               onChangeText={setEditSteps}
@@ -166,7 +167,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder="Từ HH:mm"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={editStart}
@@ -175,7 +176,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder="Đến HH:mm"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={editEnd}
@@ -210,55 +211,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  sectionLabel: { fontSize: 13, color: '#888' },
-  totalKcal: { fontSize: 15, fontWeight: '800', color: '#FF6B6B' },
+  sectionLabel: { fontSize: 13, color: colors.textTertiary },
+  totalKcal: { fontSize: 15, fontWeight: '800', color: colors.danger },
   card: {
-    backgroundColor: '#16213e',
+    backgroundColor: colors.bgHighlight,
     borderRadius: 14,
     padding: 14,
     gap: 8,
   },
-  empty: { color: '#888', fontSize: 13, lineHeight: 19 },
+  empty: { color: colors.textTertiary, fontSize: 13, lineHeight: 19 },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entryMain: { flex: 1 },
-  entryName: { color: '#eee', fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: '#888', fontSize: 12, marginTop: 1 },
+  entryName: { color: colors.textBright, fontSize: 14, fontWeight: '500' },
+  entryMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 1 },
   editBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editText: { color: '#0984e3', fontSize: 13, fontWeight: '700' },
+  editText: { color: colors.infoAlt, fontSize: 13, fontWeight: '700' },
   deleteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: '#FF6B6B', fontSize: 14, fontWeight: '700' },
+  deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   timeInput: { flex: 1, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -266,17 +267,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
-  chipActive: { backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' },
-  chipText: { color: '#aaa', fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
+  chipActive: { backgroundColor: colors.danger, borderColor: colors.danger },
+  chipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: colors.textPrimary },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: '#2d2d44' },
-  cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
-  save: { backgroundColor: '#0984e3' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: colors.bgElevated },
+  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  save: { backgroundColor: colors.infoAlt },
+  saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
 });

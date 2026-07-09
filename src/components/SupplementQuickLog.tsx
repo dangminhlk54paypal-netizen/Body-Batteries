@@ -7,6 +7,7 @@ import { getAnyFoodById } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { gramsForPortion } from '../domain/food/foodNutrition';
 import type { FoodItem, FoodLogEntry } from '../types/food';
+import { colors } from '../lib/theme';
 
 // One-tap logging for supplement-category foods (fish oil, whey, vitamins…).
 // Each tap logs one default serving through the normal logFood flow, so the
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textTertiary,
     paddingHorizontal: 20,
   },
   row: {
@@ -144,12 +145,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.borderSubtle,
     gap: 2,
     minWidth: 120,
   },
@@ -160,41 +161,41 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chipLogged: {
-    borderColor: '#54A0FF',
+    borderColor: colors.info,
   },
   chipAdd: {
     justifyContent: 'center',
     alignItems: 'center',
     borderStyle: 'dashed',
-    borderColor: '#54A0FF',
+    borderColor: colors.info,
     minWidth: 90,
   },
   chipAddText: {
-    color: '#54A0FF',
+    color: colors.info,
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
   },
   chipName: {
-    color: '#ddd',
+    color: colors.textLight,
     fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
   },
   chipEdit: {
-    color: '#888',
+    color: colors.textTertiary,
     fontSize: 13,
   },
   chipMeta: {
-    color: '#666',
+    color: colors.textMuted,
     fontSize: 10,
   },
   chipMetaLogged: {
-    color: '#54A0FF',
+    color: colors.info,
   },
   hint: {
     fontSize: 10,
-    color: '#555',
+    color: colors.textFaint,
     lineHeight: 15,
     paddingHorizontal: 20,
   },

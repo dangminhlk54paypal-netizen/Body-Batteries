@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { BodyProfileCard } from '../components/BodyProfileCard';
+import { colors } from '../lib/theme';
 
 interface OnboardingScreenProps {
   onDone: () => void;
@@ -44,7 +45,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.bg,
   },
   container: {
     flex: 1,
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   title: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     textAlign: 'center',
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   intro: {
-    color: '#aaa',
+    color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
@@ -74,14 +75,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardHeader: {
-    color: '#E0E0FF',
+    color: colors.textPale,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 4,
   },
   disclaimer: {
-    color: '#666',
+    color: colors.textMuted,
     fontSize: 12,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -92,21 +93,21 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: '#0d0d1a',
+    backgroundColor: colors.bg,
   },
   startBtn: {
-    backgroundColor: '#00B894',
+    backgroundColor: colors.accent,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#00B894',
+    shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   startText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },

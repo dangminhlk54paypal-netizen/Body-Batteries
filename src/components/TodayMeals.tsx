@@ -3,6 +3,7 @@ import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingVi
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import { MEAL_LABELS } from '../lib/constants';
 import type { FoodLogEntry } from '../types/food';
+import { colors } from '../lib/theme';
 
 interface Props {
   entries: FoodLogEntry[];
@@ -128,7 +129,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
             <TextInput
               style={styles.input}
               placeholder={editingIsPortion && editingEntry ? countFieldLabel(editingEntry) : 'Khối lượng (g)'}
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={editAmount}
               onChangeText={setEditAmount}
@@ -161,72 +162,72 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  sectionLabel: { fontSize: 13, color: '#888' },
-  totalKcal: { fontSize: 15, fontWeight: '800', color: '#00B894' },
-  macroLine: { fontSize: 12, color: '#777', marginTop: -4 },
+  sectionLabel: { fontSize: 13, color: colors.textTertiary },
+  totalKcal: { fontSize: 15, fontWeight: '800', color: colors.accent },
+  macroLine: { fontSize: 12, color: colors.textSubtle, marginTop: -4 },
   card: {
-    backgroundColor: '#16213e',
+    backgroundColor: colors.bgHighlight,
     borderRadius: 14,
     padding: 14,
     gap: 8,
   },
-  empty: { color: '#888', fontSize: 13, lineHeight: 19 },
+  empty: { color: colors.textTertiary, fontSize: 13, lineHeight: 19 },
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#2d2d44',
+    borderBottomColor: colors.bgElevated,
     paddingBottom: 6,
   },
-  mealTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  mealKcal: { color: '#aaa', fontSize: 13, fontWeight: '600' },
+  mealTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  mealKcal: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entryMain: { flex: 1 },
-  entryName: { color: '#eee', fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: '#888', fontSize: 12, marginTop: 1 },
+  entryName: { color: colors.textBright, fontSize: 14, fontWeight: '500' },
+  entryMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 1 },
   editBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editText: { color: '#0984e3', fontSize: 13, fontWeight: '700' },
+  editText: { color: colors.infoAlt, fontSize: 13, fontWeight: '700' },
   deleteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: '#FF6B6B', fontSize: 14, fontWeight: '700' },
+  deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  editingName: { fontSize: 14, color: '#aaa', marginTop: -6 },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  editingName: { fontSize: 14, color: colors.textSecondary, marginTop: -6 },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: '#2d2d44' },
-  cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
-  save: { backgroundColor: '#0984e3' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: colors.bgElevated },
+  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  save: { backgroundColor: colors.infoAlt },
+  saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
 });

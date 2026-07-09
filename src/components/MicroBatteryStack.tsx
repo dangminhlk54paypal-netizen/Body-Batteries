@@ -5,6 +5,7 @@ import type { MicroBatteryState } from '../types/nutrition';
 import { PROMINENT_GOAL_IDS, MORE_GOAL_IDS, LIMIT_IDS, ELECTROLYTE_IDS } from '../lib/nutrientTargets';
 import type { DateOption } from '../hooks/useMicroBatteryHistory';
 import { OverdoseNotice } from './OverdoseNotice';
+import { colors } from '../lib/theme';
 
 interface Props {
   states: MicroBatteryState[];
@@ -51,8 +52,8 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
           width={CELL_WIDTH}
           height={CELL_HEIGHT}
           rx={BORDER_R}
-          fill="#1a1a2e"
-          stroke={state.over ? state.color : '#333'}
+          fill={colors.bgCard}
+          stroke={state.over ? state.color : colors.borderSubtle}
           strokeWidth={2}
         />
         {fillHeight > 0 && (
@@ -178,11 +179,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 13,
-    color: '#888',
+    color: colors.textTertiary,
   },
   disclaimer: {
     fontSize: 11,
-    color: '#555',
+    color: colors.textFaint,
   },
   dateRow: {
     flexDirection: 'row',
@@ -193,20 +194,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.borderSubtle,
   },
   dateChipActive: {
-    backgroundColor: '#2d2d5e',
-    borderColor: '#6C5CE7',
+    backgroundColor: colors.accentAltBg,
+    borderColor: colors.accentAlt,
   },
   dateChipText: {
     fontSize: 11,
-    color: '#888',
+    color: colors.textTertiary,
   },
   dateChipTextActive: {
-    color: '#fff',
+    color: colors.textPrimary,
   },
   row: {
     flexDirection: 'row',
@@ -222,30 +223,30 @@ const styles = StyleSheet.create({
   cellPct: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   cellName: {
     fontSize: 10,
-    color: '#aaa',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   cellAmount: {
     fontSize: 9,
-    color: '#666',
+    color: colors.textMuted,
   },
   cellTarget: {
     fontSize: 8,
-    color: '#5a5a7a',
+    color: colors.textCool,
     textAlign: 'center',
   },
   recommendNote: {
     fontSize: 10,
-    color: '#666',
+    color: colors.textMuted,
     paddingHorizontal: 20,
   },
   cellCaption: {
     fontSize: 8,
-    color: '#777',
+    color: colors.textSubtle,
     textAlign: 'center',
   },
   moreToggle: {
@@ -253,14 +254,14 @@ const styles = StyleSheet.create({
   },
   moreToggleText: {
     fontSize: 11,
-    color: '#6C5CE7',
+    color: colors.accentAlt,
   },
   limitSection: {
     gap: 4,
   },
   limitLabel: {
     fontSize: 11,
-    color: '#888',
+    color: colors.textTertiary,
     paddingHorizontal: 20,
   },
 });

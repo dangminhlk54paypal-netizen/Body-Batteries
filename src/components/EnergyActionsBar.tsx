@@ -15,6 +15,7 @@ import { MET_TABLE } from '../lib/metabolicConstants';
 import { FoodLogModal } from './FoodLogModal';
 import { parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityType } from '../types/energy';
+import { colors } from '../lib/theme';
 
 // Vietnamese labels for the MET-based activity types. Exported so the
 // activity-history edit form (TodayActivities) can reuse the same chip set
@@ -131,7 +132,7 @@ export function EnergyActionsBar() {
             <TextInput
               style={styles.input}
               placeholder="Ví dụ: 500"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={kcal}
               onChangeText={setKcal}
@@ -181,7 +182,7 @@ export function EnergyActionsBar() {
             <TextInput
               style={styles.input}
               placeholder="Số phút tập (ví dụ: 45)"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={minutes}
               onChangeText={setMinutes}
@@ -189,7 +190,7 @@ export function EnergyActionsBar() {
             <TextInput
               style={styles.input}
               placeholder="Số bước chân (tuỳ chọn)"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={steps}
               onChangeText={setSteps}
@@ -199,7 +200,7 @@ export function EnergyActionsBar() {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder="Từ HH:mm"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={startTime}
@@ -208,7 +209,7 @@ export function EnergyActionsBar() {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder="Đến HH:mm"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={endTime}
@@ -240,28 +241,28 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 10 },
   bar: { flexDirection: 'row', gap: 10 },
   btn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  food: { backgroundColor: '#0984e3' },
-  eat: { backgroundColor: '#00B894' },
-  move: { backgroundColor: '#FF6B6B' },
-  btnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  food: { backgroundColor: colors.infoAlt },
+  eat: { backgroundColor: colors.accent },
+  move: { backgroundColor: colors.danger },
+  btnText: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  subtitle: { fontSize: 14, color: '#aaa' },
+  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  subtitle: { fontSize: 14, color: colors.textSecondary },
   input: {
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: '#fff',
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
   timeInput: { flex: 1, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -269,16 +270,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: '#2d2d44',
+    backgroundColor: colors.bgElevated,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: colors.border,
   },
-  chipActive: { backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' },
-  chipText: { color: '#aaa', fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
+  chipActive: { backgroundColor: colors.danger, borderColor: colors.danger },
+  chipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: colors.textPrimary },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: '#2d2d44' },
-  cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
+  cancel: { backgroundColor: colors.bgElevated },
+  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
   pressed: { opacity: 0.6 },
 });
