@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
+import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { searchAllFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
@@ -177,6 +178,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
     } else {
       await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
     }
+    useChargeEffectStore.getState().triggerChargePulse();
     haptics.success();
     handleClose();
   }

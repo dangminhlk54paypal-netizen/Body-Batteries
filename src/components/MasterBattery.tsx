@@ -1,8 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedProps,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+} from 'react-native-reanimated';
 import { colors } from '../lib/theme';
+import { useChargeEffectStore } from '../store/chargeEffectStore';
 
 interface Props {
   // Headline fullness battery (S-Q): drains with the clock, engine floors it
@@ -46,6 +53,39 @@ export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }
     };
   });
 
+  // "Charging" pulse (P4): a short pop + amber glow that plays whenever a
+  // food/supplement log succeeds, driven by an explicit trigger from the
+  // event handler (pulseId), never inferred from watching levelKcal change.
+  const pulseId = useChargeEffectStore((s) => s.pulseId);
+  const pulseScale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0);
+  const seenFirstPulse = useRef(false);
+
+  useEffect(() => {
+    // Skip the pulse on initial mount (pulseId starts at 0, no real trigger).
+    if (!seenFirstPulse.current) {
+      seenFirstPulse.current = true;
+      return;
+    }
+    pulseScale.value = withSequence(
+      withTiming(1.06, { duration: 150 }),
+      withTiming(1, { duration: 200 })
+    );
+    glowOpacity.value = withSequence(
+      withTiming(1, { duration: 150 }),
+      withTiming(0, { duration: 250 })
+    );
+  }, [pulseId, pulseScale, glowOpacity]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value * 0.4,
+    shadowOpacity: glowOpacity.value * 0.8,
+  }));
+
   // A low fullness battery is normal (mornings, between meals) — the fill is
   // always the same calm green, never red, at any % (CONTEXT mục 5). Amber is
   // only used for the neutral "ăn dư" ledger text below, never for the bar.
@@ -53,29 +93,37 @@ export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }
 
   return (
     <View style={styles.container}>
-      <Svg width={W} height={H + TERMINAL_H}>
-        <Defs>
-          <LinearGradient id="masterGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={color} stopOpacity="0.9" />
-            <Stop offset="1" stopColor={color} stopOpacity="0.6" />
-          </LinearGradient>
-        </Defs>
+      <View style={styles.batteryWrap}>
+        {/* Charging glow (P4): amber backdrop that fades in/out on a food
+            log — real backgroundColor opacity so it also reads on Android,
+            plus an iOS shadow for extra softness. */}
+        <Animated.View pointerEvents="none" style={[styles.glow, glowStyle]} />
+        <Animated.View style={pulseStyle}>
+          <Svg width={W} height={H + TERMINAL_H}>
+            <Defs>
+              <LinearGradient id="masterGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={color} stopOpacity="0.9" />
+                <Stop offset="1" stopColor={color} stopOpacity="0.6" />
+              </LinearGradient>
+            </Defs>
 
-        {/* Terminal */}
-        <Rect x={W * 0.35} y={0} width={W * 0.3} height={TERMINAL_H} rx={3} fill={colors.textFaint} />
+            {/* Terminal */}
+            <Rect x={W * 0.35} y={0} width={W * 0.3} height={TERMINAL_H} rx={3} fill={colors.textFaint} />
 
-        {/* Body */}
-        <Rect x={0} y={TERMINAL_H} width={W} height={H} rx={R} fill={colors.bgCard} stroke={colors.borderSubtle} strokeWidth={2.5} />
+            {/* Body */}
+            <Rect x={0} y={TERMINAL_H} width={W} height={H} rx={R} fill={colors.bgCard} stroke={colors.borderSubtle} strokeWidth={2.5} />
 
-        {/* Fill — animates smoothly between percentage changes */}
-        <AnimatedRect
-          x={3}
-          width={W - 6}
-          rx={R - 2}
-          fill="url(#masterGrad)"
-          animatedProps={animatedFillProps}
-        />
-      </Svg>
+            {/* Fill — animates smoothly between percentage changes */}
+            <AnimatedRect
+              x={3}
+              width={W - 6}
+              rx={R - 2}
+              fill="url(#masterGrad)"
+              animatedProps={animatedFillProps}
+            />
+          </Svg>
+        </Animated.View>
+      </View>
 
       <Text style={styles.pct}>{Math.round(fillPercentage)}%</Text>
       <Text style={styles.label}>Năng lượng cơ thể</Text>
@@ -101,6 +149,22 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     gap: 6,
+  },
+  batteryWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glow: {
+    position: 'absolute',
+    top: -20,
+    left: -20,
+    right: -20,
+    bottom: -20,
+    backgroundColor: colors.accent,
+    borderRadius: 40,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 20,
   },
   pct: {
     fontSize: 28,

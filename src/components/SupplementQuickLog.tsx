@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
+import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { FOOD_ITEMS } from '../data/food/foodDatabase';
 import { getCustomFoods } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
@@ -74,6 +75,7 @@ export function SupplementQuickLog({ todayLog }: Props) {
                 } else {
                   logFood(resolved, resolved.defaultServingG, Date.now());
                 }
+                useChargeEffectStore.getState().triggerChargePulse();
                 haptics.tapLight();
               }}
               style={({ pressed }) => [
