@@ -31,6 +31,28 @@ export function getAnyFoodById(id: string): FoodItem | undefined {
   // so foodOverrideMapper fills them with ''/[] — spreading the whole override
   // would WIPE the base's real presets/nameDe after an app restart (once the
   // override is rehydrated from DB). Keep those from the base.
+  //
+  // Fix #9 (altitude note): FoodItem has exactly 3 join points that must be
+  // kept in sync whenever a new field is added to it — forgetting one is how
+  // fields silently stop flowing through overrides/edits:
+  //   (1) HERE — this merge;
+  //   (2) src/components/FoodNutritionEditModal.tsx, the mode === 'edit'
+  //       branch (copies fields from `built` onto `edited`);
+  //   (3) the repository mappers + src/data/db/schema.ts + database.ts
+  //       migrations.
+  // This is a lightweight reminder, not a proposal to build a generic merge
+  // mechanism — a handful of fields doesn't warrant that.
+  const portionUnit = override.portionUnit ?? base.portionUnit;
+  // Fix #7: a 'gram' unit means "weighed by grams", so any servingWeightG
+  // (the real gram weight of ONE pack/capsule) must NOT leak through from
+  // either the override or the base catalog — buildCustomFoodItem never sets
+  // servingWeightG for a 'gram' override, so `??` would otherwise fall back
+  // to the base's stale pack/capsule weight (e.g. an outdated 1.22 g/capsule
+  // figure) and that value would silently resurface if the user later
+  // switches the unit back to pack/capsule.
+  const servingWeightG =
+    portionUnit === 'gram' ? undefined : override.servingWeightG ?? base.servingWeightG;
+
   return {
     ...base,
     nameVi: override.nameVi,
@@ -38,5 +60,7 @@ export function getAnyFoodById(id: string): FoodItem | undefined {
     category: override.category,
     defaultServingG: override.defaultServingG,
     per100g: { ...base.per100g, ...override.per100g },
+    portionUnit,
+    servingWeightG,
   };
 }

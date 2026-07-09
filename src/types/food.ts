@@ -16,6 +16,12 @@ export interface ServingPreset {
   grams: number;
 }
 
+// How a food's portion is naturally counted. Most foods are weighed in grams;
+// supplements (TPCN) are usually taken as whole packs/capsules, so forcing a
+// 100g conversion on the user is unnatural. Absent/undefined means 'gram'
+// (the pre-existing behaviour — every food before this field existed).
+export type PortionUnit = 'gram' | 'pack' | 'capsule';
+
 // Nutrition figures. In the CSV these are per 100 g; on a FoodLogEntry they are
 // the computed totals for the eaten portion. `mineralsMg` is a crude rollup of
 // the electrolyte/mineral micros (a coarse estimate — this is a self-tracking
@@ -52,9 +58,17 @@ export interface FoodItem {
   category: string;
   defaultServingG: number;
   servingPresets: ServingPreset[];
-  per100g: Nutrition; // every value is per 100 g
+  per100g: Nutrition; // every value is per 100 g — always the canonical storage unit
   source: string;
   note: string;
+  // Optional "natural" counting unit for supplements (TPCN): when set to
+  // 'pack'/'capsule', the food is logged/edited by count (e.g. "2 viên")
+  // instead of grams, and servingWeightG is the real gram weight of ONE
+  // pack/capsule (used to convert count <-> grams and to convert the user's
+  // per-serving nutrition entry <-> the canonical per100g storage above).
+  // Undefined/'gram' preserves the original gram-based behaviour untouched.
+  portionUnit?: PortionUnit;
+  servingWeightG?: number;
 }
 
 // One logged meal/snack: a food eaten at a time, with the portion's computed
@@ -72,4 +86,9 @@ export interface FoodLogEntry {
   carbG: number;
   waterG: number;
   mineralsMg: number;
+  // Present when the logged food is a pack/capsule (TPCN): the unit + how
+  // many packs/capsules were logged, purely for display (e.g. "2 viên").
+  // `grams` above still holds the converted gram total used for nutrition.
+  portionUnit?: PortionUnit;
+  count?: number;
 }

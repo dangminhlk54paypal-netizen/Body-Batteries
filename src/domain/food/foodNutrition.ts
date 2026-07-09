@@ -20,6 +20,21 @@ export interface PortionNutrition {
   mineralsMg: number;
 }
 
+// Converts a logged count (packs/capsules, or grams) into the grams the
+// gram-based engine (nutritionForGrams) needs. For pack/capsule foods with a
+// valid servingWeightG, count * servingWeightG. Otherwise the food is
+// gram-based (or missing a usable servingWeightG), so `count` IS the grams —
+// this mirrors the buildCustomFoodItem fallback ("no servingWeightG → treat
+// as gram") so the two stay consistent.
+export function gramsForPortion(item: FoodItem, count: number): number {
+  const isServingBased = item.portionUnit != null && item.portionUnit !== 'gram';
+  const servingWeightG = item.servingWeightG ?? 0;
+  if (isServingBased && servingWeightG > 0) {
+    return Math.max(0, count) * servingWeightG;
+  }
+  return Math.max(0, count);
+}
+
 export function nutritionForGrams(item: FoodItem, grams: number): PortionNutrition {
   const factor = Math.max(0, grams) / 100;
   const p = item.per100g;

@@ -66,6 +66,30 @@ export function nowTimestamp(): number {
   return Date.now();
 }
 
+// Parses a "HH:mm" (24h) time string into a unix ms timestamp anchored to
+// TODAY's local calendar date. Used by the activity-logging UI (F2) to turn
+// a simple text time field into startAt/endAt without adding a native
+// date/time-picker dependency. Returns undefined for empty/invalid input so
+// callers can treat it as "not specified" (falls back to "now").
+export function parseTimeHHmmToday(value: string): number | undefined {
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d.getTime();
+}
+
+// Inverse of parseTimeHHmmToday: formats a unix ms timestamp as "HH:mm"
+// (local time) for display or for prefilling an edit form.
+export function formatTimeHHmm(timestamp: number): string {
+  const d = new Date(timestamp);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 // The "energy day" rolls over at 6am instead of midnight: before the reset
 // hour still counts as the previous day (a 1am snack belongs to that day's
 // calorie ledger). ONLY the calorie ledger keys by this — nutrient batteries,

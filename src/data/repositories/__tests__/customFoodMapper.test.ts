@@ -25,6 +25,8 @@ describe('rowToCustomFoodItem', () => {
       zinc_mg: 0.8,
       epa_mg: 10,
       dha_mg: 20,
+      portion_unit: null,
+      serving_weight_g: null,
       created_at: 1700000000000,
     };
 
@@ -80,6 +82,8 @@ describe('rowToCustomFoodItem', () => {
       zinc_mg: 0.3,
       epa_mg: null,
       dha_mg: null,
+      portion_unit: null,
+      serving_weight_g: null,
       created_at: 1700000000000,
     };
 
@@ -87,5 +91,42 @@ describe('rowToCustomFoodItem', () => {
 
     expect(item.per100g.epaMg).toBeUndefined();
     expect(item.per100g.dhaMg).toBeUndefined();
+  });
+
+  it('maps portion_unit/serving_weight_g for a capsule supplement, and NULL to undefined for a gram-based food', () => {
+    const capsuleRow = {
+      id: 'custom_omega3',
+      name_vi: 'Omega-3 viên',
+      name_en: 'Omega-3 capsule',
+      category: 'supplement',
+      default_serving_g: 1.22,
+      energy_kcal: 9,
+      water_g: 0,
+      protein_g: 0,
+      fat_g: 1,
+      carb_g: 0,
+      fiber_g: 0,
+      sugar_g: 0,
+      calcium_mg: 0,
+      iron_mg: 0,
+      sodium_mg: 0,
+      potassium_mg: 0,
+      magnesium_mg: 0,
+      zinc_mg: 0,
+      epa_mg: 24590.16,
+      dha_mg: 24590.16,
+      portion_unit: 'capsule',
+      serving_weight_g: 1.22,
+      created_at: 1700000000000,
+    };
+
+    const item = rowToCustomFoodItem(capsuleRow);
+    expect(item.portionUnit).toBe('capsule');
+    expect(item.servingWeightG).toBe(1.22);
+
+    const gramRow = { ...capsuleRow, portion_unit: null, serving_weight_g: null };
+    const gramItem = rowToCustomFoodItem(gramRow);
+    expect(gramItem.portionUnit).toBeUndefined();
+    expect(gramItem.servingWeightG).toBeUndefined();
   });
 });

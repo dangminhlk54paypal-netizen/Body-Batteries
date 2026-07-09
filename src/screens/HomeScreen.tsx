@@ -17,6 +17,7 @@ import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
+import { TodayActivities } from '../components/TodayActivities';
 import { MicroBatteryStack } from '../components/MicroBatteryStack';
 import { SupplementQuickLog } from '../components/SupplementQuickLog';
 import { DEFAULT_BATTERIES } from '../lib/constants';
@@ -29,7 +30,17 @@ import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
 
 export function HomeScreen() {
-  const { readings, foodLog, isLoaded, loadToday, addIntake, removeFood } = useEnergyStore();
+  const {
+    readings,
+    foodLog,
+    activityLog,
+    isLoaded,
+    loadToday,
+    addIntake,
+    removeFood,
+    removeActivity,
+    updateActivity,
+  } = useEnergyStore();
   const { currentMode, setMode, notificationsEnabled, userProfile } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
@@ -79,6 +90,17 @@ export function HomeScreen() {
       [
         { text: 'Huỷ', style: 'cancel' },
         { text: 'Xoá', style: 'destructive', onPress: () => removeFood(id) },
+      ]
+    );
+  }
+
+  function handleDeleteActivity(id: string) {
+    Alert.alert(
+      'Xoá vận động đã ghi?',
+      'Mục này sẽ bị xoá và pin được hoàn lại.',
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Xoá', style: 'destructive', onPress: () => removeActivity(id) },
       ]
     );
   }
@@ -153,6 +175,13 @@ export function HomeScreen() {
 
         {/* Today's logged meals (grouped by meal + daily kcal total) */}
         <TodayMeals entries={foodLog} onDelete={handleDeleteFood} />
+
+        {/* Today's logged activity (steps/workouts) with Sửa/Xoá */}
+        <TodayActivities
+          entries={activityLog}
+          onDelete={handleDeleteActivity}
+          onEdit={(id, patch) => updateActivity(id, patch)}
+        />
 
         {/* Hint */}
         <Text style={styles.hint}>Kéo xuống để làm mới • Bấm vào pin để nạp</Text>

@@ -1,4 +1,5 @@
 import { computeMicroBatteries, type LoggedPortion } from '../microBatteryEngine';
+import { gramsForPortion } from '../../food/foodNutrition';
 import type { FoodItem, Nutrition } from '../../../types/food';
 import type { NutrientTarget } from '../../../types/nutrition';
 
@@ -115,6 +116,53 @@ describe('computeMicroBatteries', () => {
     expect(omega.current).toBeCloseTo(1000, 0);
     expect(omega.percentage).toBe(200);
     expect(omega.over).toBe(true);
+  });
+
+  it('logging 2 capsules (pack/capsule TPCN portion) via gramsForPortion doubles the omega-3 battery vs 1 capsule', () => {
+    // A capsule declaring 610mg combined omega-3 per capsule (610mg / 1.22g
+    // serving weight), stored per-100g as the buildCustomFoodItem conversion
+    // would produce: per100gValue = perServing / servingWeightG * 100.
+    const servingWeightG = 1.22;
+    const perCapsuleOmega3Mg = 610;
+    const omegaCapsule: FoodItem = {
+      ...food(
+        'omega3_capsule',
+        nutrition({
+          epaMg: ((perCapsuleOmega3Mg / 2) / servingWeightG) * 100,
+          dhaMg: ((perCapsuleOmega3Mg / 2) / servingWeightG) * 100,
+        })
+      ),
+      portionUnit: 'capsule',
+      servingWeightG,
+    };
+    const omegaLookup = (id: string) => (id === 'omega3_capsule' ? omegaCapsule : FOODS[id]);
+    const OMEGA_GOAL: NutrientTarget = {
+      id: 'omega3',
+      kind: 'goal',
+      nameVi: 'Omega-3 (EPA+DHA)',
+      unit: 'mg',
+      color: '#000',
+      value: 500,
+    };
+
+    const oneCapsuleGrams = gramsForPortion(omegaCapsule, 1);
+    const twoCapsuleGrams = gramsForPortion(omegaCapsule, 2);
+    expect(twoCapsuleGrams).toBeCloseTo(oneCapsuleGrams * 2, 6);
+
+    const [oneCapsule] = computeMicroBatteries(
+      [{ foodId: 'omega3_capsule', grams: oneCapsuleGrams }],
+      omegaLookup,
+      [OMEGA_GOAL]
+    );
+    const [twoCapsules] = computeMicroBatteries(
+      [{ foodId: 'omega3_capsule', grams: twoCapsuleGrams }],
+      omegaLookup,
+      [OMEGA_GOAL]
+    );
+
+    expect(oneCapsule.current).toBeCloseTo(perCapsuleOmega3Mg, 1);
+    expect(twoCapsules.current).toBeCloseTo(perCapsuleOmega3Mg * 2, 1);
+    expect(twoCapsules.current).toBeCloseTo(oneCapsule.current * 2, 1);
   });
 
   it('keeps a limit-type battery under 100% and not over when within the cap', () => {

@@ -5,6 +5,7 @@ import { FOOD_ITEMS } from '../data/food/foodDatabase';
 import { getCustomFoods } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
+import { gramsForPortion } from '../domain/food/foodNutrition';
 import type { FoodItem, FoodLogEntry } from '../types/food';
 
 // One-tap logging for supplement-category foods (fish oil, whey, vitamins…).
@@ -61,7 +62,16 @@ export function SupplementQuickLog({ todayLog }: Props) {
               onPress={() => {
                 // Log the override-aware item so edited nutrition applies.
                 const resolved = getAnyFoodById(item.id) ?? item;
-                logFood(resolved, resolved.defaultServingG, Date.now());
+                if (resolved.portionUnit != null && resolved.portionUnit !== 'gram') {
+                  // One tap = one pack/capsule — convert to grams for the
+                  // nutrition engine, but keep the count for display ("1 viên").
+                  logFood(resolved, gramsForPortion(resolved, 1), Date.now(), {
+                    portionUnit: resolved.portionUnit,
+                    count: 1,
+                  });
+                } else {
+                  logFood(resolved, resolved.defaultServingG, Date.now());
+                }
               }}
               style={({ pressed }) => [
                 styles.chip,

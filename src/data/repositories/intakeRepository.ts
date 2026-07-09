@@ -75,3 +75,15 @@ export async function deleteIntakeEventsBefore(date: string): Promise<void> {
   const cutoffMs = new Date(date + 'T00:00:00').getTime();
   await db.runAsync('DELETE FROM intake_events WHERE timestamp < ?', cutoffMs);
 }
+
+// Deletes specific intake_events rows by id (FIX #4). Used by
+// energyStore.removeActivity to clean up the `movement_${ts}`/
+// `workout_${ts}_${i}` rows that logActivity wrote, so editing/undoing a
+// logged activity doesn't leave stale rows behind that double-count or
+// resurrect deleted entries in the weekly/monthly Excel export.
+export async function deleteIntakeEventsByIds(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getDb();
+  const placeholders = ids.map(() => '?').join(', ');
+  await db.runAsync(`DELETE FROM intake_events WHERE id IN (${placeholders})`, ...ids);
+}

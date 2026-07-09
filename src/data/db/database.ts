@@ -1,5 +1,12 @@
 import * as SQLite from 'expo-sqlite';
-import { ALL_SCHEMAS, BATTERY_READINGS_MIGRATION_COLUMNS } from './schema';
+import {
+  ALL_SCHEMAS,
+  BATTERY_READINGS_MIGRATION_COLUMNS,
+  CUSTOM_FOODS_MIGRATION_COLUMNS,
+  FOOD_OVERRIDES_MIGRATION_COLUMNS,
+  FOOD_LOG_MIGRATION_COLUMNS,
+  ACTIVITY_LOG_MIGRATION_COLUMNS,
+} from './schema';
 import { DEFAULT_BATTERIES } from '../../lib/constants';
 
 let _db: SQLite.SQLiteDatabase | null = null;
@@ -20,18 +27,24 @@ export async function initDatabase(): Promise<void> {
     await _db.execAsync(sql);
   }
 
-  await migrateBatteryReadings(_db);
+  await migrateColumns(_db, 'battery_readings', BATTERY_READINGS_MIGRATION_COLUMNS);
+  await migrateColumns(_db, 'custom_foods', CUSTOM_FOODS_MIGRATION_COLUMNS);
+  await migrateColumns(_db, 'food_overrides', FOOD_OVERRIDES_MIGRATION_COLUMNS);
+  await migrateColumns(_db, 'food_log', FOOD_LOG_MIGRATION_COLUMNS);
+  await migrateColumns(_db, 'activity_log', ACTIVITY_LOG_MIGRATION_COLUMNS);
   await seedDefaultBatteries(_db);
 }
 
 // Adds columns introduced after the first release to tables created by older
 // installs (CREATE TABLE IF NOT EXISTS never alters an existing table).
-async function migrateBatteryReadings(db: SQLite.SQLiteDatabase): Promise<void> {
-  const columns = await db.getAllAsync<{ name: string }>(
-    'PRAGMA table_info(battery_readings)'
-  );
-  const existing = new Set(columns.map((c) => c.name));
-  for (const col of BATTERY_READINGS_MIGRATION_COLUMNS) {
+async function migrateColumns(
+  db: SQLite.SQLiteDatabase,
+  table: string,
+  columns: { name: string; ddl: string }[]
+): Promise<void> {
+  const existingRows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+  const existing = new Set(existingRows.map((c) => c.name));
+  for (const col of columns) {
     if (!existing.has(col.name)) {
       await db.execAsync(col.ddl);
     }

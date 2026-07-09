@@ -38,6 +38,24 @@ export const BATTERY_READINGS_MIGRATION_COLUMNS = [
   { name: 'last_satiety_sync_at', ddl: 'ALTER TABLE battery_readings ADD COLUMN last_satiety_sync_at INTEGER' },
 ];
 
+// Columns added for pack/capsule (TPCN) portion support. Existing installs
+// created these tables without them, so initDatabase() ALTERs them in one by
+// one if missing — same pattern as BATTERY_READINGS_MIGRATION_COLUMNS above.
+export const CUSTOM_FOODS_MIGRATION_COLUMNS = [
+  { name: 'portion_unit', ddl: "ALTER TABLE custom_foods ADD COLUMN portion_unit TEXT" },
+  { name: 'serving_weight_g', ddl: 'ALTER TABLE custom_foods ADD COLUMN serving_weight_g REAL' },
+];
+
+export const FOOD_OVERRIDES_MIGRATION_COLUMNS = [
+  { name: 'portion_unit', ddl: "ALTER TABLE food_overrides ADD COLUMN portion_unit TEXT" },
+  { name: 'serving_weight_g', ddl: 'ALTER TABLE food_overrides ADD COLUMN serving_weight_g REAL' },
+];
+
+export const FOOD_LOG_MIGRATION_COLUMNS = [
+  { name: 'portion_unit', ddl: "ALTER TABLE food_log ADD COLUMN portion_unit TEXT" },
+  { name: 'count', ddl: 'ALTER TABLE food_log ADD COLUMN count REAL' },
+];
+
 export const CREATE_INTAKE_EVENTS = `
   CREATE TABLE IF NOT EXISTS intake_events (
     id TEXT PRIMARY KEY,
@@ -80,7 +98,9 @@ export const CREATE_FOOD_LOG = `
     fat_g REAL NOT NULL,
     carb_g REAL NOT NULL,
     water_g REAL NOT NULL DEFAULT 0,
-    minerals_mg REAL NOT NULL DEFAULT 0
+    minerals_mg REAL NOT NULL DEFAULT 0,
+    portion_unit TEXT,
+    count REAL
   );
 `;
 
@@ -112,6 +132,8 @@ export const CREATE_CUSTOM_FOODS = `
     zinc_mg REAL,
     epa_mg REAL,
     dha_mg REAL,
+    portion_unit TEXT,
+    serving_weight_g REAL,
     created_at INTEGER
   );
 `;
@@ -146,9 +168,40 @@ export const CREATE_FOOD_OVERRIDES = `
     zinc_mg REAL,
     epa_mg REAL,
     dha_mg REAL,
+    portion_unit TEXT,
+    serving_weight_g REAL,
     updated_at INTEGER
   );
 `;
+
+// Independent per-event "Vận động" (activity) log — one row per logged event
+// (steps and/or workout sessions), so it can be individually edited/undone
+// (B2), unlike the old fire-and-forget intake_events write. `start_at`/
+// `end_at` are the optional real-world time window the activity happened in
+// (display-only — see types/energy.ts ActivityLogEntry doc). `energy_kcal`/
+// `satiety_drain_kcal` snapshot the battery effect already applied at log
+// time, so removeActivity can undo it exactly without recomputing.
+export const CREATE_ACTIVITY_LOG = `
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id TEXT PRIMARY KEY,
+    timestamp INTEGER NOT NULL,
+    start_at INTEGER,
+    end_at INTEGER,
+    steps REAL NOT NULL DEFAULT 0,
+    workouts TEXT NOT NULL DEFAULT '[]',
+    energy_kcal REAL NOT NULL DEFAULT 0,
+    satiety_drain_kcal REAL NOT NULL DEFAULT 0,
+    energy_day_applied TEXT
+  );
+`;
+
+// Column added for FIX #5 (energy-day vs calendar-day mismatch for activity
+// logged 0h-6am). Existing installs created activity_log without it, so
+// initDatabase() ALTERs it in if missing — same pattern as the other
+// *_MIGRATION_COLUMNS above.
+export const ACTIVITY_LOG_MIGRATION_COLUMNS = [
+  { name: 'energy_day_applied', ddl: 'ALTER TABLE activity_log ADD COLUMN energy_day_applied TEXT' },
+];
 
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
@@ -160,4 +213,5 @@ export const ALL_SCHEMAS = [
   CREATE_FOOD_LOG,
   CREATE_CUSTOM_FOODS,
   CREATE_FOOD_OVERRIDES,
+  CREATE_ACTIVITY_LOG,
 ];

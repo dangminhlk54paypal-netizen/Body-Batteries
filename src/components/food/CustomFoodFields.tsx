@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import type { CustomFoodInput } from '../../domain/food/customFoodInput';
+import type { PortionUnit } from '../../types/food';
 
 // Shared field-rendering body for the "add/edit a custom food" form, used by
 // both FoodLogModal's inline "Thêm món mới" branch and FoodNutritionEditModal
@@ -15,21 +16,35 @@ interface Props {
   autoFocusName?: boolean;
 }
 
-const MACRO_FIELDS: { key: keyof CustomFoodInput; label: string }[] = [
-  { key: 'energyKcal', label: 'Kcal / 100g' },
-  { key: 'proteinG', label: 'Đạm (g) / 100g' },
-  { key: 'fatG', label: 'Béo (g) / 100g' },
+// Short unit label used in the nutrition field suffixes below — matches how
+// buildCustomFoodItem interprets the entered numbers (per 100g vs per serving).
+function unitSuffix(portionUnit: PortionUnit): string {
+  if (portionUnit === 'pack') return '/ gói';
+  if (portionUnit === 'capsule') return '/ viên';
+  return '/ 100g';
+}
+
+const PORTION_UNIT_OPTIONS: { key: PortionUnit; label: string }[] = [
+  { key: 'gram', label: 'Gram' },
+  { key: 'pack', label: 'Gói' },
+  { key: 'capsule', label: 'Viên' },
 ];
 
-const MICRO_FIELDS: { key: keyof CustomFoodInput; label: string }[] = [
-  { key: 'calciumMg', label: 'Canxi (mg) / 100g' },
-  { key: 'ironMg', label: 'Sắt (mg) / 100g' },
-  { key: 'sodiumMg', label: 'Natri (mg) / 100g' },
-  { key: 'potassiumMg', label: 'Kali (mg) / 100g' },
-  { key: 'magnesiumMg', label: 'Magie (mg) / 100g' },
-  { key: 'zincMg', label: 'Kẽm (mg) / 100g' },
-  { key: 'epaMg', label: 'EPA (mg) / 100g' },
-  { key: 'dhaMg', label: 'DHA (mg) / 100g' },
+const MACRO_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
+  { key: 'energyKcal', label: 'Kcal' },
+  { key: 'proteinG', label: 'Đạm (g)' },
+  { key: 'fatG', label: 'Béo (g)' },
+];
+
+const MICRO_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
+  { key: 'calciumMg', label: 'Canxi (mg)' },
+  { key: 'ironMg', label: 'Sắt (mg)' },
+  { key: 'sodiumMg', label: 'Natri (mg)' },
+  { key: 'potassiumMg', label: 'Kali (mg)' },
+  { key: 'magnesiumMg', label: 'Magie (mg)' },
+  { key: 'zincMg', label: 'Kẽm (mg)' },
+  { key: 'epaMg', label: 'EPA (mg)' },
+  { key: 'dhaMg', label: 'DHA (mg)' },
 ];
 
 export function CustomFoodFields({
@@ -39,6 +54,9 @@ export function CustomFoodFields({
   onToggleMicros,
   autoFocusName,
 }: Props) {
+  const suffix = unitSuffix(input.portionUnit);
+  const isServingBased = input.portionUnit !== 'gram';
+
   return (
     <>
       <Text style={styles.fieldLabel}>Tên món</Text>
@@ -60,19 +78,61 @@ export function CustomFoodFields({
         onChangeText={(v) => onChange('category', v)}
       />
 
-      <Text style={styles.fieldLabel}>Khẩu phần mặc định (gram)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="100"
-        placeholderTextColor="#666"
-        keyboardType="decimal-pad"
-        value={input.defaultServingG}
-        onChangeText={(v) => onChange('defaultServingG', v)}
-      />
+      <Text style={styles.fieldLabel}>Đơn vị tính</Text>
+      <View style={styles.unitRow}>
+        {PORTION_UNIT_OPTIONS.map((opt) => (
+          <Pressable
+            key={opt.key}
+            style={({ pressed }) => [
+              styles.unitChip,
+              input.portionUnit === opt.key && styles.unitChipActive,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => onChange('portionUnit', opt.key)}
+          >
+            <Text
+              style={[
+                styles.unitChipText,
+                input.portionUnit === opt.key && styles.unitChipTextActive,
+              ]}
+            >
+              {opt.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
-      {MACRO_FIELDS.map((f) => (
+      {isServingBased ? (
+        <>
+          <Text style={styles.fieldLabel}>Khối lượng 1 {input.portionUnit === 'pack' ? 'gói' : 'viên'} (g)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ví dụ: 5"
+            placeholderTextColor="#666"
+            keyboardType="decimal-pad"
+            value={input.servingWeightG}
+            onChangeText={(v) => onChange('servingWeightG', v)}
+          />
+        </>
+      ) : (
+        <>
+          <Text style={styles.fieldLabel}>Khẩu phần mặc định (gram)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="100"
+            placeholderTextColor="#666"
+            keyboardType="decimal-pad"
+            value={input.defaultServingG}
+            onChangeText={(v) => onChange('defaultServingG', v)}
+          />
+        </>
+      )}
+
+      {MACRO_FIELD_BASE.map((f) => (
         <React.Fragment key={f.key}>
-          <Text style={styles.fieldLabel}>{f.label}</Text>
+          <Text style={styles.fieldLabel}>
+            {f.label} {suffix}
+          </Text>
           <TextInput
             style={styles.input}
             placeholder="0"
@@ -84,7 +144,7 @@ export function CustomFoodFields({
         </React.Fragment>
       ))}
 
-      <Text style={styles.fieldLabel}>Carbs (Carbohydrate) / 100g</Text>
+      <Text style={styles.fieldLabel}>Carbs (Carbohydrate) {suffix}</Text>
       <TextInput
         style={styles.input}
         placeholder="0"
@@ -101,7 +161,7 @@ export function CustomFoodFields({
         <Text style={styles.carbBreakdownNote}>
           Đường và chất xơ đã nằm TRONG Carbs — nhập để theo dõi chi tiết, không cộng thêm.
         </Text>
-        <Text style={styles.fieldLabelNested}>Đường (g) / 100g</Text>
+        <Text style={styles.fieldLabelNested}>Đường (g) {suffix}</Text>
         <TextInput
           style={styles.input}
           placeholder="0"
@@ -110,7 +170,7 @@ export function CustomFoodFields({
           value={input.sugarG}
           onChangeText={(v) => onChange('sugarG', v)}
         />
-        <Text style={styles.fieldLabelNested}>Chất xơ (g) / 100g</Text>
+        <Text style={styles.fieldLabelNested}>Chất xơ (g) {suffix}</Text>
         <TextInput
           style={styles.input}
           placeholder="0"
@@ -121,7 +181,7 @@ export function CustomFoodFields({
         />
       </View>
 
-      <Text style={styles.fieldLabel}>Nước (ml) / 100g</Text>
+      <Text style={styles.fieldLabel}>Nước (ml) {suffix}</Text>
       <TextInput
         style={styles.input}
         placeholder="0"
@@ -142,9 +202,11 @@ export function CustomFoodFields({
       </Text>
 
       {showMicros &&
-        MICRO_FIELDS.map((f) => (
+        MICRO_FIELD_BASE.map((f) => (
           <React.Fragment key={f.key}>
-            <Text style={styles.fieldLabel}>{f.label}</Text>
+            <Text style={styles.fieldLabel}>
+              {f.label} {suffix}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder="0"
@@ -162,6 +224,22 @@ export function CustomFoodFields({
 const styles = StyleSheet.create({
   fieldLabel: { fontSize: 13, color: '#aaa', marginTop: 4 },
   fieldLabelNested: { fontSize: 12, color: '#999', marginTop: 4 },
+  unitRow: { flexDirection: 'row', gap: 8 },
+  unitChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#2d2d44',
+    borderWidth: 1,
+    borderColor: '#444',
+    alignItems: 'center',
+  },
+  unitChipActive: {
+    backgroundColor: '#16213e',
+    borderColor: '#00B894',
+  },
+  unitChipText: { color: '#aaa', fontSize: 13, fontWeight: '600' },
+  unitChipTextActive: { color: '#00B894' },
   carbBreakdown: {
     borderLeftWidth: 2,
     borderLeftColor: '#2d2d44',

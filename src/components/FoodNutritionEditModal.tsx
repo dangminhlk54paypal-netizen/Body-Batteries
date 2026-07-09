@@ -15,6 +15,7 @@ import {
   buildCustomFoodItem,
   inputFromFoodItem,
   isValidCustomFoodInput,
+  resetNutritionForUnitChange,
 } from '../domain/food/customFoodInput';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
@@ -72,7 +73,18 @@ export function FoodNutritionEditModal({
 
   const valid = useMemo(() => isValidCustomFoodInput(input), [input]);
 
+  // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
+  // its field suffixes, so the intro subtitle always says the same thing.
+  const nutritionBasisLabel =
+    input.portionUnit === 'pack' ? '1 gói' : input.portionUnit === 'capsule' ? '1 viên' : '100g';
+
   function set<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
+    if (key === 'portionUnit') {
+      // Per-100g and per-serving figures are different scales — clear the
+      // nutrition fields instead of silently reinterpreting stale numbers.
+      setInput((prev) => resetNutritionForUnitChange(prev, value as CustomFoodInput['portionUnit']));
+      return;
+    }
     setInput((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -91,6 +103,8 @@ export function FoodNutritionEditModal({
           category: built.category,
           defaultServingG: built.defaultServingG,
           per100g: built.per100g,
+          portionUnit: built.portionUnit,
+          servingWeightG: built.servingWeightG,
         };
         await upsertOverrideAndRegister(edited);
         onSaved?.(edited);
@@ -127,7 +141,7 @@ export function FoodNutritionEditModal({
           <Text style={styles.subtitle}>
             {mode === 'edit'
               ? 'Chỉ để tham khảo — giá trị bạn sửa sẽ được ưu tiên hiển thị.'
-              : 'Nhập dinh dưỡng tính cho mỗi 100g.'}
+              : `Nhập dinh dưỡng tính cho mỗi ${nutritionBasisLabel}.`}
           </Text>
 
           <ScrollView

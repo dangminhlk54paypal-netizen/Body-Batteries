@@ -16,8 +16,8 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
        (id, name_vi, name_en, category, default_serving_g,
         energy_kcal, water_g, protein_g, fat_g, carb_g, fiber_g, sugar_g,
         calcium_mg, iron_mg, sodium_mg, potassium_mg, magnesium_mg, zinc_mg,
-        epa_mg, dha_mg, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        epa_mg, dha_mg, portion_unit, serving_weight_g, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     item.id,
     item.nameVi,
     item.nameEn,
@@ -38,6 +38,8 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
     n.zincMg,
     n.epaMg ?? null,
     n.dhaMg ?? null,
+    item.portionUnit ?? null,
+    item.servingWeightG ?? null,
     Date.now()
   );
 }

@@ -1,4 +1,4 @@
-import type { FoodItem } from '../../types/food';
+import type { FoodItem, Nutrition, PortionUnit } from '../../types/food';
 
 // Pure form-state → domain-object logic for the "add a custom food" flow in
 // FoodLogModal. No I/O, no state — unit-tested. The modal only calls
@@ -12,7 +12,16 @@ export interface CustomFoodInput {
   name: string;
   category: string;
   defaultServingG: string;
-  // Per-100g macros (always visible in the form)
+  // How the user counts this food: 'gram' (default, weighed) or 'pack'/
+  // 'capsule' (supplements, counted). When not 'gram', servingWeightG must
+  // be set and every macro/micro field below is entered PER SERVING (per
+  // pack/capsule) rather than per 100 g — buildCustomFoodItem converts.
+  portionUnit: PortionUnit;
+  // Real gram weight of ONE pack/capsule. Only meaningful when portionUnit
+  // is 'pack'/'capsule'; ignored (may be blank) for 'gram'.
+  servingWeightG: string;
+  // Per-100g macros (always visible in the form) — or per-serving when
+  // portionUnit is pack/capsule (see portionUnit doc above).
   energyKcal: string;
   proteinG: string;
   fatG: string;
@@ -35,6 +44,8 @@ export const EMPTY_CUSTOM_FOOD_INPUT: CustomFoodInput = {
   name: '',
   category: 'custom',
   defaultServingG: '100',
+  portionUnit: 'gram',
+  servingWeightG: '',
   energyKcal: '',
   proteinG: '',
   fatG: '',
@@ -52,6 +63,38 @@ export const EMPTY_CUSTOM_FOOD_INPUT: CustomFoodInput = {
   dhaMg: '',
 };
 
+// FIX #1: switching the unit chip (Gram/Gói/Viên) must not let the numbers
+// already typed under the OLD unit get silently reinterpreted under the NEW
+// one (per-100g vs per-serving are different scales — a "9" kcal typed while
+// on Gram becomes a wildly wrong per-100g value if reused verbatim after
+// switching to Viên) — clearing the fields and asking the user to re-enter
+// them is safer than guessing a conversion.
+export function resetNutritionForUnitChange(
+  input: CustomFoodInput,
+  newUnit: PortionUnit
+): CustomFoodInput {
+  return {
+    ...input,
+    portionUnit: newUnit,
+    servingWeightG: '',
+    energyKcal: '',
+    waterG: '',
+    proteinG: '',
+    fatG: '',
+    carbG: '',
+    fiberG: '',
+    sugarG: '',
+    calciumMg: '',
+    ironMg: '',
+    sodiumMg: '',
+    potassiumMg: '',
+    magnesiumMg: '',
+    zincMg: '',
+    epaMg: '',
+    dhaMg: '',
+  };
+}
+
 // Tolerant numeric parse: blank/whitespace/NaN → 0 (never throws, never
 // produces NaN downstream — the form must stay usable even half-filled).
 function parseNum(s: string): number {
@@ -65,12 +108,66 @@ function parseNonNegative(s: string): number {
   return Math.max(0, parseNum(s));
 }
 
-// name required (non-blank after trim) and kcal must parse to a number ≥ 0.
-// Used to gate the save button.
+// Converts a per-serving (per pack/capsule) Nutrition into the canonical
+// per-100g storage form: per100gValue = perServingValue / servingWeightG * 100.
+// Caller must guard servingWeightG > 0.
+function scalePerServingToPer100g(n: Nutrition, servingWeightG: number): Nutrition {
+  const factor = 100 / servingWeightG;
+  return {
+    energyKcal: n.energyKcal * factor,
+    waterG: n.waterG * factor,
+    proteinG: n.proteinG * factor,
+    fatG: n.fatG * factor,
+    carbG: n.carbG * factor,
+    fiberG: n.fiberG * factor,
+    sugarG: n.sugarG * factor,
+    calciumMg: n.calciumMg * factor,
+    ironMg: n.ironMg * factor,
+    sodiumMg: n.sodiumMg * factor,
+    potassiumMg: n.potassiumMg * factor,
+    magnesiumMg: n.magnesiumMg * factor,
+    zincMg: n.zincMg * factor,
+    epaMg: (n.epaMg ?? 0) * factor,
+    dhaMg: (n.dhaMg ?? 0) * factor,
+  };
+}
+
+// Inverse of scalePerServingToPer100g — used by inputFromFoodItem to prefill
+// the per-serving form fields from the canonical per-100g storage.
+function scalePer100gToPerServing(n: Nutrition, servingWeightG: number): Nutrition {
+  const factor = servingWeightG / 100;
+  return {
+    energyKcal: n.energyKcal * factor,
+    waterG: n.waterG * factor,
+    proteinG: n.proteinG * factor,
+    fatG: n.fatG * factor,
+    carbG: n.carbG * factor,
+    fiberG: n.fiberG * factor,
+    sugarG: n.sugarG * factor,
+    calciumMg: n.calciumMg * factor,
+    ironMg: n.ironMg * factor,
+    sodiumMg: n.sodiumMg * factor,
+    potassiumMg: n.potassiumMg * factor,
+    magnesiumMg: n.magnesiumMg * factor,
+    zincMg: n.zincMg * factor,
+    epaMg: (n.epaMg ?? 0) * factor,
+    dhaMg: (n.dhaMg ?? 0) * factor,
+  };
+}
+
+// name required (non-blank after trim), kcal must parse to a number ≥ 0, and
+// — for supplement-style foods ('pack'/'capsule') — servingWeightG must parse
+// to a positive number (buildCustomFoodItem divides by it when converting
+// per-serving values to per-100g; a blank/0/negative value there would either
+// throw or silently mis-scale every macro/micro). Used to gate the save button.
 export function isValidCustomFoodInput(input: CustomFoodInput): boolean {
   if (input.name.trim().length === 0) return false;
   const kcal = parseFloat(input.energyKcal);
   if (isNaN(kcal) || kcal < 0) return false;
+  if (input.portionUnit === 'pack' || input.portionUnit === 'capsule') {
+    const servingWeightG = parseNum(input.servingWeightG);
+    if (servingWeightG <= 0) return false;
+  }
   return true;
 }
 
@@ -81,12 +178,21 @@ export function isValidCustomFoodInput(input: CustomFoodInput): boolean {
 // carried here — edit-mode restores the original id after buildCustomFoodItem
 // so the save becomes an override of that food, not a new custom food.
 export function inputFromFoodItem(item: FoodItem): CustomFoodInput {
-  const p = item.per100g;
+  const portionUnit = item.portionUnit ?? 'gram';
+  const isServingBased = portionUnit !== 'gram' && (item.servingWeightG ?? 0) > 0;
+  // For pack/capsule foods, convert the stored per-100g values back to
+  // per-serving so the form shows the same numbers the user originally typed
+  // (e.g. "610" mg omega-3 per capsule, not the per-100g-scaled figure).
+  const p = isServingBased
+    ? scalePer100gToPerServing(item.per100g, item.servingWeightG as number)
+    : item.per100g;
   const s = (n: number): string => String(n);
   return {
     name: item.nameVi,
     category: item.category,
     defaultServingG: s(item.defaultServingG),
+    portionUnit,
+    servingWeightG: item.servingWeightG != null ? s(item.servingWeightG) : '',
     energyKcal: s(p.energyKcal),
     proteinG: s(p.proteinG),
     fatG: s(p.fatG),
@@ -113,6 +219,50 @@ export function buildCustomFoodItem(input: CustomFoodInput): FoodItem {
   // Floored at 1 (not 0) so a blank/negative/zero serving never produces a
   // FoodItem that silently disables the "Ghi món" button downstream.
   const defaultServingG = Math.max(1, parseNum(input.defaultServingG) || 100);
+
+  const servingWeightG = parseNonNegative(input.servingWeightG);
+  // Only treat as pack/capsule when a usable (positive) serving weight was
+  // given; otherwise fall back to the original gram behaviour untouched
+  // (guards against a division by 0 when converting to per-100g below).
+  const useServingConversion = input.portionUnit !== 'gram' && servingWeightG > 0;
+
+  let carbG = parseNonNegative(input.carbG);
+  const sugarG = parseNonNegative(input.sugarG);
+  const fiberG = parseNonNegative(input.fiberG);
+  // Infer carbs from sugar+fiber when left blank/zero but sugar or fiber was
+  // entered — supplement labels often list only those two. Computed on the
+  // as-entered (per-serving or per-100g) values, before any unit conversion.
+  if (carbG === 0 && (sugarG > 0 || fiberG > 0)) {
+    carbG = sugarG + fiberG;
+  }
+
+  // kcal is already validated ≥ 0 by isValidCustomFoodInput before this is
+  // called, but every other field is clamped at 0 here too — the form has no
+  // per-field validation, so this is the only guarantee. When useServingConversion
+  // is true, these are per-serving values (per 1 pack/capsule); otherwise
+  // they're already per-100g, matching the pre-existing behaviour.
+  const enteredNutrition: Nutrition = {
+    energyKcal: parseNonNegative(input.energyKcal),
+    waterG: parseNonNegative(input.waterG),
+    proteinG: parseNonNegative(input.proteinG),
+    fatG: parseNonNegative(input.fatG),
+    carbG,
+    fiberG,
+    sugarG,
+    calciumMg: parseNonNegative(input.calciumMg),
+    ironMg: parseNonNegative(input.ironMg),
+    sodiumMg: parseNonNegative(input.sodiumMg),
+    potassiumMg: parseNonNegative(input.potassiumMg),
+    magnesiumMg: parseNonNegative(input.magnesiumMg),
+    zincMg: parseNonNegative(input.zincMg),
+    epaMg: parseNonNegative(input.epaMg),
+    dhaMg: parseNonNegative(input.dhaMg),
+  };
+
+  const per100g = useServingConversion
+    ? scalePerServingToPer100g(enteredNutrition, servingWeightG)
+    : enteredNutrition;
+
   return {
     // Date.now() alone can collide on a fast double-tap of "Lưu món" (both
     // calls landing in the same millisecond), which would let the second
@@ -124,27 +274,10 @@ export function buildCustomFoodItem(input: CustomFoodInput): FoodItem {
     category: input.category.trim() || 'custom',
     defaultServingG,
     servingPresets: [],
-    per100g: {
-      // kcal is already validated ≥ 0 by isValidCustomFoodInput before this
-      // is called, but every other field is clamped at 0 here too — the
-      // form has no per-field validation, so this is the only guarantee.
-      energyKcal: parseNonNegative(input.energyKcal),
-      waterG: parseNonNegative(input.waterG),
-      proteinG: parseNonNegative(input.proteinG),
-      fatG: parseNonNegative(input.fatG),
-      carbG: parseNonNegative(input.carbG),
-      fiberG: parseNonNegative(input.fiberG),
-      sugarG: parseNonNegative(input.sugarG),
-      calciumMg: parseNonNegative(input.calciumMg),
-      ironMg: parseNonNegative(input.ironMg),
-      sodiumMg: parseNonNegative(input.sodiumMg),
-      potassiumMg: parseNonNegative(input.potassiumMg),
-      magnesiumMg: parseNonNegative(input.magnesiumMg),
-      zincMg: parseNonNegative(input.zincMg),
-      epaMg: parseNonNegative(input.epaMg),
-      dhaMg: parseNonNegative(input.dhaMg),
-    },
+    per100g,
     source: 'custom',
     note: '',
+    portionUnit: useServingConversion ? input.portionUnit : 'gram',
+    servingWeightG: useServingConversion ? servingWeightG : undefined,
   };
 }

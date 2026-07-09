@@ -13,10 +13,13 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import { useEnergyStore } from '../store/energyStore';
 import { MET_TABLE } from '../lib/metabolicConstants';
 import { FoodLogModal } from './FoodLogModal';
+import { parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityType } from '../types/energy';
 
-// Vietnamese labels for the MET-based activity types.
-const ACTIVITY_LABELS: Record<ActivityType, string> = {
+// Vietnamese labels for the MET-based activity types. Exported so the
+// activity-history edit form (TodayActivities) can reuse the same chip set
+// instead of duplicating it.
+export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   walking: 'Đi bộ',
   brisk_walking: 'Đi nhanh',
   running: 'Chạy bộ',
@@ -30,7 +33,7 @@ const ACTIVITY_LABELS: Record<ActivityType, string> = {
   hiit: 'HIIT',
   yoga: 'Yoga',
 };
-const ACTIVITY_TYPES = Object.keys(MET_TABLE) as ActivityType[];
+export const ACTIVITY_TYPES = Object.keys(MET_TABLE) as ActivityType[];
 
 // How far below its resting position a bottom sheet starts before sliding
 // up. Kept local to this file since both inline modals below use it.
@@ -62,6 +65,11 @@ export function EnergyActionsBar() {
   const [activity, setActivity] = useState<ActivityType>('running');
   const [minutes, setMinutes] = useState('');
   const [steps, setSteps] = useState('');
+  // "HH:mm" text fields for when the activity actually happened. Left blank
+  // = "now" (backward-compatible: startAt/endAt stay undefined, same as
+  // before this field existed).
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
   function confirmCalories() {
     const v = parseFloat(kcal);
@@ -76,9 +84,13 @@ export function EnergyActionsBar() {
     logActivity({
       steps: !isNaN(stepCount) && stepCount > 0 ? stepCount : 0,
       workouts: !isNaN(mins) && mins > 0 ? [{ type: activity, minutes: mins }] : [],
+      startAt: parseTimeHHmmToday(startTime),
+      endAt: parseTimeHHmmToday(endTime),
     });
     setMinutes('');
     setSteps('');
+    setStartTime('');
+    setEndTime('');
     setActivityOpen(false);
   }
 
@@ -182,6 +194,27 @@ export function EnergyActionsBar() {
               value={steps}
               onChangeText={setSteps}
             />
+            <Text style={styles.subtitle}>Khoảng thời gian diễn ra (tuỳ chọn, để trống = bây giờ)</Text>
+            <View style={styles.row}>
+              <TextInput
+                style={[styles.input, styles.timeInput]}
+                placeholder="Từ HH:mm"
+                placeholderTextColor="#666"
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+                value={startTime}
+                onChangeText={setStartTime}
+              />
+              <TextInput
+                style={[styles.input, styles.timeInput]}
+                placeholder="Đến HH:mm"
+                placeholderTextColor="#666"
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+                value={endTime}
+                onChangeText={setEndTime}
+              />
+            </View>
             <View style={styles.row}>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
@@ -230,6 +263,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#444',
   },
+  timeInput: { flex: 1, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,

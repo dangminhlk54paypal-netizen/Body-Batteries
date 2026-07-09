@@ -25,6 +25,8 @@ describe('rowToOverrideItem', () => {
       zinc_mg: 0.5,
       epa_mg: 5,
       dha_mg: 8,
+      portion_unit: null,
+      serving_weight_g: null,
       updated_at: 1700000000000,
     };
 
@@ -80,6 +82,8 @@ describe('rowToOverrideItem', () => {
       zinc_mg: 0,
       epa_mg: null,
       dha_mg: null,
+      portion_unit: null,
+      serving_weight_g: null,
       updated_at: 1700000000000,
     };
 
@@ -87,5 +91,37 @@ describe('rowToOverrideItem', () => {
 
     expect(item.per100g.epaMg).toBeUndefined();
     expect(item.per100g.dhaMg).toBeUndefined();
+  });
+
+  it('maps portion_unit/serving_weight_g when the override is for a pack/capsule food', () => {
+    const row = {
+      food_id: 'custom_vitc',
+      name_vi: 'Vitamin C gói',
+      name_en: 'Vitamin C sachet',
+      category: 'supplement',
+      default_serving_g: 5,
+      energy_kcal: 4,
+      water_g: 0,
+      protein_g: 0,
+      fat_g: 0,
+      carb_g: 1,
+      fiber_g: 0,
+      sugar_g: 1,
+      calcium_mg: 0,
+      iron_mg: 0,
+      sodium_mg: 0,
+      potassium_mg: 0,
+      magnesium_mg: 0,
+      zinc_mg: 0,
+      epa_mg: null,
+      dha_mg: null,
+      portion_unit: 'pack',
+      serving_weight_g: 5,
+      updated_at: 1700000000000,
+    };
+
+    const item = rowToOverrideItem(row);
+    expect(item.portionUnit).toBe('pack');
+    expect(item.servingWeightG).toBe(5);
   });
 });

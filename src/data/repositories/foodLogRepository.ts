@@ -1,5 +1,5 @@
 import { getDb } from '../db/database';
-import type { FoodLogEntry, MealType } from '../../types/food';
+import type { FoodLogEntry, MealType, PortionUnit } from '../../types/food';
 
 interface FoodLogRow {
   id: string;
@@ -14,6 +14,8 @@ interface FoodLogRow {
   carb_g: number;
   water_g: number;
   minerals_mg: number;
+  portion_unit: string | null;
+  count: number | null;
 }
 
 function rowToEntry(r: FoodLogRow): FoodLogEntry {
@@ -30,6 +32,8 @@ function rowToEntry(r: FoodLogRow): FoodLogEntry {
     carbG: r.carb_g,
     waterG: r.water_g,
     mineralsMg: r.minerals_mg,
+    portionUnit: (r.portion_unit as PortionUnit | null) ?? undefined,
+    count: r.count ?? undefined,
   };
 }
 
@@ -38,8 +42,9 @@ export async function addFoodLogEntry(entry: FoodLogEntry): Promise<void> {
   await db.runAsync(
     `INSERT INTO food_log
        (id, timestamp, meal_type, food_id, food_name_vi, grams,
-        energy_kcal, protein_g, fat_g, carb_g, water_g, minerals_mg)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        energy_kcal, protein_g, fat_g, carb_g, water_g, minerals_mg,
+        portion_unit, count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     entry.id,
     entry.timestamp,
     entry.mealType,
@@ -51,7 +56,9 @@ export async function addFoodLogEntry(entry: FoodLogEntry): Promise<void> {
     entry.fatG,
     entry.carbG,
     entry.waterG,
-    entry.mineralsMg
+    entry.mineralsMg,
+    entry.portionUnit ?? null,
+    entry.count ?? null
   );
 }
 

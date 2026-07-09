@@ -1,5 +1,6 @@
 import { getAnyFoodById } from '../foodLookup';
 import { getFoodById } from '../foodDatabase';
+import { setCustomFoods } from '../customFoodRegistry';
 import {
   setOverrides,
   getOverrideByIdSync,
@@ -87,6 +88,84 @@ describe('foodOverrideRegistry + getAnyFoodById merge', () => {
     expect(merged?.servingPresets).toEqual(base?.servingPresets);
     expect(merged?.nameDe).toBe(base?.nameDe);
     expect(merged?.source).toBe(base?.source);
+  });
+
+  // Fix #2 regression: portionUnit/servingWeightG (the "pack"/"capsule" unit
+  // fields, e.g. correcting a supplement's grams-per-capsule) were dropped by
+  // the merge — every app-wide lookup silently fell back to the base
+  // catalog's unit, ignoring the user's correction.
+  it('getAnyFoodById merges the override portionUnit/servingWeightG (Fix #2)', () => {
+    setOverrides([
+      makeOverride({ portionUnit: 'capsule', servingWeightG: 1.2 }),
+    ]);
+    const merged = getAnyFoodById(BASE_ID);
+    expect(merged?.portionUnit).toBe('capsule');
+    expect(merged?.servingWeightG).toBe(1.2);
+  });
+
+  it('getAnyFoodById falls back to the base portionUnit/servingWeightG when the override leaves them unset', () => {
+    const base = getFoodById(BASE_ID);
+    setOverrides([makeOverride({})]); // no portionUnit/servingWeightG patch
+    const merged = getAnyFoodById(BASE_ID);
+    expect(merged?.portionUnit).toBe(base?.portionUnit);
+    expect(merged?.servingWeightG).toBe(base?.servingWeightG);
+  });
+
+  // Fix #7 regression: correcting a TPCN's unit back to 'gram' must not let a
+  // stale pack/capsule servingWeightG (from the BASE record, e.g. an
+  // outdated 1.22 g/capsule figure) leak through — buildCustomFoodItem never
+  // sets servingWeightG for a 'gram' input, so the merge must force it
+  // undefined rather than falling back via `??` to base.servingWeightG.
+  it('getAnyFoodById forces servingWeightG to undefined when an override switches a capsule TPCN back to gram (Fix #7)', () => {
+    const CUSTOM_ID = 'custom_omega3_test';
+    // The base (a user-added custom food) is a capsule supplement: 1.22 g each.
+    setCustomFoods([
+      {
+        id: CUSTOM_ID,
+        nameVi: 'Omega-3 viên',
+        nameEn: '',
+        category: 'supplement',
+        defaultServingG: 1.22,
+        servingPresets: [],
+        per100g: {
+          energyKcal: 737.7,
+          waterG: 0,
+          proteinG: 0,
+          fatG: 82,
+          carbG: 0,
+          fiberG: 0,
+          sugarG: 0,
+          calciumMg: 0,
+          ironMg: 0,
+          sodiumMg: 0,
+          potassiumMg: 0,
+          magnesiumMg: 0,
+          zincMg: 0,
+          epaMg: 24590,
+          dhaMg: 25410,
+        },
+        source: 'custom',
+        note: '',
+        portionUnit: 'capsule',
+        servingWeightG: 1.22,
+      },
+    ]);
+    try {
+      // The user now corrects the unit back to 'gram' — buildCustomFoodItem
+      // leaves servingWeightG blank (undefined) for a gram-based input.
+      setOverrides([
+        makeOverride({
+          id: CUSTOM_ID,
+          portionUnit: 'gram',
+          servingWeightG: undefined,
+        }),
+      ]);
+      const merged = getAnyFoodById(CUSTOM_ID);
+      expect(merged?.portionUnit).toBe('gram');
+      expect(merged?.servingWeightG).toBeUndefined();
+    } finally {
+      setCustomFoods([]); // don't leak into other tests
+    }
   });
 
   it('getAnyFoodById returns the override alone when the base id no longer exists', () => {

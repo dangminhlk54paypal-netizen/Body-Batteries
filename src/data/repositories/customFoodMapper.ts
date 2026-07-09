@@ -1,4 +1,4 @@
-import type { FoodItem, Nutrition } from '../../types/food';
+import type { FoodItem, Nutrition, PortionUnit } from '../../types/food';
 
 // Row shape of the `custom_foods` table (see src/data/db/schema.ts).
 export interface CustomFoodRow {
@@ -22,6 +22,8 @@ export interface CustomFoodRow {
   zinc_mg: number;
   epa_mg: number | null;
   dha_mg: number | null;
+  portion_unit: string | null;
+  serving_weight_g: number | null;
   created_at: number;
 }
 
@@ -59,5 +61,7 @@ export function rowToCustomFoodItem(r: CustomFoodRow): FoodItem {
     per100g,
     source: 'custom',
     note: '',
+    portionUnit: (r.portion_unit as PortionUnit | null) ?? undefined,
+    servingWeightG: r.serving_weight_g ?? undefined,
   };
 }

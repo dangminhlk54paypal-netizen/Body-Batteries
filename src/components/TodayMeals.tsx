@@ -16,6 +16,18 @@ function timeLabel(timestamp: number): string {
   return `${h}:${m}`;
 }
 
+// Packs/capsules (TPCN) are displayed by count ("2 viên") rather than the
+// converted gram weight — matches how the user actually thinks about a dose.
+function amountLabel(entry: FoodLogEntry): string {
+  if (entry.portionUnit === 'pack' && entry.count != null) {
+    return `${entry.count} gói`;
+  }
+  if (entry.portionUnit === 'capsule' && entry.count != null) {
+    return `${entry.count} viên`;
+  }
+  return `${entry.grams}g`;
+}
+
 export function TodayMeals({ entries, onDelete }: Props) {
   const summary = summarizeFoodLog(entries);
 
@@ -51,7 +63,7 @@ export function TodayMeals({ entries, onDelete }: Props) {
                       {e.foodNameVi}
                     </Text>
                     <Text style={styles.entryMeta}>
-                      {timeLabel(e.timestamp)} · {e.grams}g · {e.energyKcal} kcal
+                      {timeLabel(e.timestamp)} · {amountLabel(e)} · {e.energyKcal} kcal
                     </Text>
                   </View>
                   <Pressable

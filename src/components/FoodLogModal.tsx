@@ -18,10 +18,11 @@ import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
-import { nutritionForGrams, mealTypeForHour } from '../domain/food/foodNutrition';
+import { nutritionForGrams, mealTypeForHour, gramsForPortion } from '../domain/food/foodNutrition';
 import {
   buildCustomFoodItem,
   isValidCustomFoodInput,
+  resetNutritionForUnitChange,
   EMPTY_CUSTOM_FOOD_INPUT,
   type CustomFoodInput,
 } from '../domain/food/customFoodInput';
@@ -66,6 +67,9 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<FoodItem | null>(null);
   const [grams, setGrams] = useState('');
+  // Count of packs/capsules for portionUnit !== 'gram' foods (TPCN). Ignored
+  // (and `grams` used instead) for gram-based foods — see isServingBased below.
+  const [portionCount, setPortionCount] = useState('1');
   const [hour, setHour] = useState('');
   const [minute, setMinute] = useState('');
   // "Thêm món mới" sub-state: shown when a search finds nothing and the user
@@ -99,6 +103,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
     setQuery('');
     setSelected(null);
     setGrams('');
+    setPortionCount('1');
     setHour('');
     setMinute('');
     setAdding(false);
@@ -120,6 +125,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
     const resolved = getAnyFoodById(item.id) ?? item;
     setSelected(resolved);
     setGrams(String(resolved.defaultServingG));
+    setPortionCount('1');
     setHour(pad2(now.getHours()));
     setMinute(pad2(now.getMinutes()));
   }
@@ -133,10 +139,24 @@ export function FoodLogModal({ visible, onClose }: Props) {
   }
 
   function updateCustomField<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
+    if (key === 'portionUnit') {
+      // Per-100g and per-serving figures are different scales — clear the
+      // nutrition fields instead of silently reinterpreting stale numbers.
+      setCustomInput((prev) => resetNutritionForUnitChange(prev, value as CustomFoodInput['portionUnit']));
+      return;
+    }
     setCustomInput((prev) => ({ ...prev, [key]: value }));
   }
 
   const customValid = isValidCustomFoodInput(customInput);
+  // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
+  // its field suffixes (see that component for the source of truth).
+  const customNutritionBasisLabel =
+    customInput.portionUnit === 'pack'
+      ? '1 gói'
+      : customInput.portionUnit === 'capsule'
+        ? '1 viên'
+        : '100g';
 
   // Builds the FoodItem, persists it via the registry (SQLite + searchable
   // immediately), then hands off into the existing selected-entry view so
@@ -152,21 +172,36 @@ export function FoodLogModal({ visible, onClose }: Props) {
     pickFood(item);
   }
 
+  // Supplements (TPCN) counted by pack/capsule are entered as a count, not a
+  // gram weight — see gramsForPortion (the shared count→grams conversion).
+  const isServingBased = selected?.portionUnit != null && selected.portionUnit !== 'gram';
+
   const gramsNum = parseFloat(grams);
   const validGrams = !isNaN(gramsNum) && gramsNum > 0;
+  const countNum = parseFloat(portionCount);
+  const validCount = !isNaN(countNum) && countNum > 0;
+  const validAmount = isServingBased ? validCount : validGrams;
+  const effectiveGrams = selected && isServingBased ? gramsForPortion(selected, countNum) : gramsNum;
   const hourNum = clampInt(parseInt(hour, 10), 0, 23);
   const minuteNum = clampInt(parseInt(minute, 10), 0, 59);
 
   const preview =
-    selected && validGrams ? nutritionForGrams(selected, gramsNum) : null;
+    selected && validAmount ? nutritionForGrams(selected, effectiveGrams) : null;
   const mealLabel = MEAL_LABELS[mealTypeForHour(hourNum)];
 
   async function confirm() {
-    if (!selected || !validGrams) return;
+    if (!selected || !validAmount) return;
     // USDA rows have no Vietnamese name yet — fall back to the English name so
     // the Diary/History never show a blank title (logFood snapshots nameVi).
     const foodToLog = selected.nameVi ? selected : { ...selected, nameVi: selected.nameEn };
-    await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
+    if (isServingBased) {
+      await logFood(foodToLog, effectiveGrams, timestampForToday(hourNum, minuteNum), {
+        portionUnit: selected.portionUnit,
+        count: countNum,
+      });
+    } else {
+      await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
+    }
     handleClose();
   }
 
@@ -198,7 +233,9 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 </Pressable>
               </View>
               <Text style={styles.title}>Thêm món mới</Text>
-              <Text style={styles.subtitle}>Nhập dinh dưỡng tính cho mỗi 100g</Text>
+              <Text style={styles.subtitle}>
+                Nhập dinh dưỡng tính cho mỗi {customNutritionBasisLabel}
+              </Text>
 
               <ScrollView
                 style={styles.entryScroll}
@@ -341,34 +378,52 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 contentContainerStyle={styles.entryScrollContent}
                 keyboardShouldPersistTaps="handled"
               >
-                <Text style={styles.fieldLabel}>Khối lượng (gram)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ví dụ: 150"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  value={grams}
-                  onChangeText={setGrams}
-                />
-                <View style={styles.chips}>
-                  <Pressable
-                    style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-                    onPress={() => setGrams(String(selected.defaultServingG))}
-                  >
-                    <Text style={styles.chipText}>mặc định={selected.defaultServingG}g</Text>
-                  </Pressable>
-                  {selected.servingPresets.map((p) => (
-                    <Pressable
-                      key={p.label}
-                      style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
-                      onPress={() => setGrams(String(p.grams))}
-                    >
-                      <Text style={styles.chipText}>
-                        {p.label}={p.grams}g
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+                {isServingBased ? (
+                  <>
+                    <Text style={styles.fieldLabel}>
+                      Số {selected.portionUnit === 'pack' ? 'gói' : 'viên'}
+                    </Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ví dụ: 1"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={portionCount}
+                      onChangeText={setPortionCount}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.fieldLabel}>Khối lượng (gram)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ví dụ: 150"
+                      placeholderTextColor="#666"
+                      keyboardType="decimal-pad"
+                      value={grams}
+                      onChangeText={setGrams}
+                    />
+                    <View style={styles.chips}>
+                      <Pressable
+                        style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+                        onPress={() => setGrams(String(selected.defaultServingG))}
+                      >
+                        <Text style={styles.chipText}>mặc định={selected.defaultServingG}g</Text>
+                      </Pressable>
+                      {selected.servingPresets.map((p) => (
+                        <Pressable
+                          key={p.label}
+                          style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+                          onPress={() => setGrams(String(p.grams))}
+                        >
+                          <Text style={styles.chipText}>
+                            {p.label}={p.grams}g
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </>
+                )}
 
                 <Text style={styles.fieldLabel}>Giờ ăn → {mealLabel}</Text>
                 <View style={styles.timeRow}>
@@ -414,11 +469,11 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   style={({ pressed }) => [
                     styles.modalBtn,
                     styles.eat,
-                    !validGrams && styles.disabled,
+                    !validAmount && styles.disabled,
                     pressed && styles.pressed,
                   ]}
                   onPress={confirm}
-                  disabled={!validGrams}
+                  disabled={!validAmount}
                 >
                   <Text style={styles.btnText}>Ghi món 🍽️</Text>
                 </Pressable>

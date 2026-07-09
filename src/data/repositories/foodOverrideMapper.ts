@@ -1,4 +1,4 @@
-import type { FoodItem, Nutrition } from '../../types/food';
+import type { FoodItem, Nutrition, PortionUnit } from '../../types/food';
 
 // Row shape of the `food_overrides` table (see src/data/db/schema.ts). The
 // primary key is `food_id` — the id of the catalog/custom food being
@@ -24,6 +24,8 @@ export interface FoodOverrideRow {
   zinc_mg: number;
   epa_mg: number | null;
   dha_mg: number | null;
+  portion_unit: string | null;
+  serving_weight_g: number | null;
   updated_at: number;
 }
 
@@ -62,5 +64,7 @@ export function rowToOverrideItem(r: FoodOverrideRow): FoodItem {
     per100g,
     source: 'override',
     note: '',
+    portionUnit: (r.portion_unit as PortionUnit | null) ?? undefined,
+    servingWeightG: r.serving_weight_g ?? undefined,
   };
 }
