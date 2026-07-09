@@ -21,8 +21,25 @@
   phải chạy song song nhiều agent chỉnh sửa trên cùng working tree, cân nhắc
   `isolation: "worktree"` cho từng agent, hoặc kiểm tra kỹ diff ngay sau khi mỗi agent
   báo xong thay vì đợi cả loạt.
-- **Còn lại**: P3 (BottomSheet), P4 (hiệu ứng sạc), P5 (gợi ý món) — chạy TUẦN TỰ (không
-  song song) vì cả ba đều đụng `FoodLogModal.tsx`/battery components lặp lại nhiều lần.
+- [x] **P3** — `src/components/ui/BottomSheet.tsx` (Modal+KeyboardAvoidingView+backdrop+
+  Gesture.Pan vuốt xuống đóng+handle bar+bo góc 28), cài `react-native-gesture-handler`,
+  bọc `App.tsx` bằng `GestureHandlerRootView`. Migrate FoodLogModal + IntakeModal sang
+  dùng component chung (xoá machinery translateY/SHEET_OFFSET trùng lặp trong 2 file đó).
+  Commit `82875b9`. Chạy solo (không song song) — không gặp lại lỗi revert như P1/P2/P6.
+- [x] **P4** — `src/store/chargeEffectStore.ts` (store tín hiệu UI thuần `pulseId`, KHÔNG
+  suy luận từ so sánh levelKcal). Trigger tại FoodLogModal (lưu món) + SupplementQuickLog
+  (quick-tap), cạnh haptics.success()/tapLight() sẵn có (P2). MasterBattery subscribe
+  pulseId, chạy pulse scale 1→1.06→1 + glow amber fade (~500ms), animation fill % cũ giữ
+  nguyên. Commit `69ab546`. **KHÔNG wire IntakeModal** (charge sub-battery khác, không phải
+  master energy battery — pulse ở đó sẽ gây hiểu nhầm).
+- **Còn lại**: chỉ còn **P5** (gợi ý món ăn — giảm ma sát nhập liệu). Chạy solo, đụng
+  `src/domain/food/foodSuggestions.ts` (mới, cần unit test) + `FoodLogModal.tsx` (thêm
+  hàng chip gợi ý khi query rỗng). Sau P5: `npm run verify`, review diff kỹ (đối chiếu
+  báo cáo agent với git diff thật — xem bài học ở trên), commit, rồi cập nhật lại file
+  plan này lần cuối với trạng thái "HOÀN TẤT" + tóm tắt cho user (KHÔNG tự ý push/tạo PR
+  trừ khi user yêu cầu).
+- P7 (particle bay vào pin) vẫn là tuỳ chọn — CHỈ làm nếu user xem demo P4 trên điện thoại
+  và chủ động muốn thêm; không tự ý làm nếu không được yêu cầu.
 
 
 > Bản thiết kế điều phối cho các model nhỏ (Sonnet 5 / Haiku 4.5) thực thi từng bước.
