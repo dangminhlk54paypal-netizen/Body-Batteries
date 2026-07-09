@@ -8,6 +8,7 @@ import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { gramsForPortion } from '../domain/food/foodNutrition';
 import type { FoodItem, FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
+import * as haptics from '../lib/haptics';
 
 // One-tap logging for supplement-category foods (fish oil, whey, vitamins…).
 // Each tap logs one default serving through the normal logFood flow, so the
@@ -73,6 +74,7 @@ export function SupplementQuickLog({ todayLog }: Props) {
                 } else {
                   logFood(resolved, resolved.defaultServingG, Date.now());
                 }
+                haptics.tapLight();
               }}
               style={({ pressed }) => [
                 styles.chip,

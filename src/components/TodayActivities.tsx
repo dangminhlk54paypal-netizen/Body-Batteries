@@ -91,7 +91,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
       {entries.length === 0 ? (
         <View style={styles.card}>
           <Text style={styles.empty}>
-            Chưa ghi vận động nào hôm nay. Bấm “🏃 Vận động” để bắt đầu.
+            Chưa có vận động nào được ghi hôm nay. Bấm “🏃 Vận động” để bắt đầu.
           </Text>
         </View>
       ) : (

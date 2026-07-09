@@ -30,6 +30,7 @@ import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
 import { colors } from '../lib/theme';
+import * as haptics from '../lib/haptics';
 
 export function HomeScreen() {
   const {
@@ -94,7 +95,10 @@ export function HomeScreen() {
       entry ? `“${entry.foodNameVi}” sẽ bị xoá và pin được hoàn lại.` : undefined,
       [
         { text: 'Huỷ', style: 'cancel' },
-        { text: 'Xoá', style: 'destructive', onPress: () => removeFood(id) },
+        { text: 'Xoá', style: 'destructive', onPress: () => {
+          haptics.warning();
+          removeFood(id);
+        } },
       ]
     );
   }
@@ -105,7 +109,10 @@ export function HomeScreen() {
       'Mục này sẽ bị xoá và pin được hoàn lại.',
       [
         { text: 'Huỷ', style: 'cancel' },
-        { text: 'Xoá', style: 'destructive', onPress: () => removeActivity(id) },
+        { text: 'Xoá', style: 'destructive', onPress: () => {
+          haptics.warning();
+          removeActivity(id);
+        } },
       ]
     );
   }
@@ -121,7 +128,10 @@ export function HomeScreen() {
       entry ? `Sẽ hoàn tác lần nạp ${entry.amount} và trừ lại pin tương ứng.` : undefined,
       [
         { text: 'Huỷ', style: 'cancel' },
-        { text: 'Hoàn tác', style: 'destructive', onPress: () => removeIntake(id) },
+        { text: 'Hoàn tác', style: 'destructive', onPress: () => {
+          haptics.warning();
+          removeIntake(id);
+        } },
       ]
     );
   }

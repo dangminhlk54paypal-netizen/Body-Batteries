@@ -74,7 +74,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
       {summary.groups.length === 0 ? (
         <View style={styles.card}>
           <Text style={styles.empty}>
-            Chưa ghi món nào hôm nay. Bấm “🍱 Ghi món ăn” để bắt đầu.
+            Chưa có món nào được ghi hôm nay. Bấm “🍱 Ghi món ăn” để bắt đầu.
           </Text>
         </View>
       ) : (

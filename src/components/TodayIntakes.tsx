@@ -37,7 +37,7 @@ export function TodayIntakes({ entries, onDelete }: Props) {
 
       {sorted.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.empty}>Chưa nạp nhanh gì hôm nay.</Text>
+          <Text style={styles.empty}>Chưa có nạp nhanh nào hôm nay.</Text>
         </View>
       ) : (
         <View style={styles.card}>

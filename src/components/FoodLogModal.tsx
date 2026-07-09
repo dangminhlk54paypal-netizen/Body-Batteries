@@ -29,6 +29,7 @@ import {
 import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
 import type { FoodItem } from '../types/food';
 import { colors } from '../lib/theme';
+import * as haptics from '../lib/haptics';
 
 interface Props {
   visible: boolean;
@@ -203,6 +204,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
     } else {
       await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
     }
+    haptics.success();
     handleClose();
   }
 

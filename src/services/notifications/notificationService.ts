@@ -34,7 +34,7 @@ export async function sendLowBatteryAlerts(alerts: BatteryAlert[]): Promise<void
 export async function sendOvereatingAlert(message: string): Promise<void> {
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: '🍽️ Ăn dư hôm nay',
+      title: '🍽️ Ăn khá đủ hôm nay',
       body: message,
       data: { batteryTypeId: 'energy' },
     },
@@ -60,7 +60,7 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: '💪 Body Batteries',
-      body: 'Đừng quên cập nhật năng lượng hôm nay!',
+      body: 'Cùng cập nhật năng lượng hôm nay nào!',
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,

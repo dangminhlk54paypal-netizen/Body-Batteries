@@ -42,7 +42,7 @@ export const colors = {
   textPale: '#E0E0FF', // OnboardingScreen card header — near-white lavender tint
 
   // ── Accent / brand ───────────────────────────────────────────────────────
-  accent: '#00B894', // teal — primary action
+  accent: '#FFB020', // warm amber — primary action, energy/charging
   accentAlt: '#6C5CE7', // purple — secondary accent (diary, mode chips)
   accentAltLight: '#a29bfe',
   accentAltLighter: '#9E9EFE',
@@ -59,7 +59,7 @@ export const colors = {
   infoAlt: '#0984e3',
 
   // Alpha-blended status backgrounds (History day-score badges)
-  successBgSoft: '#00B89422',
+  successBgSoft: '#7ED95722',
   warningBgSoft: '#FFD93D22',
   dangerBgSoft: '#FF475722',
 

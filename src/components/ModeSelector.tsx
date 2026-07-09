@@ -9,6 +9,7 @@ import Animated, {
 import { MODES } from '../domain/modes/modeDefinitions';
 import type { ModeId, ModeDefinition } from '../types/modes';
 import { colors } from '../lib/theme';
+import * as haptics from '../lib/haptics';
 
 interface Props {
   currentMode: ModeId;
@@ -56,7 +57,10 @@ function ModeChip({
   return (
     <Animated.View style={[styles.chip, animatedStyle]}>
       <Pressable
-        onPress={onPress}
+        onPress={() => {
+          haptics.tapLight();
+          onPress();
+        }}
         style={({ pressed }) => [styles.chipInner, pressed && styles.pressed]}
       >
         <Text style={[styles.chipText, active && styles.chipTextActive]}>{mode.name}</Text>

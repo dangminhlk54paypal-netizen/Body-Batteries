@@ -12,6 +12,7 @@ import {
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import type { BatteryType } from '../types/battery';
 import { colors } from '../lib/theme';
+import * as haptics from '../lib/haptics';
 
 interface Props {
   battery: BatteryType | null;
@@ -44,6 +45,7 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
     const parsed = parseFloat(amount);
     if (!isNaN(parsed) && parsed > 0) {
       onConfirm(parsed, note.trim());
+      haptics.success();
       setAmount('');
       setNote('');
       onClose();
