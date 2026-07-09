@@ -629,6 +629,110 @@ sinh bất ngờ khi code.
 
 ---
 
+## Session 16 — 2026-07-09 (S-A: debug 3 nhóm feedback thật của người dùng — TPCN/Vận động/Pin nhỏ)
+
+**Làm gì:** Người dùng báo 3 nhóm lỗi gặp phải khi dùng app thật (theo yêu cầu S-A): (1) TPCN ép
+quy đổi mốc 100g sai với thực tế (1 viên/gói); (2) Vận động không sửa/xoá được khi nhập nhầm + thiếu
+"thời gian diễn ra thực tế"; (3) Pin Vận động và Pin Carbs mất đồng bộ với dữ liệu nhập. Khảo sát
+nguyên nhân gốc bằng 3 Explore agent song song, chốt phạm vi với người dùng (không xây replay engine
+đầy đủ, giữ pin Vận động theo `steps`, tự suy Carbs từ đường+xơ), rồi thực thi qua loop nhiều wave
+(logic-backend + mobile-frontend, sonnet/haiku), chốt bằng 2 vòng kiểm tra độc lập: 1 lượt QA-reviewer
+và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
+
+**Kết quả (ĐÃ COMMIT `7d2e6dd`, nhánh `session-5-demo-ready`, CHƯA push, CHƯA test máy):**
+- **TPCN theo Gói/Viên:** `FoodItem`/`FoodLogEntry` thêm `portionUnit`('gram'|'pack'|'capsule') +
+  `servingWeightG`. Giữ nguyên engine tính theo gram (`nutritionForGrams`, `microBatteryEngine`
+  KHÔNG đổi) — quy đổi chỉ ở biên: nhập dinh dưỡng per-gói/viên rồi `scalePerServingToPer100g` khi
+  lưu, `gramsForPortion` khi log (count→grams). UI: `CustomFoodFields.tsx` (chip đơn vị + label động),
+  `FoodLogModal.tsx`/`SupplementQuickLog.tsx` (log theo số gói/viên), `TodayMeals.tsx` (hiện "2 viên").
+- **Vận động — bản ghi độc lập + Sửa/Xoá + giờ diễn ra:** bảng `activity_log` mới (id riêng, không
+  còn mutate `battery_readings` không thể hoàn tác). `removeActivity`/`updateActivity` trong
+  `energyStore.ts` nhân bản mẫu `removeFood`. UI mới `TodayActivities.tsx` (danh sách + Sửa/Xoá),
+  `EnergyActionsBar.tsx` thêm ô "Từ/Đến HH:mm" (`parseTimeHHmmToday`/`formatTimeHHmm` trong
+  `dateUtils.ts`).
+- **Đồng bộ pin nhỏ:** Pin Vận động trước đây LUÔN = 0 vì `logActivity` không hề gọi `applyIntake`
+  lên nó — đã vá (nạp bằng steps). Pin Carbs tự suy `carbG = đường + xơ` khi ô Carbs để trống
+  (`customFoodInput.ts`).
+- **QA review vòng 1** tìm 4 bug CONFIRMED trước commit đầu: `getAnyFoodById` không merge
+  `portionUnit`/`servingWeightG` từ override (sửa khối lượng viên/gói không có tác dụng ở bất kỳ đâu
+  trong app); nhánh edit của `FoodNutritionEditModal.tsx` làm rớt 2 field mới tương tự; thiếu
+  validate `servingWeightG > 0` khi chọn Gói/Viên; `removeActivity` hoàn tác pin Vận động bằng phép
+  trừ có clamp khiến xoá 1 mục sai kéo cả pin về 0 dù còn mục hợp lệ khác (sửa tạm bằng "recompute
+  tuyệt đối từ các entry còn lại").
+- **`/code-review` vòng 2** (8 finder angle + verify 1-vote, effort=high) soát lại TOÀN BỘ diff, tìm
+  thêm **9 bug CONFIRMED**, đã vá hết trước khi commit thật:
+  1. Đổi chip đơn vị TPCN không reset số đã nhập → `buildCustomFoodItem` diễn giải lại theo mốc mới,
+     sai lệch ~80 lần → thêm `resetNutritionForUnitChange` (xoá trắng số khi đổi unit thay vì đoán
+     quy đổi).
+  2+3. "Recompute tuyệt đối" (vá tạm ở vòng 1) lại sinh bug mới: xoá bỏ phần pin đã bị `tickDrain`
+     rút theo thời gian, và xoá mất bước nạp qua tap tay trực tiếp (không nằm trong `activityLog`) →
+     sửa bằng **thuật toán delta** (tính đóng góp cận biên của entry bị xoá, trừ tương đối lên level
+     hiện tại) — xem bài học đã lưu `.ai/skills/learned/undo-reversal-must-be-delta-not-absolute-
+     recompute.md`.
+  4. Sửa/xoá vận động không dọn `intake_events` (chỉ để xuất Excel) → đếm trùng/hiện mục đã xoá vĩnh
+     viễn → thêm `deleteIntakeEventsByIds`.
+  5. Lệch mốc "energy day" (6h sáng, `energyDayString`) vs `activityLog` (nhóm theo lịch ngày) cho
+     hoạt động log lúc 0h–6h sáng → thêm `energyDayApplied` snapshot trên từng entry, hoàn tác đúng
+     ngày lịch sử nếu khác ngày hiện tại (không đụng `readings` state của hôm nay).
+  6. `updateActivity` (xoá rồi thêm lại) luôn tạo timestamp mới → mất giờ log gốc + đảo thứ tự hiển
+     thị → truyền lại `timestampOverride`, sort lại `activityLog` sau khi thêm.
+  7. `servingWeightG` cũ của catalog rò rỉ qua override khi user đổi TPCN về 'gram' rồi đổi lại →
+     `getAnyFoodById` giờ ép `servingWeightG=undefined` khi `portionUnit==='gram'`.
+  8. Không xoá được giờ đã nhập qua UI (`undefined`=giữ nguyên áp dụng luôn cho ô để trống) → đổi
+     ngữ nghĩa `ActivityPatch`: `null`=xoá chủ ý, `undefined`=giữ nguyên (`TodayActivities.tsx`
+     phân biệt ô trống hẳn vs ô có nội dung không parse được).
+  9. (altitude) Field TPCN mới được merge bằng liệt kê thủ công từng field ở nhiều nơi — nguyên nhân
+     gốc của bug #7 — thêm comment cảnh báo tại điểm merge liệt kê đủ 3 chỗ nối phải đồng bộ mỗi khi
+     thêm field `FoodItem` mới.
+- **Verify cuối cùng:** `npx tsc --noEmit` sạch · `npm run lint` sạch · `npx jest` →
+  **291 test PASS / 28 suite** (từ 271 gốc, riêng vòng vá bug đã thêm 20 test mới).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Vòng vá đầu tiên cho lỗi "xoá vận động kéo pin về 0" dùng cách "recompute tuyệt đối từ dữ liệu còn
+  lại" — trực giác tưởng đúng nhưng lại ngầm giả định tập dữ liệu recompute là NGUỒN DUY NHẤT ảnh
+  hưởng đến pin (bỏ qua drain theo thời gian + nạp tay qua đường khác) → `/code-review` bắt được ngay
+  vòng sau. Đã lưu thành bài học dài hạn ở `.ai/skills/learned/undo-reversal-must-be-delta-not-
+  absolute-recompute.md` — quy tắc chung: hoàn tác 1 bản ghi PHẢI dùng delta tương đối lên state hiện
+  tại, không bao giờ ghi đè tuyệt đối từ recompute.
+- 2 lỗi (getAnyFoodById merge thiếu field, edit-modal rớt field) đều xảy ra ở cùng dạng "điểm nối" —
+  thêm field `FoodItem` mới cần đồng bộ ở nhiều chỗ liệt kê thủ công, dễ quên 1 chỗ mà TypeScript
+  không báo lỗi (object spread vẫn type-check). Đã lưu memory Claude Code
+  (`fooditem-field-join-points`) từ trước khi vào `/code-review`, và bug review vòng 2 xác nhận đúng
+  y hệt kiểu lỗi đó lặp lại — củng cố giá trị của memory này.
+- Agent B (vòng vá vận động) tự phát hiện thêm 1 bug hạ tầng test: mock DB dùng chung trong
+  `energyStore.test.ts` thiếu `withTransactionAsync`, khiến lỗi bị try/catch của store nuốt âm thầm
+  ở MỌI test trước đó (chỉ assert state trong bộ nhớ, không assert thứ tự gọi persistence) — vá luôn
+  vì fix #4 (dọn `intake_events`) cần code chạy qua được đoạn đó để test.
+- Người dùng chốt "vá cả 9 lỗi rồi mới commit" thay vì commit ngay — đúng tinh thần phiên này (đang
+  vá đúng loại lỗi mà cả session tồn tại để sửa), nên không rút gọn phạm vi dù tốn thêm 1 vòng agent.
+
+**Việc còn tồn đọng (không chặn, ghi lại để phiên sau cân nhắc):**
+- `.claude/settings.json` có 2 quyền Bash không liên quan đến phiên này (`ipconfig getifaddr`,
+  `kill 78429`) — cố tình KHÔNG gộp vào commit `7d2e6dd`, vẫn còn là thay đổi local chưa commit.
+- Giờ hoạt động (`parseTimeHHmmToday`) chỉ neo được "hôm nay" — chưa ghi được hoạt động của "hôm
+  qua" bằng giờ thực (giới hạn có chủ đích, đã thông báo người dùng, không phải bug).
+- Hoàn tác pin Năng lượng/No quanh biên trần/sàn vẫn là xấp xỉ (kế thừa từ `removeFood` gốc) — chỉ
+  riêng pin Vận động được nâng cấp lên hoàn tác chính xác (thuật toán delta) trong phiên này.
+- Tất cả nội dung Session 11–16 (mô hình 2 đồng hồ, pin vi chất, Excel đa-sheet, override, Muối,
+  TPCN, UL, và giờ thêm TPCN-Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin nhỏ) vẫn **CHƯA hề chạy trên
+  điện thoại thật** — backlog test tay đang dồn qua rất nhiều session.
+
+**Session tiếp theo phải làm:**
+1. **S-A — test máy thật** (vẫn là việc số 1, backlog giờ càng dài). Checklist test tay riêng cho
+   Session 16 (đưa lại từ báo cáo QA trong transcript, tóm tắt):
+   - TPCN: thêm "Omega-3" đơn vị Viên (1.22g/610mg omega3), log 2 viên → pin vi chất đúng gấp đôi;
+     sửa lại khối lượng 1 viên qua ✎ rồi log lại → số phải khớp giá trị mới (test đúng bug #7 đã vá).
+   - Vận động: đi bộ 8100 bước, sau đó ghi thêm 1 mục nhập nhầm (VD 2400 phút) → xoá đúng mục nhầm
+     → pin Vận động phải về đúng mức của mục hợp lệ còn lại (test đúng bug #2/#3 đã vá bằng delta).
+   - Sửa 1 hoạt động cũ (đổi số phút) → kiểm tra vị trí hiển thị KHÔNG nhảy xuống cuối danh sách
+     (test bug #6). Xoá trắng ô giờ khi Sửa → giờ cũ phải biến mất, không giữ nguyên (test bug #8).
+   - Pin nhỏ: ghi vận động → Pin Vận động nhích ngay; thêm món chỉ nhập Đường+Xơ (để trống Carbs) →
+     Pin Carbs nhích ngay.
+2. Nếu ổn sau test tay → `git push` lên `origin/session-5-demo-ready` (hiện ahead nhiều commit).
+3. Cân nhắc xử lý `.claude/settings.json` (2 quyền Bash lạc chỗ, xem mục tồn đọng trên).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

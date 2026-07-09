@@ -191,8 +191,8 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
   tăng từ 1424 do 2 file mới của gói S-L).
 - Mạng: eduroam có "client isolation" → dùng Personal Hotspot hoặc `--tunnel`.
 - Git: repo có remote `origin` (GitHub, `dangminhlk54paypal-netizen/Body-Batteries`). **Cập nhật
-  2026-07-08 (Session 14): nhánh `session-5-demo-ready` đang ahead 1 commit so với
-  `origin/session-5-demo-ready` (`9da940a` chưa push)** — đoạn "giống nhau, không còn commit nào
+  2026-07-09 (Session 16): nhánh `session-5-demo-ready` đang ahead nhiều commit so với
+  `origin/session-5-demo-ready` (mới nhất `7d2e6dd`, chưa push)** — đoạn "giống nhau, không còn commit nào
   treo" bên dưới đã LỖI THỜI kể từ đây, giữ lại chỉ để tham khảo lịch sử.
 - Git hooks: ✅ Đã cài (nhắc SESSION_LOG sau commit — xác nhận hoạt động 2026-07-03). Hooks
   Claude Code (tự lint file vừa sửa + nhắc wrapup) cũng đã bật trong `.claude/settings.json`.
@@ -201,14 +201,14 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (cập nhật Session 14, 2026-07-08):** **S-A mở rộng — test máy thật** là
+**Việc phải làm KẾ TIẾP (cập nhật Session 16, 2026-07-09):** **S-A mở rộng — test máy thật** là
 việc số 1 duy nhất còn chặn, vì backlog chưa test đã dồn qua nhiều session (S-M/S-O/S-P/S-Q, S-R,
-và toàn bộ Session 14 — Excel đa-sheet/món tự thêm/sửa thành phần/Muối/TPCN/cảnh báo UL). Checklist
-test tay chi tiết nằm trong `.ai/SESSION_LOG.md` mục Session 14 (báo cáo QA gốc). Sau khi test tay
-ổn → `git push` (hiện ahead 1 commit, chưa push). `.ai/NEXT_SESSIONS.md` (hệ thống gói S-x/U-x cũ)
-**đã lỗi thời một phần** — Session 14 làm việc trực tiếp theo feedback người dùng, không theo gói
-cũ; kiểm tra lại L-1/W-1/G-1 xem đã xong trong commit nào trước Session 14 chưa rồi dọn khỏi file
-đó. **S-G** vẫn để sau cùng (cần vài tuần dữ liệu cân nặng).
+Session 14, Session 15, và giờ thêm Session 16 — TPCN theo Gói/Viên, Vận động Sửa/Xoá + giờ diễn
+ra, đồng bộ pin Vận động/Carbs). Checklist test tay chi tiết cho Session 16 nằm cuối mục Session 16
+trong `.ai/SESSION_LOG.md`; các session trước xem mục Session 14. Sau khi test tay ổn → `git push`
+(hiện ahead nhiều commit, chưa push). `.ai/NEXT_SESSIONS.md` (hệ thống gói S-x/U-x cũ) **đã lỗi
+thời một phần** — từ Session 14 trở đi làm việc trực tiếp theo feedback người dùng, không theo gói
+cũ. **S-G** vẫn để sau cùng (cần vài tuần dữ liệu cân nặng).
 
 **Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption/
 metabolicConstants/upperLimits), domain (battery/modes/rules/energy — metabolismEngine +
@@ -221,13 +221,16 @@ Service + monthlyAutoExport + monthRange/cleanup), hooks (useDrainTick, useLiveE
 useLowEnergyWatch), components (BatteryCell/MasterBattery/LiveMasterBattery/BatteryStack/
 ModeSelector/IntakeModal/EnergyActionsBar/BodyProfileCard/TrendChart/FoodLogModal/
 FoodNutritionEditModal/OverdoseNotice/SupplementQuickLog/TodayMeals/WeightLogCard/
-MicroBatteryStack), screens (Home/History/Diary/Settings/Onboarding), navigation. Phase 0–3 đầy đủ
-kể cả biểu đồ xu hướng; Phase 2 đầy đủ (nhắc nhở thật + tự xả pin + reset ngày mới). UX: U2 (bàn
-phím modal ghi món) + U3 (nhãn biểu đồ/Lịch sử) + **U4** (Nhật ký: sửa lỗi ghi đè + UI
-glassmorphism) + **U5** (Onboarding) + **U6** (Cài đặt UX + khung giờ bữa ăn, gộp S-I) đã sửa
+MicroBatteryStack/TodayActivities), screens (Home/History/Diary/Settings/Onboarding), navigation.
+Phase 0–3 đầy đủ kể cả biểu đồ xu hướng; Phase 2 đầy đủ (nhắc nhở thật + tự xả pin + reset ngày
+mới). UX: U2 (bàn phím modal ghi món) + U3 (nhãn biểu đồ/Lịch sử) + **U4** (Nhật ký: sửa lỗi ghi đè
++ UI glassmorphism) + **U5** (Onboarding) + **U6** (Cài đặt UX + khung giờ bữa ăn, gộp S-I) đã sửa
 xong. Ghi nhận cân nặng theo thời gian (S-L) đã xong. **Session 14** thêm: Excel đa-sheet, món tự
-thêm + sửa thành phần (override), pin Muối & điện giải, quản lý TPCN, cảnh báo vượt Upper-Limit —
-xem chi tiết `.ai/SESSION_LOG.md` Session 14.
+thêm + sửa thành phần (override), pin Muối & điện giải, quản lý TPCN, cảnh báo vượt Upper-Limit.
+**Session 16** thêm: TPCN theo Gói/Viên (`portionUnit`/`servingWeightG`), bảng `activity_log` độc
+lập với Sửa/Xoá hoàn tác đúng pin (thuật toán delta) + trường giờ diễn ra, Pin Vận động/Carbs đồng
+bộ real-time — xem chi tiết `.ai/SESSION_LOG.md` Session 16 (và bài học
+`.ai/skills/learned/undo-reversal-must-be-delta-not-absolute-recompute.md`).
 
 **Session 8 (Opus, cuối ngày 2026-06-18 — sau khi người dùng đóng hết các phiên song song khác):**
 Kiểm tra lại toàn bộ trạng thái trước khi kết ngày. Xác nhận: không có gói nào bị bỏ dở giữa code

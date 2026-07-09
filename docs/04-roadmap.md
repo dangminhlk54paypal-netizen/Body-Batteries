@@ -107,6 +107,16 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > nhãn macro "Tinh bột"→"Carbs (Carbohydrate)" (giữ nguyên tên nhóm món "grain") + quản lý TPCN
 > (thêm/sửa/log) + cảnh báo vượt Upper-Limit tham khảo. Verify: 249 test PASS, tsc/lint sạch. Chi
 > tiết đầy đủ + 5 bug đã vá: `.ai/SESSION_LOG.md` Session 14.
+>
+> **Session 16 (2026-07-09), ĐÃ COMMIT (`7d2e6dd`) nhưng CHƯA test máy — S-A, theo feedback thật
+> của người dùng:** TPCN hỗ trợ nhập theo **Gói/Viên** với khối lượng riêng (không còn ép quy đổi
+> mốc 100g) + **bảng `activity_log` độc lập** cho Vận động với **Sửa/Xoá hoàn tác đúng pin** +
+> trường "khoảng thời gian diễn ra" + **Pin Vận động** (trước đây luôn = 0, nay được nạp đúng) và
+> **Pin Carbs** (tự suy từ đường+xơ khi để trống) đồng bộ real-time. 1 lượt QA-reviewer + 1 lượt
+> `/code-review` (8 finder + verify) vá tổng **9 bug tích hợp** trước commit, gồm 1 bài học dài hạn
+> đã lưu lại (hoàn tác phải dùng delta tương đối, không recompute tuyệt đối — xem
+> `.ai/skills/learned/`). Verify: **291/291 test**, tsc/lint sạch. Chi tiết: `.ai/SESSION_LOG.md`
+> Session 16.
 
 ---
 
@@ -144,7 +154,7 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 | 0 | Chuẩn bị | ✅ | 🟡 | Đã quét QR thật trên iPhone qua Expo Go. Còn thiếu xác nhận Home đủ 7 pin |
 | 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK (1424 module). Cần chạy thật: nạp pin + đóng/mở lại |
 | 2 | Modes & tự động | ✅ | ⏳ | Nhắc nhở thật + tự xả pin định kỳ thật đã xong (S-C, S-D). Cần test thật |
-| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5) + Excel đa-sheet/override/Muối/TPCN (Session 14, ngoài phạm vi gốc) |
+| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5) + Excel đa-sheet/override/Muối/TPCN (Session 14) + TPCN Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin nhỏ (Session 16, ngoài phạm vi gốc) |
 | 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu (xem S-F — v1 placeholder nhập tay, chưa phải Health thật) |
 | 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu — cần dữ liệu cân nặng từ S-L trước (xem `.ai/NEXT_SESSIONS.md`) |
 
@@ -171,6 +181,11 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > Entries), món tự thêm bền qua restart, sửa thành phần dinh dưỡng món (override), pin Muối & điện
 > giải, đổi nhãn Carbs, quản lý TPCN, cảnh báo vượt Upper-Limit. 2 lượt QA vá **5 bug tích hợp**
 > trước commit. Verify: **249/249 test**, tsc/lint sạch. Chi tiết: `.ai/SESSION_LOG.md` Session 14.
-> **Chưa test máy** — backlog test tay giờ gồm cả nội dung Session 11–14.
+>
+> 🟢 **(2026-07-09, Session 16, ĐÃ COMMIT `7d2e6dd`, chưa push)** S-A: TPCN theo Gói/Viên, bảng
+> `activity_log` độc lập (Sửa/Xoá hoàn tác đúng pin qua thuật toán delta, trường giờ diễn ra), Pin
+> Vận động/Carbs đồng bộ real-time. QA-reviewer + `/code-review` vá **9 bug tích hợp** trước commit.
+> Verify: **291/291 test**, tsc/lint sạch. Chi tiết: `.ai/SESSION_LOG.md` Session 16.
+> **Chưa test máy** — backlog test tay giờ gồm cả nội dung Session 11–16.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.
