@@ -1,23 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  Modal,
-  TextInput,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import React, { useMemo, useState } from 'react';
+import { View, Text, Pressable, TextInput, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { searchAllFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
+import { BottomSheet } from './ui/BottomSheet';
 import { nutritionForGrams, mealTypeForHour, gramsForPortion } from '../domain/food/foodNutrition';
 import {
   buildCustomFoodItem,
@@ -60,9 +49,6 @@ function timestampForToday(hour: number, minute: number): number {
   return d.getTime();
 }
 
-// How far below its resting position the sheet starts before sliding up.
-const SHEET_OFFSET = 500;
-
 export function FoodLogModal({ visible, onClose }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
 
@@ -85,19 +71,6 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [savingCustomFood, setSavingCustomFood] = useState(false);
   // "Sửa thành phần": opens the nutrition-override editor for the selected food.
   const [editingNutrition, setEditingNutrition] = useState(false);
-  const translateY = useSharedValue(SHEET_OFFSET);
-
-  useEffect(() => {
-    if (visible) {
-      translateY.value = withTiming(0, { duration: 280 });
-    } else {
-      translateY.value = SHEET_OFFSET;
-    }
-  }, [visible, translateY]);
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
 
   const results = useMemo(() => searchAllFoods(query), [query]);
 
@@ -209,15 +182,9 @@ export function FoodLogModal({ visible, onClose }: Props) {
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}
-      >
-        {/* Tapping the dark area above the sheet also closes it — the user must
-            never be trapped in this modal. */}
-        <Pressable style={styles.overlayDismiss} onPress={handleClose} />
-        <Animated.View style={[styles.sheet, sheetStyle]}>
+    <>
+      <BottomSheet visible={visible} onClose={handleClose} sheetOffset={500}>
+        <View style={styles.sheet}>
           {adding ? (
             <>
               <View style={styles.headerRow}>
@@ -483,8 +450,8 @@ export function FoodLogModal({ visible, onClose }: Props) {
               </View>
             </>
           )}
-        </Animated.View>
-      </KeyboardAvoidingView>
+        </View>
+      </BottomSheet>
       {selected && (
         <FoodNutritionEditModal
           visible={editingNutrition}
@@ -497,7 +464,7 @@ export function FoodLogModal({ visible, onClose }: Props) {
           }}
         />
       )}
-    </Modal>
+    </>
   );
 }
 
@@ -507,8 +474,6 @@ function clampInt(n: number, min: number, max: number): number {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  overlayDismiss: { flex: 1 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   closeBtn: {
     width: 32,
@@ -520,12 +485,8 @@ const styles = StyleSheet.create({
   },
   closeX: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
   sheet: {
-    backgroundColor: colors.bgCard,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
-    maxHeight: '85%',
   },
   title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   subtitle: { fontSize: 14, color: colors.textSecondary },

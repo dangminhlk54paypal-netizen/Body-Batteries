@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform, AppState, type AppStateStatus } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -98,34 +99,36 @@ export default function App() {
     })();
   }, [ready]);
 
+  let content: React.ReactNode;
   if (error) {
-    return (
+    content = (
       <View style={styles.center}>
         <Text style={styles.errorText}>Khởi động thất bại: {error}</Text>
       </View>
     );
-  }
-
-  if (!ready) {
-    return (
+  } else if (!ready) {
+    content = (
       <View style={styles.center}>
         <Text style={styles.loadingText}>⚡ Đang khởi động Body Batteries...</Text>
       </View>
     );
+  } else if (!hasOnboarded) {
+    content = <OnboardingScreen onDone={() => setHasOnboarded(true)} />;
+  } else {
+    content = (
+      <NavigationContainer>
+        <AppNavigator />
+      </NavigationContainer>
+    );
   }
 
-  if (!hasOnboarded) {
-    return <OnboardingScreen onDone={() => setHasOnboarded(true)} />;
-  }
-
-  return (
-    <NavigationContainer>
-      <AppNavigator />
-    </NavigationContainer>
-  );
+  return <GestureHandlerRootView style={styles.root}>{content}</GestureHandlerRootView>;
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   center: {
     flex: 1,
     backgroundColor: '#0d0d1a',

@@ -1,18 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import React, { useState } from 'react';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { BatteryType } from '../types/battery';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
+import { BottomSheet } from './ui/BottomSheet';
 
 interface Props {
   battery: BatteryType | null;
@@ -21,25 +12,9 @@ interface Props {
   onClose: () => void;
 }
 
-// How far below its resting position the sheet starts before sliding up.
-const SHEET_OFFSET = 400;
-
 export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const translateY = useSharedValue(SHEET_OFFSET);
-
-  useEffect(() => {
-    if (visible) {
-      translateY.value = withTiming(0, { duration: 280 });
-    } else {
-      translateY.value = SHEET_OFFSET;
-    }
-  }, [visible, translateY]);
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
 
   function handleConfirm() {
     const parsed = parseFloat(amount);
@@ -55,68 +30,55 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
   if (!battery) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
-      >
-        <Animated.View style={[styles.sheet, sheetStyle]}>
-          <Text style={styles.title}>Nạp {battery.name}</Text>
-          <Text style={styles.subtitle}>Nhập lượng bạn đã nạp ({battery.unit})</Text>
+    <BottomSheet visible={visible} onClose={onClose} sheetOffset={400}>
+      <View style={styles.content}>
+        <Text style={styles.title}>Nạp {battery.name}</Text>
+        <Text style={styles.subtitle}>Nhập lượng bạn đã nạp ({battery.unit})</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder={`Ví dụ: 30`}
-            placeholderTextColor={colors.textMuted}
-            keyboardType="decimal-pad"
-            value={amount}
-            onChangeText={setAmount}
-            autoFocus
-          />
+        <TextInput
+          style={styles.input}
+          placeholder={`Ví dụ: 30`}
+          placeholderTextColor={colors.textMuted}
+          keyboardType="decimal-pad"
+          value={amount}
+          onChangeText={setAmount}
+          autoFocus
+        />
 
-          <TextInput
-            style={[styles.input, styles.noteInput]}
-            placeholder="Ghi chú (tuỳ chọn)"
-            placeholderTextColor={colors.textMuted}
-            value={note}
-            onChangeText={setNote}
-          />
+        <TextInput
+          style={[styles.input, styles.noteInput]}
+          placeholder="Ghi chú (tuỳ chọn)"
+          placeholderTextColor={colors.textMuted}
+          value={note}
+          onChangeText={setNote}
+        />
 
-          <View style={styles.buttons}>
-            <Pressable
-              style={({ pressed }) => [styles.btn, styles.cancelBtn, pressed && styles.pressed]}
-              onPress={onClose}
-            >
-              <Text style={styles.cancelText}>Huỷ</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.btn,
-                styles.confirmBtn,
-                { backgroundColor: battery.color },
-                pressed && styles.pressed,
-              ]}
-              onPress={handleConfirm}
-            >
-              <Text style={styles.confirmText}>Nạp ⚡</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <View style={styles.buttons}>
+          <Pressable
+            style={({ pressed }) => [styles.btn, styles.cancelBtn, pressed && styles.pressed]}
+            onPress={onClose}
+          >
+            <Text style={styles.cancelText}>Huỷ</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.btn,
+              styles.confirmBtn,
+              { backgroundColor: battery.color },
+              pressed && styles.pressed,
+            ]}
+            onPress={handleConfirm}
+          >
+            <Text style={styles.confirmText}>Nạp ⚡</Text>
+          </Pressable>
+        </View>
+      </View>
+    </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  sheet: {
-    backgroundColor: colors.bgCard,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+  content: {
     padding: 24,
     gap: 12,
   },
