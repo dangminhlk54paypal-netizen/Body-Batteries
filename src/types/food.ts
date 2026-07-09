@@ -91,4 +91,12 @@ export interface FoodLogEntry {
   // `grams` above still holds the converted gram total used for nutrition.
   portionUnit?: PortionUnit;
   count?: number;
+  // FIX #1 (mirrors ActivityLogEntry.energyDayApplied): which 6am-reset
+  // "energy day" the food's kcal charge actually landed on at log time. The
+  // energy battery is keyed by energyDayString(timestamp), NOT the calendar
+  // day, so a 2am snack charges YESTERDAY's ledger even though the entry still
+  // lists under "today" after 6am. removeFood reads this to reverse the charge
+  // on the right day. Absent on rows logged before this field existed — treated
+  // as same-day for backward compatibility.
+  energyDayApplied?: string;
 }

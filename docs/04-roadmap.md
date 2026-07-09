@@ -188,4 +188,9 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > Verify: **291/291 test**, tsc/lint sạch. Chi tiết: `.ai/SESSION_LOG.md` Session 16.
 > **Chưa test máy** — backlog test tay giờ gồm cả nội dung Session 11–16.
 
+> 🟢 **(2026-07-09, Session 17, ĐÃ COMMIT `<TBD>`, chưa push)** 3 fix từ feedback thực tế: hoàn tác
+> món ăn đúng energy-day (thêm `energyDayApplied`), sửa khối lượng/viên qua modal, hoàn tác nạp nhanh
+> + component mới `TodayIntakes.tsx`. Lỗi #4 là báo động giả (đã có xác nhận). Verify: **299/299 test**,
+> tsc/lint sạch. **Chưa test máy** — backlog test tay dồn Session 11–17.
+
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

@@ -16,6 +16,7 @@ interface FoodLogRow {
   minerals_mg: number;
   portion_unit: string | null;
   count: number | null;
+  energy_day_applied: string | null;
 }
 
 function rowToEntry(r: FoodLogRow): FoodLogEntry {
@@ -34,6 +35,9 @@ function rowToEntry(r: FoodLogRow): FoodLogEntry {
     mineralsMg: r.minerals_mg,
     portionUnit: (r.portion_unit as PortionUnit | null) ?? undefined,
     count: r.count ?? undefined,
+    // FIX #1: old rows predate this column (NULL) — leave it undefined so
+    // removeFood treats them as same-day, preserving the prior behaviour.
+    energyDayApplied: r.energy_day_applied ?? undefined,
   };
 }
 
@@ -43,8 +47,8 @@ export async function addFoodLogEntry(entry: FoodLogEntry): Promise<void> {
     `INSERT INTO food_log
        (id, timestamp, meal_type, food_id, food_name_vi, grams,
         energy_kcal, protein_g, fat_g, carb_g, water_g, minerals_mg,
-        portion_unit, count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        portion_unit, count, energy_day_applied)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     entry.id,
     entry.timestamp,
     entry.mealType,
@@ -58,7 +62,8 @@ export async function addFoodLogEntry(entry: FoodLogEntry): Promise<void> {
     entry.waterG,
     entry.mineralsMg,
     entry.portionUnit ?? null,
-    entry.count ?? null
+    entry.count ?? null,
+    entry.energyDayApplied ?? null
   );
 }
 

@@ -54,6 +54,10 @@ export const FOOD_OVERRIDES_MIGRATION_COLUMNS = [
 export const FOOD_LOG_MIGRATION_COLUMNS = [
   { name: 'portion_unit', ddl: "ALTER TABLE food_log ADD COLUMN portion_unit TEXT" },
   { name: 'count', ddl: 'ALTER TABLE food_log ADD COLUMN count REAL' },
+  // FIX #1: the 6am-reset energy day the food's kcal charge landed on, so
+  // removeFood can reverse it on the right day. Old rows have no value and are
+  // treated as same-day. Same ALTER-if-missing pattern as above.
+  { name: 'energy_day_applied', ddl: 'ALTER TABLE food_log ADD COLUMN energy_day_applied TEXT' },
 ];
 
 export const CREATE_INTAKE_EVENTS = `
@@ -100,7 +104,8 @@ export const CREATE_FOOD_LOG = `
     water_g REAL NOT NULL DEFAULT 0,
     minerals_mg REAL NOT NULL DEFAULT 0,
     portion_unit TEXT,
-    count REAL
+    count REAL,
+    energy_day_applied TEXT
   );
 `;
 

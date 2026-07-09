@@ -107,25 +107,16 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-08 (Session 14).** Hai việc gộp trong 1 phiên, **ĐÃ COMMIT** (`9da940a`,
-nhánh `session-5-demo-ready`, **chưa push origin — ahead 1 commit**): (1) **Excel đa-sheet** — thêm
-"Daily Totals" + "Food Entries" (`excelSheets.ts` thuần + `formatDMY`), và **món tự thêm khi tìm
-không thấy** (`custom_foods` — persist + tìm lại được, bền qua restart). (2) **8 hạng mục feedback
-người dùng**: cân nặng làm tròn 1 số thập phân; retention 7→35 ngày + nút xuất Excel 30 ngày + tự
-xuất hàng tháng `your_daily_batteries_body_on_MM_YYYY.xlsx` (xoá dữ liệu cũ CHỈ sau khi người dùng
-xác nhận); pin **"Muối & điện giải"** (Muối suy ra từ Natri×2.5/1000, tự cập nhật); **sửa thành phần
-dinh dưỡng món** qua bảng `food_overrides` (merge trong `getAnyFoodById`, áp dụng khắp nơi); đổi nhãn
-macro **"Tinh bột"→"Carbs (Carbohydrate)"** (giữ nguyên category `grain`="Tinh bột", xác nhận không
-cộng đôi đường); **quản lý TPCN** (thêm/sửa/log qua `SupplementQuickLog.tsx`); **cảnh báo vượt
-Upper-Limit** (`upperLimits.ts`/`overdoseWarning.ts`/`OverdoseNotice.tsx`, ngôn ngữ "chỉ để tham
-khảo"). QA-reviewer 2 lượt tìm & vá **5 bug tích hợp** (số âm không chặn, id trùng double-tap,
-`pickFood` không resolve override, merge override xoá mất servingPresets/nameDe món gốc — chi tiết
-`.ai/SESSION_LOG.md` Session 14). Verify cuối: `tsc` sạch · `npm run lint` sạch · **249 test PASS /
-27 suite**. **CHƯA test máy thật** (người dùng chủ động dời sang buổi khác, giống thói quen các
-session trước — xem S-A trong `.ai/NEXT_SESSIONS.md`, nay backlog test tay đã phình to thêm rất
-nhiều so với lần ghi trước). Ghi chú vận hành: gặp giới hạn phiên Claude giữa lúc 1 subagent đang
-chạy → tự hoàn thiện inline thay vì spawn lại; 2 lỗi ESLint `react-hooks/*` lặp lại đã ghi vào
-memory Claude Code (`eslint-react-hooks-rules`) để tránh lặp ở phiên sau.
+**Cập nhật lần cuối: 2026-07-09 (Session 17).** 3 fix từ feedback thực tế của người dùng, **ĐÃ COMMIT** (commit `<TBD>`,
+nhánh `session-5-demo-ready`, **chưa push origin — ahead nhiều commit**): (1) **Fix #1 — Hoàn tác món ăn đúng energy-day**
+(mốc reset 6h sáng) — thêm `energyDayApplied` vào `FoodLogEntry`, snapshot ngày năng lượng khi log; `removeFood` hoàn tác
+trên đúng sổ ngày lịch sử nếu khác ngày hiện tại (cùng nguyên nhân, cùng cách sửa với Fix #5 Vận động từ Session 16 nhưng
+bị bỏ sót cho thực phẩm). (2) **Fix #2 — Sửa món ăn** — thêm `updateFood()` vào store (reverse-then-relog), nút ✎ + modal
+trong `TodayMeals.tsx`. (3) **Fix #3 — Hoàn tác nạp nhanh** — thêm `intakeLog` + `removeIntake()` vào store, component mới
+`TodayIntakes.tsx` với danh sách + nút ✕. Lỗi #4 (xoá không xác nhận) → báo động giả, đã có `Alert.alert` xác nhận trong
+HomeScreen từ trước → không vá. Verify: `tsc` sạch · `npm run lint` sạch · **299 test PASS / 28 suite**. **CHƯA test máy thật**
+— backlog test tay dồn từ Session 11–17 chưa chạy trên điện thoại lần nào. Ghi chú kỹ thuật: chi tiết 3 fix + học hỏi từ lỗi
+#1 chẩn đoán sai chỗ xem `.ai/SESSION_LOG.md` Session 17.
 
 **Trước đó — Cập nhật 2026-07-07 (Session 13).** Hoàn tất **U7 vượt spec** (363 tên USDA dịch tiếng Việt toàn bộ trong `database/usda_names_vi.csv`, tìm kiếm gộp song ngữ `foodSearch.ts` — index bỏ dấu, ưu tiên khớp đúng dấu, món Việt trước), sửa dứt điểm **L-1** (0 lint error, 2 lỗi hoisting đã sửa), **Excel export 6 sheet** (thêm "Dinh dưỡng ngày", "Tổng kết tuần", "Bảng ngưỡng tham chiếu" + cột "Đánh giá"), mở rộng **`food_items.csv`** (73→90 món + 3 category mới + 2 cột EPA/DHA), sửa bug pin vi chất (`foodLookup.ts` getAnyFoodById bắt buộc), thêm **Omega-3 pin** (EPA+DHA 500mg) + **ô nạp nhanh supplement**. Khởi động **W-1** (dọn 23 warning) + **G-1** (thêm `name_de` 3 ngôn ngữ) chạy song parallel, agent nền. Verify trước commit: **188 test PASS / 19 suite**, 0 lint error. **TẤT CẢ CHƯA COMMIT.**
 
@@ -201,14 +192,15 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (cập nhật Session 16, 2026-07-09):** **S-A mở rộng — test máy thật** là
+**Việc phải làm KẾ TIẾP (cập nhật Session 17, 2026-07-09):** **S-A mở rộng — test máy thật** là
 việc số 1 duy nhất còn chặn, vì backlog chưa test đã dồn qua nhiều session (S-M/S-O/S-P/S-Q, S-R,
-Session 14, Session 15, và giờ thêm Session 16 — TPCN theo Gói/Viên, Vận động Sửa/Xoá + giờ diễn
-ra, đồng bộ pin Vận động/Carbs). Checklist test tay chi tiết cho Session 16 nằm cuối mục Session 16
-trong `.ai/SESSION_LOG.md`; các session trước xem mục Session 14. Sau khi test tay ổn → `git push`
-(hiện ahead nhiều commit, chưa push). `.ai/NEXT_SESSIONS.md` (hệ thống gói S-x/U-x cũ) **đã lỗi
-thời một phần** — từ Session 14 trở đi làm việc trực tiếp theo feedback người dùng, không theo gói
-cũ. **S-G** vẫn để sau cùng (cần vài tuần dữ liệu cân nặng).
+Session 14, Session 15, Session 16 — TPCN Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin, và giờ thêm
+Session 17 — hoàn tác món ăn xuyên ngày + sửa/xoá nạp nhanh). Checklist test tay chi tiết cho Session 17
+nằm cuối mục Session 17 trong `.ai/SESSION_LOG.md`; Session 16 xem cuối mục Session 16; các session
+trước xem Session 14. Sau khi test tay ổn → `git push` (hiện ahead nhiều commit, chưa push).
+`.ai/NEXT_SESSIONS.md` (hệ thống gói S-x/U-x cũ) **đã lỗi thời một phần** — từ Session 14 trở đi làm
+việc trực tiếp theo feedback người dùng, không theo gói cũ. **S-G** vẫn để sau cùng (cần vài tuần
+dữ liệu cân nặng).
 
 **Những gì ĐÃ có trong code (không viết lại):** types, lib (constants/dateUtils/encryption/
 metabolicConstants/upperLimits), domain (battery/modes/rules/energy — metabolismEngine +
@@ -231,6 +223,10 @@ thêm + sửa thành phần (override), pin Muối & điện giải, quản lý 
 lập với Sửa/Xoá hoàn tác đúng pin (thuật toán delta) + trường giờ diễn ra, Pin Vận động/Carbs đồng
 bộ real-time — xem chi tiết `.ai/SESSION_LOG.md` Session 16 (và bài học
 `.ai/skills/learned/undo-reversal-must-be-delta-not-absolute-recompute.md`).
+**Session 17** thêm: Hệ thống hoàn tác xuyên ngày — fix #1 hoàn tác món ăn đúng energy-day (thêm
+`energyDayApplied` vào `FoodLogEntry`, bảng migration), fix #2 sửa khối lượng/số viên qua modal
+(thêm `updateFood()` + nút ✎ trong `TodayMeals.tsx`), fix #3 hoàn tác nạp nhanh (thêm `intakeLog`
++ `removeIntake()` + component mới `TodayIntakes.tsx` với Alert xác nhận).
 
 **Session 8 (Opus, cuối ngày 2026-06-18 — sau khi người dùng đóng hết các phiên song song khác):**
 Kiểm tra lại toàn bộ trạng thái trước khi kết ngày. Xác nhận: không có gói nào bị bỏ dở giữa code

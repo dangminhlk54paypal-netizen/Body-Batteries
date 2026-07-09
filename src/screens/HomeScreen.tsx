@@ -18,6 +18,7 @@ import { IntakeModal } from '../components/IntakeModal';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
 import { TodayActivities } from '../components/TodayActivities';
+import { TodayIntakes } from '../components/TodayIntakes';
 import { MicroBatteryStack } from '../components/MicroBatteryStack';
 import { SupplementQuickLog } from '../components/SupplementQuickLog';
 import { DEFAULT_BATTERIES } from '../lib/constants';
@@ -34,10 +35,13 @@ export function HomeScreen() {
     readings,
     foodLog,
     activityLog,
+    intakeLog,
     isLoaded,
     loadToday,
     addIntake,
     removeFood,
+    updateFood,
+    removeIntake,
     removeActivity,
     updateActivity,
   } = useEnergyStore();
@@ -101,6 +105,22 @@ export function HomeScreen() {
       [
         { text: 'Huỷ', style: 'cancel' },
         { text: 'Xoá', style: 'destructive', onPress: () => removeActivity(id) },
+      ]
+    );
+  }
+
+  function handleEditFood(id: string, patch: { grams?: number; count?: number }) {
+    updateFood(id, patch);
+  }
+
+  function handleDeleteIntake(id: string) {
+    const entry = intakeLog.find((e) => e.id === id);
+    Alert.alert(
+      'Hoàn tác lần nạp này?',
+      entry ? `Sẽ hoàn tác lần nạp ${entry.amount} và trừ lại pin tương ứng.` : undefined,
+      [
+        { text: 'Huỷ', style: 'cancel' },
+        { text: 'Hoàn tác', style: 'destructive', onPress: () => removeIntake(id) },
       ]
     );
   }
@@ -173,8 +193,11 @@ export function HomeScreen() {
         {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
         <SupplementQuickLog todayLog={foodLog} />
 
+        {/* Quick-tap intake history with one-tap undo */}
+        <TodayIntakes entries={intakeLog} onDelete={handleDeleteIntake} />
+
         {/* Today's logged meals (grouped by meal + daily kcal total) */}
-        <TodayMeals entries={foodLog} onDelete={handleDeleteFood} />
+        <TodayMeals entries={foodLog} onDelete={handleDeleteFood} onEdit={handleEditFood} />
 
         {/* Today's logged activity (steps/workouts) with Sửa/Xoá */}
         <TodayActivities

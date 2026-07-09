@@ -1,9 +1,16 @@
 import { useEnergyStore } from '../energyStore';
 import type { BatteryReading } from '../../types/battery';
 import type { ActivityLogEntry } from '../../types/energy';
+import type { FoodItem, FoodLogEntry } from '../../types/food';
 import { energyDayString } from '../../lib/dateUtils';
 import * as batteryRepository from '../../data/repositories/batteryRepository';
 import * as intakeRepository from '../../data/repositories/intakeRepository';
+import { getAnyFoodById } from '../../data/food/foodLookup';
+
+// updateFood resolves the FoodItem via getAnyFoodById — mock the whole lookup
+// module so the test controls it (and so importing energyStore doesn't pull in
+// the large generated USDA/CSV catalogs, unrelated to this task).
+jest.mock('../../data/food/foodLookup', () => ({ getAnyFoodById: jest.fn() }));
 
 // Mock the DB layer so importing energyStore never pulls in the real
 // expo-sqlite module chain (unavailable in this test environment — unrelated
@@ -71,7 +78,7 @@ function seedReadings() {
   });
 }
 
-function findReading(id: 'energy' | 'movement'): BatteryReading {
+function findReading(id: BatteryReading['batteryTypeId']): BatteryReading {
   const r = useEnergyStore.getState().readings.find((x) => x.batteryTypeId === id);
   if (!r) throw new Error(`missing ${id} reading`);
   return r;
@@ -512,5 +519,290 @@ describe('energyStore — updateActivity startAt/endAt null vs undefined semanti
     const entry = useEnergyStore.getState().activityLog[0];
     expect(entry.startAt).toBeUndefined();
     expect(entry.endAt).toBeUndefined();
+  });
+});
+
+// FIX #1: food undo, like activity undo, must reverse the energy (calorie
+// ledger) charge on the energy-DAY it actually landed on (energyDayString of
+// the eat time), not blindly on today's readings. A snack logged 2am-6am
+// belongs to yesterday's ledger; undoing it after 6am must reverse the
+// historical row, not today's. Nutrient batteries stay keyed by calendar day
+// and always reverse in place.
+function makeFoodItem(overrides: Partial<FoodItem> = {}): FoodItem {
+  return {
+    id: 'test_food',
+    nameVi: 'Món thử',
+    nameEn: 'Test food',
+    category: 'grain',
+    defaultServingG: 100,
+    servingPresets: [],
+    per100g: {
+      energyKcal: 200,
+      waterG: 0,
+      proteinG: 10,
+      fatG: 5,
+      carbG: 30,
+      fiberG: 0,
+      sugarG: 0,
+      calciumMg: 0,
+      ironMg: 0,
+      sodiumMg: 0,
+      potassiumMg: 0,
+      magnesiumMg: 0,
+      zincMg: 0,
+    },
+    source: 'test',
+    note: '',
+    ...overrides,
+  };
+}
+
+describe('energyStore — removeFood reverses the correct energy-day reading (FIX #1)', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    seedReadings();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('same energy-day (logged now): reverses in place on the store readings', async () => {
+    // Keep the satiety reserve below its cap so the eat/undo round-trip is
+    // exact (eating caps at full, undo floors at 0 — see removeFood doc).
+    useEnergyStore.setState((s) => ({
+      readings: s.readings.map((r) =>
+        r.batteryTypeId === 'energy' ? { ...r, satietyReserveKcal: 500 } : r
+      ),
+    }));
+    const before = useEnergyStore.getState().readings;
+    await useEnergyStore.getState().logFood(makeFoodItem(), 100, Date.now());
+    const entry = useEnergyStore.getState().foodLog[0];
+    expect(entry.energyDayApplied).toBe(energyDayString()); // sanity: logged "now"
+
+    await useEnergyStore.getState().removeFood(entry.id);
+
+    expect(useEnergyStore.getState().foodLog).toHaveLength(0);
+    expect(findReading('energy')).toEqual(before.find((r) => r.batteryTypeId === 'energy'));
+  });
+
+  it('different energy-day: reverses the HISTORICAL reading via the repository, today untouched', async () => {
+    const historicalEnergy: BatteryReading = {
+      date: '2026-07-01',
+      batteryTypeId: 'energy',
+      level: 800,
+      capacity: 2500,
+      activityBonusKcal: 0,
+      satietyReserveKcal: 400,
+      lastSatietySyncAt: 1_000,
+    };
+    const getReadingsSpy = jest
+      .spyOn(batteryRepository, 'getReadingsForDate')
+      .mockResolvedValue([historicalEnergy]);
+    const upsertSpy = jest
+      .spyOn(batteryRepository, 'upsertReadings')
+      .mockResolvedValue(undefined);
+
+    // A food logged 2am-6am (energyDayApplied = "yesterday") then undone after
+    // 6am, once the store rolled onto today's energy-day. Injected directly so
+    // the scenario doesn't depend on mocking the wall clock.
+    const crossDayEntry: FoodLogEntry = {
+      id: 'food_cross_day',
+      timestamp: 1_000,
+      mealType: 'snack',
+      foodId: 'test_food',
+      foodNameVi: 'Món thử',
+      grams: 100,
+      energyKcal: 200,
+      proteinG: 10,
+      fatG: 5,
+      carbG: 30,
+      waterG: 0,
+      mineralsMg: 0,
+      energyDayApplied: '2026-07-01', // deliberately NOT today's energy day
+    };
+    const beforeReadings = useEnergyStore.getState().readings;
+    useEnergyStore.setState((s) => ({ foodLog: [...s.foodLog, crossDayEntry] }));
+
+    await useEnergyStore.getState().removeFood(crossDayEntry.id);
+
+    // Today's energy reading (in the store) is untouched — the whole point.
+    expect(findReading('energy')).toEqual(beforeReadings.find((r) => r.batteryTypeId === 'energy'));
+
+    // The historical row was fetched, reversed, and persisted on its own:
+    // burnEnergy(800, 200) = 600; satiety floor(400 - 200) = 200.
+    expect(getReadingsSpy).toHaveBeenCalledWith('2026-07-01');
+    expect(upsertSpy).toHaveBeenCalledWith([
+      {
+        ...historicalEnergy,
+        level: 600,
+        satietyReserveKcal: 200,
+      },
+    ]);
+  });
+
+  it('an old row without energyDayApplied is treated as same-day (backward compat)', async () => {
+    // energyDayApplied intentionally absent (undefined) — pre-FIX-#1 row.
+    const legacyEntry: FoodLogEntry = {
+      id: 'food_legacy',
+      timestamp: 1_000,
+      mealType: 'snack',
+      foodId: 'test_food',
+      foodNameVi: 'Món thử',
+      grams: 100,
+      energyKcal: 150,
+      proteinG: 0,
+      fatG: 0,
+      carbG: 0,
+      waterG: 0,
+      mineralsMg: 0,
+    };
+    // Pre-tax the energy reading as if this 150-kcal food had been logged
+    // (both level and reserve, kept below cap so the in-place reversal is
+    // exact), then define the pristine "before it was eaten" state to undo to.
+    const expectedEnergy: BatteryReading = {
+      ...baseEnergyReading(),
+      level: 500,
+      satietyReserveKcal: 500,
+    };
+    useEnergyStore.setState((s) => ({
+      readings: s.readings.map((r) =>
+        r.batteryTypeId === 'energy'
+          ? { ...expectedEnergy, level: 650, satietyReserveKcal: 650 }
+          : r
+      ),
+      foodLog: [legacyEntry],
+    }));
+
+    await useEnergyStore.getState().removeFood(legacyEntry.id);
+
+    // Reversed in place on the store readings (same-day treatment), not via
+    // the historical-row path.
+    expect(findReading('energy')).toEqual(expectedEnergy);
+  });
+});
+
+describe('energyStore — updateFood (FIX #2, reverse-then-relog)', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    seedReadings();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('a grams change nets the battery delta correctly (not additive)', async () => {
+    const item = makeFoodItem(); // 200 kcal / 100 g
+    (getAnyFoodById as jest.Mock).mockReturnValue(item);
+
+    // Log 100 g -> energy level 500 + 200 = 700.
+    await useEnergyStore.getState().logFood(item, 100, Date.now());
+    expect(findReading('energy').level).toBe(700);
+
+    // Edit to 250 g -> reverse the 200, charge 500. Net level = 500 + 500.
+    const id = useEnergyStore.getState().foodLog[0].id;
+    await useEnergyStore.getState().updateFood(id, { grams: 250 });
+
+    expect(useEnergyStore.getState().foodLog).toHaveLength(1);
+    expect(useEnergyStore.getState().foodLog[0].grams).toBe(250);
+    expect(findReading('energy').level).toBe(1000); // 500 base + 200*2.5, not additive
+  });
+
+  it('bails gracefully when the food id no longer resolves', async () => {
+    const item = makeFoodItem();
+    (getAnyFoodById as jest.Mock).mockReturnValue(item);
+    await useEnergyStore.getState().logFood(item, 100, Date.now());
+    const id = useEnergyStore.getState().foodLog[0].id;
+
+    (getAnyFoodById as jest.Mock).mockReturnValue(undefined);
+    const before = useEnergyStore.getState().readings;
+    await useEnergyStore.getState().updateFood(id, { grams: 250 });
+
+    // No-op: entry and readings unchanged.
+    expect(useEnergyStore.getState().foodLog).toHaveLength(1);
+    expect(useEnergyStore.getState().readings).toEqual(before);
+  });
+
+  it('a portion-based (capsule) food edits by count', async () => {
+    const item = makeFoodItem({ portionUnit: 'capsule', servingWeightG: 2 });
+    (getAnyFoodById as jest.Mock).mockReturnValue(item);
+
+    // 3 capsules * 2 g = 6 g -> energyKcal round(200 * 0.06) = 12.
+    await useEnergyStore.getState().logFood(item, 6, Date.now(), { portionUnit: 'capsule', count: 3 });
+    expect(findReading('energy').level).toBe(512);
+
+    const id = useEnergyStore.getState().foodLog[0].id;
+    await useEnergyStore.getState().updateFood(id, { count: 5 });
+
+    // 5 capsules * 2 g = 10 g -> energyKcal round(200 * 0.1) = 20. Net 500 + 20.
+    const entry = useEnergyStore.getState().foodLog[0];
+    expect(entry.count).toBe(5);
+    expect(entry.grams).toBe(10);
+    expect(findReading('energy').level).toBe(520);
+  });
+});
+
+// FIX #3: intakeLog + removeIntake. addIntake now records manual sub-battery
+// quick-taps in intakeLog; removeIntake is its exact inverse, reversing the
+// battery charge and (for macros that feed the ledger) the kcal + satiety
+// top-up too.
+describe('energyStore — removeIntake reverses addIntake (FIX #3)', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    // Seed with energy (satiety below the cap so a macro round-trip is exact)
+    // + a water + a protein sub-battery.
+    useEnergyStore.setState({
+      readings: [
+        { ...baseEnergyReading(), satietyReserveKcal: 500 },
+        { date: '2026-07-08', batteryTypeId: 'water', level: 0, capacity: 2000 },
+        { date: '2026-07-08', batteryTypeId: 'protein', level: 0, capacity: 120 },
+      ],
+      masterPercentage: 0,
+      foodLog: [],
+      activityLog: [],
+      intakeLog: [],
+      lastDrainSyncAt: Date.now(),
+      isLoaded: true,
+    });
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('a water tap is recorded in intakeLog and fully reversed (no kcal side-effect)', async () => {
+    const energyBefore = useEnergyStore.getState().readings.find((r) => r.batteryTypeId === 'energy');
+
+    await useEnergyStore.getState().addIntake('water', 300);
+    expect(findReading('water').level).toBe(300);
+    expect(useEnergyStore.getState().intakeLog).toHaveLength(1);
+
+    const id = useEnergyStore.getState().intakeLog[0].id;
+    await useEnergyStore.getState().removeIntake(id);
+
+    expect(findReading('water').level).toBe(0);
+    expect(useEnergyStore.getState().intakeLog).toHaveLength(0);
+    // Water has no kcal, so the energy reading is untouched throughout.
+    expect(useEnergyStore.getState().readings.find((r) => r.batteryTypeId === 'energy')).toEqual(
+      energyBefore
+    );
+  });
+
+  it('a protein tap also reverses the kcal charge and satiety top-up on undo', async () => {
+    const energyBefore = useEnergyStore.getState().readings.find((r) => r.batteryTypeId === 'energy');
+
+    // 50 g protein -> 200 kcal charged; satiety 500 -> 700.
+    await useEnergyStore.getState().addIntake('protein', 50);
+    expect(findReading('protein').level).toBe(50);
+    expect(findReading('energy').level).toBe(700); // 500 + 200
+    expect(findReading('energy').satietyReserveKcal).toBe(700); // 500 + 200
+
+    const id = useEnergyStore.getState().intakeLog[0].id;
+    await useEnergyStore.getState().removeIntake(id);
+
+    expect(findReading('protein').level).toBe(0);
+    // Energy level, satiety reserve, everything back to the pre-tap state.
+    expect(useEnergyStore.getState().readings.find((r) => r.batteryTypeId === 'energy')).toEqual(
+      energyBefore
+    );
+    expect(useEnergyStore.getState().intakeLog).toHaveLength(0);
   });
 });

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import { MEAL_LABELS } from '../lib/constants';
 import type { FoodLogEntry } from '../types/food';
@@ -7,6 +7,7 @@ import type { FoodLogEntry } from '../types/food';
 interface Props {
   entries: FoodLogEntry[];
   onDelete: (id: string) => void;
+  onEdit: (id: string, patch: { grams?: number; count?: number }) => void;
 }
 
 function timeLabel(timestamp: number): string {
@@ -28,8 +29,39 @@ function amountLabel(entry: FoodLogEntry): string {
   return `${entry.grams}g`;
 }
 
-export function TodayMeals({ entries, onDelete }: Props) {
+// Portion-based entries (TPCN) are edited by count with a unit-matching label;
+// everything else is edited by gram weight (the common "fix a typo" case).
+function isPortionEntry(entry: FoodLogEntry): boolean {
+  return entry.portionUnit === 'pack' || entry.portionUnit === 'capsule';
+}
+
+function countFieldLabel(entry: FoodLogEntry): string {
+  return entry.portionUnit === 'capsule' ? 'Số viên' : 'Số gói';
+}
+
+export function TodayMeals({ entries, onDelete, onEdit }: Props) {
   const summary = summarizeFoodLog(entries);
+
+  const [editingEntry, setEditingEntry] = useState<FoodLogEntry | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+
+  const editingIsPortion = editingEntry != null && isPortionEntry(editingEntry);
+
+  function startEdit(entry: FoodLogEntry) {
+    setEditingEntry(entry);
+    setEditAmount(isPortionEntry(entry) ? String(entry.count ?? '') : String(entry.grams));
+  }
+
+  function confirmEdit() {
+    if (!editingEntry) return;
+    const value = parseFloat(editAmount);
+    if (isNaN(value) || value <= 0) {
+      setEditingEntry(null);
+      return;
+    }
+    onEdit(editingEntry.id, isPortionEntry(editingEntry) ? { count: value } : { grams: value });
+    setEditingEntry(null);
+  }
 
   return (
     <View style={styles.container}>
@@ -68,6 +100,13 @@ export function TodayMeals({ entries, onDelete }: Props) {
                   </View>
                   <Pressable
                     hitSlop={10}
+                    style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                    onPress={() => startEdit(e)}
+                  >
+                    <Text style={styles.editText}>✎</Text>
+                  </Pressable>
+                  <Pressable
+                    hitSlop={10}
                     style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
                     onPress={() => onDelete(e.id)}
                   >
@@ -79,6 +118,38 @@ export function TodayMeals({ entries, onDelete }: Props) {
           ))}
         </>
       )}
+
+      {/* Edit modal — prefilled with the tapped entry, saved via onEdit */}
+      <Modal visible={editingEntry !== null} transparent animationType="fade" onRequestClose={() => setEditingEntry(null)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
+          <View style={styles.sheet}>
+            <Text style={styles.title}>Sửa món ăn</Text>
+            {editingEntry && <Text style={styles.editingName}>{editingEntry.foodNameVi}</Text>}
+            <TextInput
+              style={styles.input}
+              placeholder={editingIsPortion && editingEntry ? countFieldLabel(editingEntry) : 'Khối lượng (g)'}
+              placeholderTextColor="#666"
+              keyboardType="decimal-pad"
+              value={editAmount}
+              onChangeText={setEditAmount}
+            />
+            <View style={styles.row}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
+                onPress={() => setEditingEntry(null)}
+              >
+                <Text style={styles.cancelText}>Huỷ</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtn, styles.save, pressed && styles.pressed]}
+                onPress={confirmEdit}
+              >
+                <Text style={styles.saveText}>Lưu</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -114,6 +185,15 @@ const styles = StyleSheet.create({
   entryMain: { flex: 1 },
   entryName: { color: '#eee', fontSize: 14, fontWeight: '500' },
   entryMeta: { color: '#888', fontSize: 12, marginTop: 1 },
+  editBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#2d2d44',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editText: { color: '#0984e3', fontSize: 13, fontWeight: '700' },
   deleteBtn: {
     width: 28,
     height: 28,
@@ -124,4 +204,29 @@ const styles = StyleSheet.create({
   },
   deleteText: { color: '#FF6B6B', fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: {
+    backgroundColor: '#1a1a2e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    gap: 12,
+  },
+  title: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  editingName: { fontSize: 14, color: '#aaa', marginTop: -6 },
+  input: {
+    backgroundColor: '#2d2d44',
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 16,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  row: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
+  cancel: { backgroundColor: '#2d2d44' },
+  cancelText: { color: '#aaa', fontSize: 15, fontWeight: '600' },
+  save: { backgroundColor: '#0984e3' },
+  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

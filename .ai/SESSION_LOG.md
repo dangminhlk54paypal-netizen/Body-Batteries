@@ -733,6 +733,30 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 
 ---
 
+## Session 17 — 2026-07-09 (Vá 3 lỗi từ feedback thực tế + hệ thống hoàn tác xuyên ngày)
+
+**Làm gì:** Người dùng báo 4 lỗi tiềm ẩn khi dùng app. Sau khảo sát: lỗi #4 (xoá không xác nhận) là báo động giả (đã có xác nhận trong HomeScreen từ trước), 3 lỗi còn lại có cơ sở → vá qua 3 agent song song (logic-backend + 2 mobile-frontend) + agent điều phối.
+
+**Kết quả (ĐÃ COMMIT, commit `<TBD>`, CHƯA push, CHƯA test máy):**
+- **Fix #1 — Hoàn tác món ăn đúng energy-day (mốc reset 6h sáng):** Trước đây `removeFood` luôn đảo pin trên `readings` hiện tại, không xử lý cross-energy-day. Giờ: thêm field `energyDayApplied?: string` vào `FoodLogEntry` (snapshot ngày năng lượng khi log món, migration cột `energy_day_applied` ở bảng `food_log`), `removeFood` hoàn tác trên đúng sổ ngày lịch sử nếu khác energy-day hiện tại (không đụng `readings` state hôm nay). **Nguyên nhân gốc:** cùng loại lỗi với FIX #5 (Vận động) từ Session 16 nhưng bị bỏ sót cho thực phẩm. Files sửa: `src/store/energyStore.ts`, `src/types/food.ts`, `src/data/repositories/foodLogRepository.ts`, `src/data/db/schema.ts`.
+- **Fix #2 — Sửa món ăn:** Thêm `updateFood(id, {grams?, count?, timestamp?})` vào store, dùng chiến lược reverse-then-relog (hoàn tác bản ghi cũ bằng delta, thêm lại với giá trị mới) + `getAnyFoodById` để lấy thông tin, `gramsForPortion` để quy đổi. Thêm nút ✎ + modal "Sửa món ăn" vào `TodayMeals.tsx` (prop mới `onEdit`). Trước đó TodayMeals chỉ có nút ✕. Files sửa: `src/store/energyStore.ts`, `src/components/TodayMeals.tsx`.
+- **Fix #3 — Hoàn tác nạp nhanh (Intake events):** Thêm state `intakeLog` + `removeIntake(id)` vào store, hoàn tác chính xác bằng delta (đảo kcal + độ no cho từng macro). Tạo component mới `src/components/TodayIntakes.tsx` (danh sách "Nạp nhanh hôm nay" + nút ✕ hoàn tác). Ráp vào HomeScreen với Alert xác nhận. Files mới + sửa: `src/store/energyStore.ts`, `src/components/TodayIntakes.tsx` (mới), `src/screens/HomeScreen.tsx`.
+- **Ghi chú (#4 báo động giả):** Lỗi #4 "xoá không xác nhận" — user đọc chỉ component `TodayMeals.tsx` xoá trực tiếp, bỏ qua wiring ở `HomeScreen.tsx` (đã có `Alert.alert` xác nhận từ trước, gọi trước khi `removeFood`). Không vá.
+- **Verify cuối cùng:** `npx tsc --noEmit` sạch · `npm run lint` sạch · `npx jest` → **299 test PASS / 28 suite**.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Lỗi #1 report ban đầu chẩn đoán sai chỗ (nói `logFood` ghi nhầm ngày mới) — thực ra chiều ghi vào đã đúng (store nạp pin energy theo energy-day), lỗi thật nằm ở chiều hoàn tác `removeFood`. Cùng gốc với FIX #5 (Vận động từ Session 16) nhưng bị bỏ sót cho food → thêm `energyDayApplied` tương tự logic Vận động.
+- Kiến trúc song parallel: phân theo "sở hữu file" để 3 agent không giẫm chân trên energyStore.ts (file nóng chung) — 1 agent làm chủ toàn bộ backend + 2 field mới của fix #1, 2 agent UI làm file riêng (TodayMeals, TodayIntakes, HomeScreen), agent điều phối giữ HomeScreen trung tâm.
+
+**Session tiếp theo phải làm:**
+1. **S-A — test máy thật** (ưu tiên #1 duy nhất). Backlog giờ gồm nội dung Session 11–17, chưa hề chạy trên điện thoại. Checklist test riêng cho Session 17 (mini):
+   - Log 1 món trước 6h sáng, rồi xoá nó sau 6h sáng → pin phải trừ đúng (không lẫn với hôm nay).
+   - Sửa khối lượng/số viên 1 món qua ✎ (đổi từ 100g → 50g, hoặc 2 viên → 3 viên) rồi kiểm số → pin phải khớp giá trị mới (không giữ mức cũ).
+   - Nạp nhanh 300ml khoáng chất, rồi ✕ hoàn tác → pin phải trừ lại đúng.
+2. Nếu ổn sau test tay → `git push` lên `origin/session-5-demo-ready` (hiện ahead nhiều commit).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

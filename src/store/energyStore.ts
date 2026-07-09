@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import type { BatteryReading, IntakeEvent, BatteryId } from '../types/battery';
 import type { WorkoutSession, ActivityLogEntry } from '../types/energy';
 import type { FoodItem, FoodLogEntry, PortionUnit } from '../types/food';
-import { nutritionForGrams, mealTypeForTimestamp } from '../domain/food/foodNutrition';
+import { nutritionForGrams, mealTypeForTimestamp, gramsForPortion } from '../domain/food/foodNutrition';
+import { getAnyFoodById } from '../data/food/foodLookup';
 import {
   addFoodLogEntry,
   getFoodLogForDate,
@@ -45,7 +46,11 @@ import {
   getLatestEnergyReadingBefore,
   upsertReadings,
 } from '../data/repositories/batteryRepository';
-import { addIntakeEvent, deleteIntakeEventsByIds } from '../data/repositories/intakeRepository';
+import {
+  addIntakeEvent,
+  deleteIntakeEventsByIds,
+  getIntakeEventsForDate,
+} from '../data/repositories/intakeRepository';
 import { upsertDailyLog } from '../data/repositories/dailyLogRepository';
 import { useSettingsStore } from './settingsStore';
 import { todayString, energyDayString, nowTimestamp } from '../lib/dateUtils';
@@ -75,6 +80,11 @@ interface EnergyState {
   masterPercentage: number; // Hướng B: this is the ENERGY (calorie-balance) battery %
   foodLog: FoodLogEntry[]; // today's logged meals (for the "Hôm nay đã ăn" view)
   activityLog: ActivityLogEntry[]; // today's logged activity events (steps/workouts, B2)
+  // FIX #3: today's MANUAL sub-battery quick-taps (addIntake — water/protein/
+  // etc.), so they can be listed and individually undone. Excludes the derived
+  // rows logActivity/addCalories also write to intake_events (steps/workout/
+  // calories, and the movement/energy batteries) — see isManualQuickTapIntake.
+  intakeLog: IntakeEvent[];
   // Timestamp of the last passive-drain tick actually applied to `readings`
   // (loadToday / tickDrain / resetForNewDay). useLiveEnergyReading uses this to
   // extrapolate a smooth per-second display between real ticks, without
@@ -97,6 +107,18 @@ interface EnergyState {
     portion?: { portionUnit?: PortionUnit; count?: number }
   ) => Promise<void>;
   removeFood: (id: string) => Promise<void>;
+  // FIX #2: edit a logged food (grams/count/time). Mirrors updateActivity's
+  // reverse-then-relog strategy: fully undo the old entry via removeFood, then
+  // log a fresh one with the patch applied. `count` is only meaningful for
+  // pack/capsule (TPCN) foods; omitting a field keeps the entry's current value.
+  updateFood: (
+    id: string,
+    patch: { grams?: number; count?: number; timestamp?: number }
+  ) => Promise<void>;
+  // FIX #3: undo a manual sub-battery quick-tap (the exact inverse of
+  // addIntake): reverse the battery charge and, for macros that also feed the
+  // calorie ledger, reverse the kcal + satiety top-up too.
+  removeIntake: (id: string) => Promise<void>;
   // `startAt`/`endAt` (B2) are optional and display-only — see
   // types/energy.ts ActivityLogEntry doc (no replay engine).
   // `timestampOverride` (FIX #6): when set, used as the entry's `timestamp`
@@ -189,6 +211,37 @@ function reverseActivityOnEnergyReading(
   };
 }
 
+// Reverse a logged food's charge on an energy reading — the exact mirror of
+// the chargeEnergy + eatIntoReserve applied by logFood, using the entry's own
+// energyKcal snapshot. Pulled out as its own pure function (FIX #1, mirroring
+// reverseActivityOnEnergyReading) so removeFood can apply it either to
+// `readings` in the store (same energy-day) or to a historical row fetched
+// from the repository (different energy-day). Reversal on the reserve floors
+// at 0, mirroring how eating capped at full — approximate around the cap/floor,
+// acceptable for a self-tracking estimate.
+function reverseFoodOnEnergyReading(
+  r: BatteryReading,
+  entry: FoodLogEntry
+): BatteryReading {
+  const burned = burnEnergy(r, entry.energyKcal);
+  return {
+    ...burned,
+    satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - entry.energyKcal),
+  };
+}
+
+// FIX #3: which intake_events rows count as MANUAL sub-battery quick-taps (the
+// ones addIntake creates and removeIntake can undo), versus the derived rows
+// logActivity/addCalories also write to the same table purely for the Excel
+// export (steps / workout / calories) or that target the movement/energy
+// batteries. Only the former belong in `intakeLog`.
+function isManualQuickTapIntake(event: IntakeEvent): boolean {
+  if (event.batteryTypeId === 'movement' || event.batteryTypeId === 'energy') return false;
+  if (event.note === 'steps' || event.note === 'calories') return false;
+  if (event.note.startsWith('workout')) return false;
+  return true;
+}
+
 // Update the energy reading inside a readings array (it's the only battery
 // with satiety/ledger state; nutrient readings pass through untouched).
 function mapEnergy(
@@ -220,6 +273,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   masterPercentage: 0,
   foodLog: [],
   activityLog: [],
+  intakeLog: [],
   lastDrainSyncAt: Date.now(),
   isLoaded: false,
 
@@ -271,12 +325,16 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       await upsertDailyLog({ date: today, modeId });
       const foodLog = await getFoodLogForDate(today);
       const activityLog = await getActivityLogForDate(today);
+      // FIX #3: only the manual sub-battery quick-taps — filter out the
+      // steps/workout/calories rows logActivity/addCalories also wrote here.
+      const intakeLog = (await getIntakeEventsForDate(today)).filter(isManualQuickTapIntake);
 
       set({
         readings,
         masterPercentage: energyPercentage(readings),
         foodLog,
         activityLog,
+        intakeLog,
         lastDrainSyncAt: Date.now(),
         isLoaded: true,
       });
@@ -290,6 +348,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         masterPercentage: energyPercentage(readings),
         foodLog: [],
         activityLog: [],
+        intakeLog: [],
         lastDrainSyncAt: Date.now(),
         isLoaded: true,
       });
@@ -321,12 +380,20 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       }
     }
 
+    // FIX #3: build the event up front so it can be appended to intakeLog for
+    // an immediate, undoable listing (only manual sub-battery quick-taps go in
+    // — the same predicate loadToday filters by).
+    const ts = nowTimestamp();
+    const event: IntakeEvent = { id: `${batteryId}_${ts}`, timestamp: ts, batteryTypeId: batteryId, amount, note };
+
     // Optimistic UI update (master = energy %).
-    set({ readings: updated, masterPercentage: energyPercentage(updated) });
+    set((s) => ({
+      readings: updated,
+      masterPercentage: energyPercentage(updated),
+      intakeLog: isManualQuickTapIntake(event) ? [...s.intakeLog, event] : s.intakeLog,
+    }));
 
     try {
-      const ts = nowTimestamp();
-      const event: IntakeEvent = { id: `${batteryId}_${ts}`, timestamp: ts, batteryTypeId: batteryId, amount, note };
       await addIntakeEvent(event);
       await upsertReadings(toPersist);
     } catch (e) {
@@ -413,6 +480,10 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       mineralsMg: n.mineralsMg,
       portionUnit: portion?.portionUnit,
       count: portion?.count,
+      // FIX #1: snapshot which energy-day's reading actually received the kcal
+      // charge above, so removeFood can reverse it on the right day even if the
+      // food was logged 0h-6am (yesterday's ledger) and undone after 6am.
+      energyDayApplied: energyDayString(new Date(timestamp)),
     };
 
     set((s) => ({
@@ -445,16 +516,22 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       minerals: entry.mineralsMg,
     };
 
+    // FIX #1 (mirrors removeActivity/FIX #5): the food's kcal charge was
+    // applied at log time to the reading for `entry.energyDayApplied` (the
+    // 6am-reset energy day), which is NOT necessarily the energy-day currently
+    // loaded in the store — a food logged 0h-6am belongs to yesterday's
+    // ledger. Reverse it on the correct reading: if it's today's energy-day
+    // (or the field is missing on an old row → treat as same-day), reverse
+    // in-place on `readings`; otherwise leave `readings.energy` untouched and
+    // reverse+persist the historical row separately below. The nutrient
+    // batteries stay keyed by the calendar day and always reverse in-place.
+    const currentEnergyDay = energyDayString();
+    const sameEnergyDay =
+      entry.energyDayApplied === undefined || entry.energyDayApplied === currentEnergyDay;
+
     const updated = readings.map((r) => {
       if (r.batteryTypeId === 'energy') {
-        const burned = burnEnergy(r, entry.energyKcal);
-        // Undo on the reserve floors at 0, mirroring how eating capped at
-        // full — reversal is approximate around the cap/floor, acceptable
-        // for a self-tracking estimate.
-        return {
-          ...burned,
-          satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - entry.energyKcal),
-        };
+        return sameEnergyDay ? reverseFoodOnEnergyReading(r, entry) : r;
       }
       const amt = reverseCharges[r.batteryTypeId];
       return amt && amt > 0 ? applyIntake(r, -amt) : r;
@@ -469,8 +546,96 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     try {
       await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
       await deleteFoodLogEntry(id);
+
+      if (!sameEnergyDay && entry.energyDayApplied) {
+        // Historical energy-day: fetch, reverse, and persist that day's row on
+        // its own — today's `readings` must NOT be touched.
+        const historicalRows = await getReadingsForDate(entry.energyDayApplied);
+        const historicalEnergy = historicalRows.find((r) => r.batteryTypeId === 'energy');
+        if (historicalEnergy) {
+          await upsertReadings([reverseFoodOnEnergyReading(historicalEnergy, entry)]);
+        }
+      }
     } catch (e) {
       console.warn('removeFood persistence failed:', e);
+    }
+  },
+
+  // FIX #2: edit a logged food. Simplest-and-safest strategy, mirroring
+  // updateActivity: fully reverse the old entry (removeFood) then log a fresh
+  // one (logFood) with the patch applied on top of the original values — under
+  // the original log time by default so editing doesn't reorder/misdate it.
+  updateFood: async (id, patch) => {
+    const entry = get().foodLog.find((f) => f.id === id);
+    if (!entry) return;
+
+    // Resolve the FoodItem the entry came from (any catalog, override-aware).
+    // Bail gracefully if it's gone — better a no-op than logging garbage.
+    const item = getAnyFoodById(entry.foodId);
+    if (!item) return;
+
+    const originalTimestamp = entry.timestamp;
+
+    // Portion-based foods (TPCN packs/capsules) are edited by count; everything
+    // else by grams. Fall back to the entry's current value for the field the
+    // patch didn't touch.
+    const isPortionBased = item.portionUnit === 'pack' || item.portionUnit === 'capsule';
+    const newGrams =
+      isPortionBased && patch.count !== undefined
+        ? gramsForPortion(item, patch.count)
+        : patch.grams ?? entry.grams;
+
+    await get().removeFood(id);
+    await get().logFood(item, newGrams, patch.timestamp ?? originalTimestamp, {
+      portionUnit: item.portionUnit,
+      count: patch.count ?? entry.count,
+    });
+  },
+
+  // FIX #3: undo a manual sub-battery quick-tap — the exact inverse of
+  // addIntake. Reverse the battery charge (apply -amount), and if that battery
+  // also feeds the calorie ledger (kcalFromMacro > 0) reverse the kcal charge
+  // (burnEnergy) and floor the satiety reserve by that kcal, mirroring
+  // removeFood's floor-at-0 reversal.
+  removeIntake: async (id) => {
+    const { readings, intakeLog } = get();
+    const event = intakeLog.find((e) => e.id === id);
+    if (!event) return;
+
+    const toPersist: BatteryReading[] = [];
+    const updated = readings.map((r) => {
+      if (r.batteryTypeId === event.batteryTypeId) {
+        const reversed = applyIntake(r, -event.amount);
+        toPersist.push(reversed);
+        return reversed;
+      }
+      return r;
+    });
+
+    const kcal = kcalFromMacro(event.batteryTypeId, event.amount);
+    if (kcal > 0) {
+      const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
+      if (ei !== -1) {
+        const burned = burnEnergy(updated[ei], kcal);
+        updated[ei] = {
+          ...burned,
+          satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - kcal),
+        };
+        toPersist.push(updated[ei]);
+      }
+    }
+
+    set({
+      readings: updated,
+      masterPercentage: energyPercentage(updated),
+      intakeLog: intakeLog.filter((e) => e.id !== id),
+    });
+
+    try {
+      await upsertReadings(toPersist);
+      await deleteIntakeEventsByIds([id]);
+    } catch (e) {
+      console.warn('removeIntake persistence failed:', e);
     }
   },
 
@@ -754,6 +919,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       masterPercentage: energyPercentage(readings),
       foodLog: [],
       activityLog: [],
+      intakeLog: [],
       lastDrainSyncAt: Date.now(),
     });
 
