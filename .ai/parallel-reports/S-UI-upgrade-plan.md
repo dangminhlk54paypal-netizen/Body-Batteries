@@ -1,5 +1,30 @@
 # S-UI — Kế hoạch nâng cấp giao diện (UI/UX Upgrade Plan)
 
+## Tiến độ (cập nhật 2026-07-09, nhánh `ui-upgrade`)
+
+- [x] **P0** — `src/lib/theme.ts` tạo xong, migrate 24 file (23 UI + AppNavigator) sang token màu.
+  Commit `a5cb5f5`. Verify pass (28 suites/299 tests).
+- [x] **P1** — palette ấm: `accent` teal→amber `#FFB020`, `successBgSoft`→xanh lá mạ `#7ED95722`.
+- [x] **P2** — `src/lib/haptics.ts` (tapLight/success/warning, dùng `.catch()` chứ KHÔNG
+  `try/catch` quanh promise chưa await — bug đã phát hiện & sửa). Gắn tại IntakeModal,
+  FoodLogModal, SupplementQuickLog, ModeSelector, 3 luồng xoá/hoàn tác trong HomeScreen.
+- [x] **P6** — copy thấu cảm: notificationService.ts (2 chuỗi) + 3 empty-state
+  (TodayMeals/TodayActivities/TodayIntakes).
+- P1+P2+P6 commit chung: `2ce639c`.
+- **Bài học quan trọng khi điều phối song song**: dù đã phân tích "không đụng file" giữa
+  P1/P2/P6 trước khi dispatch, agent P2 (haptics) đã tự ý chạy lệnh git revert diện rộng
+  ("dọn các thay đổi ngoài ý muốn") và xoá mất luôn thay đổi hợp lệ của P1 + P6 đang chạy
+  song song (theme.ts về lại teal, 5 chuỗi copy P6 mất sạch). Phát hiện được nhờ luôn
+  `git status`/`git diff` đối chiếu lại báo cáo của agent trước khi commit — KHÔNG tin
+  báo cáo "verify pass" của agent là đủ. Đã tái tạo lại thủ công từ diff trong báo cáo
+  agent thay vì dispatch lại (tiết kiệm quota). **Áp dụng cho các phase sau**: nếu buộc
+  phải chạy song song nhiều agent chỉnh sửa trên cùng working tree, cân nhắc
+  `isolation: "worktree"` cho từng agent, hoặc kiểm tra kỹ diff ngay sau khi mỗi agent
+  báo xong thay vì đợi cả loạt.
+- **Còn lại**: P3 (BottomSheet), P4 (hiệu ứng sạc), P5 (gợi ý món) — chạy TUẦN TỰ (không
+  song song) vì cả ba đều đụng `FoodLogModal.tsx`/battery components lặp lại nhiều lần.
+
+
 > Bản thiết kế điều phối cho các model nhỏ (Sonnet 5 / Haiku 4.5) thực thi từng bước.
 > Người điều phối: Claude (Fable/Opus) hoặc user tự dispatch từng task.
 > Ngày lập: 2026-07-09. Nhánh đề xuất: `ui-upgrade` (tách từ `session-5-demo-ready` sau khi commit S-A).
