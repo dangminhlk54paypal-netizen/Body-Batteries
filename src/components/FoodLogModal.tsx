@@ -1,14 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { searchAllFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { getAnyFoodById } from '../data/food/foodLookup';
+import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import { BottomSheet } from './ui/BottomSheet';
 import { nutritionForGrams, mealTypeForHour, gramsForPortion } from '../domain/food/foodNutrition';
+import { suggestFoods, type FoodSuggestion } from '../domain/food/foodSuggestions';
 import {
   buildCustomFoodItem,
   isValidCustomFoodInput,
@@ -17,7 +19,8 @@ import {
   type CustomFoodInput,
 } from '../domain/food/customFoodInput';
 import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
-import type { FoodItem } from '../types/food';
+import { daysAgo, todayString } from '../lib/dateUtils';
+import type { FoodItem, FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
 
@@ -50,6 +53,12 @@ function timestampForToday(hour: number, minute: number): number {
   return d.getTime();
 }
 
+// Module-level wrapper so the impure Date.now() call is invisible to the
+// component's purity analysis — same reasoning as timestampForToday above.
+function nowTimestamp(): number {
+  return Date.now();
+}
+
 export function FoodLogModal({ visible, onClose }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
 
@@ -72,6 +81,32 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [savingCustomFood, setSavingCustomFood] = useState(false);
   // "Sửa thành phần": opens the nutrition-override editor for the selected food.
   const [editingNutrition, setEditingNutrition] = useState(false);
+  // Last 7 days of food log + the hour the modal was opened, fetched/read
+  // once per open — feeds the "Gợi ý cho bữa này" suggestion chips (see
+  // suggestFoods). Empty until the fetch resolves; the modal degrades
+  // gracefully to "no suggestions" until then. Both setState calls happen
+  // inside the async .then() callback (not synchronously in the effect
+  // body), and the impure Date read lives there too — never during render.
+  const [recentLog, setRecentLog] = useState<FoodLogEntry[]>([]);
+  const [suggestHour, setSuggestHour] = useState(0);
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    getFoodLogInRange(daysAgo(7), todayString()).then((rows) => {
+      if (cancelled) return;
+      setRecentLog(rows);
+      setSuggestHour(new Date().getHours());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  const suggestions = useMemo(
+    () => suggestFoods(recentLog, suggestHour),
+    [recentLog, suggestHour]
+  );
 
   const results = useMemo(() => searchAllFoods(query), [query]);
 
@@ -183,6 +218,28 @@ export function FoodLogModal({ visible, onClose }: Props) {
     handleClose();
   }
 
+  // One-tap logging from a "Gợi ý cho bữa này" chip — reuses the food's
+  // last-used portion instead of asking the user to re-enter it. Mirrors
+  // confirm() above but logs at the current moment (not a picked hour) and
+  // skips the grams/time review step entirely — that's the point of a
+  // low-friction suggestion.
+  async function logSuggestion(suggestion: FoodSuggestion) {
+    const item = getAnyFoodById(suggestion.foodId);
+    if (!item) return; // food removed from the catalog since it was last logged
+    const foodToLog = item.nameVi ? item : { ...item, nameVi: item.nameEn };
+    if (suggestion.portionUnit && suggestion.portionUnit !== 'gram') {
+      await logFood(foodToLog, suggestion.grams, nowTimestamp(), {
+        portionUnit: suggestion.portionUnit,
+        count: suggestion.count,
+      });
+    } else {
+      await logFood(foodToLog, suggestion.grams, nowTimestamp());
+    }
+    useChargeEffectStore.getState().triggerChargePulse();
+    haptics.success();
+    handleClose();
+  }
+
   return (
     <>
       <BottomSheet visible={visible} onClose={handleClose} sheetOffset={500}>
@@ -265,6 +322,26 @@ export function FoodLogModal({ visible, onClose }: Props) {
                 onChangeText={setQuery}
                 autoFocus
               />
+              {query.trim().length === 0 && suggestions.length > 0 && (
+                <View style={styles.suggestSection}>
+                  <Text style={styles.suggestLabel}>Gợi ý cho bữa này</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={styles.suggestRow}>
+                      {suggestions.map((s) => (
+                        <Pressable
+                          key={s.foodId}
+                          style={({ pressed }) => [styles.suggestChip, pressed && styles.pressed]}
+                          onPress={() => logSuggestion(s)}
+                        >
+                          <Text style={styles.suggestChipText} numberOfLines={1}>
+                            {s.foodNameVi}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
               <FlatList
                 style={styles.list}
                 data={results}
@@ -508,6 +585,19 @@ const styles = StyleSheet.create({
   },
   list: { maxHeight: 320, flexShrink: 1 },
   empty: { color: colors.textTertiary, textAlign: 'center', paddingVertical: 20 },
+  suggestSection: { gap: 6 },
+  suggestLabel: { color: colors.textTertiary, fontSize: 12, fontWeight: '600' },
+  suggestRow: { flexDirection: 'row', gap: 8, paddingRight: 4 },
+  suggestChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 18,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    maxWidth: 160,
+  },
+  suggestChipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
   addNewBtn: {
     marginTop: 4,
     marginHorizontal: 16,
