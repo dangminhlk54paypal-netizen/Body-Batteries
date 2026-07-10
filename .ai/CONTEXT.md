@@ -107,10 +107,25 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-10 (Session 18).** Tiếp tục S-A (test máy thật, bước 3) — người dùng
+**Cập nhật lần cuối: 2026-07-10 (Session 19).** Gói **S-F2 — tích hợp Apple Health** (tự động lấy
+kcal đốt trong ngày, hiện cạnh kcal đã ăn): thiết kế kiến trúc qua agent Fable (5 quyết định — đồng
+bộ lúc mở app + nút tay, giữ ghi vận động thủ công làm dự phòng, breakdown để v1.1, chỉ hiện tổng
+kcal ở v1.0, fallback về ước tính BMR nếu Apple Health từ chối quyền/lỗi), triển khai qua 3 subagent
+tuần tự (`logic-backend`→`mobile-frontend`→`qa-reviewer`). **CODE XONG, ĐÃ VERIFY, ĐÃ COMMIT** (xem
+chi tiết `.ai/SESSION_LOG.md` Session 19, `.ai/parallel-reports/S-F2.md`/`S-F2-ui.md`/
+`S-F2-qa-checklist.md`). Thư viện `react-native-health` (mới, `package.json`) bridge native HealthKit
+→ **không chạy được qua Expo Go**, bắt buộc build dev client (`eas build --profile development
+--platform ios`, `eas.json` đã có sẵn profile). Chỉ hiển thị — không đụng `battery_readings.capacity`/
+`activityBonusKcal`/`satietyReserveKcal`, hệ pin/satiety hiện có giữ nguyên. QA agent tìm 1 bug
+nghiêm trọng (cache-restore không khôi phục `appleHealthBurnedKcal` sau khi mở lại app → hiện sai
+0 kcal) đã tự sửa + thêm test. Verify: `tsc` sạch · `npm run lint` sạch · **377 test PASS / 35 suite**
+(từ 320). **CHƯA TEST MÁY THẬT** (cần build dev client trước — xem checklist
+`.ai/parallel-reports/S-F2-qa-checklist.md`).
+
+**Trước đó — Cập nhật 2026-07-10 (Session 18).** Tiếp tục S-A (test máy thật, bước 3) — người dùng
 báo 2 đợt feedback thật khi ăn "chicken nuggets" tự thêm 350g: pin Carbs/pin vi chất không nạp
 đúng + form "Thêm món mới" bị bàn phím che nút Lưu; sau khi vá, người dùng test lại và lộ thêm modal
-"Sửa thành phần" bấm không hiện gì. **CHƯA COMMIT** (đang làm trực tiếp trên nhánh `ui-upgrade`).
+"Sửa thành phần" bấm không hiện gì. **ĐÃ COMMIT** (commit `c0f2dd9`, nhánh `ui-upgrade`).
 4 bug đã sửa: **(3a)** `scripts/generate-usda-db.js` map sai nutrient number cho đường/xơ (bản
 Foundation Foods 2026 đổi số phân tích mới: đường 269→269.3, xơ thêm 293) + carb "by difference" âm
 chưa clamp → sửa NUTRIENT_MAP ưu tiên số mới + clamp 0, chạy lại `npm run gen:usda`. **(3b)**

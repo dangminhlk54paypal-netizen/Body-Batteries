@@ -7,10 +7,13 @@ import {
   SafeAreaView,
   ScrollView,
   Pressable,
+  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { useSettingsStore } from '../store/settingsStore';
+import { useEnergyStore } from '../store/energyStore';
 import { BodyProfileCard } from '../components/BodyProfileCard';
+import { appleHealthStatusMeta } from '../components/AppleHealthStatusBadge';
 import { exportWeeklyData, exportMonthlyData } from '../services/export/excelExportService';
 import { runWeeklyCleanup } from '../services/cleanup/cleanupService';
 import {
@@ -20,6 +23,7 @@ import {
 } from '../services/notifications/notificationService';
 import type { MealWindow } from '../lib/constants';
 import { colors } from '../lib/theme';
+import { formatRelativeTime } from '../lib/relativeTime';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -111,8 +115,12 @@ export function SettingsScreen() {
     particleEffectsEnabled,
     setParticleEffectsEnabled,
   } = useSettingsStore();
+  const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
 
   const [exporting, setExporting] = useState(false);
+  // Lazy initializer (not a bare Date.now() call during render) — same
+  // purity-safe pattern as EnergyBalanceCard/useLiveEnergyReading.ts.
+  const [nowMs] = useState(() => Date.now());
 
   // Keep the OS-scheduled reminder in sync with the persisted setting,
   // since the reminder is registered with the OS and survives across
@@ -195,6 +203,10 @@ export function SettingsScreen() {
     }
   }
 
+  function handleRefreshHealth() {
+    syncAppleHealthBurned();
+  }
+
   function handleCleanup() {
     Alert.alert(
       'Xoá dữ liệu cũ',
@@ -240,6 +252,44 @@ export function SettingsScreen() {
             Dùng để tính nhu cầu năng lượng (pin Năng lượng). Chỉ tham khảo — không phải tư vấn y tế.
           </Text>
           <BodyProfileCard />
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* ── Health (Apple Health) ───────────────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionHeader icon="🏥" label="SỨC KHOẺ" />
+          <Text style={styles.sectionDesc}>
+            Apple Health tự động theo dõi kcal đã đốt mỗi ngày — chỉ cần ghi vận động thủ công khi
+            muốn bổ sung thêm.
+          </Text>
+
+          <Pressable
+            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+            onPress={handleRefreshHealth}
+            disabled={appleHealthStatus === 'syncing'}
+          >
+            {appleHealthStatus === 'syncing' ? (
+              <View style={styles.healthRefreshRow}>
+                <ActivityIndicator size="small" color={colors.textPrimary} />
+                <Text style={styles.actionBtnText}>Đang đồng bộ…</Text>
+              </View>
+            ) : (
+              <Text style={styles.actionBtnText}>🔄 Làm mới dữ liệu Apple Health</Text>
+            )}
+          </Pressable>
+
+          <Text style={styles.sectionDesc}>
+            Lần đồng bộ gần nhất:{' '}
+            {lastAppleHealthSync != null ? formatRelativeTime(lastAppleHealthSync, nowMs) : 'Chưa đồng bộ'}
+          </Text>
+
+          <Text style={[styles.healthStatusText, { color: appleHealthStatusMeta(appleHealthStatus).color }]}>
+            {appleHealthStatus === 'synced' && '✓ Đã kết nối'}
+            {appleHealthStatus === 'estimated' && '⚠️ Ước tính — kiểm tra quyền Health trong Cài đặt máy'}
+            {appleHealthStatus === 'syncing' && 'Đang đồng bộ…'}
+            {appleHealthStatus === 'idle' && '— Chưa đồng bộ'}
+          </Text>
         </View>
 
         <View style={styles.divider} />
@@ -500,6 +550,8 @@ const styles = StyleSheet.create({
   dangerBtn: { borderColor: colors.dangerStrong },
   actionBtnText: { color: colors.textPrimary, fontSize: 14 },
   dangerText: { color: colors.dangerStrong },
+  healthRefreshRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  healthStatusText: { fontSize: 13, fontWeight: '600' },
 
   // ── Disclaimer ────────────────────────────────────────────────────────────
   disclaimer: {

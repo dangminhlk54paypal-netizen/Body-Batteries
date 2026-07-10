@@ -782,6 +782,32 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 
 ---
 
+## Session 19 — 2026-07-10 (S-F2: tích hợp Apple Health — tự động lấy kcal đốt trong ngày)
+
+**Làm gì:** Người dùng yêu cầu tích hợp Apple Health để tự động lấy kcal đã đốt trong ngày (thay vì phải tự ghi vận động thủ công), hiển thị cạnh kcal đã ăn để biết dư/thiếu. Nhờ agent Fable thiết kế kiến trúc trước (trả lời 5 câu hỏi quyết định: tần suất đồng bộ, có giữ ghi vận động thủ công không, breakdown để v1.1, chỉ hiện tổng kcal ở v1.0, fallback về BMR nếu Apple Health lỗi/từ chối quyền), sau đó triển khai qua 3 subagent tuần tự (logic-backend → mobile-frontend → qa-reviewer), rồi tự tay sửa 1 bug nghiêm trọng QA phát hiện.
+
+**Kết quả (CODE XONG, ĐÃ VERIFY, CHƯA COMMIT lúc viết dòng này — sẽ commit ngay sau):**
+- **Service layer** (`src/services/health/appleHealthSync.ts`, mới): wrapper thuần cho `react-native-health` (thư viện mới thêm vào `package.json`), không phụ thuộc Zustand/SQLite/React — dễ test độc lập. Có `isHealthKitLinked()` để tự phát hiện khi native module chưa được link (chạy trong Expo Go/Android/chưa có dev client) thay vì crash.
+- **Storage layer**: `src/data/repositories/healthSignalsRepository.ts` thêm `logAppleHealthBurned`/`getAppleHealthBurnedForDate`/`recordSyncTimestamp`/`getLastSyncTimestamp`, tái dùng bảng `health_signals` sẵn có (cột `source`/`type`/`value` đã đủ tổng quát) — **không cần migration**.
+- **State layer**: `src/store/energyStore.ts` thêm `appleHealthBurnedKcal`/`lastAppleHealthSync`/`appleHealthStatus` (`'idle'|'syncing'|'synced'|'estimated'`) + action `syncAppleHealthBurned()` — cache 2 tiếng, tự động chạy trong `loadToday()`, fallback về ước tính BMR (`metabolismEngine.dailyExpenditure`) nếu Apple Health từ chối quyền/không có dữ liệu/lỗi. **Chỉ hiển thị, không đụng vào `battery_readings.capacity`/`activityBonusKcal`/`satietyReserveKcal`** — hệ pin/satiety hiện có giữ nguyên hoàn toàn.
+- **UI layer**: `src/components/EnergyBalanceCard.tsx` (mới) hiện trên HomeScreen dưới pin chính — "Đã đốt hôm nay / Đã ăn hôm nay / Chênh lệch" (dư/thiếu, màu theo `colors.mint`/`colors.danger` có sẵn); `src/components/AppleHealthStatusBadge.tsx` (mới) hiện trạng thái đồng bộ; `SettingsScreen.tsx` thêm mục "🏥 SỨC KHOẺ" với nút đồng bộ tay + "Lần cuối đồng bộ: Xm trước" (`src/lib/relativeTime.ts`, mới).
+- **Cấu hình native**: `app.json` thêm `expo.ios.infoPlist.NSHealthShareUsageDescription` + config plugin của `react-native-health`. Vì thư viện cần native code, **tính năng này KHÔNG chạy được qua Expo Go** — bắt buộc build dev client (`eas build --profile development --platform ios`, `eas.json` đã có sẵn profile này).
+- **Bug nghiêm trọng do QA agent phát hiện, tự sửa:** nhánh cache-hit của `syncAppleHealthBurned()` chỉ khôi phục `lastAppleHealthSync` từ DB lúc app khởi động lại, **quên khôi phục `appleHealthBurnedKcal`** (Zustand không persist, RAM reset về 0 mỗi lần mở app) → Home hiện sai "0 kcal" suốt phần còn lại của cửa sổ cache 2h. Sửa: nhánh cache-hit giờ gọi `getAppleHealthBurnedForDate(todayString())` để khôi phục đúng số, đồng thời fix luôn bug phụ ăn theo (cache không phân biệt ranh giới ngày — mở app ngay sau nửa đêm vẫn hiện số hôm qua) vì lookup theo `todayString()` tự nhiên trả `null` khi qua ngày mới, kích hoạt lại nhánh ước tính BMR đúng thay vì hiện dữ liệu cũ. Thêm test `energyStore.appleHealth.test.ts` phủ cả 2 case.
+- **Verify cuối cùng:** `npx tsc --noEmit` sạch · `npm run lint` sạch · **377 test PASS / 35 suite** (tăng từ 320).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Agent Fable (thiết kế kiến trúc) ghi nhầm `react-native-health` là "không cần native module, chạy được Expo Go" — sai. Thư viện này bridge trực tiếp HealthKit (Swift/Obj-C), bắt buộc dev client. Phát hiện trước khi spawn agent code (kiểm tra `eas.json` thấy đã có sẵn profile `development`) nên không bị chặn, chỉ đổi kỳ vọng test (không dùng Expo Go được cho tính năng này).
+- QA agent (Phase 6) phát hiện bug cache-restore nêu trên bằng cách đọc kỹ code thay vì tin báo cáo "xong" của agent code — đúng quy trình "trust but verify" đã áp dụng xuyên suốt: tự chạy `npm run verify` độc lập sau MỖI agent thay vì chỉ đọc báo cáo, và đọc diff thật (`git status`/`git diff --stat`) so khớp với những gì agent tự báo cáo.
+
+**Session tiếp theo phải làm:**
+1. Commit toàn bộ gói S-F2 (xem hướng dẫn message bên dưới).
+2. **Người dùng build dev client:** `eas build --profile development --platform ios`, cài vào điện thoại qua link EAS gửi (không dùng Expo Go được cho tính năng này).
+3. **Test tay bắt buộc theo checklist** `.ai/parallel-reports/S-F2-qa-checklist.md` (tiếng Việt, 7 mục, có đánh dấu ⚠️ ở 2 mục liên quan tới bug cache vừa sửa) — đặc biệt: xin quyền lần đầu, từ chối quyền → xem có hiện đúng "Ước tính (BMR)" không, ghi 1 buổi tập thật trong Health.app rồi bấm "Đồng bộ" trong Settings xem kcal có cập nhật, tắt app rồi mở lại xem có giữ đúng số (bug vừa sửa) không.
+4. Nếu test tay OK → cập nhật `docs/04-roadmap.md` Phase 4 "Test thật" từ ⬜ lên 🟡/✅ tương ứng.
+5. v1.1 (chưa làm, chỉ ghi chú theo thiết kế của Fable): breakdown resting/active riêng biệt + xem nguồn kcal ăn/đốt chi tiết — hiện chỉ hiện tổng.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

@@ -12,7 +12,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bellybuilder.bodybatteries"
+      "bundleIdentifier": "com.bellybuilder.bodybatteries",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "BodyBatteries reads your daily burned calories from Apple Health to show your energy balance."
+      }
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
@@ -40,7 +43,13 @@
         }
       ],
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "BodyBatteries reads your daily burned calories from Apple Health to show your energy balance."
+        }
+      ]
     ]
   }
 }

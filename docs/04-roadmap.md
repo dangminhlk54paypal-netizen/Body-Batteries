@@ -124,8 +124,13 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 **Mục tiêu:** app nhận tín hiệu từ điện thoại/đồng hồ.
 
 - [ ] Xin quyền & đọc số bước chân
-- [ ] Tích hợp Health Connect (Android) / HealthKit (iOS): nhịp tim, giấc ngủ
-- [ ] Đưa tín hiệu vào ảnh hưởng tốc độ xả pin
+- [x] Tích hợp HealthKit (iOS): kcal đốt trong ngày (active + resting energy) — **S-F2, Session 19,
+  CODE XONG chưa test máy thật.** Hiển thị cạnh kcal ăn (Home), KHÔNG ảnh hưởng tốc độ xả pin (xem
+  dòng dưới — cố ý, chỉ hiển thị). Chưa làm: nhịp tim, giấc ngủ, Health Connect (Android).
+- [ ] Đưa tín hiệu vào ảnh hưởng tốc độ xả pin — **quyết định thiết kế S-F2: KHÔNG làm ở v1**, kcal
+  Apple Health chỉ hiển thị song song (Đã đốt/Đã ăn/Chênh lệch), không đụng `battery_readings
+  .capacity`/`activityBonusKcal`/`satietyReserveKcal`. Có thể cân nhắc lại ở v1.1+ nếu người dùng
+  muốn sau khi test thật.
 
 **Tiêu chí hoàn thành:** Đi bộ nhiều → pin năng lượng xả nhanh hơn tương ứng.
 **Agent phụ trách:** `architect` + `logic-backend`
@@ -155,7 +160,7 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 | 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK (1424 module). Cần chạy thật: nạp pin + đóng/mở lại |
 | 2 | Modes & tự động | ✅ | ⏳ | Nhắc nhở thật + tự xả pin định kỳ thật đã xong (S-C, S-D). Cần test thật |
 | 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5) + Excel đa-sheet/override/Muối/TPCN (Session 14) + TPCN Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin nhỏ (Session 16, ngoài phạm vi gốc) |
-| 4 | Tích hợp dữ liệu | ⬜ | ⬜ | Chưa bắt đầu (xem S-F — v1 placeholder nhập tay, chưa phải Health thật) |
+| 4 | Tích hợp dữ liệu | 🔄 | ⬜ | S-F2 (Session 19): HealthKit kcal đốt/ngày — CODE XONG (377 test PASS), cần build dev client (`eas build --profile development`) mới test máy được, KHÔNG chạy qua Expo Go. Bước chân/nhịp tim/giấc ngủ/Android chưa làm |
 | 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu — cần dữ liệu cân nặng từ S-L trước (xem `.ai/NEXT_SESSIONS.md`) |
 
 **Ký hiệu:** ✅ Xong | 🔄 Đang làm/chưa đủ | ⏳ Chờ môi trường | 🟡 Một phần | ⬜ Chưa bắt đầu

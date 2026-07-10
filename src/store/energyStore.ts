@@ -38,7 +38,12 @@ import {
   drainFromWorkout,
 } from '../domain/energy/satietyEngine';
 import { dailyCalorieTarget } from '../domain/energy/weightGoal';
-import { workoutKcal, totalWorkoutKcal, stepsKcal } from '../domain/energy/metabolismEngine';
+import {
+  workoutKcal,
+  totalWorkoutKcal,
+  stepsKcal,
+  dailyExpenditure,
+} from '../domain/energy/metabolismEngine';
 import { getModeById } from '../domain/modes/modeDefinitions';
 import { checkLowBattery, type BatteryAlert } from '../domain/rules/lowBatteryRules';
 import {
@@ -52,6 +57,16 @@ import {
   getIntakeEventsForDate,
 } from '../data/repositories/intakeRepository';
 import { getDailyLog, upsertDailyLog } from '../data/repositories/dailyLogRepository';
+import {
+  logAppleHealthBurned,
+  recordSyncTimestamp,
+  getLastSyncTimestamp,
+  getAppleHealthBurnedForDate,
+} from '../data/repositories/healthSignalsRepository';
+import {
+  getTodayEnergyBurned,
+  calculateTotalBurned,
+} from '../services/health/appleHealthSync';
 import {
   applyFoodToDayReadings,
   reverseFoodOnDayReadings,
@@ -96,6 +111,18 @@ interface EnergyState {
   // writing to the store or DB every second.
   lastDrainSyncAt: number;
   isLoaded: boolean;
+
+  // Apple Health integration (Phases 1-3). Burned kcal is DISPLAY-ONLY — it
+  // never feeds `battery_readings.capacity` or any existing goal/satiety math
+  // (see src/services/health/appleHealthSync.ts doc). Synced from loadToday
+  // plus a manual trigger the UI wires up separately; falls back to a
+  // BMR-based estimate (metabolismEngine.dailyExpenditure) whenever HealthKit
+  // is denied/unavailable/returns no data, so the UI always has *some*
+  // number, just tagged 'estimated' instead of 'synced'.
+  appleHealthBurnedKcal: number;
+  lastAppleHealthSync: number | null;
+  appleHealthStatus: 'idle' | 'syncing' | 'synced' | 'estimated';
+  syncAppleHealthBurned: () => Promise<void>;
 
   loadToday: (modeId: ModeId) => Promise<void>;
   addIntake: (batteryId: BatteryId, amount: number, note?: string) => Promise<BatteryAlert[]>;
@@ -313,6 +340,85 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   intakeLog: [],
   lastDrainSyncAt: Date.now(),
   isLoaded: false,
+  appleHealthBurnedKcal: 0,
+  lastAppleHealthSync: null,
+  appleHealthStatus: 'idle',
+
+  // Apple Health integration (Phases 1-3): orchestrates the sync described on
+  // EnergyState.syncAppleHealthBurned above. 2-hour cache check first (memory,
+  // falling back to the persisted timestamp so a fresh app launch doesn't
+  // immediately re-hit HealthKit if a previous session synced recently) →
+  // request permission + fetch → on success, persist + mark 'synced'; on ANY
+  // failure (not linked/denied/unavailable/no data/thrown error — all
+  // collapsed by getTodayEnergyBurned returning null), compute the BMR
+  // fallback and mark 'estimated'. Never throws — every failure path resolves
+  // to a state update, so callers (loadToday) can fire this without a guard.
+  syncAppleHealthBurned: async () => {
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    const now = Date.now();
+    let { lastAppleHealthSync } = get();
+
+    if (lastAppleHealthSync === null) {
+      try {
+        lastAppleHealthSync = await getLastSyncTimestamp();
+      } catch (e) {
+        console.warn('syncAppleHealthBurned: getLastSyncTimestamp failed:', e);
+      }
+    }
+
+    if (lastAppleHealthSync !== null && now - lastAppleHealthSync < TWO_HOURS_MS) {
+      // Cache still fresh — skip hitting HealthKit again, but restore
+      // appleHealthBurnedKcal/Status from what's actually persisted for
+      // TODAY rather than leaving the in-memory defaults (0/'idle') a fresh
+      // app launch starts with. If nothing was synced for today's calendar
+      // day yet (e.g. the cached timestamp is from just before midnight),
+      // recompute the BMR estimate instead of showing yesterday's/zero data.
+      try {
+        const cachedKcal = await getAppleHealthBurnedForDate(todayString());
+        if (cachedKcal !== null) {
+          set({ appleHealthBurnedKcal: cachedKcal, lastAppleHealthSync, appleHealthStatus: 'synced' });
+          return;
+        }
+      } catch (e) {
+        console.warn('syncAppleHealthBurned: getAppleHealthBurnedForDate failed:', e);
+      }
+      const estimate = dailyExpenditure(currentProfile()).total;
+      set({ appleHealthBurnedKcal: estimate, lastAppleHealthSync, appleHealthStatus: 'estimated' });
+      return;
+    }
+
+    set({ appleHealthStatus: 'syncing' });
+
+    try {
+      const result = await getTodayEnergyBurned();
+      if (result) {
+        const total = calculateTotalBurned(result.active, result.resting);
+        const ts = nowTimestamp();
+        try {
+          await logAppleHealthBurned(total, ts, todayString());
+          await recordSyncTimestamp('synced');
+        } catch (e) {
+          console.warn('syncAppleHealthBurned persistence failed:', e);
+        }
+        set({ appleHealthBurnedKcal: total, lastAppleHealthSync: ts, appleHealthStatus: 'synced' });
+        return;
+      }
+    } catch (e) {
+      console.warn('syncAppleHealthBurned fetch failed:', e);
+    }
+
+    // Fallback: HealthKit denied/unavailable/no data/errored — estimate
+    // today's burn from the profile's BMR + passive activity instead, so the
+    // UI still has a number, just tagged as an estimate rather than synced.
+    const estimate = dailyExpenditure(currentProfile()).total;
+    const ts = nowTimestamp();
+    try {
+      await recordSyncTimestamp('estimated');
+    } catch (e) {
+      console.warn('syncAppleHealthBurned persistence failed:', e);
+    }
+    set({ appleHealthBurnedKcal: estimate, lastAppleHealthSync: ts, appleHealthStatus: 'estimated' });
+  },
 
   loadToday: async (modeId) => {
     const today = todayString();
@@ -390,6 +496,16 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         isLoaded: true,
       });
     }
+
+    // Apple Health sync (Phases 1-3): independent of the battery-readings
+    // load above — fire-and-forget so a slow/denied/unavailable HealthKit
+    // call never blocks or breaks loadToday. syncAppleHealthBurned() never
+    // throws itself (every failure path inside it resolves to the BMR
+    // estimate instead), but this catch is a defensive backstop matching the
+    // console.warn pattern used everywhere else in this store.
+    get()
+      .syncAppleHealthBurned()
+      .catch((e) => console.warn('syncAppleHealthBurned failed:', e));
   },
 
   addIntake: async (batteryId, amount, note = '') => {

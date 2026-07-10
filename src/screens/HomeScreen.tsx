@@ -19,6 +19,7 @@ import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
 import { TodayActivities } from '../components/TodayActivities';
 import { TodayIntakes } from '../components/TodayIntakes';
+import { EnergyBalanceCard } from '../components/EnergyBalanceCard';
 import { MicroBatteryStack } from '../components/MicroBatteryStack';
 import { SupplementQuickLog } from '../components/SupplementQuickLog';
 import { DEFAULT_BATTERIES } from '../lib/constants';
@@ -47,6 +48,9 @@ export function HomeScreen() {
     removeIntake,
     removeActivity,
     updateActivity,
+    appleHealthBurnedKcal,
+    lastAppleHealthSync,
+    appleHealthStatus,
   } = useEnergyStore();
   const {
     currentMode,
@@ -205,6 +209,14 @@ export function HomeScreen() {
           onPressCell={handleCellPress}
           waterDisplayUnit={waterDisplayUnit}
           onToggleWaterUnit={handleToggleWaterUnit}
+        />
+
+        {/* Apple Health energy balance — secondary info below the battery display */}
+        <EnergyBalanceCard
+          foodLog={foodLog}
+          burnedKcal={appleHealthBurnedKcal}
+          status={appleHealthStatus}
+          lastSyncAt={lastAppleHealthSync}
         />
 
         {/* Micronutrient batteries derived from today's (or a past 7-day) food log */}
