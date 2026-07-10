@@ -82,6 +82,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '85%',
+    // Without flexShrink the sheet keeps its natural (content) height and
+    // overflows both the 85% cap and the keyboard-shrunk overlay — the inner
+    // ScrollView then never scrolls and the confirm row ends up under the
+    // keyboard. Shrinking here (and in each modal's inner wrapper) is what
+    // actually hands the missing space down to the ScrollView.
+    flexShrink: 1,
   },
   handle: {
     width: 40,

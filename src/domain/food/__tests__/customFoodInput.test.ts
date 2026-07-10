@@ -224,7 +224,7 @@ describe('buildCustomFoodItem — carb inference from sugar+fiber', () => {
     expect(item.per100g.carbG).toBe(10);
   });
 
-  it('does NOT override an explicitly entered non-zero carbG', () => {
+  it('does NOT override an explicitly entered carbG that already covers sugar+fiber', () => {
     const item = buildCustomFoodItem({
       ...EMPTY_CUSTOM_FOOD_INPUT,
       name: 'Thanh protein',
@@ -234,6 +234,21 @@ describe('buildCustomFoodItem — carb inference from sugar+fiber', () => {
       fiberG: '2',
     });
     expect(item.per100g.carbG).toBe(30);
+  });
+
+  // Unit convention: carbG is TOTAL carbohydrate and CONTAINS sugar+fiber —
+  // an entry where carb < sugar+fiber is internally inconsistent and would
+  // under-charge the Carbs battery, so it is lifted to the sum.
+  it('lifts an entered carbG that is below sugarG + fiberG up to their sum', () => {
+    const item = buildCustomFoodItem({
+      ...EMPTY_CUSTOM_FOOD_INPUT,
+      name: 'Chicken nuggets',
+      energyKcal: '296',
+      carbG: '3',
+      sugarG: '1',
+      fiberG: '8',
+    });
+    expect(item.per100g.carbG).toBe(9);
   });
 
   it('leaves carbG at 0 when sugar and fiber are also both blank', () => {

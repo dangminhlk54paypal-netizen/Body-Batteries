@@ -226,15 +226,15 @@ export function buildCustomFoodItem(input: CustomFoodInput): FoodItem {
   // (guards against a division by 0 when converting to per-100g below).
   const useServingConversion = input.portionUnit !== 'gram' && servingWeightG > 0;
 
-  let carbG = parseNonNegative(input.carbG);
   const sugarG = parseNonNegative(input.sugarG);
   const fiberG = parseNonNegative(input.fiberG);
-  // Infer carbs from sugar+fiber when left blank/zero but sugar or fiber was
-  // entered — supplement labels often list only those two. Computed on the
-  // as-entered (per-serving or per-100g) values, before any unit conversion.
-  if (carbG === 0 && (sugarG > 0 || fiberG > 0)) {
-    carbG = sugarG + fiberG;
-  }
+  // Unit convention (same as parseFoodCsv): carbG is TOTAL carbohydrate and
+  // CONTAINS sugar + fiber, so it can never be below their sum. This both
+  // infers carbs when the user only filled sugar/fiber (supplement labels
+  // often list just those) and corrects an inconsistent entry (carb 3 but
+  // sugar+fiber 10) — otherwise the Carbs battery under-charges. Computed on
+  // the as-entered (per-serving or per-100g) values, before unit conversion.
+  const carbG = Math.max(parseNonNegative(input.carbG), sugarG + fiberG);
 
   // kcal is already validated ≥ 0 by isValidCustomFoodInput before this is
   // called, but every other field is clamped at 0 here too — the form has no

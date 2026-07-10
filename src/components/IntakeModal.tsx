@@ -4,22 +4,40 @@ import type { BatteryType } from '../types/battery';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
 import { BottomSheet } from './ui/BottomSheet';
+import { toMl, type WaterDisplayUnit } from '../lib/units';
 
 interface Props {
   battery: BatteryType | null;
   visible: boolean;
   onConfirm: (amount: number, note: string) => void;
   onClose: () => void;
+  // Water-only: lets the amount be typed in ml or L (see src/lib/units.ts).
+  // onConfirm always receives ml regardless of which unit was picked here.
+  waterDisplayUnit?: WaterDisplayUnit;
+  onToggleWaterUnit?: () => void;
 }
 
-export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
+const WATER_UNIT_OPTIONS: { key: WaterDisplayUnit; label: string }[] = [
+  { key: 'ml', label: 'ml' },
+  { key: 'l', label: 'L' },
+];
+
+export function IntakeModal({
+  battery,
+  visible,
+  onConfirm,
+  onClose,
+  waterDisplayUnit = 'ml',
+  onToggleWaterUnit,
+}: Props) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const isWater = battery?.id === 'water';
 
   function handleConfirm() {
     const parsed = parseFloat(amount);
     if (!isNaN(parsed) && parsed > 0) {
-      onConfirm(parsed, note.trim());
+      onConfirm(isWater ? toMl(parsed, waterDisplayUnit) : parsed, note.trim());
       haptics.success();
       setAmount('');
       setNote('');
@@ -33,7 +51,36 @@ export function IntakeModal({ battery, visible, onConfirm, onClose }: Props) {
     <BottomSheet visible={visible} onClose={onClose} sheetOffset={400}>
       <View style={styles.content}>
         <Text style={styles.title}>Nạp {battery.name}</Text>
-        <Text style={styles.subtitle}>Nhập lượng bạn đã nạp ({battery.unit})</Text>
+        <Text style={styles.subtitle}>
+          Nhập lượng bạn đã nạp ({isWater ? waterDisplayUnit : battery.unit})
+        </Text>
+
+        {isWater && onToggleWaterUnit && (
+          <View style={styles.unitRow}>
+            {WATER_UNIT_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.key}
+                style={({ pressed }) => [
+                  styles.unitChip,
+                  waterDisplayUnit === opt.key && styles.unitChipActive,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => {
+                  if (waterDisplayUnit !== opt.key) onToggleWaterUnit();
+                }}
+              >
+                <Text
+                  style={[
+                    styles.unitChipText,
+                    waterDisplayUnit === opt.key && styles.unitChipTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
 
         <TextInput
           style={styles.input}
@@ -102,6 +149,31 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     fontSize: 14,
+  },
+  unitRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  unitChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  unitChipActive: {
+    backgroundColor: colors.bgHighlight,
+    borderColor: colors.accent,
+  },
+  unitChipText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  unitChipTextActive: {
+    color: colors.accent,
   },
   buttons: {
     flexDirection: 'row',

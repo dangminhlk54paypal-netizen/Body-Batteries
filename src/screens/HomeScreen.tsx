@@ -29,6 +29,7 @@ import type { BatteryState, BatteryId, BatteryType } from '../types/battery';
 import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
+import { nextWaterDisplayUnit } from '../lib/units';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
 
@@ -47,7 +48,14 @@ export function HomeScreen() {
     removeActivity,
     updateActivity,
   } = useEnergyStore();
-  const { currentMode, setMode, notificationsEnabled, userProfile } = useSettingsStore();
+  const {
+    currentMode,
+    setMode,
+    notificationsEnabled,
+    userProfile,
+    waterDisplayUnit,
+    setWaterDisplayUnit,
+  } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -67,6 +75,10 @@ export function HomeScreen() {
     setRefreshing(true);
     await loadToday(currentMode);
     setRefreshing(false);
+  }
+
+  function handleToggleWaterUnit() {
+    setWaterDisplayUnit(nextWaterDisplayUnit(waterDisplayUnit));
   }
 
   function handleCellPress(id: string) {
@@ -188,7 +200,12 @@ export function HomeScreen() {
 
         {/* Sub-batteries */}
         <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp ⚡</Text>
-        <BatteryStack batteries={batteryStates} onPressCell={handleCellPress} />
+        <BatteryStack
+          batteries={batteryStates}
+          onPressCell={handleCellPress}
+          waterDisplayUnit={waterDisplayUnit}
+          onToggleWaterUnit={handleToggleWaterUnit}
+        />
 
         {/* Micronutrient batteries derived from today's (or a past 7-day) food log */}
         <MicroBatteryStack
@@ -226,6 +243,8 @@ export function HomeScreen() {
         visible={modalVisible}
         onConfirm={handleIntakeConfirm}
         onClose={() => setModalVisible(false)}
+        waterDisplayUnit={waterDisplayUnit}
+        onToggleWaterUnit={handleToggleWaterUnit}
       />
     </SafeAreaView>
   );

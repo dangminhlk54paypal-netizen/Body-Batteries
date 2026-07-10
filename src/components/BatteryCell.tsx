@@ -13,6 +13,13 @@ interface Props {
   percentage: number; // 0–100
   color: string;
   onPress?: () => void;
+  // Water-only: overrides the plain "{level}{unit}" label with an
+  // already-formatted string (e.g. "1.5L" instead of "1500ml") — formatting
+  // stays in the caller (BatteryStack), which owns the ml<->L conversion.
+  levelLabel?: string;
+  // Water-only: when provided, the level label becomes tappable and cycles
+  // its display unit (ml <-> L) without touching the underlying ml value.
+  onToggleUnit?: () => void;
 }
 
 const CELL_WIDTH = 60;
@@ -25,7 +32,17 @@ const BORDER_R = 6;
 // in the app) and no per-frame JS cost.
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
-export function BatteryCell({ id, name, unit, level, percentage, color, onPress }: Props) {
+export function BatteryCell({
+  id,
+  name,
+  unit,
+  level,
+  percentage,
+  color,
+  onPress,
+  levelLabel,
+  onToggleUnit,
+}: Props) {
   const progress = useSharedValue(percentage);
 
   useEffect(() => {
@@ -95,9 +112,15 @@ export function BatteryCell({ id, name, unit, level, percentage, color, onPress 
 
       <Text style={styles.percentage}>{percentage}%</Text>
       <Text style={styles.name}>{name}</Text>
-      <Text style={styles.level}>
-        {Math.round(level)}{unit}
-      </Text>
+      {onToggleUnit ? (
+        <Pressable onPress={onToggleUnit} hitSlop={6}>
+          <Text style={[styles.level, styles.levelToggle]}>
+            {levelLabel ?? `${Math.round(level)}${unit}`}
+          </Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.level}>{levelLabel ?? `${Math.round(level)}${unit}`}</Text>
+      )}
     </Pressable>
   );
 }
@@ -124,5 +147,9 @@ const styles = StyleSheet.create({
   level: {
     fontSize: 10,
     color: colors.textMuted,
+  },
+  levelToggle: {
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'dotted',
   },
 });

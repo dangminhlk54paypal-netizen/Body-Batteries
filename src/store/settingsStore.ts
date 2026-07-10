@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ModeId } from '../types/modes';
 import type { UserProfile } from '../types/energy';
 import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../lib/constants';
+import type { WaterDisplayUnit } from '../lib/units';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -32,6 +33,10 @@ interface SettingsState {
   // P7: toggles the "charge particle" burst on MasterBattery (the scale/glow
   // pulse from P4 always stays on — this only gates the extra SVG particles).
   particleEffectsEnabled: boolean;
+  // Display-only preference for the water sub-battery cell (ml or L) — the
+  // stored/charged amount is always ml, this never affects that (see
+  // src/lib/units.ts). Persisted so the choice survives an app restart.
+  waterDisplayUnit: WaterDisplayUnit;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -40,6 +45,7 @@ interface SettingsState {
   setHasOnboarded: (value: boolean) => void;
   setMealWindow: (meal: 'breakfast' | 'lunch' | 'dinner', window: MealWindow) => void;
   setParticleEffectsEnabled: (enabled: boolean) => void;
+  setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -54,6 +60,7 @@ export const useSettingsStore = create<SettingsState>()(
       hasOnboarded: false,
       mealWindows: DEFAULT_MEAL_WINDOWS,
       particleEffectsEnabled: true,
+      waterDisplayUnit: 'ml',
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -64,6 +71,7 @@ export const useSettingsStore = create<SettingsState>()(
       setMealWindow: (meal, window) =>
         set((s) => ({ mealWindows: { ...s.mealWindows, [meal]: window } })),
       setParticleEffectsEnabled: (enabled) => set({ particleEffectsEnabled: enabled }),
+      setWaterDisplayUnit: (unit) => set({ waterDisplayUnit: unit }),
     }),
     {
       name: 'settings-storage',
