@@ -32,14 +32,30 @@
   pulseId, chạy pulse scale 1→1.06→1 + glow amber fade (~500ms), animation fill % cũ giữ
   nguyên. Commit `69ab546`. **KHÔNG wire IntakeModal** (charge sub-battery khác, không phải
   master energy battery — pulse ở đó sẽ gây hiểu nhầm).
-- **Còn lại**: chỉ còn **P5** (gợi ý món ăn — giảm ma sát nhập liệu). Chạy solo, đụng
-  `src/domain/food/foodSuggestions.ts` (mới, cần unit test) + `FoodLogModal.tsx` (thêm
-  hàng chip gợi ý khi query rỗng). Sau P5: `npm run verify`, review diff kỹ (đối chiếu
-  báo cáo agent với git diff thật — xem bài học ở trên), commit, rồi cập nhật lại file
-  plan này lần cuối với trạng thái "HOÀN TẤT" + tóm tắt cho user (KHÔNG tự ý push/tạo PR
-  trừ khi user yêu cầu).
-- P7 (particle bay vào pin) vẫn là tuỳ chọn — CHỈ làm nếu user xem demo P4 trên điện thoại
-  và chủ động muốn thêm; không tự ý làm nếu không được yêu cầu.
+- [x] **P5** — `src/domain/food/foodSuggestions.ts` (`suggestFoods`: lọc log 7 ngày gần
+  nhất qua `getFoodLogInRange` theo `mealType` hiện có sẵn trên `FoodLogEntry`, fallback
+  về log gần nhất nếu chưa có món nào cùng buổi, dedupe theo `foodId` giữ khẩu phần dùng
+  gần nhất, cap 6 món) + 7 unit test. `FoodLogModal` hiển thị hàng chip "Gợi ý cho bữa
+  này" khi ô tìm kiếm trống — bấm 1 lần log ngay qua `getAnyFoodById` + `logFood`, tái
+  dùng `chargePulse`/`haptics.success()` sẵn có (P2+P4). Commit `55a6c6c`.
+  **Bài học nhỏ**: 2 rule ESLint (`react-hooks/purity` + `react-hooks/set-state-in-effect`)
+  có thể xung đột trong cùng 1 effect (vừa cần đọc `new Date()` vừa cần `setState` sau
+  fetch async) — cách đúng là gộp CẢ HAI vào bên trong callback `.then()` của fetch, không
+  đặt `setState` đồng bộ trực tiếp trong thân effect, và không "né" bằng cách chuyển việc
+  đọc `new Date()` vào factory của `useMemo` (factory đó vẫn chạy trong render). Đã ghi
+  vào memory `eslint-react-hooks-rules.md`.
+
+## HOÀN TẤT — P0 → P6 xong (P7 vẫn tuỳ chọn)
+
+Toàn bộ 7 phase chính (P0 palette foundation, P1 warm palette, P2 haptics, P3 BottomSheet,
+P4 charge pulse, P5 food suggestions, P6 empathetic copy) đã hoàn tất, verify xanh
+(29 suites / 306 tests), commit đầy đủ trên nhánh `ui-upgrade`, CHƯA push lên remote.
+P7 (particle bay vào pin) vẫn là tuỳ chọn — CHỈ làm nếu user xem demo P4 trên điện thoại
+và chủ động muốn thêm; không tự ý làm nếu không được yêu cầu.
+
+**Bước tiếp theo (cần user)**: test trên iPhone qua Expo Go (`npx expo start -c` — cần
+clear cache vì P3 vừa thêm `react-native-gesture-handler`, native module mới), rồi quyết
+định merge `ui-upgrade` vào `main` hay tiếp tục tinh chỉnh / làm P7.
 
 
 > Bản thiết kế điều phối cho các model nhỏ (Sonnet 5 / Haiku 4.5) thực thi từng bước.
