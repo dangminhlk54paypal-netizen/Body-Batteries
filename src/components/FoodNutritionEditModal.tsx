@@ -194,6 +194,10 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 10,
     maxHeight: '88%',
+    // Shrink below maxHeight when the keyboard eats the overlay's space, so
+    // the scroll area compresses and the Huỷ/Lưu row stays visible (same
+    // reasoning as BottomSheet styles.sheet).
+    flexShrink: 1,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   closeBtn: {

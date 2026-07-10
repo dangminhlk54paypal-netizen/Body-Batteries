@@ -79,6 +79,7 @@
 | **S-P** | 🆕 Mục tiêu cân nặng → mục tiêu kcal/ngày có thâm hụt an toàn | 🆕 Sẵn sàng làm — xem spec + mục S-O/S-P/S-Q bên dưới | logic-backend | ✅ với S-O (file rời) | không |
 | **S-Q** | 🆕 Lắp ráp 2 đồng hồ (Pin no/đói + Sổ calo) + reset 6h + UI + nhắc nhẹ — ⚠️ đụng lõi | 🆕 Chờ S-O + S-P xong — xem spec + mục S-O/S-P/S-Q bên dưới | logic-backend + mobile-frontend | ⚠️ ĐƠN, sau S-O+S-P | S-O, S-P |
 | **S-R** | 🆕 Pin vi chất THẬT (Đạm/Xơ/Sắt/Canxi… + Muối/Đường) dẫn xuất từ nhật ký món, tận dụng dữ liệu USDA/CSV có sẵn | 🆕 ĐỀ XUẤT (chưa chốt) — xem spec `S-R-micronutrient-batteries-spec.md` + mục S-R bên dưới | logic-backend + mobile-frontend | ⚠️ sau S-Q (chỉ vì đụng Home) | S-Q (chỉ tránh đụng Home) |
+| **S-S** | "Cập nhật lịch sử" — ghi lùi món ăn cho ngày đã qua (backfill), 6 gói con S-S1…S-S6 | ✅ XONG code (2026-07-10, chạy cả 4 đợt trong 1 phiên điều phối — xem `.ai/parallel-reports/S-S1..S-S6.md`; QA tìm 2 bug double-tap → ĐÃ VÁ kèm test; tsc + jest 351/351 + eslint + expo export sạch). ⚠️ CHƯA test máy (checklist ở S-S6.md); ⚠️ chưa commit — cây làm việc còn lẫn thay đổi phiên khác (water-unit ml/L) | logic-backend + mobile-frontend + qa-reviewer | — | test máy theo S-S6.md |
 
 > **Cập nhật 2026-06-19:** U4, U5, U6 — **đã hoàn thành cả 3** (xem parallel-reports). S-A (test máy)
 > lúc nào cũng chạy được. S-J và S-L **đã xong**. **S-M là việc lớn ưu tiên tiếp theo** (lật mô hình pin Năng
@@ -1157,3 +1158,231 @@ tsc + jest + expo export trước khi báo xong. Ghi báo cáo vào .ai/parallel
 - KHÔNG đụng lõi năng lượng/satiety → an toàn với mọi gói khác miễn không mở cùng lúc gói sửa Home.
 - Đây là bước 1 của hướng "chiều sâu dinh dưỡng"; "pin đa dạng" + "chất lượng bữa ăn 2 chiều"
   (Nutri-Score/NOVA) là các gói nối tiếp SAU S-R (chưa đóng gói — xem bản phân tích 2026-07-04).
+
+---
+
+## 🕓 S-S · "Cập nhật lịch sử" — ghi lùi món ăn cho ngày đã qua (backfill)
+
+> ✅ **Hướng đã chốt với người dùng (2026-07-10).** Spec đầy đủ (ngữ nghĩa dữ liệu, cạnh khó
+> 0h–6h, hợp đồng API, bất biến test) ở **`.ai/parallel-reports/S-S-backfill-spec.md`** —
+> **ĐỌC FILE ĐÓ TRƯỚC.** Mục này chỉ đóng gói/điều phối + prompt.
+>
+> **Bối cảnh 1 dòng:** những ngày quên mở app vẫn ghi lại được món đã ăn: từ tab Lịch sử chạm
+> vào ngày → thêm/xoá món; hoặc chọn ngày ngay trong FoodLogModal. Dữ liệu nạp vào readings
+> CỦA NGÀY ĐÓ (vi chất theo ngày lịch, kcal theo energy-day 6h) — **tuyệt đối không đụng con
+> số hôm nay**, không đụng satietyReserve.
+>
+> **Thứ tự bắt buộc:** ⚠️ **Bước 0: commit sạch branch `ui-upgrade`** (đang có file sửa dở,
+> gồm cả `FoodLogModal.tsx` — phiên song song sẽ đè mất nếu không commit). Sau đó:
+> Đợt 1 chạy **S-S1 ∥ S-S2 ∥ S-S3** (3 phiên song song, toàn file MỚI). Commit.
+> Đợt 2 chạy **S-S4 một mình** (đụng `energyStore.ts`). Commit.
+> Đợt 3 chạy **S-S5 một mình** (đụng `FoodLogModal.tsx` + `HistoryScreen.tsx`). Commit.
+> Đợt 4 chạy **S-S6** (qa-reviewer, read-only). Sau mỗi đợt: `git diff --stat` soát xem có
+> file NGOÀI phạm vi gói bị đổi không (bài học parallel-conflicts).
+
+### S-S1 · Engine thuần backfill — agent `logic-backend` — model **Sonnet**
+
+**Mục tiêu:** hàm thuần nạp/đảo dinh dưỡng 1 món vào bộ readings của MỘT ngày bất kỳ +
+dựng readings cho ngày quên mở app + validate ngày. Không side-effect, không DB, không store.
+
+**File ĐƯỢC tạo (KHÔNG sửa file nào có sẵn):**
+- TẠO `src/domain/food/backfillEngine.ts` — đúng 4 chữ ký trong spec mục 3d:
+  `validateBackfillDate`, `applyFoodToDayReadings`, `reverseFoodOnDayReadings`,
+  `buildReadingsForMissedDay`.
+- TẠO `src/domain/food/__tests__/backfillEngine.test.ts` — test bất biến spec mục 4
+  (round-trip, satiety y nguyên, capacity ngày trống, validate future/too-old/invalid).
+
+**KHÔNG đụng:** `energyStore.ts`, mọi repository, mọi screen/component, `dateUtils.ts`,
+`constants.ts` (chỉ ĐỌC `DATA_RETENTION_DAYS`), `batteryEngine.ts`/`energyBalanceEngine.ts`/
+`weightGoal.ts` (chỉ ĐỌC, tái dùng `createDailyReading`/`createEnergyReading`/`chargeEnergy`/
+`applyIntake`/`dailyCalorieTarget`).
+
+**Prompt copy-paste — S-S1 (Sonnet):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-S-backfill-spec.md (SPEC ĐẦY
+ĐỦ — ĐỌC TRƯỚC, nhất là mục 3d hợp đồng API và mục 4 bất biến) và .ai/NEXT_SESSIONS.md (mục
+S-S1). Nhập vai agent logic-backend. Nhiệm vụ: viết engine THUẦN cho backfill món ăn ngày đã
+qua. CHỈ TẠO 2 file mới: src/domain/food/backfillEngine.ts (đúng 4 chữ ký hàm trong spec 3d,
+không tự đổi tên/đổi tham số — gói S-S4 sẽ code theo đúng hợp đồng này) và
+src/domain/food/__tests__/backfillEngine.test.ts. Tái dùng hàm thuần có sẵn: createDailyReading,
+createEnergyReading (batteryEngine/energyBalanceEngine), chargeEnergy, applyIntake,
+dailyCalorieTarget — chỉ ĐỌC các file đó, KHÔNG sửa. KHÔNG đụng energyStore.ts, repositories,
+screens, components, dateUtils.ts. Bất biến quan trọng nhất: applyFoodToDayReadings KHÔNG BAO
+GIỜ đụng satietyReserveKcal/lastSatietySyncAt, và reverse là round-trip chính xác của apply
+(viết test cả hai). Test validate: future / too-old (>DATA_RETENTION_DAYS) / invalid. Chạy
+npx tsc --noEmit + npx jest + npx expo export --platform ios --output-dir /tmp/check_S-S1
+trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/S-S1.md. KHÔNG commit — người dùng
+tự commit sau khi soát đợt.
+```
+
+### S-S2 · PastDateField (chọn ngày quá khứ) — agent `mobile-frontend` — model **Haiku**
+
+**Mục tiêu:** component rời, props-driven, chọn ngày đã qua: chip "Hôm nay / Hôm qua /
+2 ngày trước" + ô nhập dd/mm; báo lỗi ngày tương lai / quá xa. KHÔNG import store/DB.
+
+**File ĐƯỢC tạo (KHÔNG sửa file nào có sẵn):**
+- TẠO `src/components/food/PastDateField.tsx` — props đúng spec mục 3d
+  (`value: string YYYY-MM-DD`, `onChange`, `maxDaysBack: number`).
+
+**KHÔNG đụng:** `FoodLogModal.tsx` (S-S5 sẽ nối), `dateUtils.ts` (chỉ ĐỌC — dùng
+`todayString`/`daysAgo`/`formatDisplayDate` có sẵn), store, repositories, screens.
+
+**Prompt copy-paste — S-S2 (Haiku):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-S-backfill-spec.md (mục 3a +
+3d) và .ai/NEXT_SESSIONS.md (mục S-S2). Nhập vai agent mobile-frontend. Nhiệm vụ NHỎ VÀ GỌN:
+tạo DUY NHẤT 1 file mới src/components/food/PastDateField.tsx — component chọn ngày quá khứ,
+props-driven đúng chữ ký trong spec 3d: { value: string (YYYY-MM-DD); onChange(date);
+maxDaysBack: number }. UI: hàng chip nhanh "Hôm nay | Hôm qua | 2 ngày trước" + ô nhập dd/mm
+(parse về YYYY-MM-DD của năm hiện tại, lùi 1 năm nếu ra tương lai); ngày ngoài khoảng
+[hôm nay - maxDaysBack, hôm nay] thì hiện dòng lỗi đỏ nhẹ và KHÔNG gọi onChange. Style theo
+src/lib/theme.ts (colors), nhìn khớp các field trong FoodLogModal.tsx (chỉ ĐỌC file đó tham
+khảo, KHÔNG sửa). KHÔNG import store/DB/repository. KHÔNG sửa bất kỳ file có sẵn nào, kể cả
+dateUtils.ts (dùng todayString/daysAgo/formatDisplayDate có sẵn). Lưu ý hook thuần: không gọi
+Date.now()/new Date() trong render body — bọc qua helper module-level như FoodLogModal đang
+làm (ESLint react-hooks/purity đang bật chế độ chặn). Chạy npx tsc --noEmit + npx expo export
+--platform ios --output-dir /tmp/check_S-S2 trước khi báo xong. Ghi báo cáo vào
+.ai/parallel-reports/S-S2.md. KHÔNG commit.
+```
+
+### S-S3 · DayDetailSheet (chi tiết 1 ngày) — agent `mobile-frontend` — model **Haiku**
+
+**Mục tiêu:** bottom sheet rời hiện món đã ghi của 1 ngày (nhóm theo bữa, tổng kcal/đạm),
+nút xoá từng món + nút "＋ Thêm món cho ngày này". Hoàn toàn props-driven, KHÔNG fetch.
+
+**File ĐƯỢC tạo (KHÔNG sửa file nào có sẵn):**
+- TẠO `src/components/DayDetailSheet.tsx` — props đúng spec mục 3d (`visible`, `date`,
+  `entries`, `loading?`, `onClose`, `onAddFood`, `onDeleteEntry`). Dựng trên
+  `src/components/ui/BottomSheet.tsx` có sẵn (chỉ ĐỌC/IMPORT, không sửa).
+
+**KHÔNG đụng:** `HistoryScreen.tsx` (S-S5 sẽ nối), `BottomSheet.tsx`, store, repositories,
+`FoodLogModal.tsx`. Nhãn bữa dùng `MEAL_LABELS` từ `lib/constants.ts` (chỉ ĐỌC).
+
+**Prompt copy-paste — S-S3 (Haiku):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-S-backfill-spec.md (mục 3a +
+3d) và .ai/NEXT_SESSIONS.md (mục S-S3). Nhập vai agent mobile-frontend. Nhiệm vụ NHỎ VÀ GỌN:
+tạo DUY NHẤT 1 file mới src/components/DayDetailSheet.tsx — bottom sheet chi tiết 1 ngày,
+props-driven đúng chữ ký spec 3d: { visible; date (YYYY-MM-DD); entries: FoodLogEntry[];
+loading?; onClose(); onAddFood(); onDeleteEntry(entry) }. Dựng trên component
+src/components/ui/BottomSheet.tsx CÓ SẴN (import, không sửa). Nội dung: tiêu đề = ngày
+(formatDisplayDate), tổng kcal + đạm của entries, danh sách nhóm theo mealType (nhãn từ
+MEAL_LABELS trong lib/constants.ts), mỗi dòng: tên món, khẩu phần (grams hoặc count+portionUnit),
+kcal, nút xoá (confirm bằng Alert trước khi gọi onDeleteEntry). Cuối sheet: nút "＋ Thêm món
+cho ngày này" gọi onAddFood. entries rỗng → dòng trống trung tính "Chưa ghi món nào cho ngày
+này". KHÔNG import store/DB/repository — mọi dữ liệu qua props. KHÔNG sửa file có sẵn nào.
+Style theo lib/theme.ts. Chạy npx tsc --noEmit + npx expo export --platform ios --output-dir
+/tmp/check_S-S3 trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/S-S3.md. KHÔNG commit.
+```
+
+### S-S4 · Store: logFoodForPastDate / removeFoodForPastDate — agent `logic-backend` — model **Sonnet** — ⚠️ CHẠY MỘT MÌNH (đợt 2)
+
+**Mục tiêu:** 2 action mới trong `energyStore.ts` dùng backfillEngine (S-S1): ghi/xoá món cho
+ngày quá khứ, đọc-sửa-ghi readings LỊCH SỬ qua repository, KHÔNG đụng con số hôm nay
+(trừ nhánh chồng ngày 0h–6h — spec mục 3c).
+
+**File ĐƯỢC sửa/tạo:**
+- SỬA `src/store/energyStore.ts` — thêm đúng 2 action theo chữ ký spec 3d; mirror pattern
+  `removeFood` FIX #1 sẵn có (so ngày đích với ngày đang load → store hay row DB rời);
+  D = hôm nay → uỷ quyền `logFood`; `upsertDailyLog` cho ngày backfill.
+- TẠO/SỬA `src/store/__tests__/energyStore.backfill.test.ts` — test bất biến spec mục 4
+  (số hôm nay giữ nguyên từng số; chồng ngày 2h sáng; ngày trống tự dựng readings).
+
+**KHÔNG đụng:** mọi screen/component, `backfillEngine.ts` (của S-S1 — nếu thấy thiếu hàm thì
+BÁO trong report, đừng tự sửa), repositories (API sẵn có đủ: `getReadingsForDate`,
+`upsertReadings`, `addFoodLogEntry`, `deleteFoodLogEntry`, `upsertDailyLog`, `getLogsInRange`),
+`satietyEngine.ts`, `App.tsx`.
+
+**Prompt copy-paste — S-S4 (Sonnet):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-S-backfill-spec.md (SPEC ĐẦY
+ĐỦ — ĐỌC KỸ mục 3b/3c/3d/4) và .ai/NEXT_SESSIONS.md (mục S-S4). Điều kiện tiên quyết: S-S1 đã
+merge (src/domain/food/backfillEngine.ts phải tồn tại — kiểm tra trước, thiếu thì DỪNG và báo).
+Nhập vai agent logic-backend. Nhiệm vụ: thêm 2 action vào src/store/energyStore.ts đúng chữ ký
+spec 3d: logFoodForPastDate(item, grams, timestamp, portion?) và removeFoodForPastDate(entry).
+Ngữ nghĩa theo spec 3b: vi chất nạp vào readings của NGÀY LỊCH của entry, kcal vào readings
+của ENERGY-DAY (energyDayString(new Date(timestamp)), reset 6h) — ngày nào chưa có readings
+(quên mở app) thì dựng bằng buildReadingsForMissedDay (mode lấy từ daily_logs của ngày đó qua
+getLogsInRange, fallback mode hiện tại trong settingsStore) rồi upsertReadings + upsertDailyLog.
+Ghi food_log entry với timestamp quá khứ + energyDayApplied. Nhánh đặc biệt PHẢI đúng (spec 3c):
+đích trùng ngày đang load trong store (vd 2h sáng backfill 23h hôm qua → energy-day trùng) thì
+áp vào store rồi persist, mirror đúng pattern removeFood FIX #1 sẵn có. timestamp thuộc hôm nay
+→ uỷ quyền get().logFood. TUYỆT ĐỐI không đụng satietyReserveKcal/lastSatietySyncAt trên row
+lịch sử, không đổi masterPercentage/foodLog khi ghi ngày quá khứ. KHÔNG sửa backfillEngine.ts
+(thiếu gì báo trong report), KHÔNG sửa screen/component/repository nào. Viết test
+src/store/__tests__/energyStore.backfill.test.ts theo spec mục 4: (1) mọi số của hôm nay giữ
+nguyên từng số sau backfill, (2) case 2h sáng, (3) ngày trống tự dựng readings đúng capacity,
+(4) remove round-trip. Chạy npx tsc --noEmit + npx jest + npx expo export --platform ios
+--output-dir /tmp/check_S-S4 trước khi báo xong. Ghi báo cáo vào .ai/parallel-reports/S-S4.md.
+KHÔNG commit.
+```
+
+### S-S5 · Nối UI: Lịch sử + FoodLogModal — agent `mobile-frontend` — model **Sonnet** — ⚠️ CHẠY MỘT MÌNH (đợt 3)
+
+**Mục tiêu:** nối 2 lối vào: (1) HistoryScreen chạm thẻ ngày → DayDetailSheet (fetch
+`getFoodLogForDate`, xoá qua `removeFoodForPastDate`, "＋ Thêm món" mở FoodLogModal ghim ngày);
+(2) FoodLogModal thêm hàng PastDateField — chọn ngày ≠ hôm nay thì ghi qua `logFoodForPastDate`
+và hiện rõ "🕓 Ghi cho ngày …".
+
+**File ĐƯỢC sửa:**
+- SỬA `src/screens/HistoryScreen.tsx` — thẻ ngày bấm được, state sheet + fetch, refresh
+  `loadHistory` sau thêm/xoá.
+- SỬA `src/components/FoodLogModal.tsx` — thêm prop tuỳ chọn `initialDate?: string`, hàng
+  PastDateField, timestamp build từ ngày chọn + giờ:phút (mặc định 12:00 nếu trống), rẽ nhánh
+  logFood/logFoodForPastDate, reset ngày khi đóng.
+
+**KHÔNG đụng:** `energyStore.ts` (của S-S4 — chỉ GỌI action), `PastDateField.tsx`/
+`DayDetailSheet.tsx` (của S-S2/S-S3 — nếu props không khớp nhu cầu thì BÁO, đừng tự đổi hợp
+đồng một mình; được phép sửa nhỏ NẾU ghi rõ trong report), `TrendChart.tsx`, `App.tsx`,
+navigation, `HomeScreen.tsx`.
+
+**Prompt copy-paste — S-S5 (Sonnet):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-S-backfill-spec.md (mục 3a +
+3d + 4) và .ai/NEXT_SESSIONS.md (mục S-S5). Điều kiện tiên quyết: S-S1→S-S4 đã merge (kiểm tra
+backfillEngine.ts, PastDateField.tsx, DayDetailSheet.tsx, và energyStore có logFoodForPastDate/
+removeFoodForPastDate — thiếu cái nào DỪNG và báo). Nhập vai agent mobile-frontend. Nhiệm vụ:
+nối UI backfill. (1) SỬA src/screens/HistoryScreen.tsx: thẻ ngày thành Pressable → mở
+DayDetailSheet với entries từ getFoodLogForDate(date); onDeleteEntry → removeFoodForPastDate
+rồi refetch + loadHistory; onAddFood → mở FoodLogModal với initialDate=ngày đó; đóng modal →
+refetch để thấy món mới. (2) SỬA src/components/FoodLogModal.tsx: thêm prop tuỳ chọn
+initialDate?: string (YYYY-MM-DD, mặc định hôm nay), render PastDateField (maxDaysBack =
+DATA_RETENTION_DAYS) cạnh ô giờ:phút; ngày ≠ hôm nay → hiện dòng "🕓 Ghi cho ngày <thứ, dd/mm>"
+(formatDisplayDate) ngay trên nút Ghi, timestamp = ngày chọn + giờ:phút nhập (trống → 12:00),
+ghi qua logFoodForPastDate; ngày = hôm nay giữ nguyên luồng logFood cũ 100% (đừng làm hỏng
+hành vi hiện tại — đây là tiêu chí số 1). reset() phải trả ngày về hôm nay. KHÔNG sửa
+energyStore.ts; props của PastDateField/DayDetailSheet không khớp thì báo trong report thay vì
+tự đổi hợp đồng. Giữ logic ngoài view: phần build timestamp từ (date, hour, minute) viết thành
+helper thuần module-level có thể test. Chạy npx tsc --noEmit + npx jest + npx expo export
+--platform ios --output-dir /tmp/check_S-S5 trước khi báo xong. Ghi báo cáo vào
+.ai/parallel-reports/S-S5.md. KHÔNG commit.
+```
+
+### S-S6 · QA review + checklist test máy — agent `qa-reviewer` — model **Sonnet** (Haiku nếu chỉ cần checklist) — đợt 4, read-only
+
+**File ĐƯỢC tạo:** chỉ `.ai/parallel-reports/S-S6.md`. **KHÔNG sửa code** — phát hiện bug thì
+liệt kê trong report, đừng tự vá.
+
+**Prompt copy-paste — S-S6 (Sonnet):**
+```
+Đọc CLAUDE.md, AGENTS.md, .ai/CONTEXT.md, .ai/parallel-reports/S-S-backfill-spec.md (mục 4 là
+tiêu chí nghiệm thu) và .ai/NEXT_SESSIONS.md (mục S-S). Nhập vai agent qa-reviewer — READ-ONLY,
+tuyệt đối không sửa code. Nhiệm vụ: rà soát cụm S-S vừa merge (backfillEngine.ts,
+energyStore.ts phần logFoodForPastDate/removeFoodForPastDate, PastDateField.tsx,
+DayDetailSheet.tsx, FoodLogModal.tsx, HistoryScreen.tsx). Soát kỹ: (1) backfill có đường nào
+rò rỉ làm đổi số hôm nay không (kể cả satietyReserveKcal, masterPercentage, foodLog RAM);
+(2) case 0h–6h spec 3c; (3) double-tap nút Ghi có tạo 2 entry không; (4) xoá món backfill có
+đảo đúng cả vi chất lẫn kcal không; (5) Excel export tuần có món backfill đúng ngày không;
+(6) luồng ghi món HÔM NAY còn nguyên hành vi cũ không. Chạy npx tsc --noEmit + npx jest + npx
+eslint . để xác nhận baseline sạch. Kết thúc: ghi .ai/parallel-reports/S-S6.md gồm (a) danh
+sách bug/nghi vấn kèm file:dòng, (b) CHECKLIST TEST MÁY tiếng Việt từng bước trên iPhone/Expo
+Go theo spec mục 4 (mục "Kiểm thử tay") để người dùng tự bấm.
+```
+
+**Đụng file chéo (BẮT BUỘC đọc):**
+- Đợt 1 (S-S1∥S-S2∥S-S3): toàn file MỚI, không gói nào sửa file có sẵn → an toàn tuyệt đối,
+  nhưng vẫn `git diff --stat` sau đợt để chắc không phiên nào "tiện tay" sửa file chung.
+- `energyStore.ts`: CHỈ S-S4. `FoodLogModal.tsx` + `HistoryScreen.tsx`: CHỈ S-S5.
+- Không chạy S-S song song với S-Q/S-R (S-Q đụng energyStore, S-R đụng Home — tránh nhầm đợt).
+- Hợp đồng props/chữ ký hàm ở spec mục 3d là NGUỒN SỰ THẬT chung — phiên nào thấy hợp đồng
+  không đủ thì ghi vào report của mình, KHÔNG tự ý đổi để khỏi phá phiên khác.

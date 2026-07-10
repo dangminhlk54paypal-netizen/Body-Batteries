@@ -107,7 +107,32 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-09 (Session 17).** 3 fix từ feedback thực tế của người dùng, **ĐÃ COMMIT** (commit `<TBD>`,
+**Cập nhật lần cuối: 2026-07-10 (Session 18).** Tiếp tục S-A (test máy thật, bước 3) — người dùng
+báo 2 đợt feedback thật khi ăn "chicken nuggets" tự thêm 350g: pin Carbs/pin vi chất không nạp
+đúng + form "Thêm món mới" bị bàn phím che nút Lưu; sau khi vá, người dùng test lại và lộ thêm modal
+"Sửa thành phần" bấm không hiện gì. **CHƯA COMMIT** (đang làm trực tiếp trên nhánh `ui-upgrade`).
+4 bug đã sửa: **(3a)** `scripts/generate-usda-db.js` map sai nutrient number cho đường/xơ (bản
+Foundation Foods 2026 đổi số phân tích mới: đường 269→269.3, xơ thêm 293) + carb "by difference" âm
+chưa clamp → sửa NUTRIENT_MAP ưu tiên số mới + clamp 0, chạy lại `npm run gen:usda`. **(3b)**
+`BottomSheet`/`FoodLogModal`/`FoodNutritionEditModal` thiếu `flexShrink: 1` → ScrollView không co
+theo bàn phím, nút Lưu bị đẩy khuất → thêm `flexShrink: 1` cả 3 chỗ. **(3c)** chốt quy ước
+**Carbs = tổng carbohydrate LUÔN chứa đường+xơ** (bất biến `carb_g >= sugar_g + fiber_g`) — enforce ở
+`foodCsv.ts`, `customFoodInput.ts`, `generate-usda-db.js` + sửa tay 4 dòng vi phạm trong
+`food_items.csv`. **(3d) — phát hiện ở lượt test lại:** 2 `<Modal>` React Native chồng nhau
+(`BottomSheet` + `FoodNutritionEditModal` cùng `visible=true`) khiến modal "Sửa thành phần" không
+render (giới hạn đã biết của RN trên iOS) — fix: ẩn `BottomSheet` khi modal sửa đang mở. Bug 3b+3d
+nối chuỗi: món tự thêm bị lưu carb sai lúc tạo (3b) rồi không tự sửa lại được vì "Sửa thành phần"
+bị chặn (3d). **Tính năng mới (yêu cầu người dùng cuối session):** đổi đơn vị hiển thị/nhập ml↔L cho
+pin Nước — dữ liệu vẫn 1 biến ml duy nhất, chỉ thêm `src/lib/units.ts` (pure, có test) +
+`waterDisplayUnit` persist trong `settingsStore` + nhãn pin Nước bấm được để đổi đơn vị + 2 chip
+ml/L khi nạp nước trong `IntakeModal`. Verify: `tsc` sạch · `npm run lint` sạch ·
+**320 test PASS / 30 suite** (từ 299). **Bug 3d là hành vi runtime RN Modal — KHÔNG có test tự động
+phủ được, bắt buộc người dùng test tay trên điện thoại để xác nhận.** Ghi chú thêm: một phiên song
+song khác đã thêm `.ai/parallel-reports/S-S-backfill-spec.md` (spec "ghi lùi món ăn ngày đã qua",
+chưa code) — không phải việc của session này. Chi tiết đầy đủ: `.ai/SESSION_LOG.md` Session 18,
+`.ai/parallel-reports/S-A.md`.
+
+**Trước đó — Cập nhật 2026-07-09 (Session 17).** 3 fix từ feedback thực tế của người dùng, **ĐÃ COMMIT** (commit `<TBD>`,
 nhánh `session-5-demo-ready`, **chưa push origin — ahead nhiều commit**): (1) **Fix #1 — Hoàn tác món ăn đúng energy-day**
 (mốc reset 6h sáng) — thêm `energyDayApplied` vào `FoodLogEntry`, snapshot ngày năng lượng khi log; `removeFood` hoàn tác
 trên đúng sổ ngày lịch sử nếu khác ngày hiện tại (cùng nguyên nhân, cùng cách sửa với Fix #5 Vận động từ Session 16 nhưng
@@ -185,6 +210,10 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
   2026-07-09 (Session 16): nhánh `session-5-demo-ready` đang ahead nhiều commit so với
   `origin/session-5-demo-ready` (mới nhất `7d2e6dd`, chưa push)** — đoạn "giống nhau, không còn commit nào
   treo" bên dưới đã LỖI THỜI kể từ đây, giữ lại chỉ để tham khảo lịch sử.
+- **Cập nhật 2026-07-10 (Session 18):** nhánh hiện tại đã đổi thành **`ui-upgrade`** (không còn
+  `session-5-demo-ready` — không rõ khi nào/tại sao đổi, ngoài phạm vi session này để điều tra).
+  Toàn bộ việc của Session 18 (4 bug S-A + tính năng ml/L pin Nước) đang **CHƯA COMMIT** trên nhánh
+  này — 22 file sửa + 3 file mới (`src/lib/units.ts` + test + `S-S-backfill-spec.md` từ phiên khác).
 - Git hooks: ✅ Đã cài (nhắc SESSION_LOG sau commit — xác nhận hoạt động 2026-07-03). Hooks
   Claude Code (tự lint file vừa sửa + nhắc wrapup) cũng đã bật trong `.claude/settings.json`.
 - Dọn dẹp môi trường (không gấp): S-A ghi nhận ~10 process `expo start --web` cũ còn sót trên các
@@ -192,10 +221,13 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (cập nhật Session 17, 2026-07-09):** **S-A mở rộng — test máy thật** là
-việc số 1 duy nhất còn chặn, vì backlog chưa test đã dồn qua nhiều session (S-M/S-O/S-P/S-Q, S-R,
-Session 14, Session 15, Session 16 — TPCN Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin, và giờ thêm
-Session 17 — hoàn tác món ăn xuyên ngày + sửa/xoá nạp nhanh). Checklist test tay chi tiết cho Session 17
+**Việc phải làm KẾ TIẾP (cập nhật Session 18, 2026-07-10):** Người dùng cần **test tay trên điện
+thoại** 4 bug vừa vá + tính năng ml/L (checklist cụ thể ở cuối Session 18 trong `.ai/SESSION_LOG.md`
+và `.ai/parallel-reports/S-A.md`) — đặc biệt bug 3d (modal "Sửa thành phần") là hành vi RN Modal
+runtime, không có test tự động nào phủ được. Sau khi test tay ổn → **commit** (hiện toàn bộ CHƯA
+COMMIT trên `ui-upgrade`) rồi tiếp tục checklist S-A còn lại. Backlog test tay vẫn còn dồn từ nhiều
+session trước đó (S-M/S-O/S-P/S-Q, S-R, Session 14, Session 15, Session 16 — TPCN Gói/Viên + Vận
+động Sửa/Xoá + đồng bộ pin, Session 17 — hoàn tác món ăn xuyên ngày + sửa/xoá nạp nhanh). Checklist test tay chi tiết cho Session 17
 nằm cuối mục Session 17 trong `.ai/SESSION_LOG.md`; Session 16 xem cuối mục Session 16; các session
 trước xem Session 14. Sau khi test tay ổn → `git push` (hiện ahead nhiều commit, chưa push).
 `.ai/NEXT_SESSIONS.md` (hệ thống gói S-x/U-x cũ) **đã lỗi thời một phần** — từ Session 14 trở đi làm

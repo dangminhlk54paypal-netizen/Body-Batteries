@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
   SafeAreaView,
   ScrollView,
@@ -10,12 +11,17 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { getReadingsInRange } from '../data/repositories/batteryRepository';
 import { getLogsInRange } from '../data/repositories/dailyLogRepository';
+import { getFoodLogForDate } from '../data/repositories/foodLogRepository';
+import { useEnergyStore } from '../store/energyStore';
 import type { BatteryReading, DailyLog } from '../types/battery';
+import type { FoodLogEntry } from '../types/food';
 import { todayString, daysAgo, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { TrendChart } from '../components/TrendChart';
 import { WeightLogCard } from '../components/WeightLogCard';
+import { DayDetailSheet } from '../components/DayDetailSheet';
+import { FoodLogModal } from '../components/FoodLogModal';
 import { colors } from '../lib/theme';
 
 // Short labels for the mini bars in each day card. A fixed-length name.slice()
@@ -42,6 +48,16 @@ interface DayData {
 export function HistoryScreen() {
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // S-S5: backfill day-detail sheet — which date's card was tapped, its
+  // entries (fetched on open, not derived from `days`), and a loading flag
+  // for the fetch. `sheetDate` also doubles as the pinned date passed to
+  // FoodLogModal when adding a past-date meal from this screen.
+  const [sheetDate, setSheetDate] = useState<string | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetEntries, setSheetEntries] = useState<FoodLogEntry[]>([]);
+  const [sheetLoading, setSheetLoading] = useState(false);
+  const [addFoodVisible, setAddFoodVisible] = useState(false);
 
   async function loadHistory() {
     const toDate = todayString();
@@ -93,6 +109,54 @@ export function HistoryScreen() {
     setLoading(false);
   }
 
+  // Fetches (or re-fetches) the food log for one calendar day into the
+  // day-detail sheet. Called both when the sheet opens and after any
+  // add/delete so the sheet's list reflects the store.
+  async function fetchDayEntries(date: string) {
+    setSheetLoading(true);
+    try {
+      const entries = await getFoodLogForDate(date);
+      setSheetEntries(entries);
+    } catch (e) {
+      console.warn('fetchDayEntries failed:', e);
+      setSheetEntries([]);
+    } finally {
+      setSheetLoading(false);
+    }
+  }
+
+  function openDaySheet(date: string) {
+    setSheetDate(date);
+    setSheetVisible(true);
+    fetchDayEntries(date);
+  }
+
+  function closeDaySheet() {
+    setSheetVisible(false);
+  }
+
+  // Undo a backfilled (or today's, if the user tapped a today card) entry,
+  // then refresh both the sheet's own list and the day cards' percentages.
+  async function handleDeleteEntry(entry: FoodLogEntry) {
+    await useEnergyStore.getState().removeFoodForPastDate(entry);
+    if (sheetDate) await fetchDayEntries(sheetDate);
+    await loadHistory();
+  }
+
+  // Close the day-detail sheet and open FoodLogModal pinned to that date.
+  function handleAddFood() {
+    setSheetVisible(false);
+    setAddFoodVisible(true);
+  }
+
+  // FoodLogModal closed (cancelled or logged) — refresh the day's entries
+  // and the day cards' percentages either way, cheap and always correct.
+  async function handleAddFoodModalClose() {
+    setAddFoodVisible(false);
+    if (sheetDate) await fetchDayEntries(sheetDate);
+    await loadHistory();
+  }
+
   // Reload every time the tab gains focus so today's new intake shows up
   // (bottom-tab screens stay mounted, so a one-shot mount effect is not enough).
   useFocusEffect(
@@ -123,7 +187,11 @@ export function HistoryScreen() {
         )}
 
         {days.map((day) => (
-          <View key={day.date} style={styles.card}>
+          <Pressable
+            key={day.date}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => openDaySheet(day.date)}
+          >
             <View style={styles.cardHeader}>
               <Text style={styles.cardDate}>{formatDisplayDate(day.date)}</Text>
               <View style={styles.badgeRow}>
@@ -156,9 +224,24 @@ export function HistoryScreen() {
                 );
               })}
             </View>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
+
+      <DayDetailSheet
+        visible={sheetVisible}
+        date={sheetDate ?? todayString()}
+        entries={sheetEntries}
+        loading={sheetLoading}
+        onClose={closeDaySheet}
+        onAddFood={handleAddFood}
+        onDeleteEntry={handleDeleteEntry}
+      />
+      <FoodLogModal
+        visible={addFoodVisible}
+        onClose={handleAddFoodModalClose}
+        initialDate={sheetDate ?? undefined}
+      />
     </SafeAreaView>
   );
 }
@@ -197,6 +280,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.bgElevated,
   },
+  cardPressed: { opacity: 0.7 },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

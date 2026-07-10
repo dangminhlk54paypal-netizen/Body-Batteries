@@ -51,9 +51,14 @@ import {
   deleteIntakeEventsByIds,
   getIntakeEventsForDate,
 } from '../data/repositories/intakeRepository';
-import { upsertDailyLog } from '../data/repositories/dailyLogRepository';
+import { getDailyLog, upsertDailyLog } from '../data/repositories/dailyLogRepository';
+import {
+  applyFoodToDayReadings,
+  reverseFoodOnDayReadings,
+  buildReadingsForMissedDay,
+} from '../domain/food/backfillEngine';
 import { useSettingsStore } from './settingsStore';
-import { todayString, energyDayString, nowTimestamp } from '../lib/dateUtils';
+import { todayString, dateString, energyDayString, nowTimestamp } from '../lib/dateUtils';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import type { ModeId } from '../types/modes';
 
@@ -115,6 +120,25 @@ interface EnergyState {
     id: string,
     patch: { grams?: number; count?: number; timestamp?: number }
   ) => Promise<void>;
+  // S-S4 (backfill): log a food onto a PAST day's readings — nutrients keyed
+  // by the entry's calendar day, kcal by its 6am-reset energy day — via a
+  // read-modify-write of that day's persisted rows. Today's in-memory numbers
+  // must not move, with one deliberate exception (spec 3c): in the 0h-6am
+  // overlap a target day can BE the currently loaded one, and is then charged
+  // in place. Never touches the continuous satiety reserve — a past meal's
+  // satiation has already worn off. A timestamp on the current day delegates
+  // to logFood (the one true same-day path).
+  logFoodForPastDate: (
+    item: FoodItem,
+    grams: number,
+    timestamp: number,
+    portion?: { portionUnit?: PortionUnit; count?: number }
+  ) => Promise<void>;
+  // Exact inverse of logFoodForPastDate for an entry fetched from the DB
+  // (e.g. the History day-detail view) — the entry is NOT in store.foodLog.
+  // If it is (today's list), delegates to removeFood, which also owns the
+  // same-day satiety reversal.
+  removeFoodForPastDate: (entry: FoodLogEntry) => Promise<void>;
   // FIX #3: undo a manual sub-battery quick-tap (the exact inverse of
   // addIntake): reverse the battery charge and, for macros that also feed the
   // calorie ledger, reverse the kcal + satiety top-up too.
@@ -240,6 +264,19 @@ function isManualQuickTapIntake(event: IntakeEvent): boolean {
   if (event.note === 'steps' || event.note === 'calories') return false;
   if (event.note.startsWith('workout')) return false;
   return true;
+}
+
+// Which mode a backfilled day's fresh readings should be sized by: the mode
+// the user actually ran that day (daily_logs) when known, else the current
+// one — a day the app was never opened on has no record of its own.
+async function modeIdForDate(date: string): Promise<ModeId> {
+  try {
+    const log = await getDailyLog(date);
+    if (log) return log.modeId as ModeId;
+  } catch (e) {
+    console.warn('modeIdForDate lookup failed:', e);
+  }
+  return useSettingsStore.getState().currentMode;
 }
 
 // Update the energy reading inside a readings array (it's the only battery
@@ -590,6 +627,178 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       portionUnit: item.portionUnit,
       count: patch.count ?? entry.count,
     });
+  },
+
+  // S-S4: log a food onto a past day. Charging is split per target (spec 3c):
+  // the entry's CALENDAR day owns the nutrient batteries, its ENERGY day (6am
+  // reset) owns the kcal ledger — each is charged in the store when it happens
+  // to be the currently loaded day (0h-6am overlap), and via a
+  // read-modify-write of that day's persisted rows otherwise. Satiety is never
+  // touched on either path: unlike logFood, a backfilled meal is not "food in
+  // the belly right now".
+  logFoodForPastDate: async (item, grams, timestamp, portion) => {
+    if (grams <= 0) return;
+
+    const entryCalendarDay = dateString(new Date(timestamp));
+    const entryEnergyDay = energyDayString(new Date(timestamp));
+    const calendarIsCurrent = entryCalendarDay === todayString();
+    const energyIsCurrent = entryEnergyDay === energyDayString();
+
+    // Fully on the current day → the normal same-day path (including its
+    // satiety top-up: the meal really was eaten today) is exactly right.
+    if (calendarIsCurrent && energyIsCurrent) {
+      await get().logFood(item, grams, timestamp, portion);
+      return;
+    }
+
+    const n = nutritionForGrams(item, grams);
+    const entry: FoodLogEntry = {
+      id: `food_${timestamp}_${item.id}`,
+      timestamp,
+      mealType: mealTypeForTimestamp(timestamp, useSettingsStore.getState().mealWindows),
+      foodId: item.id,
+      foodNameVi: item.nameVi,
+      grams,
+      energyKcal: n.energyKcal,
+      proteinG: n.proteinG,
+      fatG: n.fatG,
+      carbG: n.carbG,
+      waterG: n.waterG,
+      mineralsMg: n.mineralsMg,
+      portionUnit: portion?.portionUnit,
+      count: portion?.count,
+      energyDayApplied: entryEnergyDay,
+    };
+
+    // Targets that ARE the currently loaded day (0h-6am overlap): charge them
+    // in place so Home updates immediately. applyFoodToDayReadings is the
+    // satiety-free sibling of logFood's charging.
+    if (calendarIsCurrent || energyIsCurrent) {
+      const { readings, foodLog } = get();
+      const updated = readings.map((r) => {
+        const targeted = r.batteryTypeId === 'energy' ? energyIsCurrent : calendarIsCurrent;
+        return targeted ? applyFoodToDayReadings([r], n)[0] : r;
+      });
+      set({
+        readings: updated,
+        masterPercentage: energyPercentage(updated),
+        // A same-calendar-day entry belongs in today's "Hôm nay đã ăn" list.
+        foodLog: calendarIsCurrent
+          ? [...foodLog, entry].sort((a, b) => a.timestamp - b.timestamp)
+          : foodLog,
+      });
+      try {
+        await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      } catch (e) {
+        console.warn('logFoodForPastDate persistence failed:', e);
+      }
+    }
+
+    // Historical targets: read-modify-write those days' rows on their own —
+    // today's in-memory readings must NOT be touched. A day the app was never
+    // opened on gets a fresh reading set built for it.
+    try {
+      const dayModeId = await modeIdForDate(entryCalendarDay);
+      const built = () =>
+        buildReadingsForMissedDay(
+          entryCalendarDay,
+          entryEnergyDay,
+          currentProfile(),
+          getModeById(dayModeId)
+        );
+
+      const toCharge: BatteryReading[] = [];
+      if (!calendarIsCurrent) {
+        const nutrients = (await getReadingsForDate(entryCalendarDay)).filter(
+          (r) => r.batteryTypeId !== 'energy' && r.batteryTypeId !== 'master'
+        );
+        toCharge.push(...(nutrients.length > 0 ? nutrients : built().nutrients));
+      }
+      if (!energyIsCurrent) {
+        const energy = (await getReadingsForDate(entryEnergyDay)).find(
+          (r) => r.batteryTypeId === 'energy'
+        );
+        toCharge.push(energy ?? built().energy);
+      }
+      await upsertReadings(applyFoodToDayReadings(toCharge, n));
+
+      // Make the day exist for History/export even if it never had a log row.
+      await upsertDailyLog({ date: entryCalendarDay, modeId: dayModeId });
+      await addFoodLogEntry(entry);
+    } catch (e) {
+      console.warn('logFoodForPastDate persistence failed:', e);
+    }
+  },
+
+  // S-S4: undo a backfilled/past entry fetched from the DB — the exact mirror
+  // of logFoodForPastDate, target by target, again without ever touching the
+  // satiety reserve (that meal's satiation drained away long ago).
+  removeFoodForPastDate: async (entry) => {
+    // In today's loaded list → removeFood already owns the full reversal
+    // (including same-day satiety and its own historical-energy-day branch).
+    if (get().foodLog.some((f) => f.id === entry.id)) {
+      await get().removeFood(entry.id);
+      return;
+    }
+
+    const entryCalendarDay = dateString(new Date(entry.timestamp));
+    const entryEnergyDay =
+      entry.energyDayApplied ?? energyDayString(new Date(entry.timestamp));
+    const calendarIsCurrent = entryCalendarDay === todayString();
+    const energyIsCurrent = entryEnergyDay === energyDayString();
+
+    // BUG-2 (S-S6): idempotence guard. The caller hands us a detached entry
+    // object, so a double-tap on the delete button would otherwise reverse
+    // the same charge twice on the historical rows. Only proceed if the row
+    // still exists in the DB; a lookup failure falls through to the attempt
+    // (the DB write path has its own try/catch).
+    try {
+      const stillLogged = (await getFoodLogForDate(entryCalendarDay)).some(
+        (f) => f.id === entry.id
+      );
+      if (!stillLogged) return;
+    } catch (e) {
+      console.warn('removeFoodForPastDate existence check failed:', e);
+    }
+
+    // Currently loaded targets (0h-6am overlap): reverse in place.
+    if (calendarIsCurrent || energyIsCurrent) {
+      const updated = get().readings.map((r) => {
+        const targeted = r.batteryTypeId === 'energy' ? energyIsCurrent : calendarIsCurrent;
+        return targeted ? reverseFoodOnDayReadings([r], entry)[0] : r;
+      });
+      set({ readings: updated, masterPercentage: energyPercentage(updated) });
+      try {
+        await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      } catch (e) {
+        console.warn('removeFoodForPastDate persistence failed:', e);
+      }
+    }
+
+    // Historical targets: reverse on that day's persisted rows. A missing row
+    // (e.g. already swept by cleanup) is skipped — deleting the log entry
+    // still proceeds so the list reflects the user's intent.
+    try {
+      const toReverse: BatteryReading[] = [];
+      if (!calendarIsCurrent) {
+        const rows = await getReadingsForDate(entryCalendarDay);
+        toReverse.push(
+          ...rows.filter((r) => r.batteryTypeId !== 'energy' && r.batteryTypeId !== 'master')
+        );
+      }
+      if (!energyIsCurrent) {
+        const energy = (await getReadingsForDate(entryEnergyDay)).find(
+          (r) => r.batteryTypeId === 'energy'
+        );
+        if (energy) toReverse.push(energy);
+      }
+      if (toReverse.length > 0) {
+        await upsertReadings(reverseFoodOnDayReadings(toReverse, entry));
+      }
+      await deleteFoodLogEntry(entry.id);
+    } catch (e) {
+      console.warn('removeFoodForPastDate persistence failed:', e);
+    }
   },
 
   // FIX #3: undo a manual sub-battery quick-tap — the exact inverse of

@@ -8,6 +8,7 @@ import { getAnyFoodById } from '../data/food/foodLookup';
 import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
+import { PastDateField } from './food/PastDateField';
 import { BottomSheet } from './ui/BottomSheet';
 import { nutritionForGrams, mealTypeForHour, gramsForPortion } from '../domain/food/foodNutrition';
 import { suggestFoods, type FoodSuggestion } from '../domain/food/foodSuggestions';
@@ -18,8 +19,8 @@ import {
   EMPTY_CUSTOM_FOOD_INPUT,
   type CustomFoodInput,
 } from '../domain/food/customFoodInput';
-import { FOOD_CATEGORY_LABELS, MEAL_LABELS } from '../lib/constants';
-import { daysAgo, todayString } from '../lib/dateUtils';
+import { FOOD_CATEGORY_LABELS, MEAL_LABELS, DATA_RETENTION_DAYS } from '../lib/constants';
+import { daysAgo, todayString, formatDisplayDate, isToday } from '../lib/dateUtils';
 import type { FoodItem, FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
@@ -27,6 +28,10 @@ import * as haptics from '../lib/haptics';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  // S-S5 (backfill): pin the modal to a specific calendar day (YYYY-MM-DD),
+  // e.g. when opened from HistoryScreen's "+ Thêm món cho ngày này". Defaults
+  // to today when omitted (unchanged behaviour for every existing caller).
+  initialDate?: string;
 }
 
 function categoryLabel(category: string): string {
@@ -59,8 +64,32 @@ function nowTimestamp(): number {
   return Date.now();
 }
 
-export function FoodLogModal({ visible, onClose }: Props) {
+// Module-level wrapper around todayString() — same purity-hiding trick as
+// above — used to seed the backfill date field with "today" when the modal
+// opens without an initialDate.
+function getTodayString(): string {
+  return todayString();
+}
+
+// S-S5 (backfill): build a timestamp for an ARBITRARY calendar date at the
+// given hour:minute — unlike timestampForToday, this never reads the current
+// date, so it stays a pure/testable function of its three inputs. An empty
+// or unparseable hour/minute defaults to 12:00 (noon), per spec 3b/3d — a
+// safe "sometime that day" pick for a day that has already ended, instead of
+// silently falling back to the current wall-clock time.
+export function buildTimestampForDate(dateStr: string, hourStr: string, minuteStr: string): number {
+  const parsedHour = parseInt(hourStr, 10);
+  const parsedMinute = parseInt(minuteStr, 10);
+  const hour = isNaN(parsedHour) ? 12 : clampInt(parsedHour, 0, 23);
+  const minute = isNaN(parsedMinute) ? 0 : clampInt(parsedMinute, 0, 59);
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setHours(hour, minute, 0, 0);
+  return d.getTime();
+}
+
+export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   const logFood = useEnergyStore((s) => s.logFood);
+  const logFoodForPastDate = useEnergyStore((s) => s.logFoodForPastDate);
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<FoodItem | null>(null);
@@ -70,6 +99,12 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [portionCount, setPortionCount] = useState('1');
   const [hour, setHour] = useState('');
   const [minute, setMinute] = useState('');
+  // S-S5 (backfill): which calendar day this entry is being logged for.
+  // Seeded from `initialDate` (or today) whenever the modal opens — see the
+  // `wasVisible` block below. `isToday(logDate)` gates every branch that
+  // must stay 100% unchanged for today's own flow.
+  const [logDate, setLogDate] = useState(() => initialDate ?? '');
+  const [wasVisible, setWasVisible] = useState(false);
   // "Thêm món mới" sub-state: shown when a search finds nothing and the user
   // wants to define a custom food. `adding` gates a third branch alongside
   // the search list and the selected-entry view.
@@ -81,6 +116,10 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const [savingCustomFood, setSavingCustomFood] = useState(false);
   // "Sửa thành phần": opens the nutrition-override editor for the selected food.
   const [editingNutrition, setEditingNutrition] = useState(false);
+  // BUG-1 (S-S6): guards confirm()/logSuggestion() against a fast double-tap
+  // double-charging the batteries — the sibling of savingCustomFood above.
+  // Cleared by reset() when the sheet closes after a successful log.
+  const [savingFood, setSavingFood] = useState(false);
   // Last 7 days of food log + the hour the modal was opened, fetched/read
   // once per open — feeds the "Gợi ý cho bữa này" suggestion chips (see
   // suggestFoods). Empty until the fetch resolves; the modal degrades
@@ -89,6 +128,20 @@ export function FoodLogModal({ visible, onClose }: Props) {
   // body), and the impure Date read lives there too — never during render.
   const [recentLog, setRecentLog] = useState<FoodLogEntry[]>([]);
   const [suggestHour, setSuggestHour] = useState(0);
+
+  // S-S5 (backfill): re-seed logDate every time the modal transitions to
+  // open, so a caller-provided `initialDate` (or "today" otherwise) always
+  // wins over whatever the previous session left behind. This is React's
+  // "adjust state during render" pattern (compare against the previous
+  // rendered value of a prop, tracked in state) rather than a useEffect —
+  // set-state-in-effect only allows synchronous setState calls here, not
+  // inside an effect body. See FoodNutritionEditModal for the same pattern.
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setLogDate(initialDate ?? getTodayString());
+    }
+  }
 
   useEffect(() => {
     if (!visible) return;
@@ -117,10 +170,14 @@ export function FoodLogModal({ visible, onClose }: Props) {
     setPortionCount('1');
     setHour('');
     setMinute('');
+    // S-S5: always land back on today — a fresh open without initialDate
+    // (e.g. from the Home "+" button) must never inherit a stale past date.
+    setLogDate(getTodayString());
     setAdding(false);
     setCustomInput(EMPTY_CUSTOM_FOOD_INPUT);
     setShowMicros(false);
     setSavingCustomFood(false);
+    setSavingFood(false);
   }
 
   function handleClose() {
@@ -201,17 +258,36 @@ export function FoodLogModal({ visible, onClose }: Props) {
   const mealLabel = MEAL_LABELS[mealTypeForHour(hourNum)];
 
   async function confirm() {
-    if (!selected || !validAmount) return;
+    // BUG-1 (S-S6): same double-tap guard as savingCustomFood — a second tap
+    // before the first log finishes would double-charge the batteries (and,
+    // for a backfill, collide on the deterministic food_log id).
+    if (!selected || !validAmount || savingFood) return;
+    setSavingFood(true);
     // USDA rows have no Vietnamese name yet — fall back to the English name so
     // the Diary/History never show a blank title (logFood snapshots nameVi).
     const foodToLog = selected.nameVi ? selected : { ...selected, nameVi: selected.nameEn };
-    if (isServingBased) {
-      await logFood(foodToLog, effectiveGrams, timestampForToday(hourNum, minuteNum), {
-        portionUnit: selected.portionUnit,
-        count: countNum,
-      });
+    if (isToday(logDate)) {
+      // Unchanged today-flow (criterion #1 — must never regress).
+      if (isServingBased) {
+        await logFood(foodToLog, effectiveGrams, timestampForToday(hourNum, minuteNum), {
+          portionUnit: selected.portionUnit,
+          count: countNum,
+        });
+      } else {
+        await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
+      }
     } else {
-      await logFood(foodToLog, gramsNum, timestampForToday(hourNum, minuteNum));
+      // S-S5 (backfill): log onto the selected past day instead — see
+      // buildTimestampForDate (empty hour/minute defaults to 12:00).
+      const timestamp = buildTimestampForDate(logDate, hour, minute);
+      if (isServingBased) {
+        await logFoodForPastDate(foodToLog, effectiveGrams, timestamp, {
+          portionUnit: selected.portionUnit,
+          count: countNum,
+        });
+      } else {
+        await logFoodForPastDate(foodToLog, gramsNum, timestamp);
+      }
     }
     useChargeEffectStore.getState().triggerChargePulse();
     haptics.success();
@@ -224,16 +300,33 @@ export function FoodLogModal({ visible, onClose }: Props) {
   // skips the grams/time review step entirely — that's the point of a
   // low-friction suggestion.
   async function logSuggestion(suggestion: FoodSuggestion) {
+    if (savingFood) return; // BUG-1 guard, same as confirm()
     const item = getAnyFoodById(suggestion.foodId);
     if (!item) return; // food removed from the catalog since it was last logged
+    setSavingFood(true);
     const foodToLog = item.nameVi ? item : { ...item, nameVi: item.nameEn };
-    if (suggestion.portionUnit && suggestion.portionUnit !== 'gram') {
-      await logFood(foodToLog, suggestion.grams, nowTimestamp(), {
-        portionUnit: suggestion.portionUnit,
-        count: suggestion.count,
-      });
+    if (isToday(logDate)) {
+      // Unchanged today-flow (criterion #1 — must never regress).
+      if (suggestion.portionUnit && suggestion.portionUnit !== 'gram') {
+        await logFood(foodToLog, suggestion.grams, nowTimestamp(), {
+          portionUnit: suggestion.portionUnit,
+          count: suggestion.count,
+        });
+      } else {
+        await logFood(foodToLog, suggestion.grams, nowTimestamp());
+      }
     } else {
-      await logFood(foodToLog, suggestion.grams, nowTimestamp());
+      // S-S5 (backfill): a suggestion chip tapped while a past day is
+      // selected must land on that day too, never silently on today.
+      const timestamp = buildTimestampForDate(logDate, '', '');
+      if (suggestion.portionUnit && suggestion.portionUnit !== 'gram') {
+        await logFoodForPastDate(foodToLog, suggestion.grams, timestamp, {
+          portionUnit: suggestion.portionUnit,
+          count: suggestion.count,
+        });
+      } else {
+        await logFoodForPastDate(foodToLog, suggestion.grams, timestamp);
+      }
     }
     useChargeEffectStore.getState().triggerChargePulse();
     haptics.success();
@@ -242,7 +335,11 @@ export function FoodLogModal({ visible, onClose }: Props) {
 
   return (
     <>
-      <BottomSheet visible={visible} onClose={handleClose} sheetOffset={500}>
+      {/* React Native's <Modal> does not reliably stack two visible instances
+          (iOS in particular can fail to present/render the second one) — so
+          this sheet must hide whenever FoodNutritionEditModal opens on top of
+          it, otherwise "Sửa thành phần" silently shows nothing. */}
+      <BottomSheet visible={visible && !editingNutrition} onClose={handleClose} sheetOffset={500}>
         <View style={styles.sheet}>
           {adding ? (
             <>
@@ -497,6 +594,13 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   />
                 </View>
 
+                <Text style={styles.fieldLabel}>Ngày ghi</Text>
+                <PastDateField
+                  value={logDate}
+                  onChange={setLogDate}
+                  maxDaysBack={DATA_RETENTION_DAYS}
+                />
+
                 {preview && (
                   <View style={styles.preview}>
                     <Text style={styles.previewKcal}>⚡ {preview.energyKcal} kcal</Text>
@@ -506,6 +610,12 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   </View>
                 )}
               </ScrollView>
+
+              {!isToday(logDate) && (
+                <Text style={styles.backfillNotice}>
+                  🕓 Ghi cho ngày {formatDisplayDate(logDate)}
+                </Text>
+              )}
 
               <View style={styles.row}>
                 <Pressable
@@ -518,11 +628,11 @@ export function FoodLogModal({ visible, onClose }: Props) {
                   style={({ pressed }) => [
                     styles.modalBtn,
                     styles.eat,
-                    !validAmount && styles.disabled,
+                    (!validAmount || savingFood) && styles.disabled,
                     pressed && styles.pressed,
                   ]}
                   onPress={confirm}
-                  disabled={!validAmount}
+                  disabled={!validAmount || savingFood}
                 >
                   <Text style={styles.btnText}>Ghi món 🍽️</Text>
                 </Pressable>
@@ -566,6 +676,10 @@ const styles = StyleSheet.create({
   sheet: {
     padding: 24,
     gap: 12,
+    // Must shrink with the BottomSheet frame (see BottomSheet styles.sheet),
+    // otherwise the long "Thêm món mới" form overflows instead of making
+    // entryScroll scrollable, and the Huỷ/Lưu row lands under the keyboard.
+    flexShrink: 1,
   },
   title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   subtitle: { fontSize: 14, color: colors.textSecondary },
@@ -644,6 +758,12 @@ const styles = StyleSheet.create({
   },
   previewKcal: { color: colors.accent, fontSize: 18, fontWeight: '800' },
   previewMacro: { color: colors.textSoft, fontSize: 13 },
+  backfillNotice: {
+    color: colors.warning,
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
   eat: { backgroundColor: colors.accent },
