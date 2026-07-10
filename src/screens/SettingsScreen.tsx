@@ -108,6 +108,8 @@ export function SettingsScreen() {
     setReminderTime,
     mealWindows,
     setMealWindow,
+    particleEffectsEnabled,
+    setParticleEffectsEnabled,
   } = useSettingsStore();
 
   const [exporting, setExporting] = useState(false);
@@ -365,6 +367,25 @@ export function SettingsScreen() {
               🗑️ Xoá dữ liệu cũ hơn 35 ngày
             </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* ── Interface effects ────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionHeader icon="✨" label="GIAO DIỆN" />
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Hiệu ứng nạp pin ✨</Text>
+            <Switch
+              value={particleEffectsEnabled}
+              onValueChange={setParticleEffectsEnabled}
+              trackColor={{ true: colors.accent }}
+            />
+          </View>
+          <Text style={styles.sectionDesc}>
+            Vài đốm sáng bay vào pin mỗi khi bạn ghi món ăn thành công. Tắt nếu muốn giao diện đơn giản hơn.
+          </Text>
         </View>
 
         <Text style={styles.disclaimer}>

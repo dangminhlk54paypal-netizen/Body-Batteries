@@ -29,6 +29,9 @@ interface SettingsState {
   userProfile: UserProfile;
   hasOnboarded: boolean;
   mealWindows: MealWindows;
+  // P7: toggles the "charge particle" burst on MasterBattery (the scale/glow
+  // pulse from P4 always stays on — this only gates the extra SVG particles).
+  particleEffectsEnabled: boolean;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -36,6 +39,7 @@ interface SettingsState {
   setUserProfile: (profile: UserProfile) => void;
   setHasOnboarded: (value: boolean) => void;
   setMealWindow: (meal: 'breakfast' | 'lunch' | 'dinner', window: MealWindow) => void;
+  setParticleEffectsEnabled: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -49,6 +53,7 @@ export const useSettingsStore = create<SettingsState>()(
       userProfile: DEFAULT_USER_PROFILE,
       hasOnboarded: false,
       mealWindows: DEFAULT_MEAL_WINDOWS,
+      particleEffectsEnabled: true,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -58,6 +63,7 @@ export const useSettingsStore = create<SettingsState>()(
       setHasOnboarded: (value) => set({ hasOnboarded: value }),
       setMealWindow: (meal, window) =>
         set((s) => ({ mealWindows: { ...s.mealWindows, [meal]: window } })),
+      setParticleEffectsEnabled: (enabled) => set({ particleEffectsEnabled: enabled }),
     }),
     {
       name: 'settings-storage',
