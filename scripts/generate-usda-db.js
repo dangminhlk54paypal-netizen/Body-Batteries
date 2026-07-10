@@ -33,22 +33,30 @@ const tsOutPath = path.join(root, 'src', 'data', 'food', 'usdaFoods.generated.ts
 const namesViPath = path.join(root, 'database', 'usda_names_vi.csv');
 const namesDePath = path.join(root, 'database', 'usda_names_de.csv');
 
-// USDA nutrient.number -> app CSV column (all values are already per 100 g;
-// minerals are already in mg — no unit scaling needed). See
-// .ai/parallel-reports/S-N-food-data-usda-spec.md section 4.
+// app CSV column -> USDA nutrient.number candidates, first match wins (all
+// values are already per 100 g; minerals are already in mg — no unit scaling
+// needed). See .ai/parallel-reports/S-N-food-data-usda-spec.md section 4.
+//
+// The 2026 Foundation Foods release reports several nutrients under NEW
+// analysis-method numbers alongside (or instead of) the classic ones:
+//   carb:  205 "by difference"        | 205.2 "by summation"
+//   fiber: 291 "total dietary"        | 293   "AOAC 2011.25"
+//   sugar: 269 "Total Sugars" (5 rows only!) | 269.3 "Sugars, Total" (136 rows)
+// Mapping only the classic number silently zeroed sugar/fiber/carb for those
+// rows, so eating them never charged the sugar/fiber micro batteries.
 const NUTRIENT_MAP = {
-  255: 'water_g',
-  203: 'protein_g',
-  204: 'fat_g',
-  205: 'carb_g',
-  291: 'fiber_g',
-  269: 'sugar_g',
-  301: 'calcium_mg',
-  303: 'iron_mg',
-  307: 'sodium_mg',
-  306: 'potassium_mg',
-  304: 'magnesium_mg',
-  309: 'zinc_mg',
+  water_g: ['255'],
+  protein_g: ['203'],
+  fat_g: ['204'],
+  carb_g: ['205', '205.2'],
+  fiber_g: ['291', '293'],
+  sugar_g: ['269', '269.3'],
+  calcium_mg: ['301'],
+  iron_mg: ['303'],
+  sodium_mg: ['307'],
+  potassium_mg: ['306'],
+  magnesium_mg: ['304'],
+  zinc_mg: ['309'],
 };
 const ENERGY_NUTRIENT_NUMBER = '208';
 
@@ -183,9 +191,22 @@ function buildRow(food, namesVi, namesDe) {
   const byNumber = nutrientMapFor(food);
 
   const values = {};
-  for (const [number, column] of Object.entries(NUTRIENT_MAP)) {
-    values[column] = byNumber[number] ?? 0;
+  for (const [column, numbers] of Object.entries(NUTRIENT_MAP)) {
+    const found = numbers.map((num) => byNumber[num]).find((v) => v != null);
+    // "Carbohydrate, by difference" can come out slightly negative for pure
+    // meats/fats — clamp so the app never shows a negative macro.
+    values[column] = Math.max(0, found ?? 0);
   }
+
+  // Unit convention (mirrors parseFoodCsv in src/data/food/foodCsv.ts):
+  // carb_g is TOTAL carbohydrate and CONTAINS sugar_g + fiber_g, so it can
+  // never be below their sum. USDA "by difference" carb sometimes is (42
+  // rows in the 2026 release, e.g. dry beans with fiber 4.3 but carb 0) —
+  // without this the Carbs battery under-charges when those foods are eaten.
+  values.carb_g = Math.max(
+    values.carb_g,
+    Math.round((values.sugar_g + values.fiber_g) * 1000) / 1000
+  );
 
   let energyKcal = byNumber[ENERGY_NUTRIENT_NUMBER];
   let note = '';

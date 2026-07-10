@@ -192,5 +192,16 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > món ăn đúng energy-day (thêm `energyDayApplied`), sửa khối lượng/viên qua modal, hoàn tác nạp nhanh
 > + component mới `TodayIntakes.tsx`. Lỗi #4 là báo động giả (đã có xác nhận). Verify: **299/299 test**,
 > tsc/lint sạch. **Chưa test máy** — backlog test tay dồn Session 11–17.
+>
+> 🟡 **(2026-07-10, Session 18, CHƯA COMMIT, nhánh `ui-upgrade`)** S-A bước 3 test máy thật lộ 4 bug,
+> đã vá: **(3a)** dữ liệu USDA thiếu đường/xơ do map sai nutrient number (bản Foundation Foods 2026
+> đổi số phân tích) → sửa `generate-usda-db.js`. **(3b)** bàn phím che nút Lưu form Thêm món mới →
+> thêm `flexShrink: 1` vào các sheet. **(3c)** chốt bất biến `carb_g >= sugar_g + fiber_g` ở mọi nơi
+> nhập liệu (yêu cầu người dùng). **(3d, phát hiện ở lượt test lại)** modal "Sửa thành phần" không
+> hiện gì do 2 `<Modal>` RN chồng nhau (giới hạn RN trên iOS) → ẩn BottomSheet khi modal sửa mở.
+> Cộng tính năng mới: đổi đơn vị hiển thị/nhập ml↔L cho pin Nước (`src/lib/units.ts` + persist trong
+> settingsStore), dữ liệu vẫn 1 biến ml duy nhất. Verify: **320/320 test**, tsc/lint sạch. **Bug 3d
+> là hành vi runtime RN Modal — không có test tự động, bắt buộc test tay trên điện thoại để xác
+> nhận trước khi commit.** Chi tiết: `.ai/SESSION_LOG.md` Session 18, `.ai/parallel-reports/S-A.md`.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

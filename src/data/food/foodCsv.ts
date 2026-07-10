@@ -94,14 +94,26 @@ export function parseFoodCsv(raw: string): FoodItem[] {
     const id = at(c, 'id').trim();
     if (!id) continue; // skip blank / malformed rows
 
+    // Unit convention (áp dụng toàn app): carb_g is TOTAL carbohydrate
+    // (= Kohlenhydrate), which CONTAINS sugar_g + fiber_g. Some source rows
+    // (USDA "by difference", hand-entered data) report carb below that sum —
+    // parse-time is the single choke point where the invariant is restored,
+    // so the Carbs battery always charges at least what sugar+fiber imply.
+    const fiberG = num(at(c, 'fiber_g'));
+    const sugarG = num(at(c, 'sugar_g'));
+    const carbG = Math.max(
+      num(at(c, 'carb_g')),
+      Math.round((sugarG + fiberG) * 1000) / 1000
+    );
+
     const per100g: Nutrition = {
       energyKcal: num(at(c, 'energy_kcal')),
       waterG: num(at(c, 'water_g')),
       proteinG: num(at(c, 'protein_g')),
       fatG: num(at(c, 'fat_g')),
-      carbG: num(at(c, 'carb_g')),
-      fiberG: num(at(c, 'fiber_g')),
-      sugarG: num(at(c, 'sugar_g')),
+      carbG,
+      fiberG,
+      sugarG,
       calciumMg: num(at(c, 'calcium_mg')),
       ironMg: num(at(c, 'iron_mg')),
       sodiumMg: num(at(c, 'sodium_mg')),

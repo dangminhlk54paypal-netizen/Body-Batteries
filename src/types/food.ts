@@ -26,6 +26,12 @@ export type PortionUnit = 'gram' | 'pack' | 'capsule';
 // the computed totals for the eaten portion. `mineralsMg` is a crude rollup of
 // the electrolyte/mineral micros (a coarse estimate — this is a self-tracking
 // tool, not a medical device; see docs/01-vision-and-features.md §health).
+//
+// UNIT CONVENTION — carbG: TOTAL carbohydrate (= Kohlenhydrate on EU labels),
+// which CONTAINS sugarG + fiberG; sugar/fiber are a breakdown OF carbG, never
+// an addition to it. Invariant carbG >= sugarG + fiberG is enforced at every
+// data entry point (parseFoodCsv, buildCustomFoodItem, generate-usda-db.js)
+// so the Carbs battery can never under-charge relative to its own parts.
 export interface Nutrition {
   energyKcal: number;
   waterG: number;

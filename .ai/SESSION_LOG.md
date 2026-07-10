@@ -757,6 +757,31 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 
 ---
 
+## Session 18 — 2026-07-10 (S-A tiếp tục test máy thật: vá 4 bug + tính năng mới ml/L cho pin Nước)
+
+**Làm gì:** Người dùng test máy thật bước 3 (S-A) và báo 2 đợt feedback: (1) pin vi chất/pin nhỏ không nạp đúng khi ăn "chicken nuggets" (carb sai lệch nặng) và form "Thêm món mới" bị bàn phím che nút; sau khi vá, người dùng test lại và phát hiện thêm modal "Sửa thành phần" không hiện gì khi bấm. Cuối session, người dùng yêu cầu thêm tính năng mới: đổi qua lại đơn vị hiển thị/nhập ml ↔ L cho pin Nước.
+
+**Kết quả (CHƯA COMMIT — làm việc trực tiếp trên nhánh `ui-upgrade`):**
+- **Bug 3a — dữ liệu USDA thiếu đường/xơ:** `scripts/generate-usda-db.js` chỉ map nutrient number cũ (269/291/205), nhưng bản Foundation Foods 2026 dùng number mới cho đa số dòng (269.3 đường: 136 dòng so với 269 chỉ 5 dòng; 293 xơ AOAC thêm 34 dòng). Sửa NUTRIENT_MAP thành danh sách ưu tiên + clamp carb "by difference" âm về 0. Chạy lại `npm run gen:usda`: có đường 5→132 dòng, có xơ 185→196 dòng.
+- **Bug 3b — bàn phím che nút "Lưu" ở form Thêm món mới:** `BottomSheet.tsx`/`FoodLogModal.tsx`/`FoodNutritionEditModal.tsx` thiếu `flexShrink: 1` trên khung sheet → ScrollView không co lại theo bàn phím, nút Huỷ/Lưu bị đẩy ra ngoài. Thêm `flexShrink: 1` vào cả 3 chỗ.
+- **Bug 3c — chốt quy ước đơn vị Carbs (theo yêu cầu người dùng):** Carbs = tổng carbohydrate, LUÔN chứa đường + xơ → bất biến `carb_g >= sugar_g + fiber_g`. Enforce ở 3 lớp nhập liệu: `foodCsv.ts` (parser CSV chung), `customFoodInput.ts` (`buildCustomFoodItem`), `generate-usda-db.js` (pipeline USDA) + sửa tay 4 dòng vi phạm trong `food_items.csv`. Quy ước ghi tại comment `Nutrition` trong `src/types/food.ts`.
+- **Bug 3d — "Sửa thành phần" không hiện gì khi bấm (phát hiện ở lượt test lại):** Root cause — `FoodLogModal.tsx` render `FoodNutritionEditModal` (tự bọc `<Modal>` RN riêng) làm sibling trong khi `BottomSheet` (cũng là `<Modal>`) đang `visible=true` → 2 Modal gốc RN chồng nhau, giới hạn đã biết của RN trên iOS khiến modal thứ 2 không chắc render. Đối chứng: `SupplementQuickLog.tsx` dùng đúng component này KHÔNG lồng trong Modal khác → chạy tốt. Fix: ẩn `BottomSheet` (`visible={visible && !editingNutrition}`) khi modal sửa đang mở, đảm bảo không bao giờ có 2 Modal cùng hiển thị. **Chuỗi nhân quả suy ra:** món "Chicken Nuggets - Penny" (món tự thêm) nhiều khả năng bị lưu carb sai lúc tạo do bug 3b, và người dùng không tự sửa lại được vì đúng bug 3d chặn "Sửa thành phần" — 2 bug nối chuỗi làm 1 món bị sai vĩnh viễn cho tới khi sửa xong.
+- **Tính năng mới — đổi đơn vị hiển thị/nhập ml ↔ L cho pin Nước:** Dữ liệu vẫn CHỈ 1 biến ml duy nhất xuyên suốt store/DB — chỉ thêm lớp hiển thị. `src/lib/units.ts` (mới, pure + test riêng): `formatWaterAmount`/`toMl`/`nextWaterDisplayUnit`. `waterDisplayUnit: 'ml'|'l'` persist trong `settingsStore` (AsyncStorage). Nhãn lượng nước dưới pin Nước (`BatteryCell`/`BatteryStack`) giờ bấm được để đổi qua lại. `IntakeModal` thêm 2 chip "ml"/"L" khi nạp nước — nhập theo đơn vị nào, tự quy đổi về ml khi lưu.
+- **Verify cuối cùng:** `npx tsc --noEmit` sạch · `npm run lint` sạch · `npx jest` → **320 test PASS / 30 suite** (tăng từ 299, thêm test cho bất biến carb + `units.ts` + regression USDA).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Bug 3d chỉ lộ ra sau khi test lại (không phát hiện được ở lượt phân tích code đầu tiên) — bài học: khi sửa 1 bug UI, nên rà luôn các modal/component liên quan cùng luồng thay vì dừng ở đúng phạm vi user report ban đầu, vì bug thật có thể ẩn phía sau (bug 3b che khuất bug 3d cho tới khi 3b được sửa).
+- Bug 3d là hành vi runtime của RN `<Modal>` (2 Modal chồng nhau không đảm bảo render trên iOS) — **jest không mô phỏng được**, chỉ có thể verify bằng test tay trên điện thoại thật. Đã ghi rõ trong `.ai/parallel-reports/S-A.md` để phiên sau/nguời dùng biết đây là điểm cần test tay bắt buộc, không tự nhận đã "test thật".
+- Phát hiện thêm (không phải việc của session này): một phiên song song khác đã thêm `.ai/parallel-reports/S-S-backfill-spec.md` (spec "ghi lùi món ăn cho ngày đã qua") + 1 dòng gói **S-S** vào `.ai/NEXT_SESSIONS.md` — chỉ note lại, chưa code, không đụng vào.
+
+**Session tiếp theo phải làm:**
+1. **Người dùng test tay trên điện thoại** (bắt buộc, chưa xác nhận): mở "Ghi món ăn" → chọn 1 món → bấm "Sửa thành phần" → xác nhận sheet hiện ra được (bug 3d); thử sửa carb 1 món rồi ăn lại → pin Carbs cập nhật đúng; bấm nhãn "ml" dưới pin Nước → đổi thành "L" được; nạp nước thử cả 2 đơn vị.
+2. Nếu ổn → `git add`/commit các file đã sửa (hiện toàn bộ CHƯA COMMIT trên `ui-upgrade`), rồi tiếp tục checklist S-A còn lại (bước 3 hoàn tất, bước 4/5/6 đã PASS từ trước — xem `.ai/parallel-reports/S-A.md`).
+3. Lưu ý cho người dùng: sửa 1 món qua "Sửa thành phần" chỉ áp dụng cho lần ăn TIẾP THEO — không tự sửa các dòng đã ghi trong quá khứ (snapshot dinh dưỡng tại thời điểm ghi, giữ nguyên có chủ đích).
+4. Cân nhắc đọc `.ai/parallel-reports/S-S-backfill-spec.md` (spec "ghi lùi món ăn") nếu muốn bắt đầu gói S-S — hiện mới là đề xuất, chưa code.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

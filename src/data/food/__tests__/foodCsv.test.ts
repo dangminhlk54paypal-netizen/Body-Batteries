@@ -65,4 +65,23 @@ fish_basa,Cá basa,Basa fish,fish,100,,166,70,23,7,0,0,0,12,0.3,50,300,,,estimat
     const csv = `${HEADER}\n\n,no id here,,,,,,,,,,,,,,,,,,,\n`;
     expect(parseFoodCsv(csv)).toHaveLength(0);
   });
+
+  // Unit convention: carb_g is TOTAL carbohydrate and contains sugar+fiber.
+  // A source row reporting carb below that sum (USDA "by difference", manual
+  // typos) is lifted to sugar+fiber at parse time so the Carbs battery never
+  // under-charges relative to its own parts.
+  it('lifts carb_g to sugar_g + fiber_g when the row under-reports it', () => {
+    const csv = `${HEADER}
+dry_beans,Đậu khô,Dry beans,legume_nut,100,,111,2,25.5,1,0,4.3,2.2,83,5,1,980,140,2.5,USDA,`;
+    const r = parseFoodCsv(csv)[0];
+    expect(r.per100g.carbG).toBe(6.5); // 0 reported, but sugar 2.2 + fiber 4.3
+    expect(r.per100g.sugarG).toBe(2.2);
+    expect(r.per100g.fiberG).toBe(4.3);
+  });
+
+  it('keeps carb_g untouched when it already covers sugar + fiber', () => {
+    const csv = `${HEADER}
+rice,Cơm,Rice,grain,150,,130,68.4,2.7,0.3,28.2,0.4,0.1,10,0.2,1,35,12,0.5,USDA,`;
+    expect(parseFoodCsv(csv)[0].per100g.carbG).toBe(28.2);
+  });
 });

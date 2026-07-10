@@ -18,7 +18,9 @@
       "Bash(npx eas-cli *)",
       "Bash(npx expo-doctor *)",
       "Bash(python3)",
-      "Bash(git rev-list *)"
+      "Bash(git rev-list *)",
+      "Bash(ipconfig getifaddr *)",
+      "Bash(kill 78429)"
     ],
     "additionalDirectories": [
       "/Users/minh/VSCode_Repo/BodyBatteries/database"

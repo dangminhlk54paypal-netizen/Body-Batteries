@@ -26,4 +26,15 @@ describe('food database (real CSV)', () => {
   it('search matches by Vietnamese name', () => {
     expect(searchFoods('cơm').some((f) => f.id === 'rice_white_cooked')).toBe(true);
   });
+
+  // Unit convention (see Nutrition in src/types/food.ts): carbG is TOTAL
+  // carbohydrate and contains sugarG + fiberG — no catalog row may report
+  // carb below that sum, or the Carbs battery under-charges when it's eaten.
+  it('holds the unit convention carbG >= sugarG + fiberG on every row', () => {
+    for (const f of FOOD_ITEMS) {
+      expect(f.per100g.carbG).toBeGreaterThanOrEqual(
+        f.per100g.sugarG + f.per100g.fiberG - 0.001
+      );
+    }
+  });
 });
