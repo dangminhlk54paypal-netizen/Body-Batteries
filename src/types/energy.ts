@@ -35,7 +35,16 @@ export type ActivityType =
   | 'tennis'
   | 'gym_strength'
   | 'hiit'
-  | 'yoga';
+  | 'yoga'
+  | 'squat'
+  | 'bench_press'
+  | 'deadlift';
+
+// The subset of ActivityType that stepsKcal / growGoalFromActivity can rate
+// per-step (Compendium of Physical Activities 2024) — used to sync the
+// movement pin's charge with the energy goal it grows (see
+// energyStore.addIntake/logActivity), instead of always assuming walking.
+export type StepActivityType = 'walking' | 'running' | 'hiking';
 
 export interface WorkoutSession {
   type: ActivityType;
@@ -83,4 +92,12 @@ export interface ActivityLogEntry {
   // field to reverse the effect on the CORRECT day's reading, even if that's
   // no longer the day currently loaded in the store (FIX #5).
   energyDayApplied: string;
+  // BUG A fix: exactly how much the movement pin was charged at log time —
+  // steps + workout step-equivalents (see metabolismEngine.totalStepEquivalent).
+  // Snapshotted so removeActivity can reverse the EXACT charge instead of
+  // recomputing it (the workout-step-equivalent rate could change later).
+  // Rows logged BEFORE this field existed only ever charged the pin by
+  // `steps` (workouts never touched it) — consumers must fall back to
+  // `entry.steps` when this is undefined (see energyStore.movementChargeOf).
+  movementStepsApplied?: number;
 }

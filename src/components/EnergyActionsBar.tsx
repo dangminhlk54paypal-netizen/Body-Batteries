@@ -33,6 +33,9 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   gym_strength: 'Gym tạ',
   hiit: 'HIIT',
   yoga: 'Yoga',
+  squat: 'Squat',
+  bench_press: 'Bench press',
+  deadlift: 'Deadlift',
 };
 export const ACTIVITY_TYPES = Object.keys(MET_TABLE) as ActivityType[];
 

@@ -206,6 +206,11 @@ export const CREATE_ACTIVITY_LOG = `
 // *_MIGRATION_COLUMNS above.
 export const ACTIVITY_LOG_MIGRATION_COLUMNS = [
   { name: 'energy_day_applied', ddl: 'ALTER TABLE activity_log ADD COLUMN energy_day_applied TEXT' },
+  // BUG A: snapshot of exactly how much the movement pin was charged at log
+  // time (steps + workout step-equivalents) — see types/energy.ts
+  // ActivityLogEntry.movementStepsApplied doc. Rows written before this
+  // migration have NULL here; consumers fall back to `steps`.
+  { name: 'movement_steps_applied', ddl: 'ALTER TABLE activity_log ADD COLUMN movement_steps_applied REAL' },
 ];
 
 export const ALL_SCHEMAS = [

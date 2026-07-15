@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { BatteryReading, IntakeEvent, BatteryId } from '../types/battery';
-import type { WorkoutSession, ActivityLogEntry } from '../types/energy';
+import type { WorkoutSession, ActivityLogEntry, StepActivityType } from '../types/energy';
 import type { FoodItem, FoodLogEntry, PortionUnit } from '../types/food';
 import { nutritionForGrams, mealTypeForTimestamp, gramsForPortion } from '../domain/food/foodNutrition';
 import { getAnyFoodById } from '../data/food/foodLookup';
@@ -43,6 +43,7 @@ import {
   totalWorkoutKcal,
   stepsKcal,
   dailyExpenditure,
+  totalStepEquivalent,
 } from '../domain/energy/metabolismEngine';
 import { getModeById } from '../domain/modes/modeDefinitions';
 import { checkLowBattery, type BatteryAlert } from '../domain/rules/lowBatteryRules';
@@ -125,7 +126,17 @@ interface EnergyState {
   syncAppleHealthBurned: () => Promise<void>;
 
   loadToday: (modeId: ModeId) => Promise<void>;
-  addIntake: (batteryId: BatteryId, amount: number, note?: string) => Promise<BatteryAlert[]>;
+  // BUG B fix: `opts.stepType` (default 'walking') is used ONLY when
+  // batteryId === 'movement' — a direct movement-pin charge (tap the battery
+  // cell) also grows the energy goal via growGoalFromActivity, same as
+  // logActivity's step/workout path, and lets a caller that knows the actual
+  // step activity (e.g. hiking) pass a more accurate rate through.
+  addIntake: (
+    batteryId: BatteryId,
+    amount: number,
+    note?: string,
+    opts?: { stepType?: StepActivityType }
+  ) => Promise<BatteryAlert[]>;
   addCalories: (kcal: number, note?: string) => Promise<void>;
   // `portion` is optional (backward-compatible: existing callers that pass 3
   // args keep working, defaulting to gram-based logging). When the caller
@@ -279,6 +290,16 @@ function reverseFoodOnEnergyReading(
     ...burned,
     satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - entry.energyKcal),
   };
+}
+
+// BUG A fix: exactly how much an ActivityLogEntry charged the movement pin at
+// log time — steps + workout step-equivalents (see logActivity), snapshotted
+// as movementStepsApplied. Rows logged BEFORE that field existed only ever
+// charged the pin by `steps` (workouts never touched it), so they fall back
+// to `entry.steps` here — that fallback reverses exactly what those old rows
+// actually applied.
+function movementChargeOf(entry: ActivityLogEntry): number {
+  return entry.movementStepsApplied ?? entry.steps ?? 0;
 }
 
 // FIX #3: which intake_events rows count as MANUAL sub-battery quick-taps (the
@@ -508,7 +529,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       .catch((e) => console.warn('syncAppleHealthBurned failed:', e));
   },
 
-  addIntake: async (batteryId, amount, note = '') => {
+  addIntake: async (batteryId, amount, note = '', opts) => {
     const { readings } = get();
 
     const idx = readings.findIndex((r) => r.batteryTypeId === batteryId);
@@ -529,6 +550,27 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
           ...updated[ei],
           satietyReserveKcal: eatIntoReserve(updated[ei].satietyReserveKcal ?? 0, kcal),
         };
+        toPersist.push(updated[ei]);
+      }
+    }
+
+    // BUG B fix: a direct movement-pin charge (tap the battery cell) used to
+    // only go through kcalFromMacro above, which is 0 for 'movement' — so it
+    // never grew the energy goal, unlike logActivity's growGoalFromActivity
+    // path. Mirror that here (steps only, no workouts) so tapping the
+    // movement pin and logging an equivalent walk/hike agree. Deliberately
+    // does NOT touch level or satietyReserveKcal — moving means more room to
+    // eat, not kcal already eaten (same rule as logActivity's steps).
+    if (batteryId === 'movement' && amount > 0) {
+      const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
+      if (ei !== -1) {
+        updated[ei] = growGoalFromActivity(
+          updated[ei],
+          currentProfile(),
+          amount,
+          [],
+          opts?.stepType ?? 'walking'
+        );
         toPersist.push(updated[ei]);
       }
     }
@@ -967,10 +1009,10 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   // Log activity (steps and/or workout sessions) as its own independent,
   // editable/undoable record (B2). Grows today's energy goal (S-M: moving
   // more means more room to eat, it does not touch eaten level) and — the B2
-  // fix — actually charges the "Vận động" (movement) battery by `steps`,
-  // which was previously never fed and stayed stuck at 0%. `startAt`/`endAt`
-  // are stored for history/Excel display only; the battery effect below is
-  // applied once, now, at log time (no replay engine — see B2 decision).
+  // fix — actually charges the "Vận động" (movement) battery, which was
+  // previously never fed and stayed stuck at 0%. `startAt`/`endAt` are stored
+  // for history/Excel display only; the battery effect below is applied
+  // once, now, at log time (no replay engine — see B2 decision).
   logActivity: async ({ steps = 0, workouts = [], startAt, endAt }, timestampOverride) => {
     const { readings, activityLog } = get();
     const ei = readings.findIndex((r) => r.batteryTypeId === 'energy');
@@ -990,14 +1032,19 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         satietyReserveKcal: drainFromWorkout(updated[ei].satietyReserveKcal ?? 0, workoutBurn),
       };
     }
-    // FIX (B2): steps must charge the movement pin itself, same as any other
-    // sub-battery intake. Kept in the pin's own unit (steps), not kcal.
-    if (mi !== -1 && steps > 0) {
-      updated[mi] = applyIntake(updated[mi], steps);
+    // BUG A fix: a workout-only entry (type + minutes, no steps — the
+    // activity modal's primary flow) used to never charge the movement pin,
+    // because minutes have no representation in the pin's own unit (steps).
+    // Translate workout minutes into step-equivalents (research-backed
+    // cadence, see metabolismEngine.workoutStepEquivalent) and charge the pin
+    // by steps + that step-equivalent, same as any other sub-battery intake.
+    const movementCharge = steps + totalStepEquivalent(workouts);
+    if (mi !== -1 && movementCharge > 0) {
+      updated[mi] = applyIntake(updated[mi], movementCharge);
     }
 
     const toPersist: BatteryReading[] =
-      mi !== -1 && steps > 0 ? [updated[ei], updated[mi]] : [updated[ei]];
+      mi !== -1 && movementCharge > 0 ? [updated[ei], updated[mi]] : [updated[ei]];
 
     // FIX #6: use the caller's original log time when re-logging a patched
     // entry (updateActivity), instead of always stamping "now" — otherwise
@@ -1017,6 +1064,10 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       // capacity/satiety effect above, so removeActivity can reverse it on
       // the right day even if it's no longer "today" by the time of undo.
       energyDayApplied: energyDayString(new Date(ts)),
+      // BUG A: snapshot exactly how much the movement pin was charged above,
+      // so removeActivity reverses the EXACT charge (see movementChargeOf)
+      // instead of recomputing it from `steps` alone.
+      movementStepsApplied: movementCharge,
     };
 
     // FIX #6: keep activityLog sorted by timestamp so a re-logged (edited)
@@ -1074,16 +1125,18 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const entry = activityLog.find((a) => a.id === id);
     if (!entry) return;
 
-    // FIX #2+#3: the movement pin is fed cumulatively (logActivity does
-    // `applyIntake(movement, steps)`, clamped at capacity) but can ALSO be
-    // charged directly by a manual tap (addIntake('movement', ...), which
-    // never touches activityLog) and drained by tickDrain over time. A naive
-    // recompute-from-activityLog-and-SET (the previous "fix") stomps on both
-    // of those — it silently discards whatever tickDrain took away and
+    // FIX #2+#3 (+ BUG A): the movement pin is fed cumulatively (logActivity
+    // does `applyIntake(movement, movementChargeOf(entry))`, clamped at
+    // capacity — steps + workout step-equivalents, or `entry.steps` alone for
+    // pre-migration rows without the movementStepsApplied snapshot) but can
+    // ALSO be charged directly by a manual tap (addIntake('movement', ...),
+    // which never touches activityLog) and drained by tickDrain over time. A
+    // naive recompute-from-activityLog-and-SET (the previous "fix") stomps on
+    // both of those — it silently discards whatever tickDrain took away and
     // whatever a manual tap added. The correct inverse is a DELTA applied
     // relative to the pin's CURRENT level:
-    //   oldClampedTotal = clamp(sum of steps of ALL of today's entries incl. this one)
-    //   newClampedTotal = clamp(sum of steps of the REMAINING entries)
+    //   oldClampedTotal = clamp(sum of movementChargeOf() of ALL of today's entries incl. this one)
+    //   newClampedTotal = clamp(sum of movementChargeOf() of the REMAINING entries)
     //   delta           = oldClampedTotal - newClampedTotal   (this entry's
     //                     marginal contribution to the clamped total)
     //   newLevel        = clamp(currentLevel - delta)
@@ -1094,12 +1147,12 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const movementReading = readings.find((r) => r.batteryTypeId === 'movement');
     let movementDelta = 0;
     if (movementReading) {
-      const totalStepsAll = activityLog.reduce((sum, a) => sum + (a.steps ?? 0), 0);
-      const totalStepsRemaining = activityLog
+      const totalChargeAll = activityLog.reduce((sum, a) => sum + movementChargeOf(a), 0);
+      const totalChargeRemaining = activityLog
         .filter((a) => a.id !== id)
-        .reduce((sum, a) => sum + (a.steps ?? 0), 0);
-      const oldClampedTotal = clampLevel(totalStepsAll, movementReading.capacity);
-      const newClampedTotal = clampLevel(totalStepsRemaining, movementReading.capacity);
+        .reduce((sum, a) => sum + movementChargeOf(a), 0);
+      const oldClampedTotal = clampLevel(totalChargeAll, movementReading.capacity);
+      const newClampedTotal = clampLevel(totalChargeRemaining, movementReading.capacity);
       movementDelta = oldClampedTotal - newClampedTotal;
     }
 

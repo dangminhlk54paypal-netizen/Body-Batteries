@@ -27,6 +27,7 @@ import { sendLowBatteryAlerts } from '../services/notifications/notificationServ
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
 import { useMicroBatteryHistory } from '../hooks/useMicroBatteryHistory';
 import type { BatteryState, BatteryId, BatteryType } from '../types/battery';
+import type { StepActivityType } from '../types/energy';
 import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
@@ -91,10 +92,14 @@ export function HomeScreen() {
     setModalVisible(true);
   }
 
-  async function handleIntakeConfirm(amount: number, note: string) {
+  async function handleIntakeConfirm(
+    amount: number,
+    note: string,
+    opts?: { stepType?: StepActivityType }
+  ) {
     if (!selectedBattery) return;
     // addIntake updates state and returns alerts computed from the fresh data.
-    const alerts = await addIntake(selectedBattery.id as BatteryId, amount, note);
+    const alerts = await addIntake(selectedBattery.id as BatteryId, amount, note, opts);
     if (notificationsEnabled && alerts.length > 0) {
       await sendLowBatteryAlerts(alerts);
     }

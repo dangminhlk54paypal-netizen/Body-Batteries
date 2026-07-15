@@ -12,6 +12,7 @@ interface ActivityLogRow {
   energy_kcal: number;
   satiety_drain_kcal: number;
   energy_day_applied: string | null;
+  movement_steps_applied: number | null;
 }
 
 function rowToEntry(r: ActivityLogRow): ActivityLogEntry {
@@ -28,6 +29,10 @@ function rowToEntry(r: ActivityLogRow): ActivityLogEntry {
     // no energy_day_applied — best-effort fallback: derive it from the
     // timestamp the same way logActivity would have at the time.
     energyDayApplied: r.energy_day_applied ?? energyDayString(new Date(r.timestamp)),
+    // Rows written before the BUG A migration have no movement_steps_applied
+    // — leave it undefined so consumers (energyStore.movementChargeOf) fall
+    // back to `steps`, matching what those rows actually charged the pin.
+    movementStepsApplied: r.movement_steps_applied ?? undefined,
   };
 }
 
@@ -35,8 +40,8 @@ export async function addActivityLogEntry(entry: ActivityLogEntry): Promise<void
   const db = getDb();
   await db.runAsync(
     `INSERT INTO activity_log
-       (id, timestamp, start_at, end_at, steps, workouts, energy_kcal, satiety_drain_kcal, energy_day_applied)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, timestamp, start_at, end_at, steps, workouts, energy_kcal, satiety_drain_kcal, energy_day_applied, movement_steps_applied)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     entry.id,
     entry.timestamp,
     entry.startAt ?? null,
@@ -45,7 +50,8 @@ export async function addActivityLogEntry(entry: ActivityLogEntry): Promise<void
     JSON.stringify(entry.workouts),
     entry.energyKcal,
     entry.satietyDrainKcal,
-    entry.energyDayApplied
+    entry.energyDayApplied,
+    entry.movementStepsApplied ?? null
   );
 }
 
@@ -101,7 +107,7 @@ export async function updateActivityLogEntry(entry: ActivityLogEntry): Promise<v
   await db.runAsync(
     `UPDATE activity_log
      SET timestamp = ?, start_at = ?, end_at = ?, steps = ?, workouts = ?,
-         energy_kcal = ?, satiety_drain_kcal = ?, energy_day_applied = ?
+         energy_kcal = ?, satiety_drain_kcal = ?, energy_day_applied = ?, movement_steps_applied = ?
      WHERE id = ?`,
     entry.timestamp,
     entry.startAt ?? null,
@@ -111,6 +117,7 @@ export async function updateActivityLogEntry(entry: ActivityLogEntry): Promise<v
     entry.energyKcal,
     entry.satietyDrainKcal,
     entry.energyDayApplied,
+    entry.movementStepsApplied ?? null,
     entry.id
   );
 }

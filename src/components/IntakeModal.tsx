@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { BatteryType } from '../types/battery';
+import type { StepActivityType } from '../types/energy';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
 import { BottomSheet } from './ui/BottomSheet';
 import { toMl, type WaterDisplayUnit } from '../lib/units';
+import { stepsKcal } from '../domain/energy/metabolismEngine';
+import { useSettingsStore } from '../store/settingsStore';
 
 interface Props {
   battery: BatteryType | null;
   visible: boolean;
-  onConfirm: (amount: number, note: string) => void;
+  onConfirm: (amount: number, note: string, opts?: { stepType?: StepActivityType }) => void;
   onClose: () => void;
   // Water-only: lets the amount be typed in ml or L (see src/lib/units.ts).
   // onConfirm always receives ml regardless of which unit was picked here.
@@ -22,6 +25,12 @@ const WATER_UNIT_OPTIONS: { key: WaterDisplayUnit; label: string }[] = [
   { key: 'l', label: 'L' },
 ];
 
+const STEP_TYPE_OPTIONS: { key: StepActivityType; label: string }[] = [
+  { key: 'walking', label: 'Đi bộ' },
+  { key: 'running', label: 'Chạy bộ' },
+  { key: 'hiking', label: 'Leo núi' },
+];
+
 export function IntakeModal({
   battery,
   visible,
@@ -32,15 +41,31 @@ export function IntakeModal({
 }: Props) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [stepType, setStepType] = useState<StepActivityType>('walking');
   const isWater = battery?.id === 'water';
+  const isMovement = battery?.id === 'movement';
+  const userProfile = useSettingsStore((s) => s.userProfile);
+
+  // Derived (not stateful) preview of how much the energy goal will grow —
+  // computed straight from render inputs, no effect/setState needed.
+  const parsedAmount = parseFloat(amount);
+  const movementKcalPreview =
+    isMovement && !isNaN(parsedAmount) && parsedAmount > 0
+      ? stepsKcal(parsedAmount, userProfile.weightKg, stepType)
+      : null;
 
   function handleConfirm() {
     const parsed = parseFloat(amount);
     if (!isNaN(parsed) && parsed > 0) {
-      onConfirm(isWater ? toMl(parsed, waterDisplayUnit) : parsed, note.trim());
+      onConfirm(
+        isWater ? toMl(parsed, waterDisplayUnit) : parsed,
+        note.trim(),
+        isMovement ? { stepType } : undefined
+      );
       haptics.success();
       setAmount('');
       setNote('');
+      setStepType('walking');
       onClose();
     }
   }
@@ -82,6 +107,41 @@ export function IntakeModal({
           </View>
         )}
 
+        {isMovement && (
+          <View style={styles.unitRow}>
+            {STEP_TYPE_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.key}
+                style={({ pressed }) => [
+                  styles.unitChip,
+                  stepType === opt.key && styles.unitChipActive,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setStepType(opt.key)}
+              >
+                <Text
+                  style={[
+                    styles.unitChipText,
+                    stepType === opt.key && styles.unitChipTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* Both this quick-tap AND the "🏃 Vận động" modal now grow the eat
+            goal (BUG B fix) — warn against logging the same session twice,
+            which would double the goal growth. */}
+        {isMovement && (
+          <Text style={styles.kcalHint}>
+            Lưu ý: buổi tập đã ghi ở &quot;🏃 Vận động&quot; thì đừng nạp lại ở đây — sẽ bị
+            tính trùng vào mục tiêu ăn.
+          </Text>
+        )}
+
         <TextInput
           style={styles.input}
           placeholder={`Ví dụ: 30`}
@@ -91,6 +151,12 @@ export function IntakeModal({
           onChangeText={setAmount}
           autoFocus
         />
+
+        {movementKcalPreview !== null && (
+          <Text style={styles.kcalHint}>
+            ≈ {movementKcalPreview} kcal — mục tiêu ăn hôm nay sẽ tăng thêm chừng này
+          </Text>
+        )}
 
         <TextInput
           style={[styles.input, styles.noteInput]}
@@ -149,6 +215,10 @@ const styles = StyleSheet.create({
   },
   noteInput: {
     fontSize: 14,
+  },
+  kcalHint: {
+    fontSize: 12,
+    color: colors.textSubtle,
   },
   unitRow: {
     flexDirection: 'row',

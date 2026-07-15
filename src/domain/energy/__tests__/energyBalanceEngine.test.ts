@@ -88,6 +88,20 @@ describe('growGoalFromActivity', () => {
     const result = growGoalFromActivity(energyReading(500, 2022), profile, 0, []);
     expect(result).toEqual(energyReading(500, 2022));
   });
+
+  // BUG B fix: growGoalFromActivity now accepts an optional stepType so the
+  // movement-pin sync (energyStore.addIntake('movement', ...)) can use a
+  // research-backed per-type rate instead of always assuming walking.
+  it('with stepType "hiking" grows the goal MORE than "walking" for the same steps', () => {
+    const walking = growGoalFromActivity(energyReading(500, 2022), profile, 5000, [], 'walking');
+    const hiking = growGoalFromActivity(energyReading(500, 2022), profile, 5000, [], 'hiking');
+    expect(hiking.activityBonusKcal!).toBeGreaterThan(walking.activityBonusKcal!);
+  });
+  it('defaults to "walking" when stepType is omitted (backward compatible)', () => {
+    const withDefault = growGoalFromActivity(energyReading(500, 2022), profile, 5000, []);
+    const explicitWalking = growGoalFromActivity(energyReading(500, 2022), profile, 5000, [], 'walking');
+    expect(withDefault).toEqual(explicitWalking);
+  });
 });
 
 describe('reconcileEnergyCapacity', () => {

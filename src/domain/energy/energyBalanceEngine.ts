@@ -1,5 +1,5 @@
 import type { BatteryReading } from '../../types/battery';
-import type { UserProfile, WorkoutSession } from '../../types/energy';
+import type { UserProfile, WorkoutSession, StepActivityType } from '../../types/energy';
 import {
   passiveDailyBurn,
   passiveBurnPerHour,
@@ -69,13 +69,19 @@ export function burnEnergy(reading: BatteryReading, kcal: number): BatteryReadin
 
 // Logged activity (steps + workouts) grows today's goal — moving more means
 // more room to eat. It does NOT touch level (eaten stays exactly as logged).
+// `stepType` defaults to 'walking' — keeps every existing call site's
+// behavior identical; callers that know the actual step activity (e.g. a
+// hiking-tagged movement-pin charge) can pass it through for a more accurate
+// kcal rate (see STEP_KCAL_PER_KG).
 export function growGoalFromActivity(
   reading: BatteryReading,
   profile: UserProfile,
   steps: number,
-  workouts: WorkoutSession[]
+  workouts: WorkoutSession[],
+  stepType: StepActivityType = 'walking'
 ): BatteryReading {
-  const kcal = stepsKcal(steps, profile.weightKg) + totalWorkoutKcal(workouts, profile.weightKg);
+  const kcal =
+    stepsKcal(steps, profile.weightKg, stepType) + totalWorkoutKcal(workouts, profile.weightKg);
   if (kcal <= 0) return reading;
   return {
     ...reading,

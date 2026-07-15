@@ -6,7 +6,10 @@ import {
   totalWorkoutKcal,
   dailyExpenditure,
   passiveBurnPerHour,
+  workoutStepEquivalent,
+  totalStepEquivalent,
 } from '../metabolismEngine';
+import { MET_TABLE } from '../../../lib/metabolicConstants';
 import type { UserProfile } from '../../../types/energy';
 
 // The user's own example profile: 78 kg, 168 cm.
@@ -56,6 +59,62 @@ describe('stepsKcal', () => {
   it('is 0 for non-positive step counts', () => {
     expect(stepsKcal(0, 78)).toBe(0);
     expect(stepsKcal(-100, 78)).toBe(0);
+  });
+});
+
+// BUG A fix: stepsKcal now accepts a StepActivityType so movement-pin syncing
+// (movementCharge → kcal via growGoalFromActivity) can use a research-backed
+// per-type rate instead of always the walking rate. Values from
+// STEP_KCAL_PER_KG (Compendium of Physical Activities 2024 codes
+// 17170/12050/17080): walking 0.0005, running 0.00096, hiking 0.0011 kcal/step/kg.
+describe('stepsKcal by step type (research-backed rates)', () => {
+  it('walking (default, backward compatible) — 5000 steps @ 70kg', () => {
+    expect(stepsKcal(5000, 70)).toBe(175);
+    expect(stepsKcal(5000, 70, 'walking')).toBe(175);
+  });
+  it('running burns more per step than walking', () => {
+    expect(stepsKcal(5000, 70, 'running')).toBe(336);
+  });
+  it('hiking burns the most per step', () => {
+    expect(stepsKcal(5000, 70, 'hiking')).toBe(385);
+  });
+});
+
+// BUG A fix: workout minutes → movement-pin step equivalents (Marshall et al.
+// 2009 / Tudor-Locke et al. 2019 CADENCE-adults cadence bands): 100 steps/min
+// for moderate activities (MET < 6), 130 steps/min for vigorous (MET >= 6).
+describe('workoutStepEquivalent / totalStepEquivalent (movement-pin cadence equivalence)', () => {
+  it('moderate activity (MET < 6) uses the 100 steps/min cadence', () => {
+    // yoga MET 2.5 -> moderate
+    expect(workoutStepEquivalent({ type: 'yoga', minutes: 30 })).toBe(3000);
+  });
+  it('vigorous activity (MET >= 6) uses the 130 steps/min cadence', () => {
+    // running MET 9.8 -> vigorous
+    expect(workoutStepEquivalent({ type: 'running', minutes: 30 })).toBe(3900);
+  });
+  it('new powerlifting types (MET 5.0, moderate) use the 100 steps/min cadence', () => {
+    expect(workoutStepEquivalent({ type: 'squat', minutes: 45 })).toBe(4500);
+  });
+  it('totalStepEquivalent sums multiple sessions', () => {
+    const sessions = [
+      { type: 'yoga' as const, minutes: 30 }, // 3000
+      { type: 'running' as const, minutes: 30 }, // 3900
+    ];
+    expect(totalStepEquivalent(sessions)).toBe(6900);
+  });
+  it('is 0 for an empty session list', () => {
+    expect(totalStepEquivalent([])).toBe(0);
+  });
+});
+
+// New powerlifting activity types (Compendium of Physical Activities 2024 code
+// 02052 — squat/deadlift; bench_press reasoned between codes 02054=3.5 and
+// 02050=6.0, see Robergs 2007 / Reis 2017).
+describe('new powerlifting MET entries', () => {
+  it('squat / bench_press / deadlift are defined in MET_TABLE', () => {
+    expect(MET_TABLE.squat).toBe(5.0);
+    expect(MET_TABLE.bench_press).toBe(4.0);
+    expect(MET_TABLE.deadlift).toBe(5.0);
   });
 });
 

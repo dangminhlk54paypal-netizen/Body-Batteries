@@ -1,4 +1,4 @@
-import type { ActivityType, OccupationLevel } from '../types/energy';
+import type { ActivityType, OccupationLevel, StepActivityType } from '../types/energy';
 
 // --- v1 GENERAL constants ---------------------------------------------------
 // These are rough, population-average values chosen to make the model
@@ -15,9 +15,21 @@ export const OCCUPATION_FACTORS: Record<OccupationLevel, number> = {
   active: 1.5, // physically active job (waiter, warehouse, trades)
 };
 
-// Kcal burned per step, scaled by body weight. ~0.0005 kcal/step/kg ≈
-// 0.04 kcal/step at 78 kg (≈ 312 kcal for 8000 steps).
-export const KCAL_PER_STEP_PER_KG = 0.0005;
+// Kcal burned per step, scaled by body weight, PER STEP TYPE (research-backed —
+// Compendium of Physical Activities 2024 codes 17170 walking / 12050 running /
+// 17080 hiking; derivation C = MET × 0.0175 / cadence). Used by stepsKcal so
+// the movement pin's charge and the energy goal it grows (see
+// energyStore.addIntake/logActivity, energyBalanceEngine.growGoalFromActivity)
+// agree on the same per-type rate instead of always assuming walking.
+export const STEP_KCAL_PER_KG: Record<StepActivityType, number> = {
+  walking: 0.0005, // ~0.04 kcal/step at 78 kg (≈ 312 kcal for 8000 steps)
+  running: 0.00096,
+  hiking: 0.0011,
+};
+
+// Kcal burned per step, scaled by body weight. Kept for existing call sites —
+// equals STEP_KCAL_PER_KG.walking (the legacy/default rate).
+export const KCAL_PER_STEP_PER_KG = STEP_KCAL_PER_KG.walking;
 
 // MET (Metabolic Equivalent of Task) per activity. kcal = MET × weightKg × hours.
 export const MET_TABLE: Record<ActivityType, number> = {
@@ -33,7 +45,22 @@ export const MET_TABLE: Record<ActivityType, number> = {
   gym_strength: 5.0,
   hiit: 8.0,
   yoga: 2.5,
+  // Compendium of Physical Activities 2024 code 02052 — the only code that
+  // explicitly names squat/deadlift.
+  squat: 5.0,
+  deadlift: 5.0,
+  // Reasoned between codes 02054 (3.5, general resistance training) and 02050
+  // (6.0, vigorous effort) — Robergs 2007 / Reis 2017 show bench press has a
+  // lower energy cost than squat (fewer/smaller muscle groups involved).
+  bench_press: 4.0,
 };
+
+// Cadence used to translate workout minutes into movement-pin step
+// equivalents (see metabolismEngine.workoutStepEquivalent) — Marshall et al.
+// 2009 and Tudor-Locke et al. 2019 (CADENCE-adults) cadence bands.
+export const STEP_EQUIV_MODERATE_PER_MIN = 100; // MET < VIGOROUS_MET_THRESHOLD
+export const STEP_EQUIV_VIGOROUS_PER_MIN = 130; // MET >= VIGOROUS_MET_THRESHOLD
+export const VIGOROUS_MET_THRESHOLD = 6;
 
 // Plausible human-body ranges for the body-profile form. These bound the
 // Mifflin-St Jeor inputs (which is a linear formula — outside these ranges it

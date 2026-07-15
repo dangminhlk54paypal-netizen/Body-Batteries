@@ -283,8 +283,12 @@ describe('energyStore — removeActivity movement pin DELTA reversal (FIX #2+#3)
     await useEnergyStore.getState().logActivity({ steps: 8000 }); // fills the pin
     expect(findReading('movement').level).toBe(8000);
 
-    // A second, unrelated entry with 0 steps (just a workout) — removing it
-    // should have zero effect on the movement pin.
+    // A second entry with 0 steps (just a 10-min yoga workout). Since BUG A
+    // it DOES carry a 1000 step-equivalent charge — but the pin was already
+    // at cap when it was logged, so its MARGINAL contribution to the clamped
+    // total is 0, and removing it must therefore have zero effect on the pin.
+    // (The unsaturated workout-only delta is covered by the BUG A round-trip
+    // test below.)
     await useEnergyStore.getState().logActivity({ workouts: [{ type: 'yoga', minutes: 10 }] });
 
     // Simulate tickDrain having drained the pin down to 4000 in the meantime,
@@ -804,5 +808,163 @@ describe('energyStore — removeIntake reverses addIntake (FIX #3)', () => {
       energyBefore
     );
     expect(useEnergyStore.getState().intakeLog).toHaveLength(0);
+  });
+});
+
+// BUG A: logActivity used to charge the movement pin from `steps` alone
+// (`if (mi !== -1 && steps > 0) applyIntake(updated[mi], steps)`), so a
+// workout-only entry (the activity modal's primary flow: type + minutes, no
+// steps) never charged the movement pin — it translates workout minutes into
+// step-equivalents (workoutStepEquivalent) and charges the pin by
+// steps + that step-equivalent instead.
+describe('energyStore — BUG A: workout-only logActivity charges the movement pin', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    seedReadings();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('a workout with NO steps still charges the movement pin (moderate MET -> 100 steps/min)', async () => {
+    // yoga MET 2.5 < 6 -> moderate cadence: 45 min * 100 = 4500 step-equivalent.
+    await useEnergyStore.getState().logActivity({ workouts: [{ type: 'yoga', minutes: 45 }] });
+    expect(findReading('movement').level).toBe(4500);
+  });
+
+  it('a vigorous workout uses the 130 steps/min cadence', async () => {
+    // running MET 9.8 >= 6 -> vigorous cadence: 30 min * 130 = 3900.
+    await useEnergyStore.getState().logActivity({ workouts: [{ type: 'running', minutes: 30 }] });
+    expect(findReading('movement').level).toBe(3900);
+  });
+
+  it('snapshots movementStepsApplied = steps + workout step-equivalent', async () => {
+    await useEnergyStore.getState().logActivity({
+      steps: 1000,
+      workouts: [{ type: 'yoga', minutes: 45 }], // 4500 step-equivalent
+    });
+    const entry = useEnergyStore.getState().activityLog[0];
+    expect(entry.movementStepsApplied).toBe(5500);
+    expect(findReading('movement').level).toBe(5500);
+  });
+
+  it('removeActivity round-trips a workout-only entry exactly (movement pin back to pre-log state)', async () => {
+    const before = useEnergyStore.getState().readings;
+    await useEnergyStore.getState().logActivity({ workouts: [{ type: 'yoga', minutes: 45 }] });
+    const entryId = useEnergyStore.getState().activityLog[0].id;
+
+    await useEnergyStore.getState().removeActivity(entryId);
+
+    expect(findReading('movement')).toEqual(before.find((r) => r.batteryTypeId === 'movement'));
+    expect(findReading('energy')).toEqual(before.find((r) => r.batteryTypeId === 'energy'));
+  });
+});
+
+// Backward compat: rows logged before the movementStepsApplied migration only
+// ever charged the pin by `steps` — removeActivity must fall back to
+// entry.steps for those, not treat the missing field as a 0 charge.
+describe('energyStore — removeActivity backward compat for pre-migration rows', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    seedReadings();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('an entry without movementStepsApplied reverses by entry.steps only', async () => {
+    // Pre-fill the pin to 3000, as if a pre-migration logActivity({ steps: 3000 })
+    // had already run, then inject the legacy entry (no movementStepsApplied
+    // field at all) directly into activityLog.
+    useEnergyStore.setState((s) => ({
+      readings: s.readings.map((r) =>
+        r.batteryTypeId === 'movement' ? { ...r, level: 3000 } : r
+      ),
+    }));
+    const legacyEntry: ActivityLogEntry = {
+      id: 'activity_legacy',
+      timestamp: Date.now(),
+      steps: 3000,
+      workouts: [],
+      energyKcal: 0,
+      satietyDrainKcal: 0,
+      energyDayApplied: energyDayString(),
+      // movementStepsApplied intentionally absent — simulates a pre-migration row.
+    };
+    useEnergyStore.setState((s) => ({ activityLog: [...s.activityLog, legacyEntry] }));
+
+    await useEnergyStore.getState().removeActivity(legacyEntry.id);
+
+    expect(findReading('movement').level).toBe(0);
+  });
+});
+
+// BUG B: addIntake('movement', amount) (tap the movement battery cell) only
+// converted kcal via kcalFromMacro, which is 0 for movement — so a direct
+// movement charge never grew the energy battery's goal, unlike logActivity's
+// step/workout path (growGoalFromActivity). Mirrors that same growth here.
+describe('energyStore — BUG B: addIntake(movement) grows the energy goal', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    useEnergyStore.setState({
+      readings: [
+        baseEnergyReading(),
+        baseMovementReading(),
+        { date: '2026-07-08', batteryTypeId: 'water', level: 0, capacity: 2000 },
+        { date: '2026-07-08', batteryTypeId: 'protein', level: 0, capacity: 120 },
+      ],
+      masterPercentage: 0,
+      foodLog: [],
+      activityLog: [],
+      intakeLog: [],
+      lastDrainSyncAt: Date.now(),
+      isLoaded: true,
+    });
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('grows capacity/activityBonusKcal by stepsKcal(amount, weight, "walking"); leaves level + satiety untouched', async () => {
+    const energyBefore = findReading('energy');
+
+    await useEnergyStore.getState().addIntake('movement', 5000);
+
+    const energy = findReading('energy');
+    // default profile weightKg=78: stepsKcal(5000, 78, 'walking') = round(5000*0.0005*78) = 195
+    expect(energy.capacity).toBe(energyBefore.capacity + 195);
+    expect(energy.activityBonusKcal).toBe(195);
+    expect(energy.level).toBe(energyBefore.level);
+    expect(energy.satietyReserveKcal).toBe(energyBefore.satietyReserveKcal);
+  });
+
+  it('with opts.stepType "hiking" grows by the hiking rate instead', async () => {
+    const energyBefore = findReading('energy');
+
+    await useEnergyStore.getState().addIntake('movement', 5000, '', { stepType: 'hiking' });
+
+    const energy = findReading('energy');
+    // stepsKcal(5000, 78, 'hiking') = round(5000*0.0011*78) = 429
+    expect(energy.activityBonusKcal).toBe(429);
+    expect(energy.capacity).toBe(energyBefore.capacity + 429);
+  });
+
+  it('a water tap behaves exactly as before (no energy goal growth, no kcal side-effect)', async () => {
+    const energyBefore = findReading('energy');
+
+    await useEnergyStore.getState().addIntake('water', 300);
+
+    expect(findReading('water').level).toBe(300);
+    expect(findReading('energy')).toEqual(energyBefore);
+  });
+
+  it('a protein tap behaves exactly as before (charges level via kcalFromMacro, capacity untouched)', async () => {
+    const energyBefore = findReading('energy');
+
+    await useEnergyStore.getState().addIntake('protein', 50);
+
+    const energy = findReading('energy');
+    expect(energy.capacity).toBe(energyBefore.capacity); // unaffected — only movement grows the goal
+    expect(energy.level).toBe(energyBefore.level + 200); // 50g * 4kcal/g
   });
 });
