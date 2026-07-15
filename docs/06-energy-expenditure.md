@@ -85,7 +85,7 @@ nhịp_tương_đương  =  100 steps/min (nếu MET < 6)
 - MET < 6 = cường độ vừa phải: nhịp 100 spm (Marshall et al. 2009, Tudor-Locke et al. 2019)
 - MET ≥ 6 = cường độ cao: nhịp 130 spm (Tudor-Locke 2019 — "CADENCE-adults" 6 MET ↔ 120–130 spm)
 
-**Ví dụ:** squat 30 phút (MET 5.0 < 6) → 30 × 100 = 3,000 bước tương đương → kcal = 3,000 × 0.00053 / 70 kg ≈ 114 kcal @ 70 kg.
+**Ví dụ:** squat 30 phút (MET 5.0 < 6) → 30 × 100 = 3.000 bước tương đương, dùng để **nạp pin Vận động** (đơn vị của pin là bước). Lưu ý: kcal của buổi tập KHÔNG tính từ bước tương đương — nó tính thẳng bằng công thức MET: `5.0 × 70 kg × 0.5 h = 175 kcal` (xem mục Powerlifting bên dưới). Hai con số phục vụ hai pin khác nhau: bước → pin Vận động, kcal → mục tiêu ăn của pin Năng lượng.
 
 **Bất biến:** kết quả chuyển đổi **snapshot vào `movementStepsApplied`** trên lúc ghi nhật ký, để undo chính xác (xem _Giới hạn v1_ bên dưới).
 
