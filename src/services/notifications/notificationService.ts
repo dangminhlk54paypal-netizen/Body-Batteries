@@ -18,9 +18,10 @@ export async function requestNotificationPermission(): Promise<boolean> {
 
 export async function sendLowBatteryAlerts(alerts: BatteryAlert[]): Promise<void> {
   for (const alert of alerts) {
+    const batteryName = alert.batteryName || 'năng lượng';
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: '⚡ Pin năng lượng thấp',
+        title: `⚡ Pin ${batteryName} thấp`,
         body: alert.message,
         data: { batteryTypeId: alert.batteryTypeId },
       },

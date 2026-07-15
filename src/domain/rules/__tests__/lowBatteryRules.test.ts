@@ -22,6 +22,15 @@ describe('checkLowBattery', () => {
     expect(alerts[0].percentage).toBe(15);
     expect(alerts[0].message).toContain('Protein');
     expect(alerts[0].message).toContain('15%');
+    expect(alerts[0].batteryName).toBe('Protein');
+  });
+
+  it('populates batteryName for water alerts', () => {
+    const readings: BatteryReading[] = [
+      reading({ batteryTypeId: 'water', level: 1, capacity: 100 }), // 1%
+    ];
+    const alerts = checkLowBattery(readings);
+    expect(alerts[0].batteryName).toBe('Nước');
   });
 
   it('does not flag a battery at or above the threshold', () => {
@@ -52,6 +61,7 @@ describe('checkLowBattery', () => {
     ];
     const alerts = checkLowBattery(readings);
     expect(alerts[0].message).toContain('unknown_id');
+    expect(alerts[0].batteryName).toBe('unknown_id');
   });
 });
 

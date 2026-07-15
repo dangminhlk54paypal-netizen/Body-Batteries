@@ -6,6 +6,24 @@ export interface BatteryAlert {
   batteryTypeId: string;
   percentage: number;
   message: string;
+  batteryName: string;
+}
+
+// Vietnamese display names for each battery type. Shared by both the alert
+// message and the alert title (see notificationService), so it must not be
+// duplicated elsewhere.
+const BATTERY_DISPLAY_NAMES: Record<string, string> = {
+  energy: 'Năng lượng',
+  protein: 'Protein',
+  carbs: 'Carbs',
+  water: 'Nước',
+  minerals: 'Khoáng chất',
+  sleep: 'Giấc ngủ',
+  movement: 'Vận động',
+};
+
+export function getBatteryDisplayName(batteryId: string): string {
+  return BATTERY_DISPLAY_NAMES[batteryId] ?? batteryId;
 }
 
 export function checkLowBattery(
@@ -21,21 +39,13 @@ export function checkLowBattery(
     .filter((r) => r.percentage / 100 < threshold)
     .map((r) => ({
       ...r,
+      batteryName: getBatteryDisplayName(r.batteryTypeId),
       message: buildAlertMessage(r.batteryTypeId, r.percentage),
     }));
 }
 
 function buildAlertMessage(batteryId: string, pct: number): string {
-  const names: Record<string, string> = {
-    energy: 'Năng lượng',
-    protein: 'Protein',
-    carbs: 'Carbs',
-    water: 'Nước',
-    minerals: 'Khoáng chất',
-    sleep: 'Giấc ngủ',
-    movement: 'Vận động',
-  };
-  const name = names[batteryId] ?? batteryId;
+  const name = getBatteryDisplayName(batteryId);
   return `Pin ${name} còn ${pct}% — hãy nạp thêm ngay!`;
 }
 
