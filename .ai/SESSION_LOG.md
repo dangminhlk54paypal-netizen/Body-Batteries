@@ -808,6 +808,56 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 
 ---
 
+## Session 12 — 2026-07-15 (Documentation + Git Secretary)
+
+**Làm gì:** Ghi lại công thức khoa học, constant powerlifting, và quy tắc chuyển đổi vào docs/06-energy-expenditure.md; cập nhật SESSION_LOG.md; tổ chức 3 git commits tách theo phạm vi; push lên origin.
+
+**Kết quả — Tóm tắt 6 tính năng từ implementation các phiên trước (Session này chỉ document + git):**
+
+1. **Xem chi tiết dinh dưỡng (S-U):** tap một món trong "Hôm nay đã ăn" hoặc History → bottom sheet đầy đủ vi chất (kcal/đạm/béo/carbs/nước + xơ, đường, canxi, sắt, natri, kali, magiê, kẽm, EPA/DHA). Snapshot lấy từ thời ghi nhật ký, micros scale từ per100g.
+   - Files: `src/domain/food/nutritionDetail.ts` (+9→10 tests), `src/components/food/NutritionDetailSheet.tsx` (mới).
+
+2. **BUG A: Vận động → pin năng lượng via step-equivalents (S-T).** Ghi buổi tập (môn + phút, không bước) → tính equivalent: 100 steps/min (MET<6), 130 (MET≥6). Snapshot `movementStepsApplied` → undo chính xác. Xem lịch sử: `movement_steps_applied` SQLite column mới.
+   - Files: `src/types/energy.ts`, `src/lib/metabolicConstants.ts`, `src/domain/energy/metabolismEngine.ts`, `src/domain/energy/energyBalanceEngine.ts`, `src/store/energyStore.ts`, `src/data/db/schema.ts`, `src/data/repositories/activityLogRepository.ts`, tests.
+
+3. **BUG B: addIntake (nút Vận động trực tiếp) → cộng vào mục tiêu ăn.** Modal thêm step-type selector (Đi bộ 0.0005 / Chạy 0.00096 / Leo núi 0.0011 kcal/step/kg) + live preview "≈ N kcal".
+   - Files: `src/components/EnergyActionsBar.tsx`, `src/components/IntakeModal.tsx`, `src/screens/HomeScreen.tsx`.
+
+4. **3 bài powerlifting mới:** squat MET 5.0, deadlift 5.0 (Compendium 2024 code 02052), bench_press 4.0 (ước tính; Robergs 2007/Reis 2017). Cộng vào `metabolicConstants.ts`.
+
+5. **QA fixes (S-U + S-T):** nutrition sheet dùng entry snapshot (chặn blocker B1), modal-overlap guard, anti-double-log hint trong IntakeModal, test comment fix.
+
+6. **Known limitation S-T3 (deliberately deferred):** quick-tap nút Vận động không undo được in-app (movement event không lưu trong intakeLog, IntakeEvent không lưu stepType để reverse goal growth chính xác) — cần design decision. Ghi vào NEXT_SESSIONS.md.
+
+**Công thức khoa học được ghi vào docs/06-energy-expenditure.md (sections 1A–1B + Sources):**
+
+- **Bảng hằng số:** walking 0.00053, running 0.00096, hiking 0.0011, steep 0.0014 kcal/step/kg (Marshall 2009, Compendium 2024, Tudor-Locke 2019, Leacox 2025).
+- **Quy tắc cadence:** 100 spm (moderate, MET<6), 130 spm (vigorous, MET≥6) — dùng cho chuyển đổi "phút tập → bước".
+- **Công thức chuyển:** `C = MET × 0.0175 / cadence` (kcal/step/kg).
+- **Powerlifting METs:** squat 5.0, deadlift 5.0 (code 02052), bench 4.0 (ước tính). Công thức: `kcal = MET × kg × hours` (session-average, gồm rest).
+- **Limitation paragraph:** MET là trung bình (không EPOC), undo thủ công không chính xác, S-T3 deferred.
+- **Sources:** 10 tài liệu gốc (Compendium, Marshall, Tudor-Locke, Leacox, Robergs, Reis, Scott, Adeel, João, ACSM) + URLs.
+
+**Kiểm tra trước commit:**
+- `npx tsc --noEmit` — sạch ✅
+- `npx jest` — **408 test PASS / 47 suite** (verified xanh)
+- `npx expo export --platform ios` — sạch, bundle ~5.5MB ✅
+
+**3 commits được tạo (đúng message format Vietnamese conventional):**
+1. `feat(S-U): xem chi tiết dinh dưỡng món đã ăn — bottom sheet đầy đủ vi chất` (files: nutrition detail + NutritionDetailSheet + TodayMeals/DayDetailSheet UI integration).
+2. `fix(S-T): đồng bộ 2 chiều pin Vận động ↔ pin Năng lượng + 3 bài powerlifting` (files: energy types/constants/engines + ActivityLogRepository + EnergyActionsBar/IntakeModal/HomeScreen + tests).
+3. `docs: công thức steps→kcal & MET powerlifting (Compendium 2024) + session log` (files: docs/06-energy-expenditure.md + .ai/SESSION_LOG.md + .ai/NEXT_SESSIONS.md + 2 parallel-reports).
+
+**Push result:** `git push origin ui-upgrade` ✅ (plain push, không --force).
+
+**Vấn đề gặp phải:** Không có — implementation đã verify xanh, chỉ cần ghi doc + git.
+
+**Session tiếp theo phải làm:**
+1. **S-A (test máy thật)** — vẫn ưu tiên cao nhất; test Home 7 pin, Phase 1/2, notification, U7 (USDA search).
+2. Chọn gói implementation tiếp (S-O/S-P/S-Q — bộ 2 đồng hồ, hoặc S-R — vi chất, hoặc S-S — backfill).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

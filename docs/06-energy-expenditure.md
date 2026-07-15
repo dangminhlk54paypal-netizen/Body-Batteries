@@ -34,13 +34,79 @@ E_ngày = E_thụ_động  +  E_bước_chân  +  E_tập_luyện
 
 ### c) E_tập_luyện = Σ (MET × kg × giờ)
 - Dùng chỉ số **MET** cho từng môn (bảng trong `src/lib/metabolicConstants.ts`):
-  chạy 9.8 · đá bóng 8.0 · bơi 7.0 · đạp xe 7.5 · gym tạ 5.0 · HIIT 8.0 · yoga 2.5 …
+  chạy 9.8 · đá bóng 8.0 · bơi 7.0 · đạp xe 7.5 · gym tạ 5.0 · HIIT 8.0 · yoga 2.5 · squat 5.0 · deadlift 5.0 · bench press 4.0 …
 - Ví dụ: đá bóng 1 giờ ở 78 kg = 8 × 78 × 1 = **624 kcal**.
+- **Powerlifting công thức:** kcal = MET × cân_nặng_kg × giờ (mức trung bình toàn buổi, gồm cả nghỉ giữa set).
+  - Squat: 5.0 MET (Compendium 2024 code 02052)
+  - Deadlift: 5.0 MET (Compendium 2024 code 02052)
+  - Bench press: 4.0 MET (ước tính; Robergs 2007 + Reis 2017: bench nhỏ hơn squat/deadlift)
 
 ### d) Tốc độ "tự xả" liên tục (kcal/giờ)
 - `E_thụ_động / 24` được rải đều suốt 24h (v1).
 - Bước chân & tập luyện được tính **theo sự kiện** khi người dùng ghi nhận (không rải đều).
 - *Tinh chỉnh sau:* rải theo nhịp sinh học (thức nhiều hơn, ngủ ít hơn) thay vì đều tăm tắp.
+
+---
+
+## 1A. Bước chân: công thức chuyển đổi từ số bước → kcal (Session này)
+
+> ⚠️ **Công cụ tự theo dõi, KHÔNG phải thiết bị y tế** — tất cả là **ước lượng chung**, không phải số đo riêng.
+
+### Bảng hằng số kcal/bước/kg theo hoạt động
+
+| Hoạt động | kcal/bước/kg | MET | Nhịp (steps/min) | Nguồn gốc |
+|-----------|--------------|-----|------------------|-----------|
+| Đi bộ bình thường | 0.00053 | 3.0 | 100 | Marshall et al. 2009; Compendium 2024 code 17170 |
+| Chạy bộ | 0.00096 | 9.3 | 169 | Compendium 2024 code 12050; Leacox et al. 2025 |
+| Leo núi (chung) | 0.0011 | 6.0 | 95 | Compendium 2024 code 17080 |
+| Leo núi dốc 6–10% | 0.0014 | 7.0 | 90 | Compendium 2024 code 17035 |
+
+**Ví dụ:** 5,000 bước ở 70 kg → đi bộ ≈ 185 kcal; chạy ≈ 336 kcal; leo núi ≈ 385 kcal.
+
+### Công thức chuyển đổi cơ bản
+
+```
+kcal/bước/kg  =  MET × 0.0175 / nhịp (steps/min)
+```
+
+Ví dụ: đi bộ (3.0 MET) @ 100 spm → 3.0 × 0.0175 / 100 = 0.000525 ≈ 0.00053 ✓
+
+### Quy tắc "phút tập → bước tương đương" cho tập luyện (không nhập bước thật)
+
+Khi người dùng ghi một buổi tập (ví dụ: squat 30 phút, không nhập số bước), app chuyển đổi:
+
+```
+bước_tương_đương  =  phút × nhịp_tương_đương
+nhịp_tương_đương  =  100 steps/min (nếu MET < 6)
+                      130 steps/min (nếu MET ≥ 6)
+```
+
+**Cơ sở:**
+- MET < 6 = cường độ vừa phải: nhịp 100 spm (Marshall et al. 2009, Tudor-Locke et al. 2019)
+- MET ≥ 6 = cường độ cao: nhịp 130 spm (Tudor-Locke 2019 — "CADENCE-adults" 6 MET ↔ 120–130 spm)
+
+**Ví dụ:** squat 30 phút (MET 5.0 < 6) → 30 × 100 = 3,000 bước tương đương → kcal = 3,000 × 0.00053 / 70 kg ≈ 114 kcal @ 70 kg.
+
+**Bất biến:** kết quả chuyển đổi **snapshot vào `movementStepsApplied`** trên lúc ghi nhật ký, để undo chính xác (xem _Giới hạn v1_ bên dưới).
+
+---
+
+## 1B. Powerlifting (squat, deadlift, bench press) — Compendium 2024
+
+| Bài tập | MET | kcal/giờ @ 70kg | Compendium code | Ghi chú |
+|---------|-----|-----------------|-----------------|---------|
+| Squat | 5.0 | 350 | 02052 | Squats, deadlift, slow or explosive |
+| Deadlift | 5.0 | 350 | 02052 | Cùng category squat |
+| Bench press | 4.0 | 280 | — | Ước tính (Robergs 2007, Reis 2017: bench < squat) |
+
+**Công thức:** `kcal = MET × cân_nặng_kg × giờ` (mức trung bình toàn buổi, gồm cả nghỉ giữa set; bỏ qua EPOC).
+
+**Ví dụ:** squat 1 giờ ở 70 kg = 5.0 × 70 × 1 = **350 kcal**.
+
+### Giới hạn v1
+- Giá trị MET là **trung bình toàn buổi** (set + rest), không phải "chỉ lúc tập" (working set tốn 11–30 kcal/phút squat; Scott 2011).
+- **Không mô hình EPOC** (oxy tiêu hao sau tập) — theo João 2021, session-average 5.3–6.5 kcal/min tính là đã gồm phần đó rồi.
+- **Undo thủ công không chính xác:** một quick-tap trên pin Vận động ngay trong app chưa được hỗ trợ undo (movement event không lưu trong `intakeLog`, và `IntakeEvent` không lưu `stepType` để có thể đảo ngược goal growth một cách chính xác) — xem _Tính năng trì hoãn S-T3_ ở `.ai/NEXT_SESSIONS.md`.
 
 ---
 
@@ -143,3 +209,56 @@ chỉ là giá trị khởi tạo ban đầu; mỗi người dùng tự sửa đ
 - TEF (hiệu ứng nhiệt thức ăn) ~10% năng lượng ngày; protein 20-30% > carb 5-15% > mỡ 0-5%
   (v1 chưa mô hình riêng TEF — bản sau cho bữa nhiều protein "no lâu hơn").
 - 1 kg mỡ ≈ 7700 kcal. Tất cả là **ước lượng chung, không phải đo y tế**.
+
+---
+
+## Sources (Tài liệu tham khảo)
+
+### Bước chân & Cadence
+
+1. **Marshall SJ et al. (2009).** "Translating physical activity recommendations into a pedometer-based step goal." _American Journal of Preventive Medicine_, 36(5):410-415.
+   - URL: https://www.sciencedirect.com/science/article/abs/pii/S0749379709000877
+   - Nguồn: walking 3.0 MET, cadence 100 spm (moderate).
+
+2. **Compendium of Physical Activities (2024).** "2024 Adult Compendium of Physical Activities."
+   - URL: https://pacompendium.com/ (full data: https://pacompendium.com/wp-content/uploads/2025/02/1_2024-adult-compendium_1_2024.pdf)
+   - Codes: 17170 (walking), 12050 (running), 17080 (hiking), 17035 (hiking steep), 02052 (squat/deadlift).
+
+3. **Tudor-Locke C et al. (2019).** "Walking cadence and intensity in 21-40 year olds: CADENCE-adults study." _International Journal of Behavioral Nutrition and Physical Activity_, 16:8.
+   - URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC6337834/
+   - Nguồn: cadence 100–102 spm (moderate), 120–130 spm (vigorous ≥6 MET).
+
+4. **Leacox A et al. (2025).** "Effect of running speed on cadence and running kinetics." _International Journal of Sports Physical Therapy_, 20(7):957-963.
+   - URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC12222555/
+   - Nguồn: running 9.3 MET @ 169 spm.
+
+### Powerlifting
+
+5. **Robergs RA et al. (2007).** "Energy expenditure during bench press and squat exercises." _Journal of Strength and Conditioning Research_, 21(1):123-130.
+   - URL: https://journals.lww.com/nsca-jscr/Abstract/2007/02000/ENERGY_EXPENDITURE_DURING_BENCH_PRESS_AND_SQUAT.23.aspx
+   - Nguồn: bench press < squat (xác nhận).
+
+6. **Reis VM et al. (2017).** "Energy cost of isolated resistance exercises across low- to high-intensities." _PLOS ONE_, 12(7):e0181311.
+   - URL: https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0181311
+   - Nguồn: bench press interpolation, working-set cost comparison.
+
+7. **Scott CB et al. (2011).** "Aerobic, anaerobic, and EPOC energy expenditure during and after bench press." _Journal of Strength and Conditioning Research_, 25(4):903-908.
+   - URL: https://www.asep.org/asep/asep/JEPonlineFebruary2011ChristopherScott.pdf
+   - Ghi chú: EPOC (excess post-exercise oxygen consumption) — không mô hình riêng v1.
+
+8. **Adeel M et al. (2022).** "VO2 and sEMG during moderate-strength training exercises." _International Journal of Environmental Research and Public Health_, 19(4):2233.
+   - URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC8872100/
+   - Nguồn: squat ≥ deadlift (VO2 so sánh).
+
+9. **João GA et al. (2021).** "Acute behavior of oxygen consumption during resistance training." _Frontiers in Sports and Active Living_, 3:797604.
+   - URL: https://doi.org/10.3389/fspor.2021.797604
+   - Ghi chú: session-average 5.3–6.5 kcal/min (gồm EPOC).
+
+### Tham khảo chéo (ACSM)
+
+10. **ACSM Metabolic Equations (cross-check).** Walking/running/treadmill @ slopes.
+    - URL: https://www.depts.ttu.edu/ksm/_documents/grad/acsm_comps/6c-23-2013_HFI_Metabolic_Calculations.pdf
+
+---
+
+**Lưu ý:** Tất cả giá trị trong tài liệu này là **ước lượng chung, dùng cho tự theo dõi**, không phải số đo y tế. Các hằng số MET và cadence có sai số tự nhiên giữa các cá nhân.
