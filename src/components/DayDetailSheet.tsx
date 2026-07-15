@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   SectionList,
 } from 'react-native';
 import { BottomSheet } from './ui/BottomSheet';
+import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { MEAL_LABELS } from '../lib/constants';
 import { formatDisplayDate } from '../lib/dateUtils';
 import type { FoodLogEntry, MealType } from '../types/food';
@@ -87,6 +88,11 @@ export function DayDetailSheet({
 }: DayDetailSheetProps) {
   const grouped = useMemo(() => groupEntriesByMeal(entries), [entries]);
 
+  // The entry whose full nutrition breakdown is shown in the read-only
+  // detail sheet (tap an entry's name/portion area to open it).
+  const [detailEntry, setDetailEntry] = useState<FoodLogEntry | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+
   const summary = useMemo(() => {
     const totalKcal = entries.reduce((sum, e) => sum + e.energyKcal, 0);
     const totalProtein = entries.reduce((sum, e) => sum + e.proteinG, 0);
@@ -108,12 +114,18 @@ export function DayDetailSheet({
 
   const renderEntry = ({ item: entry }: { item: FoodLogEntry }) => (
     <View style={styles.entryRow}>
-      <View style={styles.entryLeft}>
+      <Pressable
+        style={({ pressed }) => [styles.entryLeft, pressed && { opacity: 0.6 }]}
+        onPress={() => {
+          setDetailEntry(entry);
+          setDetailVisible(true);
+        }}
+      >
         <Text style={styles.foodName} numberOfLines={2}>
           {entry.foodNameVi}
         </Text>
         <Text style={styles.portion}>{formatPortion(entry)}</Text>
-      </View>
+      </Pressable>
       <View style={styles.entryRight}>
         <Text style={styles.energyLabel}>{entry.energyKcal} kcal</Text>
         <Pressable
@@ -140,60 +152,71 @@ export function DayDetailSheet({
   );
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} sheetOffset={600}>
-      <ScrollView
-        scrollEnabled={false}
-        style={styles.sheetContent}
-        contentContainerStyle={styles.contentContainer}
-      >
-        {/* Header: Date title */}
-        <Text style={styles.sheetTitle}>{formatDisplayDate(date)}</Text>
+    <>
+      {/* Hide the outer sheet while the nested detail sheet is open — two RN
+          <Modal visible> at once causes the second one to not render on iOS
+          (same fix as FoodLogModal's editingNutrition guard). */}
+      <BottomSheet visible={visible && !detailVisible} onClose={onClose} sheetOffset={600}>
+        <ScrollView
+          scrollEnabled={false}
+          style={styles.sheetContent}
+          contentContainerStyle={styles.contentContainer}
+        >
+          {/* Header: Date title */}
+          <Text style={styles.sheetTitle}>{formatDisplayDate(date)}</Text>
 
-        {/* Loading state */}
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.accent} />
-          </View>
-        )}
+          {/* Loading state */}
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.accent} />
+            </View>
+          )}
 
-        {/* Summary line: total kcal & protein */}
-        {!loading && entries.length > 0 && (
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryText}>
-              Tổng: {summary.totalKcal} kcal · Đạm {summary.totalProtein}g
-            </Text>
-          </View>
-        )}
+          {/* Summary line: total kcal & protein */}
+          {!loading && entries.length > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryText}>
+                Tổng: {summary.totalKcal} kcal · Đạm {summary.totalProtein}g
+              </Text>
+            </View>
+          )}
 
-        {/* Entries list grouped by meal type */}
-        {!loading && entries.length > 0 ? (
-          <View style={styles.entriesContainer}>
-            <SectionList
-              sections={sectionData}
-              keyExtractor={(item) => item.id}
-              renderItem={renderEntry}
-              renderSectionHeader={renderSectionHeader}
-              scrollEnabled={false}
-            />
-          </View>
-        ) : !loading ? (
-          renderEmptyState()
-        ) : null}
+          {/* Entries list grouped by meal type */}
+          {!loading && entries.length > 0 ? (
+            <View style={styles.entriesContainer}>
+              <SectionList
+                sections={sectionData}
+                keyExtractor={(item) => item.id}
+                renderItem={renderEntry}
+                renderSectionHeader={renderSectionHeader}
+                scrollEnabled={false}
+              />
+            </View>
+          ) : !loading ? (
+            renderEmptyState()
+          ) : null}
 
-        {/* Add food button */}
-        {!loading && (
-          <Pressable
-            style={({ pressed }) => [
-              styles.addButton,
-              { opacity: pressed ? 0.8 : 1 },
-            ]}
-            onPress={onAddFood}
-          >
-            <Text style={styles.addButtonText}>＋ Thêm món cho ngày này</Text>
-          </Pressable>
-        )}
-      </ScrollView>
-    </BottomSheet>
+          {/* Add food button */}
+          {!loading && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.addButton,
+                { opacity: pressed ? 0.8 : 1 },
+              ]}
+              onPress={onAddFood}
+            >
+              <Text style={styles.addButtonText}>＋ Thêm món cho ngày này</Text>
+            </Pressable>
+          )}
+        </ScrollView>
+      </BottomSheet>
+
+      <NutritionDetailSheet
+        entry={detailEntry}
+        visible={detailVisible}
+        onClose={() => setDetailVisible(false)}
+      />
+    </>
   );
 }
 

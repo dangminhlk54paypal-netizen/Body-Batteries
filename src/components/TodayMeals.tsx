@@ -4,6 +4,7 @@ import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import { MEAL_LABELS } from '../lib/constants';
 import type { FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
+import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 
 interface Props {
   entries: FoodLogEntry[];
@@ -45,12 +46,25 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
 
   const [editingEntry, setEditingEntry] = useState<FoodLogEntry | null>(null);
   const [editAmount, setEditAmount] = useState('');
+  // The entry whose full nutrition breakdown is currently shown in the
+  // read-only detail sheet (tap the row's main text area to open it).
+  const [detailEntry, setDetailEntry] = useState<FoodLogEntry | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
 
   const editingIsPortion = editingEntry != null && isPortionEntry(editingEntry);
 
   function startEdit(entry: FoodLogEntry) {
     setEditingEntry(entry);
     setEditAmount(isPortionEntry(entry) ? String(entry.count ?? '') : String(entry.grams));
+  }
+
+  function openDetail(entry: FoodLogEntry) {
+    setDetailEntry(entry);
+    setDetailVisible(true);
+  }
+
+  function closeDetail() {
+    setDetailVisible(false);
   }
 
   function confirmEdit() {
@@ -91,14 +105,17 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
               </View>
               {group.entries.map((e) => (
                 <View key={e.id} style={styles.entryRow}>
-                  <View style={styles.entryMain}>
+                  <Pressable
+                    style={({ pressed }) => [styles.entryMain, pressed && styles.pressed]}
+                    onPress={() => openDetail(e)}
+                  >
                     <Text style={styles.entryName} numberOfLines={1}>
                       {e.foodNameVi}
                     </Text>
                     <Text style={styles.entryMeta}>
                       {timeLabel(e.timestamp)} · {amountLabel(e)} · {e.energyKcal} kcal
                     </Text>
-                  </View>
+                  </Pressable>
                   <Pressable
                     hitSlop={10}
                     style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
@@ -120,8 +137,11 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
         </>
       )}
 
-      {/* Edit modal — prefilled with the tapped entry, saved via onEdit */}
-      <Modal visible={editingEntry !== null} transparent animationType="fade" onRequestClose={() => setEditingEntry(null)}>
+      {/* Edit modal — prefilled with the tapped entry, saved via onEdit.
+          `!detailVisible` guard: two RN <Modal visible> at once make the
+          second one not render on iOS (same fix as DayDetailSheet / the
+          FoodLogModal editingNutrition guard). */}
+      <Modal visible={editingEntry !== null && !detailVisible} transparent animationType="fade" onRequestClose={() => setEditingEntry(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
           <View style={styles.sheet}>
             <Text style={styles.title}>Sửa món ăn</Text>
@@ -151,6 +171,9 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Read-only nutrition breakdown for the tapped entry */}
+      <NutritionDetailSheet entry={detailEntry} visible={detailVisible} onClose={closeDetail} />
     </View>
   );
 }
