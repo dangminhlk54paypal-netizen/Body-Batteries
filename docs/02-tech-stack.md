@@ -63,4 +63,6 @@ Phần lớn dữ liệu nằm **ngay trên điện thoại của bạn** (khôn
   TypeScript lồng nhau (`src/i18n/locales/{vi,en,de}.ts`), có `tsc` tự kiểm tra không thiếu chuỗi
   nào giữa 3 ngôn ngữ (xem `docs/03-architecture.md`). Đổi ngôn ngữ mượt vì hook `useT()` chỉ theo
   dõi đúng 1 field `language` — component nào không gọi `useT()` thì không bị vẽ lại khi đổi ngôn
-  ngữ (app này vốn không dùng React Context, xem `src/lib/theme.ts`).
+  ngữ (app này vốn không dùng React Context, xem `src/lib/theme.ts`). Quyết định này đã thành
+  **luật bắt buộc** cho mọi lần sửa UI về sau: xem `AGENTS.md` mục "MANDATORY RULE: UI text &
+  i18n"; muốn thêm ngôn ngữ thứ 4 thì theo skill `.ai/skills/add-language.md`.

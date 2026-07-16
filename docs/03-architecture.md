@@ -110,6 +110,19 @@ src/i18n/
   món, đổi ngôn ngữ sau đó không viết lại lịch sử (xem thêm
   `docs/excel-report.md` mục 0).
 
+**Luật bắt buộc khi sửa UI:** mọi thay đổi giao diện từ nay phải đi qua hệ
+dịch này (không hardcode chuỗi) — luật đầy đủ nằm ở `AGENTS.md` mục
+"MANDATORY RULE: UI text & i18n", được nạp tự động vào mọi phiên AI.
+
+**Thêm ngôn ngữ mới (vd: Tiếng Pháp) — 4 bước, không cần thư viện:**
+1. `src/i18n/types.ts`: thêm mã vào `Language`, `LANGUAGES`,
+   `LANGUAGE_NAMES` (tên bản ngữ), `LOCALE_TAGS` (mã Intl, vd `fr-FR`).
+2. Tạo `src/i18n/locales/fr.ts` — copy `en.ts`, giữ kiểu
+   `: TranslationSchema`, dịch toàn bộ giá trị (tsc chặn build nếu thiếu key).
+3. `src/i18n/translate.ts`: thêm locale mới vào `DICTIONARIES`.
+4. Xong — nút chọn ở Cài đặt render tự động từ `LANGUAGES`.
+Quy trình chi tiết: skill `.ai/skills/add-language.md`.
+
 ## 🗃️ Mô hình dữ liệu (Data Model)
 
 Các "bảng" dữ liệu chính lưu trong SQLite. *Tên cột bằng tiếng Anh (theo luật code), mô tả bằng tiếng Việt.*

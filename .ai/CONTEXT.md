@@ -32,6 +32,11 @@
 - Tuân thủ cấu trúc thư mục trong `docs/03-architecture.md`. Không đặt logic vào file giao diện.
 - Code rõ ràng hơn là code "thông minh". Ưu tiên dễ đọc.
 - Mỗi file một nhiệm vụ. Hàm ngắn, đặt tên rõ.
+- **Đa ngôn ngữ (BẮT BUỘC từ Session 14):** mọi chữ hiển thị cho người dùng
+  (UI, Alert, Excel) phải đi qua hệ dịch `src/i18n/` — KHÔNG hardcode chuỗi
+  vào component; key mới thêm vào `locales/vi.ts` trước rồi dịch đủ
+  `en.ts`/`de.ts`. Luật đầy đủ (đọc trước khi đụng UI): `AGENTS.md` mục
+  "MANDATORY RULE: UI text & i18n". Thêm ngôn ngữ mới: skill `add-language`.
 - Khi tạo file mới, nói rõ cho người dùng: file tên gì, nằm ở đâu, làm gì.
 - Trước khi viết tính năng lớn, mô tả kế hoạch ngắn bằng tiếng Việt để người dùng duyệt.
 
