@@ -3,7 +3,9 @@ import type {
   WorkoutSession,
   ExpenditureBreakdown,
   StepActivityType,
+  LiftingExercise,
 } from '../../types/energy';
+import { LIFTING_EXERCISES } from '../../types/energy';
 import {
   MET_TABLE,
   OCCUPATION_FACTORS,
@@ -12,6 +14,7 @@ import {
   STEP_EQUIV_VIGOROUS_PER_MIN,
   VIGOROUS_MET_THRESHOLD,
 } from '../../lib/metabolicConstants';
+import { liftingSessionKcal } from './liftingEngine';
 
 // Pure functions modelling the body's energy expenditure (its "self-discharge").
 // All outputs are kcal unless noted. v1 / general — see docs/06-energy-expenditure.md.
@@ -47,17 +50,38 @@ export function stepsKcal(
   return Math.round(steps * STEP_KCAL_PER_KG[stepType] * weightKg);
 }
 
-// Kcal for one workout session: MET × weight(kg) × duration(hours).
-export function workoutKcal(session: WorkoutSession, weightKg: number): number {
-  const met = MET_TABLE[session.type] ?? 0;
+// Kcal for one workout session. Two paths:
+//   - set-based powerlifting (S-PL): the session carries `sets` and the
+//     caller provides `heightCm` → tonnage hybrid model (liftingEngine),
+//     which is what actually responds to bar weight × reps.
+//   - everything else (and pre-S-PL rows, which have no `sets`): the classic
+//     MET × weight(kg) × duration(hours) estimate, where the MET comes from
+//     `session.customMet` when set (custom activities), otherwise MET_TABLE.
+// `heightCm` is optional so pre-S-PL call sites keep compiling; without it a
+// set-based session falls back to the MET path (its `minutes` is the
+// estimateLiftingMinutes value, so the fallback stays sane).
+export function workoutKcal(
+  session: WorkoutSession,
+  weightKg: number,
+  heightCm?: number
+): number {
+  if (session.sets && session.sets.length > 0 && heightCm && isLiftingExercise(session.type)) {
+    return liftingSessionKcal(session.type, session.sets, weightKg, heightCm);
+  }
+  const met = session.customMet ?? MET_TABLE[session.type] ?? 0;
   return Math.round(met * weightKg * (session.minutes / 60));
 }
 
 export function totalWorkoutKcal(
   sessions: WorkoutSession[],
-  weightKg: number
+  weightKg: number,
+  heightCm?: number
 ): number {
-  return sessions.reduce((sum, s) => sum + workoutKcal(s, weightKg), 0);
+  return sessions.reduce((sum, s) => sum + workoutKcal(s, weightKg, heightCm), 0);
+}
+
+function isLiftingExercise(type: WorkoutSession['type']): type is LiftingExercise {
+  return (LIFTING_EXERCISES as string[]).includes(type);
 }
 
 // Translates one workout's minutes into movement-pin step equivalents —
@@ -65,9 +89,10 @@ export function totalWorkoutKcal(
 // al. 2019 CADENCE-adults): 100 steps/min for moderate activities
 // (MET < VIGOROUS_MET_THRESHOLD), 130 steps/min for vigorous ones. Lets a
 // workout-only log (type + minutes, no steps) still charge the movement pin
-// (BUG A fix), which has no other unit for exercise minutes.
+// (BUG A fix), which has no other unit for exercise minutes. MET comes from
+// `session.customMet` when set (custom activities), otherwise MET_TABLE.
 export function workoutStepEquivalent(session: WorkoutSession): number {
-  const met = MET_TABLE[session.type] ?? 0;
+  const met = session.customMet ?? MET_TABLE[session.type] ?? 0;
   const cadence =
     met >= VIGOROUS_MET_THRESHOLD ? STEP_EQUIV_VIGOROUS_PER_MIN : STEP_EQUIV_MODERATE_PER_MIN;
   return Math.round(session.minutes * cadence);
@@ -86,7 +111,7 @@ export function dailyExpenditure(
   const bmr = basalMetabolicRate(profile);
   const passive = passiveDailyBurn(profile);
   const stepsBurn = stepsKcal(steps, profile.weightKg);
-  const workoutsBurn = totalWorkoutKcal(workouts, profile.weightKg);
+  const workoutsBurn = totalWorkoutKcal(workouts, profile.weightKg, profile.heightCm);
   return {
     bmr,
     passive,

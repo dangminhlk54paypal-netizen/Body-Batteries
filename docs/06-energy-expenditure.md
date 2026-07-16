@@ -91,21 +91,81 @@ nhịp_tương_đương  =  100 steps/min (nếu MET < 6)
 
 ---
 
-## 1B. Powerlifting (squat, deadlift, bench press) — Compendium 2024
+## 1B. Powerlifting (squat, deadlift, bench press) — mô hình set × rep × tạ (S-PL)
 
-| Bài tập | MET | kcal/giờ @ 70kg | Compendium code | Ghi chú |
-|---------|-----|-----------------|-----------------|---------|
-| Squat | 5.0 | 350 | 02052 | Squats, deadlift, slow or explosive |
-| Deadlift | 5.0 | 350 | 02052 | Cùng category squat |
-| Bench press | 4.0 | 280 | — | Ước tính (Robergs 2007, Reis 2017: bench < squat) |
+> Từ S-PL (2026-07-16), 3 bài powerlifting được ghi **theo set** (khởi động +
+> bài chính) qua sheet Powerlifting riêng, và kcal tính từ **khối lượng nâng
+> thật** (tạ × rep × set + cân nặng/chiều cao người tập) thay vì MET × phút —
+> theo yêu cầu người dùng: số phút phụ thuộc nhịp tim nên khó tin cậy, còn
+> tạ/rep/set là số đo chính xác của buổi tập. Code: `src/domain/energy/liftingEngine.ts`.
 
-**Công thức:** `kcal = MET × cân_nặng_kg × giờ` (mức trung bình toàn buổi, gồm cả nghỉ giữa set; bỏ qua EPOC).
+### Công thức hybrid = công nâng tạ + đốt lúc nghỉ giữa set
 
-**Ví dụ:** squat 1 giờ ở 70 kg = 5.0 × 70 × 1 = **350 kcal**.
+**① Công nâng tạ (mỗi set, vật lý):**
+
+```
+khối_lượng_hiệu_dụng (kg) = tạ + k_bài × cân_nặng_cơ_thể
+quãng_đường_thanh_đòn (m) = h_bài × chiều_cao
+kcal_set = m_eff × 9.81 × ROM × reps × (1 + 0.33) / 0.20 / 4184
+```
+
+- `× (1 + 0.33)`: pha HẠ tạ (eccentric) tốn ~1/3 pha nâng (Abbott 1952).
+- `/ 0.20`: hiệu suất cơ học của cơ (~20%, sách giáo khoa sinh lý 15–25%).
+
+**Hệ số theo bài** (`LIFTING_PARAMS`, nhân trắc học de Leva 1996):
+
+| Bài | k_bài (phần cơ thể di chuyển cùng tạ) | h_bài (ROM / chiều cao) |
+|-----|----------------------------------------|--------------------------|
+| Squat | 0.88 — cả người trừ cẳng chân+bàn chân (~12%) | 0.25 |
+| Bench press | 0.10 — hai cánh tay | 0.19 |
+| Deadlift | 0.25 — thân+đầu+tay (~60%) nhưng chỉ nâng ~nửa quãng đường thanh đòn | 0.30 |
+
+**② Đốt lúc nghỉ giữa set (tự ước lượng, KHÔNG cần nhập phút):**
+
+```
+phút_buổi ≈ set_chính × 3 + set_khởi_động × 1.5   (LIFTING_SET_CYCLE_MIN)
+kcal_nghỉ = 2.0 MET × cân_nặng × giờ                (LIFTING_REST_MET)
+```
+
+Nghiên cứu đo VO2 cả buổi (João 2021: 5.3–6.5 kcal/phút trung bình buổi) cho
+thấy phần hồi phục giữa set chiếm ĐA SỐ năng lượng — chỉ tính công cơ học sẽ
+thiếu 3–5 lần.
+
+**Ví dụ (78 kg, 168 cm):** squat khởi động 20×10/50×6/70×4/85×2 + bài chính
+5×5@100kg → công nâng ≈ 44 kcal + nghỉ (21 phút) ≈ 55 kcal ≈ **~100 kcal** cho
+bài squat; buổi 3 bài đầy đủ ≈ **250–350 kcal** — khớp khoảng đo VO2.
+
+**Số phút ước lượng** cũng được lưu vào `WorkoutSession.minutes` để pin Vận
+động vẫn nhận step-equivalent (squat MET 5.0 < 6 → 100 spm) và lịch sử/Excel
+hiển thị bình thường.
+
+### Dữ liệu lưu cho phân tích block (6 tuần) sau này
+
+Mỗi set (kind warmup/working, kg, reps) được lưu nguyên vẹn trong JSON
+`activity_log.workouts` (không cần migration — hàng cũ chỉ thiếu field
+`sets` và giữ nguyên đường MET). Từ đó tính được e1RM (Epley: `w × (1 +
+reps/30)`, chỉ set working) và tổng tấn số theo tuần — nền tảng cho dashboard
+"quan sát cơ thể & sức mạnh theo block 6 tuần" ở phiên sau.
+
+### MET fallback (hàng cũ / không có sets)
+
+| Bài tập | MET | Compendium code | Ghi chú |
+|---------|-----|-----------------|---------|
+| Squat | 5.0 | 02052 | Squats, deadlift, slow or explosive |
+| Deadlift | 5.0 | 02052 | Cùng category squat |
+| Bench press | 4.0 | — | Ước tính (Robergs 2007, Reis 2017: bench < squat) |
+
+`kcal = MET × cân_nặng_kg × giờ` — vẫn dùng cho entry ghi trước S-PL (chỉ có
+phút, không có sets) và khi caller không truyền chiều cao.
 
 ### Giới hạn v1
-- Giá trị MET là **trung bình toàn buổi** (set + rest), không phải "chỉ lúc tập" (working set tốn 11–30 kcal/phút squat; Scott 2011).
-- **Không mô hình EPOC** (oxy tiêu hao sau tập) — theo João 2021, session-average 5.3–6.5 kcal/min tính là đã gồm phần đó rồi.
+- Hệ số k_bài / h_bài là **trung bình dân số** (de Leva 1996) — chưa hiệu
+  chỉnh theo tỷ lệ chi thể từng người; ROM thực tế phụ thuộc độ sâu squat,
+  độ rộng tay cầm...
+- Thời gian nghỉ ước lượng cố định (3 phút/set chính) — người nghỉ 5 phút
+  giữa set nặng sẽ đốt phần nghỉ nhiều hơn con số này.
+- **Không mô hình EPOC** (oxy tiêu hao sau tập) — phần nghỉ 2.0 MET đã gồm
+  một phần hồi phục; EPOC sau buổi tập chưa tính.
 - **Undo thủ công không chính xác:** một quick-tap trên pin Vận động ngay trong app chưa được hỗ trợ undo (movement event không lưu trong `intakeLog`, và `IntakeEvent` không lưu `stepType` để có thể đảo ngược goal growth một cách chính xác) — xem _Tính năng trì hoãn S-T3_ ở `.ai/NEXT_SESSIONS.md`.
 
 ---
@@ -253,6 +313,14 @@ chỉ là giá trị khởi tạo ban đầu; mỗi người dùng tự sửa đ
 9. **João GA et al. (2021).** "Acute behavior of oxygen consumption during resistance training." _Frontiers in Sports and Active Living_, 3:797604.
    - URL: https://doi.org/10.3389/fspor.2021.797604
    - Ghi chú: session-average 5.3–6.5 kcal/min (gồm EPOC).
+
+### Mô hình set-based S-PL (bổ sung 2026-07-16)
+
+11. **de Leva P (1996).** "Adjustments to Zatsiorsky-Seluyanov's segment inertia parameters." _Journal of Biomechanics_, 29(9):1223-1230.
+    - Nguồn: khối lượng phân đoạn cơ thể (thân, tay, cẳng chân...) → hệ số k_bài trong `LIFTING_PARAMS`.
+
+12. **Abbott BC, Bigland B, Ritchie JM (1952).** "The physiological cost of negative work." _Journal of Physiology_, 117(3):380-390.
+    - Nguồn: pha eccentric (hạ tạ) tốn ~1/3 pha concentric → hệ số 0.33.
 
 ### Tham khảo chéo (ACSM)
 

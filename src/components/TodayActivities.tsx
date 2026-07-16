@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { ACTIVITY_LABELS, ACTIVITY_TYPES } from './EnergyActionsBar';
+import { PowerliftingSheet, describeLiftingSets } from './PowerliftingSheet';
 import { formatTimeHHmm, parseTimeHHmmToday } from '../lib/dateUtils';
-import type { ActivityLogEntry, ActivityType } from '../types/energy';
+import type { ActivityLogEntry, ActivityType, WorkoutSession } from '../types/energy';
 import { colors } from '../lib/theme';
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
   onDelete: (id: string) => void;
   onEdit: (id: string, patch: {
     steps?: number;
-    workouts?: { type: ActivityType; minutes: number }[];
+    workouts?: WorkoutSession[];
     // undefined = leave the existing time unchanged; null = the user
     // explicitly cleared the field, so drop the stored time entirely.
     startAt?: number | null;
@@ -35,17 +36,43 @@ function timeRangeLabel(entry: ActivityLogEntry): string {
   return formatTimeHHmm(entry.timestamp);
 }
 
+// The label a workout shows in the history list — a custom activity's own
+// nameVi takes priority over the generic "Môn tự thêm" ACTIVITY_LABELS entry.
+function workoutLabel(w: WorkoutSession): string {
+  return w.customName ?? ACTIVITY_LABELS[w.type];
+}
+
 function summaryLabel(entry: ActivityLogEntry): string {
   const parts: string[] = [];
   for (const w of entry.workouts) {
-    parts.push(`${ACTIVITY_LABELS[w.type]} ${w.minutes}p`);
+    // Set-based powerlifting sessions (S-PL) show what was lifted, not the
+    // estimated minutes — "Squat 5×5@100kg (+4 khởi động)".
+    parts.push(
+      w.sets?.length
+        ? `${workoutLabel(w)} ${describeLiftingSets(w.sets)}`
+        : `${workoutLabel(w)} ${w.minutes}p`
+    );
   }
   if (entry.steps > 0) parts.push(`${entry.steps} bước`);
   return parts.length > 0 ? parts.join(' · ') : 'Vận động';
 }
 
+// Entries logged through the Powerlifting sheet are edited there too — the
+// minutes form below can't represent sets and would silently flatten them.
+function isLiftingEntry(entry: ActivityLogEntry): boolean {
+  return entry.workouts.some((w) => (w.sets?.length ?? 0) > 0);
+}
+
+// Custom-activity entries (type === 'custom') keep their type/customName/
+// customMet fixed in v1 — only minutes/steps/time are editable, since there
+// is no MET_TABLE row to re-pick from (see EnergyActionsBar's chip picker).
+function isCustomEntry(entry: ActivityLogEntry): boolean {
+  return entry.workouts.some((w) => w.type === 'custom');
+}
+
 export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   const [editingEntry, setEditingEntry] = useState<ActivityLogEntry | null>(null);
+  const [liftingEntry, setLiftingEntry] = useState<ActivityLogEntry | null>(null);
   const [editActivity, setEditActivity] = useState<ActivityType>('running');
   const [editMinutes, setEditMinutes] = useState('');
   const [editSteps, setEditSteps] = useState('');
@@ -55,6 +82,10 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   const totalKcal = entries.reduce((sum, e) => sum + e.energyKcal, 0);
 
   function startEdit(entry: ActivityLogEntry) {
+    if (isLiftingEntry(entry)) {
+      setLiftingEntry(entry);
+      return;
+    }
     const workout = entry.workouts[0];
     setEditingEntry(entry);
     setEditActivity(workout?.type ?? 'running');
@@ -68,9 +99,25 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
     if (!editingEntry) return;
     const mins = parseFloat(editMinutes);
     const stepCount = parseFloat(editSteps);
+    const hasMinutes = !isNaN(mins) && mins > 0;
+    // Custom entries keep their type/customName/customMet untouched — only
+    // minutes/steps/time are editable in v1 (see isCustomEntry comment).
+    const originalWorkout = editingEntry.workouts[0];
+    const workouts: WorkoutSession[] = hasMinutes
+      ? originalWorkout?.type === 'custom'
+        ? [
+            {
+              type: 'custom',
+              minutes: mins,
+              customName: originalWorkout.customName,
+              customMet: originalWorkout.customMet,
+            },
+          ]
+        : [{ type: editActivity, minutes: mins }]
+      : [];
     onEdit(editingEntry.id, {
       steps: !isNaN(stepCount) && stepCount > 0 ? stepCount : 0,
-      workouts: !isNaN(mins) && mins > 0 ? [{ type: editActivity, minutes: mins }] : [],
+      workouts,
       startAt: timeFieldPatch(editStart),
       endAt: timeFieldPatch(editEnd),
     });
@@ -131,21 +178,31 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
           <View style={styles.sheet}>
             <Text style={styles.title}>Sửa vận động</Text>
             <View style={styles.chips}>
-              {ACTIVITY_TYPES.map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => setEditActivity(t)}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    editActivity === t && styles.chipActive,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.chipText, editActivity === t && styles.chipTextActive]}>
-                    {ACTIVITY_LABELS[t]}
+              {editingEntry && isCustomEntry(editingEntry) ? (
+                // Custom activities have no MET_TABLE entry to re-pick from —
+                // show a fixed, non-interactive chip instead of chip churn.
+                <View style={[styles.chip, styles.chipActive]}>
+                  <Text style={[styles.chipText, styles.chipTextActive]}>
+                    {editingEntry.workouts[0]?.customName ?? ACTIVITY_LABELS.custom}
                   </Text>
-                </Pressable>
-              ))}
+                </View>
+              ) : (
+                ACTIVITY_TYPES.map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => setEditActivity(t)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      editActivity === t && styles.chipActive,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.chipText, editActivity === t && styles.chipTextActive]}>
+                      {ACTIVITY_LABELS[t]}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
             </View>
             <TextInput
               style={styles.input}
@@ -200,6 +257,20 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* S-PL: set-based entries reopen the Powerlifting sheet prefilled.
+          key remounts the sheet per entry so its useState initializer
+          re-reads the sets (no setState-in-effect). */}
+      <PowerliftingSheet
+        key={liftingEntry?.id ?? 'lifting-edit'}
+        visible={liftingEntry !== null}
+        onClose={() => setLiftingEntry(null)}
+        editingEntry={liftingEntry}
+        onSaveEdit={(id, workouts) => {
+          onEdit(id, { workouts });
+          setLiftingEntry(null);
+        }}
+      />
     </View>
   );
 }

@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import type { MicroBatteryState } from '../types/nutrition';
 import { PROMINENT_GOAL_IDS, MORE_GOAL_IDS, LIMIT_IDS, ELECTROLYTE_IDS } from '../lib/nutrientTargets';
+import { UPPER_LIMITS } from '../lib/upperLimits';
 import type { DateOption } from '../hooks/useMicroBatteryHistory';
 import { OverdoseNotice } from './OverdoseNotice';
+import { useSettingsStore } from '../store/settingsStore';
 import { colors } from '../lib/theme';
 
 interface Props {
@@ -26,6 +28,17 @@ function byIds(states: MicroBatteryState[], ids: string[]): MicroBatteryState[] 
     .filter((s): s is MicroBatteryState => !!s);
 }
 
+// Gentle "past a reference ceiling" flag — deliberately narrower than the
+// existing caption logic (kind==='goal' && over just means "past the daily
+// recommendation", which is fine/neutral and must NOT warn, see CONTEXT.md
+// §5). A goal-type nutrient only warns once it clears the separate Upper
+// Limit table; a limit-type nutrient (sodium/sugar/salt) warns as soon as
+// it's over its own cap, same as `state.over`.
+function isOverReference(state: MicroBatteryState): boolean {
+  if (state.kind === 'limit') return state.over;
+  return state.current > (UPPER_LIMITS[state.id]?.value ?? Infinity);
+}
+
 // A static (non-animated) pin cell dedicated to micronutrients — deliberately
 // NOT the shared BatteryCell, which auto-tints red/yellow at low percentage.
 // Goal-type "under target" and limit-type "over cap" must both stay neutral
@@ -43,6 +56,10 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
       : state.over
         ? 'vượt khuyến nghị'
         : null;
+  // A small ⚠️ glyph next to the percentage — colors stay neutral (no red),
+  // the glyph itself is the only extra emphasis. See isOverReference for the
+  // exact rule (goal-type "over target" alone never warns).
+  const warn = isOverReference(state);
   return (
     <View style={styles.cell}>
       <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
@@ -67,7 +84,9 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
           />
         )}
       </Svg>
-      <Text style={styles.cellPct}>{state.percentage}%</Text>
+      <Text style={styles.cellPct}>
+        {state.percentage}%{warn ? ' ⚠️' : ''}
+      </Text>
       <Text style={styles.cellName}>{state.nameVi}</Text>
       <Text style={styles.cellAmount}>
         {state.current}
@@ -90,79 +109,104 @@ export function MicroBatteryStack({
   recommendNote,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  // Persisted collapse state for this whole section — same read-the-store-
+  // directly pattern MasterBattery uses for particleEffectsEnabled.
+  const microCollapsed = useSettingsStore((s) => s.microCollapsed);
+  const setMicroCollapsed = useSettingsStore((s) => s.setMicroCollapsed);
 
   const prominent = byIds(states, PROMINENT_GOAL_IDS);
   const more = byIds(states, MORE_GOAL_IDS);
   const limits = byIds(states, LIMIT_IDS);
   const electrolytes = byIds(states, ELECTROLYTE_IDS);
+  const warnCount = states.filter(isOverReference).length;
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Vi chất đã nạp</Text>
+      <Pressable
+        onPress={() => setMicroCollapsed(!microCollapsed)}
+        style={styles.headerRow}
+        hitSlop={6}
+      >
+        <View style={styles.headerLeft}>
+          <Text style={styles.chevron}>{microCollapsed ? '▸' : '▾'}</Text>
+          <Text style={styles.title}>Vi chất đã nạp</Text>
+        </View>
         <Text style={styles.disclaimer}>Chỉ để tham khảo.</Text>
-      </View>
-      {recommendNote && <Text style={styles.recommendNote}>{recommendNote}</Text>}
+      </Pressable>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
-        {dates.map((d) => {
-          const active = d.value === selectedDate;
-          return (
-            <Pressable
-              key={d.value}
-              onPress={() => onSelectDate(d.value)}
-              style={[styles.dateChip, active && styles.dateChipActive]}
-            >
-              <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{d.label}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {prominent.map((s) => (
-          <MicroCell key={s.id} state={s} />
-        ))}
-      </ScrollView>
-
-      {more.length > 0 && (
-        <Pressable onPress={() => setExpanded((e) => !e)} style={styles.moreToggle}>
-          <Text style={styles.moreToggleText}>
-            {expanded ? '▾ Ẩn bớt' : `▸ Xem thêm: ${more.map((s) => s.nameVi).join(' · ')}`}
+      {microCollapsed ? (
+        <Pressable onPress={() => setMicroCollapsed(false)}>
+          <Text style={styles.collapsedLine}>
+            {`▸ Đang thu gọn — bấm để xem ${states.length} vi chất${
+              warnCount > 0 ? ` · ⚠️ ${warnCount} vượt ngưỡng` : ''
+            }`}
           </Text>
         </Pressable>
-      )}
-      {expanded && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-          {more.map((s) => (
-            <MicroCell key={s.id} state={s} />
-          ))}
-        </ScrollView>
-      )}
+      ) : (
+        <>
+          {recommendNote && <Text style={styles.recommendNote}>{recommendNote}</Text>}
 
-      {limits.length > 0 && (
-        <View style={styles.limitSection}>
-          <Text style={styles.limitLabel}>Nên giữ dưới mốc</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateRow}>
+            {dates.map((d) => {
+              const active = d.value === selectedDate;
+              return (
+                <Pressable
+                  key={d.value}
+                  onPress={() => onSelectDate(d.value)}
+                  style={[styles.dateChip, active && styles.dateChipActive]}
+                >
+                  <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>{d.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {limits.map((s) => (
+            {prominent.map((s) => (
               <MicroCell key={s.id} state={s} />
             ))}
           </ScrollView>
-        </View>
-      )}
 
-      {electrolytes.length > 0 && (
-        <View style={styles.limitSection}>
-          <Text style={styles.limitLabel}>Muối & điện giải</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-            {electrolytes.map((s) => (
-              <MicroCell key={s.id} state={s} />
-            ))}
-          </ScrollView>
-        </View>
-      )}
+          {more.length > 0 && (
+            <Pressable onPress={() => setExpanded((e) => !e)} style={styles.moreToggle}>
+              <Text style={styles.moreToggleText}>
+                {expanded ? '▾ Ẩn bớt' : `▸ Xem thêm: ${more.map((s) => s.nameVi).join(' · ')}`}
+              </Text>
+            </Pressable>
+          )}
+          {expanded && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+              {more.map((s) => (
+                <MicroCell key={s.id} state={s} />
+              ))}
+            </ScrollView>
+          )}
 
-      <OverdoseNotice states={states} />
+          {limits.length > 0 && (
+            <View style={styles.limitSection}>
+              <Text style={styles.limitLabel}>Nên giữ dưới mốc</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+                {limits.map((s) => (
+                  <MicroCell key={s.id} state={s} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {electrolytes.length > 0 && (
+            <View style={styles.limitSection}>
+              <Text style={styles.limitLabel}>Muối & điện giải</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+                {electrolytes.map((s) => (
+                  <MicroCell key={s.id} state={s} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <OverdoseNotice states={states} />
+        </>
+      )}
     </View>
   );
 }
@@ -177,6 +221,15 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     paddingHorizontal: 20,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  chevron: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
   title: {
     fontSize: 13,
     color: colors.textTertiary,
@@ -184,6 +237,11 @@ const styles = StyleSheet.create({
   disclaimer: {
     fontSize: 11,
     color: colors.textFaint,
+  },
+  collapsedLine: {
+    fontSize: 12,
+    color: colors.textMuted,
+    paddingHorizontal: 20,
   },
   dateRow: {
     flexDirection: 'row',

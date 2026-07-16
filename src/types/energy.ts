@@ -23,11 +23,15 @@ export interface UserProfile {
 }
 
 // Deliberate exercise types, each mapped to a MET value in metabolicConstants.
+// 'custom' is the escape hatch for a user-defined activity (see
+// CustomActivity below) — it has no fixed MET_TABLE rate; the rate travels
+// with the individual WorkoutSession/CustomActivity instead.
 export type ActivityType =
   | 'walking'
   | 'brisk_walking'
   | 'running'
   | 'cycling'
+  | 'elliptical'
   | 'swimming'
   | 'football'
   | 'basketball'
@@ -38,7 +42,39 @@ export type ActivityType =
   | 'yoga'
   | 'squat'
   | 'bench_press'
-  | 'deadlift';
+  | 'deadlift'
+  | 'custom';
+
+// A user-defined activity (not in MET_TABLE), persisted in settingsStore so
+// it can be re-picked from the activity list. `category` mirrors the
+// EnergyActionsBar top-level groups (cardio/sports/gym/other) so a custom
+// activity can slot into the same picker UI. `met` is the user (or a
+// reasonable default) estimate — there is no research table lookup for an
+// arbitrary custom activity.
+export interface CustomActivity {
+  id: string;
+  nameVi: string;
+  category: 'cardio' | 'sports' | 'gym' | 'other';
+  met: number;
+}
+
+// The three powerlifting movements that support set-based logging (S-PL).
+// Their kcal comes from the tonnage model in liftingEngine.ts, not MET ×
+// minutes — the MET_TABLE entries for these remain only as a fallback for
+// rows logged before S-PL (minutes-based, no `sets`).
+export type LiftingExercise = 'squat' | 'bench_press' | 'deadlift';
+
+export const LIFTING_EXERCISES: LiftingExercise[] = ['squat', 'bench_press', 'deadlift'];
+
+// One barbell set. `warmup` sets are the ramp-up (bar → % of working weight);
+// `working` sets are the main lift. Both count toward kcal; the distinction
+// exists for the warm-up/main UI sections and future block analysis (e1RM
+// trends should read `working` sets only).
+export interface LiftingSet {
+  kind: 'warmup' | 'working';
+  weightKg: number; // barbell + plates, NOT including body weight
+  reps: number;
+}
 
 // The subset of ActivityType that stepsKcal / growGoalFromActivity can rate
 // per-step (Compendium of Physical Activities 2024) — used to sync the
@@ -54,6 +90,22 @@ export interface WorkoutSession {
   // alone. See B2: no replay engine, battery effects apply once at log time.
   startAt?: number;
   endAt?: number;
+  // S-PL: set-based powerlifting detail (squat/bench/deadlift only). When
+  // present, kcal is computed from the sets via liftingEngine (tonnage ×
+  // ROM-from-height + rest overhead), NOT from MET × minutes — `minutes` is
+  // then the estimateLiftingMinutes() value, kept so minute-based consumers
+  // (movement-pin step equivalent, history display, Excel notes) keep
+  // working. Stored inside the activity_log.workouts JSON column — rows
+  // logged before S-PL simply lack this field and stay on the MET path.
+  sets?: LiftingSet[];
+  // Custom-activity fields: set ONLY when type === 'custom'. `customName` is
+  // the free-text Vietnamese label (falls back to a generic "Môn tự thêm" in
+  // the UI when absent); `customMet` is the MET rate metabolismEngine uses
+  // instead of MET_TABLE for this one session. Both live inside the same
+  // activity_log.workouts JSON column as every other WorkoutSession field, so
+  // no DB migration is needed.
+  customName?: string;
+  customMet?: number;
 }
 
 // Breakdown of one day's energy expenditure, all in kcal.

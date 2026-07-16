@@ -2,9 +2,9 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ModeId } from '../types/modes';
-import type { UserProfile } from '../types/energy';
+import type { CustomActivity, UserProfile } from '../types/energy';
 import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../lib/constants';
-import type { WaterDisplayUnit } from '../lib/units';
+import type { MovementDisplayUnit, WaterDisplayUnit } from '../lib/units';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -37,6 +37,14 @@ interface SettingsState {
   // stored/charged amount is always ml, this never affects that (see
   // src/lib/units.ts). Persisted so the choice survives an app restart.
   waterDisplayUnit: WaterDisplayUnit;
+  // Display-only preference for the movement/"Vận động" sub-battery cell
+  // (kcal or steps) — mirrors waterDisplayUnit's pattern, see src/lib/units.ts.
+  movementDisplayUnit: MovementDisplayUnit;
+  // Home screen's micronutrient ("vi chất") section collapsed/expanded state.
+  microCollapsed: boolean;
+  // User-defined activities (not in MET_TABLE) available in the activity
+  // picker alongside the built-in ActivityType list — see types/energy.ts.
+  customActivities: CustomActivity[];
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -46,6 +54,10 @@ interface SettingsState {
   setMealWindow: (meal: 'breakfast' | 'lunch' | 'dinner', window: MealWindow) => void;
   setParticleEffectsEnabled: (enabled: boolean) => void;
   setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
+  setMovementDisplayUnit: (unit: MovementDisplayUnit) => void;
+  setMicroCollapsed: (value: boolean) => void;
+  addCustomActivity: (activity: Omit<CustomActivity, 'id'>) => void;
+  removeCustomActivity: (id: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -61,6 +73,9 @@ export const useSettingsStore = create<SettingsState>()(
       mealWindows: DEFAULT_MEAL_WINDOWS,
       particleEffectsEnabled: true,
       waterDisplayUnit: 'ml',
+      movementDisplayUnit: 'kcal',
+      microCollapsed: false,
+      customActivities: [],
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -72,6 +87,14 @@ export const useSettingsStore = create<SettingsState>()(
         set((s) => ({ mealWindows: { ...s.mealWindows, [meal]: window } })),
       setParticleEffectsEnabled: (enabled) => set({ particleEffectsEnabled: enabled }),
       setWaterDisplayUnit: (unit) => set({ waterDisplayUnit: unit }),
+      setMovementDisplayUnit: (unit) => set({ movementDisplayUnit: unit }),
+      setMicroCollapsed: (value) => set({ microCollapsed: value }),
+      addCustomActivity: (activity) =>
+        set((s) => ({
+          customActivities: [...s.customActivities, { ...activity, id: `custom_${Date.now()}` }],
+        })),
+      removeCustomActivity: (id) =>
+        set((s) => ({ customActivities: s.customActivities.filter((a) => a.id !== id) })),
     }),
     {
       name: 'settings-storage',

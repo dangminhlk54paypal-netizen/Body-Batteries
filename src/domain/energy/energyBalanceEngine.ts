@@ -81,7 +81,8 @@ export function growGoalFromActivity(
   stepType: StepActivityType = 'walking'
 ): BatteryReading {
   const kcal =
-    stepsKcal(steps, profile.weightKg, stepType) + totalWorkoutKcal(workouts, profile.weightKg);
+    stepsKcal(steps, profile.weightKg, stepType) +
+    totalWorkoutKcal(workouts, profile.weightKg, profile.heightCm);
   if (kcal <= 0) return reading;
   return {
     ...reading,

@@ -136,6 +136,69 @@ describe('energyStore — logActivity (B2)', () => {
   });
 });
 
+// S-PL: a workout that carries `sets` is priced by the tonnage hybrid model
+// (liftingEngine), not MET × minutes — with the default 78kg/168cm profile.
+describe('energyStore — logActivity with set-based powerlifting (S-PL)', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    seedReadings();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // warmup 20×10 + 2 working sets of 100×5; estimateLiftingMinutes = 8.
+  // liftingSessionKcal @78kg/168cm: work ≈ 5.80 + 2×5.52 = 16.85 kcal,
+  // rest = 2.0 MET × 78 × (8/60) = 20.8 kcal → round(37.6) = 38.
+  const squatWorkout = {
+    type: 'squat' as const,
+    minutes: 8,
+    sets: [
+      { kind: 'warmup' as const, weightKg: 20, reps: 10 },
+      { kind: 'working' as const, weightKg: 100, reps: 5 },
+      { kind: 'working' as const, weightKg: 100, reps: 5 },
+    ],
+  };
+
+  it('grows the goal + drains satiety by the tonnage kcal, not MET × minutes', async () => {
+    await useEnergyStore.getState().logActivity({ workouts: [squatWorkout] });
+    const energy = findReading('energy');
+    expect(energy.capacity).toBe(2022 + 38);
+    expect(energy.activityBonusKcal).toBe(38);
+    expect(energy.satietyReserveKcal).toBe(1000 - 38);
+    const entry = useEnergyStore.getState().activityLog[0];
+    expect(entry.energyKcal).toBe(38);
+    expect(entry.satietyDrainKcal).toBe(38);
+  });
+
+  it('charges the movement pin from the estimated minutes (squat MET 5 → 100 spm)', async () => {
+    await useEnergyStore.getState().logActivity({ workouts: [squatWorkout] });
+    expect(findReading('movement').level).toBe(800);
+    expect(useEnergyStore.getState().activityLog[0].movementStepsApplied).toBe(800);
+  });
+
+  it('heavier bar → more kcal for the same sets/reps (the point of S-PL)', async () => {
+    const heavier = {
+      ...squatWorkout,
+      sets: squatWorkout.sets.map((s) => ({ ...s, weightKg: s.weightKg + 40 })),
+    };
+    await useEnergyStore.getState().logActivity({ workouts: [heavier] });
+    expect(findReading('energy').activityBonusKcal!).toBeGreaterThan(38);
+  });
+
+  it('removeActivity round-trips a set-based entry exactly', async () => {
+    const before = useEnergyStore.getState().readings;
+    await useEnergyStore.getState().logActivity({ workouts: [squatWorkout] });
+    const entryId = useEnergyStore.getState().activityLog[0].id;
+
+    await useEnergyStore.getState().removeActivity(entryId);
+
+    expect(useEnergyStore.getState().activityLog).toHaveLength(0);
+    expect(findReading('energy')).toEqual(before.find((r) => r.batteryTypeId === 'energy'));
+    expect(findReading('movement')).toEqual(before.find((r) => r.batteryTypeId === 'movement'));
+  });
+});
+
 describe('energyStore — removeActivity undoes logActivity exactly (B2)', () => {
   beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});

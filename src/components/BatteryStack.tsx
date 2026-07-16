@@ -1,7 +1,12 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { BatteryCell } from './BatteryCell';
-import { formatWaterAmount, type WaterDisplayUnit } from '../lib/units';
+import {
+  formatWaterAmount,
+  formatMovementAmount,
+  type WaterDisplayUnit,
+  type MovementDisplayUnit,
+} from '../lib/units';
 import type { BatteryState } from '../types/battery';
 
 interface Props {
@@ -11,6 +16,14 @@ interface Props {
   // so any other caller/test can omit it and get the plain ml label.
   waterDisplayUnit?: WaterDisplayUnit;
   onToggleWaterUnit?: () => void;
+  // Movement-only display preference (kcal or steps), mirrors the water
+  // pattern above — see src/lib/units.ts.
+  movementDisplayUnit?: MovementDisplayUnit;
+  onToggleMovementUnit?: () => void;
+  // Caller-computed kcal estimate of the movement pin's current step level
+  // (HomeScreen derives it via metabolismEngine.stepsKcal) — passed as a
+  // plain number so lib/units stays free of domain imports.
+  movementKcal?: number;
 }
 
 export function BatteryStack({
@@ -18,6 +31,9 @@ export function BatteryStack({
   onPressCell,
   waterDisplayUnit = 'ml',
   onToggleWaterUnit,
+  movementDisplayUnit = 'kcal',
+  onToggleMovementUnit,
+  movementKcal,
 }: Props) {
   return (
     <ScrollView
@@ -27,6 +43,7 @@ export function BatteryStack({
     >
       {batteries.map((b) => {
         const isWater = b.type.id === 'water';
+        const isMovement = b.type.id === 'movement';
         return (
           <BatteryCell
             key={b.type.id}
@@ -38,8 +55,14 @@ export function BatteryStack({
             percentage={b.percentage}
             color={b.type.color}
             onPress={() => onPressCell?.(b.type.id)}
-            levelLabel={isWater ? formatWaterAmount(b.level, waterDisplayUnit) : undefined}
-            onToggleUnit={isWater ? onToggleWaterUnit : undefined}
+            levelLabel={
+              isWater
+                ? formatWaterAmount(b.level, waterDisplayUnit)
+                : isMovement && movementKcal != null
+                  ? formatMovementAmount(b.level, movementKcal, movementDisplayUnit)
+                  : undefined
+            }
+            onToggleUnit={isWater ? onToggleWaterUnit : isMovement ? onToggleMovementUnit : undefined}
           />
         );
       })}

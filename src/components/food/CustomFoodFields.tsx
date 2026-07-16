@@ -40,13 +40,27 @@ const MACRO_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
 const MICRO_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
   { key: 'calciumMg', label: 'Canxi (mg)' },
   { key: 'ironMg', label: 'Sắt (mg)' },
-  { key: 'sodiumMg', label: 'Natri (mg)' },
-  { key: 'potassiumMg', label: 'Kali (mg)' },
-  { key: 'magnesiumMg', label: 'Magie (mg)' },
   { key: 'zincMg', label: 'Kẽm (mg)' },
   { key: 'epaMg', label: 'EPA (mg)' },
   { key: 'dhaMg', label: 'DHA (mg)' },
 ];
+
+// Rendered separately under a "Muối & điện giải" sub-heading, right after the
+// macro/micro split, so salt-adjacent nutrients aren't scattered among the
+// other micros. Salt (NaCl) itself is NEVER a stored field — it's derived
+// from sodium below (see microBatteryEngine.per100gValue's 'salt' case:
+// sodium_mg × 2.5 / 1000), so this list only holds real CustomFoodInput keys.
+const ELECTROLYTE_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
+  { key: 'sodiumMg', label: 'Natri (mg)' },
+  { key: 'potassiumMg', label: 'Kali (mg)' },
+  { key: 'magnesiumMg', label: 'Magie (mg)' },
+];
+
+// Same conversion microBatteryEngine uses for the derived "salt" micro-battery
+// (2.5 g NaCl per 1 g sodium) — pure display-only preview, nothing is stored.
+function saltGramsFromSodiumMg(sodiumMg: number): number {
+  return Math.round(((sodiumMg * 2.5) / 1000) * 10) / 10;
+}
 
 export function CustomFoodFields({
   input,
@@ -57,6 +71,9 @@ export function CustomFoodFields({
 }: Props) {
   const suffix = unitSuffix(input.portionUnit);
   const isServingBased = input.portionUnit !== 'gram';
+
+  const sodiumValue = parseFloat(input.sodiumMg);
+  const hasValidSodium = input.sodiumMg.trim() !== '' && !isNaN(sodiumValue);
 
   return (
     <>
@@ -202,22 +219,49 @@ export function CustomFoodFields({
         Bỏ trống vi chất → món này không đóng góp vào các pin vi chất.
       </Text>
 
-      {showMicros &&
-        MICRO_FIELD_BASE.map((f) => (
-          <React.Fragment key={f.key}>
-            <Text style={styles.fieldLabel}>
-              {f.label} {suffix}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-              value={input[f.key]}
-              onChangeText={(v) => onChange(f.key, v)}
-            />
-          </React.Fragment>
-        ))}
+      {showMicros && (
+        <>
+          {MICRO_FIELD_BASE.map((f) => (
+            <React.Fragment key={f.key}>
+              <Text style={styles.fieldLabel}>
+                {f.label} {suffix}
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="decimal-pad"
+                value={input[f.key]}
+                onChangeText={(v) => onChange(f.key, v)}
+              />
+            </React.Fragment>
+          ))}
+
+          <Text style={styles.subHeading}>Muối & điện giải</Text>
+          {ELECTROLYTE_FIELD_BASE.map((f) => (
+            <React.Fragment key={f.key}>
+              <Text style={styles.fieldLabel}>
+                {f.label} {suffix}
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="decimal-pad"
+                value={input[f.key]}
+                onChangeText={(v) => onChange(f.key, v)}
+              />
+              {/* Salt (NaCl) is derived, never stored — see
+                  ELECTROLYTE_FIELD_BASE comment above. */}
+              {f.key === 'sodiumMg' && hasValidSodium && (
+                <Text style={styles.saltDerived}>
+                  ≈ {saltGramsFromSodiumMg(sodiumValue).toFixed(1)} g muối (NaCl) — quy đổi từ natri
+                </Text>
+              )}
+            </React.Fragment>
+          ))}
+        </>
+      )}
     </>
   );
 }
@@ -248,6 +292,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   carbBreakdownNote: { fontSize: 11, color: colors.textSubtle, lineHeight: 15 },
+  subHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textDim,
+    marginTop: 10,
+    textTransform: 'uppercase',
+  },
+  saltDerived: { fontSize: 11, color: colors.textSubtle, marginTop: -2 },
   microsHint: { fontSize: 11, color: colors.textSubtle, marginTop: -4 },
   input: {
     backgroundColor: colors.bgElevated,

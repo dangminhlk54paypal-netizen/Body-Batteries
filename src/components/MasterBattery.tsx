@@ -23,6 +23,12 @@ interface Props {
   capacityKcal?: number;
   // Optional weight-goal line, e.g. "Mục tiêu: giảm về 72 kg (an toàn)".
   goalLabel?: string;
+  // Today's workout/steps kcal that grew the goal (energyBalanceEngine) —
+  // rendered as a small "🏃 Vận động hôm nay: +N kcal..." line.
+  activityBonusKcal?: number;
+  // Optional estimated daily target line, e.g.
+  // "Cần ~1800 kcal/ngày để đạt 65 kg · BMR ~1500", rendered under goalLabel.
+  targetLine?: string;
 }
 
 const W = 120;
@@ -109,7 +115,14 @@ function useParticleAnimatedProps(progress: SharedValue<number>, geom: ParticleG
   });
 }
 
-export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }: Props) {
+export function MasterBattery({
+  satietyPct,
+  levelKcal,
+  capacityKcal,
+  goalLabel,
+  activityBonusKcal,
+  targetLine,
+}: Props) {
   const fillPercentage = Math.min(100, Math.max(0, satietyPct));
   const isOver = levelKcal != null && capacityKcal != null && levelKcal > capacityKcal;
 
@@ -280,7 +293,13 @@ export function MasterBattery({ satietyPct, levelKcal, capacityKcal, goalLabel }
         {isOver && levelKcal != null && capacityKcal != null && (
           <Text style={styles.overText}>Ăn dư {formatKcal(levelKcal - capacityKcal)} kcal</Text>
         )}
+        {activityBonusKcal != null && activityBonusKcal > 0 && (
+          <Text style={styles.activityBonus}>
+            🏃 Vận động hôm nay: +{formatKcal(activityBonusKcal)} kcal vào mục tiêu ăn
+          </Text>
+        )}
         {goalLabel != null && <Text style={styles.goal}>{goalLabel}</Text>}
+        {targetLine != null && <Text style={styles.targetLine}>{targetLine}</Text>}
         <Text style={styles.disclaimer}>* Chỉ để tham khảo.</Text>
       </View>
     </View>
@@ -344,7 +363,15 @@ const styles = StyleSheet.create({
     color: colors.warning,
     fontWeight: '600',
   },
+  activityBonus: {
+    fontSize: 12,
+    color: colors.mint,
+  },
   goal: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  targetLine: {
     fontSize: 12,
     color: colors.textSecondary,
   },

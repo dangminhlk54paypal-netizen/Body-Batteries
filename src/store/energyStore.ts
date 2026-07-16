@@ -45,6 +45,7 @@ import {
   dailyExpenditure,
   totalStepEquivalent,
 } from '../domain/energy/metabolismEngine';
+import { liftingTonnageKg } from '../domain/energy/liftingEngine';
 import { getModeById } from '../domain/modes/modeDefinitions';
 import { checkLowBattery, type BatteryAlert } from '../domain/rules/lowBatteryRules';
 import {
@@ -1025,7 +1026,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     // A workout also drains the satiety reserve in one lump (training makes
     // you hungrier). Steps don't — the ambient step average is already part
     // of the circadian passive burn.
-    const workoutBurn = totalWorkoutKcal(workouts, profile.weightKg);
+    const workoutBurn = totalWorkoutKcal(workouts, profile.weightKg, profile.heightCm);
     if (workoutBurn > 0) {
       updated[ei] = {
         ...updated[ei],
@@ -1100,13 +1101,18 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       }
       for (let i = 0; i < workouts.length; i++) {
         const session = workouts[i];
-        const kcal = workoutKcal(session, profile.weightKg);
+        const kcal = workoutKcal(session, profile.weightKg, profile.heightCm);
+        // Set-based powerlifting sessions (S-PL) get a tonnage note so the
+        // Excel export shows what was actually lifted, not just minutes.
+        const note = session.sets?.length
+          ? `workout: ${session.type} ${session.sets.length} set, ${liftingTonnageKg(session.sets)}kg`
+          : `workout: ${session.type} ${session.minutes}m`;
         await addIntakeEvent({
           id: `workout_${ts}_${i}`,
           timestamp: ts,
           batteryTypeId: 'energy',
           amount: kcal,
-          note: `workout: ${session.type} ${session.minutes}m`,
+          note,
         });
       }
     } catch (e) {
@@ -1129,8 +1135,10 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     // does `applyIntake(movement, movementChargeOf(entry))`, clamped at
     // capacity — steps + workout step-equivalents, or `entry.steps` alone for
     // pre-migration rows without the movementStepsApplied snapshot) but can
-    // ALSO be charged directly by a manual tap (addIntake('movement', ...),
-    // which never touches activityLog) and drained by tickDrain over time. A
+    // ALSO be charged directly by addIntake('movement', ...) — the quick-tap
+    // UI for it is retired (movement taps open the read-only source sheet
+    // now), but the API remains and historical charges written through it
+    // never touched activityLog — and drained by tickDrain over time. A
     // naive recompute-from-activityLog-and-SET (the previous "fix") stomps on
     // both of those — it silently discards whatever tickDrain took away and
     // whatever a manual tap added. The correct inverse is a DELTA applied

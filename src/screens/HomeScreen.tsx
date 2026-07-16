@@ -15,6 +15,7 @@ import { LiveMasterBattery } from '../components/LiveMasterBattery';
 import { BatteryStack } from '../components/BatteryStack';
 import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
+import { BatterySourceSheet } from '../components/BatterySourceSheet';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
 import { TodayActivities } from '../components/TodayActivities';
@@ -27,13 +28,42 @@ import { sendLowBatteryAlerts } from '../services/notifications/notificationServ
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
 import { useMicroBatteryHistory } from '../hooks/useMicroBatteryHistory';
 import type { BatteryState, BatteryId, BatteryType } from '../types/battery';
-import type { StepActivityType } from '../types/energy';
+import type { UserProfile } from '../types/energy';
 import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
+import { stepsKcal } from '../domain/energy/metabolismEngine';
+import { waterRecommendationMl, sleepRecommendationH } from '../domain/rules/dailyRecommendations';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
-import { nextWaterDisplayUnit } from '../lib/units';
+import { nextWaterDisplayUnit, nextMovementDisplayUnit } from '../lib/units';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
+
+// Gentle, referential water/sleep recommendation line for IntakeModal (CHANGE
+// 3) — a plain derivation from the daily-recommendation rules + today's
+// activity, never a prescriptive target. Returns undefined for every other
+// battery (they don't show this hint).
+function buildRecommendationVi(
+  battery: BatteryType | null,
+  profile: UserProfile,
+  hasWorkoutToday: boolean
+): string | undefined {
+  if (!battery) return undefined;
+  if (battery.id === 'water') {
+    const rec = waterRecommendationMl(profile, hasWorkoutToday);
+    const minL = (rec.minMl / 1000).toFixed(1);
+    const maxL = (rec.maxMl / 1000).toFixed(1);
+    const workoutExtra = rec.workoutExtraMinMl > 0 ? ' · hôm nay có vận động: +0.5–1 L' : '';
+    return `Khuyến nghị chung: ~${minL}–${maxL} L/ngày cho ${profile.weightKg} kg${workoutExtra}. Chỉ để tham khảo.`;
+  }
+  if (battery.id === 'sleep') {
+    const rec = sleepRecommendationH(profile.age, hasWorkoutToday);
+    const recoveryExtra = rec.trainingRecovery
+      ? ' · có tập hôm nay: nên ngủ gần mức cao để phục hồi'
+      : '';
+    return `Khuyến nghị chung: ${rec.minH}–${rec.maxH} giờ/đêm cho ${profile.age} tuổi${recoveryExtra}. Chỉ để tham khảo.`;
+  }
+  return undefined;
+}
 
 export function HomeScreen() {
   const {
@@ -60,10 +90,16 @@ export function HomeScreen() {
     userProfile,
     waterDisplayUnit,
     setWaterDisplayUnit,
+    movementDisplayUnit,
+    setMovementDisplayUnit,
   } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
+  // water/sleep: manual charge form (unchanged input, now with a recommendation hint)
   const [modalVisible, setModalVisible] = useState(false);
+  // protein/carbs/minerals/movement: these auto-charge from logged food/activity,
+  // so a tap opens a read-only "where did this come from" sheet instead (CHANGE 1).
+  const [sourceSheetVisible, setSourceSheetVisible] = useState(false);
 
   useLowEnergyWatch();
   const microBattery = useMicroBatteryHistory(foodLog, userProfile);
@@ -86,20 +122,29 @@ export function HomeScreen() {
     setWaterDisplayUnit(nextWaterDisplayUnit(waterDisplayUnit));
   }
 
+  function handleToggleMovementUnit() {
+    setMovementDisplayUnit(nextMovementDisplayUnit(movementDisplayUnit));
+  }
+
   function handleCellPress(id: string) {
     const bt = DEFAULT_BATTERIES.find((b) => b.id === id) ?? null;
     setSelectedBattery(bt);
-    setModalVisible(true);
+    if (id === 'water' || id === 'sleep') {
+      setModalVisible(true);
+    } else {
+      // protein/carbs/minerals/movement: manual charge is retired for these —
+      // show their auto-charge sources instead.
+      setSourceSheetVisible(true);
+    }
   }
 
-  async function handleIntakeConfirm(
-    amount: number,
-    note: string,
-    opts?: { stepType?: StepActivityType }
-  ) {
+  // Only water/sleep still confirm through this form — the movement quick-tap
+  // (and its stepType option) is retired along with the other auto-charged
+  // pins' manual path, so no opts are forwarded to addIntake anymore.
+  async function handleIntakeConfirm(amount: number, note: string) {
     if (!selectedBattery) return;
     // addIntake updates state and returns alerts computed from the fresh data.
-    const alerts = await addIntake(selectedBattery.id as BatteryId, amount, note, opts);
+    const alerts = await addIntake(selectedBattery.id as BatteryId, amount, note);
     if (notificationsEnabled && alerts.length > 0) {
       await sendLowBatteryAlerts(alerts);
     }
@@ -171,6 +216,17 @@ export function HomeScreen() {
       };
     });
 
+  // Plain render-time derivations for the two sheets below — no effects.
+  const hasWorkoutToday = activityLog.some((e) => e.workouts.length > 0 || e.steps > 0);
+  const recommendationVi = buildRecommendationVi(selectedBattery, userProfile, hasWorkoutToday);
+  const selectedBatteryLevel =
+    readings.find((r) => r.batteryTypeId === selectedBattery?.id)?.level ?? 0;
+  // Kcal estimate of the movement pin's step level (walking rate — the v1
+  // display conversion). Computed here so lib/units.formatMovementAmount can
+  // stay a pure formatter with no domain import.
+  const movementLevel = readings.find((r) => r.batteryTypeId === 'movement')?.level ?? 0;
+  const movementKcalEquivalent = stepsKcal(movementLevel, userProfile.weightKg);
+
   if (!isLoaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -208,12 +264,15 @@ export function HomeScreen() {
         <EnergyActionsBar />
 
         {/* Sub-batteries */}
-        <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp ⚡</Text>
+        <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp / xem nguồn ⚡</Text>
         <BatteryStack
           batteries={batteryStates}
           onPressCell={handleCellPress}
           waterDisplayUnit={waterDisplayUnit}
           onToggleWaterUnit={handleToggleWaterUnit}
+          movementDisplayUnit={movementDisplayUnit}
+          onToggleMovementUnit={handleToggleMovementUnit}
+          movementKcal={movementKcalEquivalent}
         />
 
         {/* Apple Health energy balance — secondary info below the battery display */}
@@ -252,7 +311,9 @@ export function HomeScreen() {
         />
 
         {/* Hint */}
-        <Text style={styles.hint}>Kéo xuống để làm mới • Bấm vào pin để nạp</Text>
+        <Text style={styles.hint}>
+          Kéo xuống để làm mới • Nước/Giấc ngủ: bấm để nạp — pin khác: bấm để xem nguồn
+        </Text>
       </ScrollView>
 
       <IntakeModal
@@ -262,6 +323,17 @@ export function HomeScreen() {
         onClose={() => setModalVisible(false)}
         waterDisplayUnit={waterDisplayUnit}
         onToggleWaterUnit={handleToggleWaterUnit}
+        recommendationVi={recommendationVi}
+      />
+
+      <BatterySourceSheet
+        battery={selectedBattery}
+        visible={sourceSheetVisible}
+        onClose={() => setSourceSheetVisible(false)}
+        foodLog={foodLog}
+        activityLog={activityLog}
+        intakeLog={intakeLog}
+        level={selectedBatteryLevel}
       />
     </SafeAreaView>
   );

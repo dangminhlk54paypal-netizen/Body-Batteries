@@ -24,3 +24,31 @@ export function toMl(amount: number, unit: WaterDisplayUnit): number {
 export function nextWaterDisplayUnit(unit: WaterDisplayUnit): WaterDisplayUnit {
   return unit === 'ml' ? 'l' : 'ml';
 }
+
+// Display-only preference for the movement/"Vận động" battery — like
+// WaterDisplayUnit, this never changes the stored/charged amount (movement
+// is always tracked in steps internally, matching BatteryType.unit), it
+// only changes how the number is rendered (a kcal estimate, or the raw
+// step count).
+export type MovementDisplayUnit = 'kcal' | 'steps';
+
+// Formats the movement pin's level for display. `kcalEquivalent` is the
+// caller-computed kcal estimate for `steps` (HomeScreen derives it with
+// metabolismEngine.stepsKcal at the walking rate — the documented v1 display
+// conversion, not a precise per-activity estimate); taking it as a plain
+// number keeps this file free of domain imports (lib must not depend on
+// domain — docs/03-architecture.md layering rule).
+// Plain Math.round, no thousands-separator, same style as formatWaterAmount.
+export function formatMovementAmount(
+  steps: number,
+  kcalEquivalent: number,
+  unit: MovementDisplayUnit
+): string {
+  return unit === 'kcal'
+    ? `≈${Math.round(kcalEquivalent)} kcal`
+    : `${Math.round(steps)} bước`;
+}
+
+export function nextMovementDisplayUnit(unit: MovementDisplayUnit): MovementDisplayUnit {
+  return unit === 'kcal' ? 'steps' : 'kcal';
+}

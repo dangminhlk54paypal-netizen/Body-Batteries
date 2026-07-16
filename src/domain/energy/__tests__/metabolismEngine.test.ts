@@ -10,6 +10,7 @@ import {
   totalStepEquivalent,
 } from '../metabolismEngine';
 import { MET_TABLE } from '../../../lib/metabolicConstants';
+import { liftingSessionKcal } from '../liftingEngine';
 import type { UserProfile } from '../../../types/energy';
 
 // The user's own example profile: 78 kg, 168 cm.
@@ -133,6 +134,61 @@ describe('workoutKcal (MET × kg × hours)', () => {
     ];
     // 624 + round(5*78*0.75=292.5)=293 -> 917
     expect(totalWorkoutKcal(sessions, 78)).toBe(917);
+  });
+});
+
+// S-PL: a session carrying `sets` switches to the tonnage hybrid model
+// (liftingEngine) when the caller provides heightCm; without heightCm — or
+// for pre-S-PL rows that have no `sets` — it stays on the MET path.
+describe('workoutKcal set-based powerlifting path (S-PL)', () => {
+  const sets = [
+    { kind: 'warmup' as const, weightKg: 20, reps: 10 },
+    { kind: 'working' as const, weightKg: 100, reps: 5 },
+    { kind: 'working' as const, weightKg: 100, reps: 5 },
+  ];
+  // estimateLiftingMinutes(sets) = 1.5 + 3 + 3 = 7.5 → minutes stores 8
+  const session = { type: 'squat' as const, minutes: 8, sets };
+
+  it('uses the lifting model when heightCm is provided', () => {
+    expect(workoutKcal(session, 78, 168)).toBe(
+      liftingSessionKcal('squat', sets, 78, 168)
+    );
+    // and it responds to bar weight: heavier sets → more kcal
+    const heavier = sets.map((s) => ({ ...s, weightKg: s.weightKg + 40 }));
+    expect(workoutKcal({ ...session, sets: heavier }, 78, 168)).toBeGreaterThan(
+      workoutKcal(session, 78, 168)
+    );
+  });
+
+  it('falls back to MET × minutes without heightCm (pre-S-PL call sites)', () => {
+    // 5.0 MET × 78 × (8/60) = 52
+    expect(workoutKcal(session, 78)).toBe(52);
+  });
+
+  it('MET path is unchanged for sessions without sets (old rows)', () => {
+    expect(workoutKcal({ type: 'squat', minutes: 30 }, 78, 168)).toBe(
+      workoutKcal({ type: 'squat', minutes: 30 }, 78)
+    );
+  });
+});
+
+// Custom activities (not in MET_TABLE) carry their own rate via
+// WorkoutSession.customMet — both workoutKcal and workoutStepEquivalent must
+// prefer it over the MET_TABLE lookup (which only has a `custom: 0`
+// placeholder entry).
+describe('workoutKcal / workoutStepEquivalent for custom activities', () => {
+  it('workoutKcal uses customMet when the type is custom', () => {
+    // round(6.0 * 78 * 0.5) = 234
+    expect(workoutKcal({ type: 'custom', minutes: 30, customMet: 6.0 }, 78)).toBe(234);
+  });
+
+  it('workoutStepEquivalent uses customMet against the vigorous threshold', () => {
+    // 6.0 >= VIGOROUS_MET_THRESHOLD (6) -> 130 steps/min * 30 = 3900
+    expect(workoutStepEquivalent({ type: 'custom', minutes: 30, customMet: 6.0 })).toBe(3900);
+  });
+
+  it('falls back to 0 kcal when customMet is missing for a custom type', () => {
+    expect(workoutKcal({ type: 'custom', minutes: 30 }, 78)).toBe(0);
   });
 });
 

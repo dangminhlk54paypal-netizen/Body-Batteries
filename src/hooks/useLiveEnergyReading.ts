@@ -16,6 +16,9 @@ export interface LiveEnergyReading {
   ledgerPct: number;
   levelKcal?: number; // kcal eaten this energy day (6am reset)
   capacityKcal?: number; // today's safe kcal goal
+  // Today's workout/steps kcal that grew the goal (energyBalanceEngine) —
+  // shown as a small "+N kcal vào mục tiêu ăn" line on the master battery.
+  activityBonusKcal?: number;
 }
 
 // Ticks every second (paused while the app is backgrounded). The store only
@@ -73,5 +76,6 @@ export function useLiveEnergyReading(): LiveEnergyReading {
     ledgerPct: toPercentage(energyReading.level, energyReading.capacity),
     levelKcal: energyReading.level,
     capacityKcal: energyReading.capacity,
+    activityBonusKcal: energyReading.activityBonusKcal,
   };
 }

@@ -1,4 +1,10 @@
-import { formatWaterAmount, toMl, nextWaterDisplayUnit } from '../units';
+import {
+  formatWaterAmount,
+  toMl,
+  nextWaterDisplayUnit,
+  formatMovementAmount,
+  nextMovementDisplayUnit,
+} from '../units';
 
 describe('formatWaterAmount', () => {
   it('formats ml as a rounded integer with an ml suffix', () => {
@@ -27,5 +33,26 @@ describe('nextWaterDisplayUnit', () => {
   it('cycles ml -> l -> ml', () => {
     expect(nextWaterDisplayUnit('ml')).toBe('l');
     expect(nextWaterDisplayUnit('l')).toBe('ml');
+  });
+});
+
+// The kcal figure is caller-computed (HomeScreen passes stepsKcal(...)) —
+// this formatter only rounds and suffixes, keeping lib free of domain imports.
+describe('formatMovementAmount', () => {
+  it("renders the kcal estimate with a ≈ prefix in 'kcal' mode", () => {
+    expect(formatMovementAmount(8000, 312, 'kcal')).toBe('≈312 kcal');
+    expect(formatMovementAmount(8000, 311.6, 'kcal')).toBe('≈312 kcal');
+  });
+
+  it("renders the raw rounded step count in 'steps' mode", () => {
+    expect(formatMovementAmount(8000, 312, 'steps')).toBe('8000 bước');
+    expect(formatMovementAmount(7999.5, 312, 'steps')).toBe('8000 bước');
+  });
+});
+
+describe('nextMovementDisplayUnit', () => {
+  it('cycles kcal -> steps -> kcal', () => {
+    expect(nextMovementDisplayUnit('kcal')).toBe('steps');
+    expect(nextMovementDisplayUnit('steps')).toBe('kcal');
   });
 });

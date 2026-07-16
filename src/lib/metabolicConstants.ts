@@ -1,4 +1,9 @@
-import type { ActivityType, OccupationLevel, StepActivityType } from '../types/energy';
+import type {
+  ActivityType,
+  LiftingExercise,
+  OccupationLevel,
+  StepActivityType,
+} from '../types/energy';
 
 // --- v1 GENERAL constants ---------------------------------------------------
 // These are rough, population-average values chosen to make the model
@@ -37,6 +42,7 @@ export const MET_TABLE: Record<ActivityType, number> = {
   brisk_walking: 4.3,
   running: 9.8, // ~9–10 km/h; refine later by pace
   cycling: 7.5,
+  elliptical: 5.0, // Compendium 2024 code 02048 — elliptical trainer, moderate effort
   swimming: 7.0,
   football: 8.0,
   basketball: 6.5,
@@ -53,7 +59,68 @@ export const MET_TABLE: Record<ActivityType, number> = {
   // (6.0, vigorous effort) — Robergs 2007 / Reis 2017 show bench press has a
   // lower energy cost than squat (fewer/smaller muscle groups involved).
   bench_press: 4.0,
+  // Placeholder — 'custom' activities carry their own rate on the session
+  // itself (WorkoutSession.customMet), never looked up here. Present only so
+  // MET_TABLE stays a total Record<ActivityType, number>.
+  custom: 0,
 };
+
+// --- S-PL: set-based powerlifting energy model (tonnage hybrid) -------------
+// kcal per SET = mechanical lifting work / muscle efficiency, plus a separate
+// rest-overhead term per session (see liftingEngine.ts). All factors are
+// population-average v1 estimates, documented in docs/06 section 1B.
+
+// Per-exercise biomechanics: how much of the lifter's own body mass moves
+// with the bar, and how far the bar travels as a fraction of body height.
+// Body-segment masses from de Leva (1996) anthropometry tables:
+//   squat    — whole body minus shanks+feet (~12%) rides the bar → 0.88;
+//              bar drops/rises ~25% of stature in a parallel-to-deep squat.
+//   bench    — both upper limbs ≈ 10% of body mass move with the bar;
+//              ROM ≈ arm length − chest depth ≈ 19% of stature.
+//   deadlift — trunk+head+arms (~60% of mass) rise roughly HALF the bar's
+//              path (torso pivots up, hips rise less than shoulders), folded
+//              into an effective 0.25 factor at full bar ROM; bar travels
+//              floor (plate radius 22.5cm) → lockout ≈ 30% of stature.
+export const LIFTING_PARAMS: Record<
+  LiftingExercise,
+  { bodyMassFactor: number; romOfHeight: number }
+> = {
+  squat: { bodyMassFactor: 0.88, romOfHeight: 0.25 },
+  bench_press: { bodyMassFactor: 0.1, romOfHeight: 0.19 },
+  deadlift: { bodyMassFactor: 0.25, romOfHeight: 0.3 },
+};
+
+// Gross mechanical efficiency of concentric muscle work (~20%, exercise
+// physiology textbook range 15–25%): metabolic kcal = mechanical work / 0.20.
+export const LIFTING_EFFICIENCY = 0.2;
+
+// Lowering the bar (eccentric phase) costs roughly a third of the lifting
+// (concentric) phase — Abbott et al. 1952 classic estimate, still the
+// standard first-order factor. Total per rep = concentric × (1 + 0.33).
+export const LIFTING_ECCENTRIC_FACTOR = 0.33;
+
+// Between-set recovery is NOT free: standing/pacing/re-racking between sets
+// runs ~2.0 MET (Compendium 2024 standing-light codes). Research measuring
+// whole sessions (João 2021: 5.3–6.5 kcal/min session average) shows this
+// recovery overhead dominates the pure lifting work — omitting it would
+// under-count a powerlifting session 3–5×.
+export const LIFTING_REST_MET = 2.0;
+
+// Estimated wall-clock minutes one set occupies (set itself + the rest after
+// it): powerlifting working sets rest 2–5 min → 3 min average; warm-up ramp
+// sets rest much shorter → 1.5 min. Used to derive session `minutes` when
+// the user logs sets instead of a duration (estimateLiftingMinutes).
+export const LIFTING_SET_CYCLE_MIN: Record<'warmup' | 'working', number> = {
+  warmup: 1.5,
+  working: 3,
+};
+
+// Standard Olympic barbell — the floor for warm-up ramp suggestions.
+export const BARBELL_WEIGHT_KG = 20;
+
+// Physics constants for the lifting-work formula.
+export const GRAVITY_MS2 = 9.81;
+export const JOULES_PER_KCAL = 4184;
 
 // Cadence used to translate workout minutes into movement-pin step
 // equivalents (see metabolismEngine.workoutStepEquivalent) — Marshall et al.
