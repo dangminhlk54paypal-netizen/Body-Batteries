@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { DEFAULT_BATTERIES } from '../lib/constants';
+import { DEFAULT_BATTERIES, batteryTypeName } from '../lib/constants';
 import type { IntakeEvent } from '../types/battery';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import type { Language } from '../i18n/types';
 
 interface Props {
   entries: IntakeEvent[];
@@ -18,26 +20,27 @@ function timeLabel(timestamp: number): string {
 
 // Turn a raw battery id into a friendly "Name amount unit" label, e.g.
 // "Nước 300 ml". Falls back to the raw id when the battery isn't known.
-function intakeLabel(entry: IntakeEvent): string {
+function intakeLabel(entry: IntakeEvent, language: Language): string {
   const battery = DEFAULT_BATTERIES.find((b) => b.id === entry.batteryTypeId);
   if (!battery) {
     return `${entry.batteryTypeId} ${entry.amount}`;
   }
-  return `${battery.name} ${entry.amount} ${battery.unit}`;
+  return `${batteryTypeName(battery.id, language)} ${entry.amount} ${battery.unit}`;
 }
 
 export function TodayIntakes({ entries, onDelete }: Props) {
+  const { t, language } = useT();
   const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionLabel}>Nạp nhanh hôm nay</Text>
+        <Text style={styles.sectionLabel}>{t('components.todayIntakes.sectionLabel')}</Text>
       </View>
 
       {sorted.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.empty}>Chưa có nạp nhanh nào hôm nay.</Text>
+          <Text style={styles.empty}>{t('components.todayIntakes.emptyText')}</Text>
         </View>
       ) : (
         <View style={styles.card}>
@@ -45,7 +48,7 @@ export function TodayIntakes({ entries, onDelete }: Props) {
             <View key={entry.id} style={styles.entryRow}>
               <View style={styles.entryMain}>
                 <Text style={styles.entryName} numberOfLines={1}>
-                  {intakeLabel(entry)}
+                  {intakeLabel(entry, language)}
                 </Text>
                 <Text style={styles.entryMeta}>
                   {timeLabel(entry.timestamp)}

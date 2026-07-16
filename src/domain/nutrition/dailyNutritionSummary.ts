@@ -3,6 +3,8 @@ import type { MicroBatteryState, NutrientTarget } from '../../types/nutrition';
 import { dateString } from '../../lib/dateUtils';
 import { computeMicroBatteries, type LoggedPortion } from './microBatteryEngine';
 import { assessDay, assessState } from './nutritionAssessment';
+import { translate } from '../../i18n/translate';
+import type { Language } from '../../i18n/types';
 
 // Pure aggregation layer for the weekly Excel export: groups a food log range
 // by CALENDAR day (dateString — NOT the 6am energyDayString reset used only
@@ -71,6 +73,7 @@ export function summarizeWeeklyNutrition(
   entries: FoodLogEntry[],
   targets: NutrientTarget[],
   lookup: (foodId: string) => FoodItem | undefined,
+  language: Language,
   numDays = 7
 ): WeeklyNutritionSummary {
   const grouped = groupByDate(entries);
@@ -96,7 +99,7 @@ export function summarizeWeeklyNutrition(
       fatG,
       carbG,
       micros,
-      assessment: assessDay(micros),
+      assessment: assessDay(micros, language),
     };
   });
 
@@ -125,7 +128,7 @@ export function summarizeWeeklyNutrition(
       avgPerDay,
       target: target.value,
       pctOfTarget: virtualState.percentage,
-      assessment: assessState(virtualState) ?? 'Ổn 👍',
+      assessment: assessState(virtualState, language) ?? translate(language, 'assessment.allGood'),
     };
   });
 
@@ -140,7 +143,8 @@ export function summarizeWeeklyNutrition(
       target: w.target,
       percentage: w.pctOfTarget,
       over: w.avgPerDay > w.target,
-    }))
+    })),
+    language
   );
 
   return { days, weekly, overallAssessment };

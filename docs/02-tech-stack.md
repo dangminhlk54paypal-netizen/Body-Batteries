@@ -22,6 +22,7 @@ Phần lớn dữ liệu nằm **ngay trên điện thoại của bạn** (khôn
 | **Thông báo / nhắc nhở** | **expo-notifications** | Gửi nhắc nhở "pin sắp cạn" ngay cả khi app đóng. |
 | **Tác vụ nền (reset, dọn dẹp)** | **expo-task-manager** + **expo-background-task** | Reset pin mỗi ngày, tự xoá dữ liệu cũ sau 1 tuần. |
 | **Xuất Excel** | **xlsx** (SheetJS) + **expo-file-system** + **expo-sharing** | Tạo file `.xlsx` và lưu/chia sẻ trên điện thoại. |
+| **Đa ngôn ngữ (Việt/Anh/Đức)** | Tự viết (`src/i18n/`), KHÔNG dùng i18next | Nhẹ, không thêm thư viện, tận dụng luôn Zustand có sẵn để lưu lựa chọn ngôn ngữ — xem chi tiết bên dưới mục "Vì sao không chọn i18next". |
 | **Bảo mật Diary** | **expo-secure-store** + mã hoá | Nhật ký riêng tư, app không đọc lại được. |
 | **Biểu đồ xu hướng** | **victory-native** | Vẽ biểu đồ năng lượng theo ngày/tuần. |
 
@@ -56,3 +57,10 @@ Phần lớn dữ liệu nằm **ngay trên điện thoại của bạn** (khôn
 - **Flutter?** Cũng tốt, nhưng React Native + Expo có nhiều ví dụ hơn → AI viết chính xác hơn.
 - **App native thuần (Swift/Kotlin)?** Phải viết 2 lần cho 2 hệ điều hành, khó cho người non-tech.
 - **Server riêng + database đám mây?** Tốn tiền và phức tạp; chưa cần ở giai đoạn đầu vì ta đi "local-first".
+- **Vì sao không chọn i18next/react-i18next cho đa ngôn ngữ?** App đã có sẵn Zustand
+  (`settingsStore`, tự lưu vào máy qua AsyncStorage) — thêm 1 field `language` vào đó là đủ, khỏi
+  cần thêm 2 thư viện mới (i18next + react-i18next) hay `expo-localization`. Bộ dịch chỉ là object
+  TypeScript lồng nhau (`src/i18n/locales/{vi,en,de}.ts`), có `tsc` tự kiểm tra không thiếu chuỗi
+  nào giữa 3 ngôn ngữ (xem `docs/03-architecture.md`). Đổi ngôn ngữ mượt vì hook `useT()` chỉ theo
+  dõi đúng 1 field `language` — component nào không gọi `useT()` thì không bị vẽ lại khi đổi ngôn
+  ngữ (app này vốn không dùng React Context, xem `src/lib/theme.ts`).

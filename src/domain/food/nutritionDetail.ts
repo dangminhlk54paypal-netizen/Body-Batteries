@@ -1,8 +1,12 @@
 import type { FoodItem, FoodLogEntry } from '../../types/food';
+import { translate } from '../../i18n/translate';
+import type { Language } from '../../i18n/types';
 
 // Pure data for NutritionDetailSheet's read-only breakdown table. No I/O,
-// no formatting beyond the Vietnamese label text — that text IS the row's
-// content, not view logic, so it lives here rather than in the component.
+// no formatting beyond the label text — that text IS the row's content, not
+// view logic, so it lives here rather than in the component. Labels follow
+// `language` (see src/i18n/locales/*.ts `domain.nutritionDetail.*` for the
+// macro rows and `nutrients.<id>.name` for the finer micros).
 export interface NutritionDetailRow {
   label: string;
   value: number;
@@ -31,35 +35,36 @@ function pushIfNonZero(rows: NutritionDetailRow[], label: string, rawValue: numb
 // micros (fiber/sugar/individual minerals/EPA+DHA), which the snapshot
 // doesn't carry (it rolls minerals into one coarse mineralsMg figure), are
 // scaled (per-100g * grams/100) from the item's current per100g.
-function buildFromItem(entry: FoodLogEntry, item: FoodItem): NutritionDetailRow[] {
+function buildFromItem(entry: FoodLogEntry, item: FoodItem, language: Language): NutritionDetailRow[] {
   const factor = Math.max(0, entry.grams) / 100;
   const p = item.per100g;
+  const t = (key: string) => translate(language, key);
 
   // kcal + the 4 macros + water always show, even when a value is 0 (e.g.
   // Carbs for a pure-protein food) — only the finer micros below are
   // compacted away when absent.
   const rows: NutritionDetailRow[] = [
-    { label: 'Năng lượng', value: round1(entry.energyKcal), unit: 'kcal' },
-    { label: 'Đạm', value: round1(entry.proteinG), unit: 'g' },
-    { label: 'Béo', value: round1(entry.fatG), unit: 'g' },
-    { label: 'Carbs', value: round1(entry.carbG), unit: 'g' },
-    { label: 'Nước', value: round1(entry.waterG), unit: 'g' },
+    { label: t('domain.nutritionDetail.energy'), value: round1(entry.energyKcal), unit: 'kcal' },
+    { label: t('domain.nutritionDetail.protein'), value: round1(entry.proteinG), unit: 'g' },
+    { label: t('domain.nutritionDetail.fat'), value: round1(entry.fatG), unit: 'g' },
+    { label: t('domain.nutritionDetail.carbs'), value: round1(entry.carbG), unit: 'g' },
+    { label: t('domain.nutritionDetail.water'), value: round1(entry.waterG), unit: 'g' },
   ];
 
-  pushIfNonZero(rows, 'Chất xơ', p.fiberG * factor, 'g');
-  pushIfNonZero(rows, 'Đường', p.sugarG * factor, 'g');
-  pushIfNonZero(rows, 'Canxi', p.calciumMg * factor, 'mg');
-  pushIfNonZero(rows, 'Sắt', p.ironMg * factor, 'mg');
-  pushIfNonZero(rows, 'Natri', p.sodiumMg * factor, 'mg');
-  pushIfNonZero(rows, 'Kali', p.potassiumMg * factor, 'mg');
-  pushIfNonZero(rows, 'Magiê', p.magnesiumMg * factor, 'mg');
-  pushIfNonZero(rows, 'Kẽm', p.zincMg * factor, 'mg');
+  pushIfNonZero(rows, t('nutrients.fiber.name'), p.fiberG * factor, 'g');
+  pushIfNonZero(rows, t('nutrients.sugar.name'), p.sugarG * factor, 'g');
+  pushIfNonZero(rows, t('nutrients.calcium.name'), p.calciumMg * factor, 'mg');
+  pushIfNonZero(rows, t('nutrients.iron.name'), p.ironMg * factor, 'mg');
+  pushIfNonZero(rows, t('nutrients.sodium.name'), p.sodiumMg * factor, 'mg');
+  pushIfNonZero(rows, t('nutrients.potassium.name'), p.potassiumMg * factor, 'mg');
+  pushIfNonZero(rows, t('nutrients.magnesium.name'), p.magnesiumMg * factor, 'mg');
+  pushIfNonZero(rows, t('nutrients.zinc.name'), p.zincMg * factor, 'mg');
 
   // Combined EPA+DHA (mirrors the 'omega3' micro-battery convention in
   // microBatteryEngine.ts) — only shown when the food declares at least one.
   if (p.epaMg != null || p.dhaMg != null) {
     const omega3 = (p.epaMg ?? 0) * factor + (p.dhaMg ?? 0) * factor;
-    pushIfNonZero(rows, 'EPA/DHA', omega3, 'mg');
+    pushIfNonZero(rows, t('domain.nutritionDetail.epaDha'), omega3, 'mg');
   }
 
   return rows;
@@ -69,14 +74,15 @@ function buildFromItem(entry: FoodLogEntry, item: FoodItem): NutritionDetailRow[
 // it was logged: only the nutrition snapshotted onto the entry at log time is
 // available, so the breakdown is coarser — one rolled-up minerals figure,
 // no fiber/sugar/EPA-DHA split.
-function buildFromSnapshot(entry: FoodLogEntry): NutritionDetailRow[] {
+function buildFromSnapshot(entry: FoodLogEntry, language: Language): NutritionDetailRow[] {
+  const t = (key: string) => translate(language, key);
   return [
-    { label: 'Năng lượng', value: round1(entry.energyKcal), unit: 'kcal' },
-    { label: 'Đạm', value: round1(entry.proteinG), unit: 'g' },
-    { label: 'Béo', value: round1(entry.fatG), unit: 'g' },
-    { label: 'Carbs', value: round1(entry.carbG), unit: 'g' },
-    { label: 'Nước', value: round1(entry.waterG), unit: 'g' },
-    { label: 'Khoáng chất (tổng)', value: round1(entry.mineralsMg), unit: 'mg' },
+    { label: t('domain.nutritionDetail.energy'), value: round1(entry.energyKcal), unit: 'kcal' },
+    { label: t('domain.nutritionDetail.protein'), value: round1(entry.proteinG), unit: 'g' },
+    { label: t('domain.nutritionDetail.fat'), value: round1(entry.fatG), unit: 'g' },
+    { label: t('domain.nutritionDetail.carbs'), value: round1(entry.carbG), unit: 'g' },
+    { label: t('domain.nutritionDetail.water'), value: round1(entry.waterG), unit: 'g' },
+    { label: t('domain.nutritionDetail.mineralsTotal'), value: round1(entry.mineralsMg), unit: 'mg' },
   ];
 }
 
@@ -85,7 +91,8 @@ function buildFromSnapshot(entry: FoodLogEntry): NutritionDetailRow[] {
 // — pass null when the food is no longer in any catalog.
 export function buildNutritionDetail(
   entry: FoodLogEntry,
-  item: FoodItem | null
+  item: FoodItem | null,
+  language: Language
 ): NutritionDetailRow[] {
-  return item ? buildFromItem(entry, item) : buildFromSnapshot(entry);
+  return item ? buildFromItem(entry, item, language) : buildFromSnapshot(entry, language);
 }

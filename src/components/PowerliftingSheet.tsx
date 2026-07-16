@@ -20,12 +20,17 @@ import type {
 } from '../types/energy';
 import { LIFTING_EXERCISES } from '../types/energy';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import { translate } from '../i18n/translate';
+import type { Language } from '../i18n/types';
 
-export const LIFTING_LABELS: Record<LiftingExercise, string> = {
-  squat: 'Squat',
-  bench_press: 'Bench',
-  deadlift: 'Deadlift',
-};
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+// Exercise display label, keyed off the shared `activities.*` locale
+// namespace (same names TodayActivities/BatterySourceSheet already use).
+function liftingLabel(exercise: LiftingExercise, t: TFn): string {
+  return t(`activities.${exercise}`);
+}
 
 // How far back to look for the "buổi trước" (previous session) reference
 // shown under each exercise tab.
@@ -88,18 +93,28 @@ function parseExercise(rows: ExerciseRows): LiftingSet[] {
   return [...parseRows(rows.warmup, 'warmup'), ...parseRows(rows.working, 'working')];
 }
 
-// "5×5@100kg" when the working sets are uniform, otherwise "8 set · 3450kg".
-export function describeLiftingSets(sets: LiftingSet[]): string {
+// "5×5@100kg" when the working sets are uniform, otherwise "8 sets · 3450kg".
+// `language` defaults to 'vi' so existing call sites that don't pass it
+// (BatterySourceSheet.tsx, TodayActivities.tsx) keep their current behavior;
+// PowerliftingSheet itself always passes the live language explicitly.
+export function describeLiftingSets(sets: LiftingSet[], language: Language = 'vi'): string {
   const working = sets.filter((s) => s.kind === 'working');
   const warmups = sets.length - working.length;
-  if (working.length === 0) return `${sets.length} set khởi động`;
+  if (working.length === 0) {
+    return translate(language, 'components.powerliftingSheet.warmupSetsOnly', { count: sets.length });
+  }
   const uniform = working.every(
     (s) => s.weightKg === working[0].weightKg && s.reps === working[0].reps
   );
   const main = uniform
     ? `${working.length}×${working[0].reps}@${working[0].weightKg}kg`
-    : `${working.length} set · ${liftingTonnageKg(working)}kg`;
-  return warmups > 0 ? `${main} (+${warmups} khởi động)` : main;
+    : translate(language, 'components.powerliftingSheet.setsTonnage', {
+        count: working.length,
+        tonnage: liftingTonnageKg(working),
+      });
+  return warmups > 0
+    ? translate(language, 'components.powerliftingSheet.plusWarmups', { main, count: warmups })
+    : main;
 }
 
 interface PrevSessionInfo {
@@ -112,6 +127,7 @@ interface PrevSessionInfo {
 function findPrevSession(
   history: ActivityLogEntry[],
   exercise: LiftingExercise,
+  language: Language,
   excludeId?: string
 ): PrevSessionInfo | null {
   for (let i = history.length - 1; i >= 0; i--) {
@@ -122,7 +138,7 @@ function findPrevSession(
     const when = entry.startAt ?? entry.timestamp;
     return {
       dateLabel: formatDMY(dateString(new Date(when))),
-      summary: describeLiftingSets(workout.sets),
+      summary: describeLiftingSets(workout.sets, language),
       e1rm: bestOneRepMax(workout.sets),
     };
   }
@@ -140,6 +156,7 @@ interface Props {
 }
 
 export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }: Props) {
+  const { t, language } = useT();
   const logActivity = useEnergyStore((s) => s.logActivity);
   const profile = useSettingsStore((s) => s.userProfile);
 
@@ -179,8 +196,8 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
   }, [parsedByExercise, profile.weightKg, profile.heightCm]);
 
   const prev = useMemo(
-    () => findPrevSession(history, exercise, editingEntry?.id),
-    [history, exercise, editingEntry?.id]
+    () => findPrevSession(history, exercise, language, editingEntry?.id),
+    [history, exercise, language, editingEntry?.id]
   );
 
   const current = rows[exercise];
@@ -250,13 +267,17 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
               style={({ pressed }) => [styles.suggestBtn, pressed && styles.pressed]}
               onPress={suggestWarmup}
             >
-              <Text style={styles.suggestText}>⚡ Gợi ý từ mức tạ chính</Text>
+              <Text style={styles.suggestText}>
+                {t('components.powerliftingSheet.suggestWarmupButton')}
+              </Text>
             </Pressable>
           )}
         </View>
         {section.length === 0 && (
           <Text style={styles.emptySection}>
-            {kind === 'warmup' ? 'Chưa có set khởi động.' : 'Chưa có set chính.'}
+            {kind === 'warmup'
+              ? t('components.powerliftingSheet.emptyWarmup')
+              : t('components.powerliftingSheet.emptyWorking')}
           </Text>
         )}
         {section.map((row, i) => (
@@ -264,22 +285,22 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
             <Text style={styles.setIndex}>{i + 1}</Text>
             <TextInput
               style={styles.setInput}
-              placeholder="kg"
+              placeholder={t('components.powerliftingSheet.weightPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={row.weight}
-              onChangeText={(t) => updateRow(kind, i, { weight: t })}
+              onChangeText={(v) => updateRow(kind, i, { weight: v })}
             />
-            <Text style={styles.setUnit}>kg ×</Text>
+            <Text style={styles.setUnit}>{t('components.powerliftingSheet.weightUnitLabel')}</Text>
             <TextInput
               style={styles.setInput}
-              placeholder="rep"
+              placeholder={t('components.powerliftingSheet.repsPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="number-pad"
               value={row.reps}
-              onChangeText={(t) => updateRow(kind, i, { reps: t })}
+              onChangeText={(v) => updateRow(kind, i, { reps: v })}
             />
-            <Text style={styles.setUnit}>rep</Text>
+            <Text style={styles.setUnit}>{t('components.powerliftingSheet.repsUnitLabel')}</Text>
             <Pressable
               hitSlop={10}
               style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
@@ -293,7 +314,7 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
           style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
           onPress={() => addRow(kind)}
         >
-          <Text style={styles.addText}>＋ Thêm set</Text>
+          <Text style={styles.addText}>{t('components.powerliftingSheet.addSetButton')}</Text>
         </Pressable>
       </View>
     );
@@ -307,11 +328,10 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>
-          🏋️ Powerlifting{editingEntry ? ' — sửa buổi tập' : ''}
+          {t('components.powerliftingSheet.titleNew')}
+          {editingEntry ? t('components.powerliftingSheet.titleEditSuffix') : ''}
         </Text>
-        <Text style={styles.subtitle}>
-          Ghi theo set × rep × tạ — kcal tính từ khối lượng nâng thật, không cần bấm giờ.
-        </Text>
+        <Text style={styles.subtitle}>{t('components.powerliftingSheet.subtitle')}</Text>
 
         {/* Exercise tabs */}
         <View style={styles.tabs}>
@@ -325,7 +345,7 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
                 style={({ pressed }) => [styles.tab, active && styles.tabActive, pressed && styles.pressed]}
               >
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {LIFTING_LABELS[ex]}
+                  {liftingLabel(ex, t)}
                   {count > 0 ? ` · ${count}` : ''}
                 </Text>
               </Pressable>
@@ -337,30 +357,44 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
         <View style={styles.prevCard}>
           {prev ? (
             <Text style={styles.prevText}>
-              Buổi trước ({prev.dateLabel}): {prev.summary}
-              {prev.e1rm > 0 ? ` · e1RM ~${prev.e1rm}kg` : ''}
+              {t('components.powerliftingSheet.prevSessionLine', {
+                date: prev.dateLabel,
+                summary: prev.summary,
+              })}
+              {prev.e1rm > 0
+                ? t('components.powerliftingSheet.prevSessionE1rmSuffix', { value: prev.e1rm })
+                : ''}
             </Text>
           ) : (
             <Text style={styles.prevText}>
-              Chưa có buổi {LIFTING_LABELS[exercise]} nào trong {HISTORY_LOOKBACK_DAYS} ngày qua.
+              {t('components.powerliftingSheet.noPrevSession', {
+                exercise: liftingLabel(exercise, t),
+                days: HISTORY_LOOKBACK_DAYS,
+              })}
             </Text>
           )}
         </View>
 
-        {renderSection('warmup', 'Khởi động (tạ lên dần)')}
-        {renderSection('working', 'Bài chính')}
+        {renderSection('warmup', t('components.powerliftingSheet.warmupSectionTitle'))}
+        {renderSection('working', t('components.powerliftingSheet.workingSectionTitle'))}
 
         {currentE1rm > 0 && (
           <Text style={styles.e1rmText}>
-            e1RM hôm nay ({LIFTING_LABELS[exercise]}): ~{currentE1rm}kg
+            {t('components.powerliftingSheet.e1rmToday', {
+              exercise: liftingLabel(exercise, t),
+              value: currentE1rm,
+            })}
           </Text>
         )}
 
         <View style={styles.previewCard}>
           <Text style={styles.previewText}>
             {preview.kcal > 0
-              ? `Ước tính cả buổi: 🔥 ~${preview.kcal} kcal · ~${preview.minutes} phút`
-              : 'Nhập ít nhất một set (kg × rep) để tính kcal.'}
+              ? t('components.powerliftingSheet.previewSummary', {
+                  kcal: preview.kcal,
+                  minutes: preview.minutes,
+                })
+              : t('components.powerliftingSheet.previewEmpty')}
           </Text>
         </View>
 
@@ -369,7 +403,7 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
             style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
             onPress={onClose}
           >
-            <Text style={styles.cancelText}>Huỷ</Text>
+            <Text style={styles.cancelText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             // Truly disabled (not just dimmed) with no sets — otherwise the
@@ -383,7 +417,9 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
             ]}
             onPress={confirm}
           >
-            <Text style={styles.btnText}>{editingEntry ? 'Lưu' : 'Ghi buổi tập 🏋️'}</Text>
+            <Text style={styles.btnText}>
+              {editingEntry ? t('common.save') : t('components.powerliftingSheet.confirmNewButton')}
+            </Text>
           </Pressable>
         </View>
       </ScrollView>

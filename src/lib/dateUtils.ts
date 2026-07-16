@@ -1,3 +1,6 @@
+import { LOCALE_TAGS } from '../i18n/types';
+import type { Language } from '../i18n/types';
+
 // Format a Date as YYYY-MM-DD using LOCAL calendar fields. Using toISOString()
 // here would key data by the UTC day, which rolls over at the wrong moment for
 // any non-UTC timezone (e.g. an evening intake could land on "tomorrow").
@@ -27,11 +30,11 @@ export function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(b).getTime() - new Date(a).getTime()) / msPerDay;
 }
 
-export function formatDisplayDate(dateStr: string): string {
+export function formatDisplayDate(dateStr: string, language: Language): string {
   // Parse as local midnight ('YYYY-MM-DD' alone is parsed as UTC, which can
   // render the previous day's weekday in negative-offset displays).
   const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('vi-VN', {
+  return d.toLocaleDateString(LOCALE_TAGS[language], {
     weekday: 'short',
     day: '2-digit',
     month: '2-digit',

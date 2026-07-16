@@ -912,6 +912,35 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 
 ---
 
+## Session 14 — 2026-07-17 (Đa ngôn ngữ Việt/Anh/Đức toàn app + Excel)
+
+**Làm gì:** Người dùng yêu cầu tích hợp chuyển đổi ngôn ngữ (Việt/Anh/Đức) cho toàn bộ UI + file Excel xuất ra, đổi mượt không giật/khựng, lưu bền vào máy. Tự thiết kế kiến trúc (không dùng thư viện i18next, tự viết dựa trên Zustand có sẵn), rồi triển khai: tự tay làm phần lõi + các file domain/service nhạy cảm (export, đánh giá dinh dưỡng), sau đó điều phối 4 wave `mobile-frontend` subagent TUẦN TỰ (không song song — dự án có tiền lệ agent song song ghi đè lẫn nhau) để migrate toàn bộ 33 file giao diện.
+
+**Kết quả (CODE XONG, ĐÃ VERIFY SẠCH, CHƯA test máy thật, CHƯA COMMIT lúc viết dòng này):**
+- **Module mới `src/i18n/`:** `types.ts` (Language, LOCALE_TAGS), `translate.ts` (tra cứu theo đường dẫn "a.b.c" + nội suy `{{var}}`, tự fallback về tiếng Việt nếu thiếu bản dịch), `useT.ts` (hook `useT()` CHỈ theo dõi field `language` của store — đổi ngôn ngữ không vẽ lại cả app), `locales/{vi,en,de}.ts` (~500 chuỗi, `vi.ts` là cấu trúc gốc, `en.ts`/`de.ts` được `tsc` ép kiểu khớp chính xác — build sẽ báo lỗi nếu thiếu bản dịch bất kỳ chuỗi nào).
+- **`settingsStore.language`** (Zustand field mới, persist qua AsyncStorage có sẵn, mặc định `'vi'`) + `setLanguage()`.
+- **Màn Cài đặt** thêm mục "🌐 NGÔN NGỮ" đầu trang — 3 chip chọn ngôn ngữ.
+- **Toàn bộ 33 file UI** (4 màn hình + ~29 component) đổi từ chuỗi tiếng Việt cứng sang `t('key.path')`.
+- **Nhãn dùng chung xuyên nhiều màn** đổi thành hàm `(id, language) => string` thay vì object cứng: `mealLabel`/`foodCategoryLabel`/`batteryTypeName` (`lib/constants.ts`), `modeName`/`modeDescription` (`domain/modes/modeDefinitions.ts`), `activityLabel` (`components/EnergyActionsBar.tsx`).
+- **Excel xuất ra:** `exportWeeklyData(language)`/`exportMonthlyData(language)` — toàn bộ 8 sheet (tên sheet + tiêu đề cột + tên vi chất + câu gợi ý "Đánh giá" + dòng cảnh báo y tế) đổi ngôn ngữ đầy đủ. Cố ý giữ nguyên tiếng Việt: tên món ăn đã ghi (snapshot lịch sử, xem `docs/excel-report.md` mục 0).
+- **11 nhận định dinh dưỡng y tế** (fiber/iron/calcium/... under/over-advice, `nutritionAssessment.ts`) dịch cẩn thận sang Anh/Đức, giữ đúng giọng văn nhẹ nhàng "chỉ tham khảo" theo luật `.ai/CONTEXT.md` §5 (không dùng từ "thiếu chất"/"nguy cơ bệnh").
+- **Định dạng ngày/giờ/số** (`toLocaleDateString`/`toLocaleString`) đổi từ `'vi-VN'` cứng sang `LOCALE_TAGS[language]` (8 chỗ trên 5 file).
+- **Verify cuối:** `npx tsc --noEmit` sạch toàn dự án · `npx eslint 'src/**/*.{ts,tsx}'` sạch · **444/444 test PASS / 38 suite** (không đổi so với trước, +cập nhật các test domain bị đổi signature) · `npx expo export --platform web` bundle thành công 1104 module, 0 lỗi.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- 1 wave subagent (`mobile-frontend`, wave C — BodyProfileCard/PowerliftingSheet/MasterBattery/...) bị dừng giữa chừng do **hết session limit của chính subagent đó** (không phải lỗi code) — nhưng trước khi dừng nó đã kịp viết xong toàn bộ 6 namespace bản dịch vào cả 3 file locale. Không mất công: gọi lại đúng agent đó qua `SendMessage` (resume, giữ nguyên context) với hướng dẫn rõ "phần dịch đã xong, giờ chỉ cần nối các file .tsx vào — đừng viết lại bản dịch" — agent hoàn tất phần còn lại sạch sẽ, không trùng lặp công việc.
+- Tự tay gây 1 bug nhỏ khi sửa `domain/nutrition/excelSheets.ts`: `old_string`/`new_string` của 1 lệnh Edit vô tình xoá mất hàm `round1()` (nó nằm lẫn trong đoạn văn bản bị thay thế) → phát hiện ngay qua `tsc --noEmit` (4 lỗi "Cannot find name 'round1'") trước khi chuyển sang wave tiếp theo, vá lại bằng 1 Edit bổ sung.
+- 1 lần dùng `sed` để thêm tham số `'vi'` vào các lệnh gọi test lồng nhau (`buildNutritionDetail(makeEntry({...}), salmon)`) làm hỏng cú pháp vì regex không xử lý được dấu ngoặc lồng nhau — phát hiện ngay (không chạy thử mù), revert bằng `git checkout` rồi sửa lại từng dòng bằng `Edit` chính xác thay vì regex.
+- Quyết định phạm vi có chủ đích: **không** viết lại lịch sử món ăn đã ghi (`FoodLogEntry.foodNameVi`) theo ngôn ngữ mới — đây là snapshot, đổi sẽ phá nguyên tắc "không viết lại lịch sử" đã áp dụng xuyên suốt dự án (xem `fooditem-field-join-points` trong ghi nhớ AI) + tránh phải làm migration DB tốn công ngoài phạm vi yêu cầu.
+
+**Session tiếp theo phải làm:**
+1. **Test tay bắt buộc trên điện thoại thật** (chưa xác nhận): mở Cài đặt → đổi ngôn ngữ 3 lần liên tiếp (Việt→Anh→Đức→Việt), xác nhận: (a) đổi ngay lập tức không cần khởi động lại app, (b) không bị giật/khựng lúc chuyển màn hình đang mở, (c) đóng app mở lại vẫn giữ đúng ngôn ngữ đã chọn (test persist AsyncStorage), (d) xuất Excel ở cả 3 ngôn ngữ, mở file kiểm tra tên sheet + tiêu đề cột đúng ngôn ngữ.
+2. Nếu ổn → `git add`/commit (đã thực hiện ngay sau khi ghi log này, xem hướng dẫn message bên dưới) rồi `git push`.
+3. Rà lại 1 lượt các câu dịch tiếng Đức bằng người biết tiếng Đức thật (AI dịch tự động, chưa có người bản ngữ xác nhận) — ưu tiên các câu y tế/dinh dưỡng vì cần chính xác.
+4. Nếu về sau muốn tên món ăn ĐÃ GHI cũng đổi theo ngôn ngữ (hiện tại cố ý giữ tiếng Việt, xem "Vấn đề gặp phải" bên trên) — cần thêm cột `food_name_en`/`food_name_de` snapshot vào bảng `food_log` lúc ghi (migration DB), không đơn giản như phần còn lại của session này.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

@@ -1,12 +1,16 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { BottomSheet } from './ui/BottomSheet';
-import { ACTIVITY_LABELS } from './EnergyActionsBar';
+import { activityLabel } from './EnergyActionsBar';
 import { describeLiftingSets } from './PowerliftingSheet';
 import type { BatteryType, IntakeEvent } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
 import type { ActivityLogEntry, WorkoutSession } from '../types/energy';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import type { Language } from '../i18n/types';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface Props {
   battery: BatteryType | null;
@@ -26,27 +30,21 @@ interface SourceRow {
   value: string;
 }
 
-// Caption shown under the title only for the "Khoáng chất" battery — its
-// value is a rollup of several micros, unlike protein/carbs which are a
-// single macro straight off the food database.
-const MINERALS_CAPTION =
-  'Tổng khoáng ước tính (canxi + sắt + natri + kali + magiê + kẽm) từ món đã ghi.';
-
 // One workout's display label — mirrors TodayActivities.summaryLabel's
 // per-workout piece: set-based lifts show what was lifted (describeLiftingSets),
 // a free-text custom activity shows its own name, everything else shows the
 // fixed MET label.
-function workoutLabel(w: WorkoutSession): string {
-  if (w.sets?.length) return `${ACTIVITY_LABELS[w.type]} ${describeLiftingSets(w.sets)}`;
-  if (w.type === 'custom') return w.customName || ACTIVITY_LABELS.custom;
-  return ACTIVITY_LABELS[w.type];
+function workoutLabel(w: WorkoutSession, language: Language): string {
+  if (w.sets?.length) return `${activityLabel(w.type, language)} ${describeLiftingSets(w.sets, language)}`;
+  if (w.type === 'custom') return w.customName || activityLabel('custom', language);
+  return activityLabel(w.type, language);
 }
 
-function movementEntryLabel(entry: ActivityLogEntry): string {
+function movementEntryLabel(entry: ActivityLogEntry, t: TFn, language: Language): string {
   if (entry.workouts.length > 0) {
-    return entry.workouts.map(workoutLabel).join(' · ');
+    return entry.workouts.map((w) => workoutLabel(w, language)).join(' · ');
   }
-  return 'Đi bộ/bước chân';
+  return t('components.batterySourceSheet.walkingFallback');
 }
 
 // Manual quick-tap rows (intakeLog) for one battery. The tap-to-charge path
@@ -55,12 +53,14 @@ function movementEntryLabel(entry: ActivityLogEntry): string {
 // listed here at all: energyStore.isManualQuickTapIntake has always filtered
 // movement rows out of intakeLog, so its only sources are activityLog
 // entries.
-function intakeRows(intakeLog: IntakeEvent[], batteryId: string, unit: string): SourceRow[] {
+function intakeRows(intakeLog: IntakeEvent[], batteryId: string, unit: string, t: TFn): SourceRow[] {
   return intakeLog
     .filter((e) => e.batteryTypeId === batteryId)
     .map((e) => ({
       id: e.id,
-      label: `Nạp nhanh${e.note ? ` (${e.note})` : ''}`,
+      label: e.note
+        ? t('components.batterySourceSheet.quickChargeLabelWithNote', { note: e.note })
+        : t('components.batterySourceSheet.quickChargeLabel'),
       value: `${e.amount} ${unit}`,
     }));
 }
@@ -83,23 +83,28 @@ function buildRows(
   battery: BatteryType,
   foodLog: FoodLogEntry[],
   activityLog: ActivityLogEntry[],
-  intakeLog: IntakeEvent[]
+  intakeLog: IntakeEvent[],
+  t: TFn,
+  language: Language
 ): SourceRow[] {
   switch (battery.id) {
     case 'protein':
-      return [...foodRows(foodLog, 'proteinG', 'g'), ...intakeRows(intakeLog, 'protein', 'g')];
+      return [...foodRows(foodLog, 'proteinG', 'g'), ...intakeRows(intakeLog, 'protein', 'g', t)];
     case 'carbs':
-      return [...foodRows(foodLog, 'carbG', 'g'), ...intakeRows(intakeLog, 'carbs', 'g')];
+      return [...foodRows(foodLog, 'carbG', 'g'), ...intakeRows(intakeLog, 'carbs', 'g', t)];
     case 'minerals':
       return [
         ...foodRows(foodLog, 'mineralsMg', 'mg'),
-        ...intakeRows(intakeLog, 'minerals', 'mg'),
+        ...intakeRows(intakeLog, 'minerals', 'mg', t),
       ];
     case 'movement':
       return activityLog.map((e) => ({
         id: e.id,
-        label: movementEntryLabel(e),
-        value: `${Math.round(e.movementStepsApplied ?? e.steps)} bước · ${Math.round(e.energyKcal)} kcal`,
+        label: movementEntryLabel(e, t, language),
+        value: t('components.batterySourceSheet.stepsKcalValue', {
+          steps: Math.round(e.movementStepsApplied ?? e.steps),
+          kcal: Math.round(e.energyKcal),
+        }),
       }));
     default:
       return [];
@@ -121,20 +126,23 @@ export function BatterySourceSheet({
   intakeLog,
   level,
 }: Props) {
+  const { t, language } = useT();
   if (!battery) return null;
 
-  const rows = buildRows(battery, foodLog, activityLog, intakeLog);
+  const rows = buildRows(battery, foodLog, activityLog, intakeLog, t, language);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} sheetOffset={450}>
       <View style={styles.content}>
-        <Text style={styles.title}>Nguồn nạp {battery.name} hôm nay</Text>
-        {battery.id === 'minerals' && <Text style={styles.caption}>{MINERALS_CAPTION}</Text>}
+        <Text style={styles.title}>
+          {t('components.batterySourceSheet.title', { name: battery.name })}
+        </Text>
+        {battery.id === 'minerals' && (
+          <Text style={styles.caption}>{t('components.batterySourceSheet.mineralsCaption')}</Text>
+        )}
 
         {rows.length === 0 ? (
-          <Text style={styles.empty}>
-            Chưa có nguồn nào hôm nay — hãy ghi món ăn hoặc vận động.
-          </Text>
+          <Text style={styles.empty}>{t('components.batterySourceSheet.emptyText')}</Text>
         ) : (
           <ScrollView
             style={[styles.table, { maxHeight: MAX_ROWS_HEIGHT }]}
@@ -153,11 +161,12 @@ export function BatterySourceSheet({
 
         <View style={styles.footer}>
           <Text style={styles.totalText}>
-            Tổng hôm nay: {Math.round(level)}{battery.unit}
+            {t('components.batterySourceSheet.totalText', {
+              value: Math.round(level),
+              unit: battery.unit,
+            })}
           </Text>
-          <Text style={styles.footerNote}>
-            Pin này tự nạp khi bạn ghi món ăn / vận động ở trên — không cần nạp tay.
-          </Text>
+          <Text style={styles.footerNote}>{t('components.batterySourceSheet.footerNote')}</Text>
         </View>
       </View>
     </BottomSheet>

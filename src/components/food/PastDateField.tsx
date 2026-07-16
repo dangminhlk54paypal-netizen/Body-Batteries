@@ -2,6 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { todayString, dateString, formatDisplayDate, isToday } from '../../lib/dateUtils';
 import { colors } from '../../lib/theme';
+import { useT } from '../../i18n/useT';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 export interface PastDateFieldProps {
   value: string; // YYYY-MM-DD
@@ -30,7 +33,7 @@ function dateDaysBefore(todayStr: string, days: number): string {
 }
 
 // Validate date is within allowed range [today - maxDaysBack, today]
-function validateDate(dateStr: string, today: string, maxDaysBack: number):
+function validateDate(dateStr: string, today: string, maxDaysBack: number, t: TFn):
   { ok: true } | { ok: false; reason: string } {
   if (!dateStr || dateStr.length !== 10) {
     return { ok: false, reason: 'Invalid date format' };
@@ -38,13 +41,13 @@ function validateDate(dateStr: string, today: string, maxDaysBack: number):
 
   // Check if date is in the future
   if (dateStr > today) {
-    return { ok: false, reason: 'Không thể chọn ngày tương lai' };
+    return { ok: false, reason: t('components.pastDateField.errorFutureDate') };
   }
 
   // Check if date is too old
   const earliestAllowed = dateDaysBefore(today, maxDaysBack);
   if (dateStr < earliestAllowed) {
-    return { ok: false, reason: `Chỉ có thể ghi lùi tối đa ${maxDaysBack} ngày` };
+    return { ok: false, reason: t('components.pastDateField.errorTooOld', { max: maxDaysBack }) };
   }
 
   return { ok: true };
@@ -80,6 +83,7 @@ function parseDdMmInput(input: string, today: string): string | null {
 }
 
 export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldProps) {
+  const { t, language } = useT();
   const [inputValue, setInputValue] = useState('');
 
   // Memoize today so it's a stable dependency for other useMemo hooks.
@@ -88,11 +92,11 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
   // Quick-select chips: 0 days ago (today), 1 day ago, 2 days ago, etc.
   const quickSelects = useMemo(() => {
     return [
-      { label: 'Hôm nay', days: 0 },
-      { label: 'Hôm qua', days: 1 },
-      { label: '2 ngày trước', days: 2 },
+      { label: t('common.today'), days: 0 },
+      { label: t('common.yesterday'), days: 1 },
+      { label: t('common.daysAgo', { n: 2 }), days: 2 },
     ];
-  }, []);
+  }, [t]);
 
   // Handle dd/mm input change
   function handleInputChange(text: string) {
@@ -107,7 +111,7 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
       return;
     }
 
-    const validation = validateDate(parsed, today, maxDaysBack);
+    const validation = validateDate(parsed, today, maxDaysBack, t);
     if (validation.ok) {
       onChange(parsed);
       setInputValue('');
@@ -120,7 +124,7 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
   // Handle quick-select chip press
   function handleQuickSelect(days: number) {
     const selected = dateDaysBefore(today, days);
-    const validation = validateDate(selected, today, maxDaysBack);
+    const validation = validateDate(selected, today, maxDaysBack, t);
     if (validation.ok) {
       onChange(selected);
       setInputValue('');
@@ -131,9 +135,9 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
   const inputError = useMemo(() => {
     const parsed = parseDdMmInput(inputValue, today);
     if (!parsed || !inputValue.trim()) return null;
-    const validation = validateDate(parsed, today, maxDaysBack);
+    const validation = validateDate(parsed, today, maxDaysBack, t);
     return validation.ok ? null : validation.reason;
-  }, [inputValue, today, maxDaysBack]);
+  }, [inputValue, today, maxDaysBack, t]);
 
   // Determine which chip is currently active
   const activeChip = useMemo(() => {
@@ -189,7 +193,7 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
 
       {/* Display label when value != today */}
       {value && !isToday(value) && (
-        <Text style={styles.displayLabel}>{formatDisplayDate(value)}</Text>
+        <Text style={styles.displayLabel}>{formatDisplayDate(value, language)}</Text>
       )}
     </View>
   );

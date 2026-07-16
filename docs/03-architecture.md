@@ -52,6 +52,7 @@ src/
 │   ├── background/     # Kiểm tra sang ngày mới (dailyResetCheck)
 │   ├── export/         # Xuất Excel
 │   └── cleanup/        # Tự xoá dữ liệu > 1 tuần
+├── i18n/               # Đa ngôn ngữ (Việt/Anh/Đức) — xem mục riêng bên dưới
 └── lib/                # Tiện ích chung (ngày tháng, mã hoá, metabolicConstants)
 ```
 
@@ -63,6 +64,51 @@ src/
 - `services/health/` chưa tồn tại — sẽ tạo khi tích hợp HealthKit/Health Connect (S-F v2).
 
 ---
+
+## 🌐 Đa ngôn ngữ (Session 14, 2026-07-17)
+
+Toàn bộ giao diện + file Excel xuất ra hỗ trợ **3 ngôn ngữ: Tiếng Việt (mặc
+định) / English / Deutsch**, chọn từ mục "🌐 NGÔN NGỮ" đầu màn Cài đặt.
+
+```
+src/i18n/
+├── types.ts       # Language ('vi'|'en'|'de'), LOCALE_TAGS (map sang 'vi-VN'/'en-US'/'de-DE')
+├── translate.ts   # translate(language, key, vars?) — tra cứu theo đường dẫn "a.b.c" + nội suy {{var}}
+├── useT.ts         # useT() hook cho component: { t, language } · useLanguage() · getCurrentLanguage()
+├── index.ts        # barrel export
+└── locales/
+    ├── vi.ts        # nguồn gốc cấu trúc (mọi key phải xuất phát từ đây trước)
+    ├── en.ts         # phải khớp CHÍNH XÁC cấu trúc vi.ts — tsc báo lỗi nếu thiếu key
+    └── de.ts         # tương tự en.ts
+```
+
+**Cách hoạt động:**
+- Lựa chọn ngôn ngữ lưu ở `settingsStore.language` — field Zustand bình
+  thường, tự động lưu vào máy qua middleware `persist` (AsyncStorage) đã có
+  sẵn từ trước, không cần thêm cơ chế lưu trữ mới.
+- Component gọi `const { t, language } = useT();` rồi `t('settings.title')`.
+  Hook này **chỉ theo dõi đúng field `language`** trong store — đổi ngôn ngữ
+  chỉ vẽ lại những component có gọi `useT()`, không vẽ lại toàn app (app này
+  vốn không dùng React Context cho theme/state toàn cục, xem `lib/theme.ts`)
+  → đổi ngôn ngữ mượt, không giật/khựng.
+- Hàm thuần (domain/service, không phải component — vd
+  `nutritionAssessment.ts`, `excelExportService.ts`) nhận `language` như một
+  tham số bình thường thay vì tự đọc store, giữ đúng nguyên tắc lớp Domain
+  "thuần, dễ test" trong sơ đồ kiến trúc ở đầu file này.
+- **An toàn kiểu dữ liệu:** `vi.ts` là cấu trúc gốc; `en.ts`/`de.ts` được ép
+  kiểu theo đúng cấu trúc đó (`TranslationSchema = typeof vi`), nên `npx tsc
+  --noEmit` sẽ báo lỗi ngay nếu ai đó thêm 1 chuỗi vào `vi.ts` mà quên thêm
+  bản dịch tương ứng ở `en.ts`/`de.ts` — không thể "quên dịch" mà không bị
+  phát hiện khi build.
+- **Tên các pin** (Protein/Carbs/Nước...) vốn được lưu 1 lần trong SQLite
+  (`battery_types.name`) lúc cài app lần đầu — thay vì đọc cột đó, màn hình
+  luôn tra theo `id` pin qua `batteryTypeName(id, language)`
+  (`src/lib/constants.ts`) nên tên pin vẫn đổi được theo ngôn ngữ dù dữ liệu
+  gốc trong DB không đổi.
+- **Cố ý KHÔNG dịch:** tên món ăn đã ghi vào Nhật ký ăn uống
+  (`FoodLogEntry.foodNameVi`) — đây là snapshot tiếng Việt tại đúng lúc ghi
+  món, đổi ngôn ngữ sau đó không viết lại lịch sử (xem thêm
+  `docs/excel-report.md` mục 0).
 
 ## 🗃️ Mô hình dữ liệu (Data Model)
 

@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { ACTIVITY_LABELS, ACTIVITY_TYPES } from './EnergyActionsBar';
+import { ACTIVITY_TYPES, activityLabel } from './EnergyActionsBar';
 import { PowerliftingSheet, describeLiftingSets } from './PowerliftingSheet';
 import { formatTimeHHmm, parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityLogEntry, ActivityType, WorkoutSession } from '../types/energy';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import type { Language } from '../i18n/types';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface Props {
   entries: ActivityLogEntry[];
@@ -28,33 +32,37 @@ function timeFieldPatch(raw: string): number | null | undefined {
   return parseTimeHHmmToday(raw);
 }
 
-function timeRangeLabel(entry: ActivityLogEntry): string {
+function timeRangeLabel(entry: ActivityLogEntry, t: TFn): string {
   if (entry.startAt && entry.endAt) {
     return `${formatTimeHHmm(entry.startAt)}–${formatTimeHHmm(entry.endAt)}`;
   }
-  if (entry.startAt) return `từ ${formatTimeHHmm(entry.startAt)}`;
+  if (entry.startAt) {
+    return t('components.todayActivities.fromTimePrefix', { time: formatTimeHHmm(entry.startAt) });
+  }
   return formatTimeHHmm(entry.timestamp);
 }
 
 // The label a workout shows in the history list — a custom activity's own
-// nameVi takes priority over the generic "Môn tự thêm" ACTIVITY_LABELS entry.
-function workoutLabel(w: WorkoutSession): string {
-  return w.customName ?? ACTIVITY_LABELS[w.type];
+// nameVi takes priority over the generic "custom activity" activityLabel entry.
+function workoutLabel(w: WorkoutSession, language: Language): string {
+  return w.customName ?? activityLabel(w.type, language);
 }
 
-function summaryLabel(entry: ActivityLogEntry): string {
+function summaryLabel(entry: ActivityLogEntry, t: TFn, language: Language): string {
   const parts: string[] = [];
   for (const w of entry.workouts) {
     // Set-based powerlifting sessions (S-PL) show what was lifted, not the
     // estimated minutes — "Squat 5×5@100kg (+4 khởi động)".
     parts.push(
       w.sets?.length
-        ? `${workoutLabel(w)} ${describeLiftingSets(w.sets)}`
-        : `${workoutLabel(w)} ${w.minutes}p`
+        ? `${workoutLabel(w, language)} ${describeLiftingSets(w.sets, language)}`
+        : `${workoutLabel(w, language)} ${t('components.todayActivities.minutesSuffix', { minutes: w.minutes })}`
     );
   }
-  if (entry.steps > 0) parts.push(`${entry.steps} bước`);
-  return parts.length > 0 ? parts.join(' · ') : 'Vận động';
+  if (entry.steps > 0) {
+    parts.push(t('components.todayActivities.stepsSuffix', { steps: entry.steps }));
+  }
+  return parts.length > 0 ? parts.join(' · ') : t('components.todayActivities.fallbackLabel');
 }
 
 // Entries logged through the Powerlifting sheet are edited there too — the
@@ -71,6 +79,7 @@ function isCustomEntry(entry: ActivityLogEntry): boolean {
 }
 
 export function TodayActivities({ entries, onDelete, onEdit }: Props) {
+  const { t, language } = useT();
   const [editingEntry, setEditingEntry] = useState<ActivityLogEntry | null>(null);
   const [liftingEntry, setLiftingEntry] = useState<ActivityLogEntry | null>(null);
   const [editActivity, setEditActivity] = useState<ActivityType>('running');
@@ -131,15 +140,13 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionLabel}>Hôm nay đã vận động</Text>
+        <Text style={styles.sectionLabel}>{t('components.todayActivities.sectionLabel')}</Text>
         {entries.length > 0 && <Text style={styles.totalKcal}>🔥 {Math.round(totalKcal)} kcal</Text>}
       </View>
 
       {entries.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.empty}>
-            Chưa có vận động nào được ghi hôm nay. Bấm “🏃 Vận động” để bắt đầu.
-          </Text>
+          <Text style={styles.empty}>{t('components.todayActivities.emptyText')}</Text>
         </View>
       ) : (
         <View style={styles.card}>
@@ -147,10 +154,10 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             <View key={e.id} style={styles.entryRow}>
               <View style={styles.entryMain}>
                 <Text style={styles.entryName} numberOfLines={1}>
-                  {summaryLabel(e)}
+                  {summaryLabel(e, t, language)}
                 </Text>
                 <Text style={styles.entryMeta}>
-                  {timeRangeLabel(e)} · {Math.round(e.energyKcal)} kcal
+                  {timeRangeLabel(e, t)} · {Math.round(e.energyKcal)} kcal
                 </Text>
               </View>
               <Pressable
@@ -176,29 +183,29 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
       <Modal visible={editingEntry !== null} transparent animationType="fade" onRequestClose={() => setEditingEntry(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
           <View style={styles.sheet}>
-            <Text style={styles.title}>Sửa vận động</Text>
+            <Text style={styles.title}>{t('components.todayActivities.editTitle')}</Text>
             <View style={styles.chips}>
               {editingEntry && isCustomEntry(editingEntry) ? (
                 // Custom activities have no MET_TABLE entry to re-pick from —
                 // show a fixed, non-interactive chip instead of chip churn.
                 <View style={[styles.chip, styles.chipActive]}>
                   <Text style={[styles.chipText, styles.chipTextActive]}>
-                    {editingEntry.workouts[0]?.customName ?? ACTIVITY_LABELS.custom}
+                    {editingEntry.workouts[0]?.customName ?? t('activities.custom')}
                   </Text>
                 </View>
               ) : (
-                ACTIVITY_TYPES.map((t) => (
+                ACTIVITY_TYPES.map((actType) => (
                   <Pressable
-                    key={t}
-                    onPress={() => setEditActivity(t)}
+                    key={actType}
+                    onPress={() => setEditActivity(actType)}
                     style={({ pressed }) => [
                       styles.chip,
-                      editActivity === t && styles.chipActive,
+                      editActivity === actType && styles.chipActive,
                       pressed && styles.pressed,
                     ]}
                   >
-                    <Text style={[styles.chipText, editActivity === t && styles.chipTextActive]}>
-                      {ACTIVITY_LABELS[t]}
+                    <Text style={[styles.chipText, editActivity === actType && styles.chipTextActive]}>
+                      {t(`activities.${actType}`)}
                     </Text>
                   </Pressable>
                 ))
@@ -206,7 +213,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             </View>
             <TextInput
               style={styles.input}
-              placeholder="Số phút tập (ví dụ: 45)"
+              placeholder={t('components.todayActivities.minutesPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={editMinutes}
@@ -214,7 +221,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             />
             <TextInput
               style={styles.input}
-              placeholder="Số bước chân (tuỳ chọn)"
+              placeholder={t('components.todayActivities.stepsPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={editSteps}
@@ -223,7 +230,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             <View style={styles.row}>
               <TextInput
                 style={[styles.input, styles.timeInput]}
-                placeholder="Từ HH:mm"
+                placeholder={t('components.todayActivities.fromTimePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
@@ -232,7 +239,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
               />
               <TextInput
                 style={[styles.input, styles.timeInput]}
-                placeholder="Đến HH:mm"
+                placeholder={t('components.todayActivities.toTimePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
@@ -245,13 +252,13 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                 onPress={() => setEditingEntry(null)}
               >
-                <Text style={styles.cancelText}>Huỷ</Text>
+                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.save, pressed && styles.pressed]}
                 onPress={confirmEdit}
               >
-                <Text style={styles.saveText}>Lưu</Text>
+                <Text style={styles.saveText}>{t('common.save')}</Text>
               </Pressable>
             </View>
           </View>

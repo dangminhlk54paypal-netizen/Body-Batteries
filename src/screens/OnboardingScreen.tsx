@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { BodyProfileCard } from '../components/BodyProfileCard';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 interface OnboardingScreenProps {
   onDone: () => void;
@@ -11,30 +12,27 @@ interface OnboardingScreenProps {
 // (the app ships with placeholder age/sex/weight/height) before they start
 // using the energy battery, so the daily energy budget is accurate from day one.
 export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
+  const { t } = useT();
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>Chào mừng đến với{'\n'}My Body Batteries ⚡</Text>
-          <Text style={styles.intro}>
-            Theo dõi mức năng lượng nạp vào và tiêu hao mỗi ngày, giúp bạn hiểu rõ cơ thể mình hơn.
-          </Text>
+          <Text style={styles.title}>{t('screens.onboarding.title')}</Text>
+          <Text style={styles.intro}>{t('screens.onboarding.intro')}</Text>
 
           <View style={styles.cardSection}>
-            <Text style={styles.cardHeader}>Hãy cho app biết một chút về bạn nhé!</Text>
+            <Text style={styles.cardHeader}>{t('screens.onboarding.cardHeader')}</Text>
             <BodyProfileCard />
-            <Text style={styles.disclaimer}>
-              Chỉ để tính toán năng lượng tham khảo — không phải thiết bị y tế.
-            </Text>
+            <Text style={styles.disclaimer}>{t('screens.onboarding.disclaimer')}</Text>
           </View>
         </ScrollView>
-        
+
         <View style={styles.footer}>
           <Pressable
             style={({ pressed }) => [styles.startBtn, pressed && styles.pressed]}
             onPress={onDone}
           >
-            <Text style={styles.startText}>Bắt đầu dùng app</Text>
+            <Text style={styles.startText}>{t('screens.onboarding.startButton')}</Text>
           </Pressable>
         </View>
       </View>

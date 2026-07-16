@@ -37,12 +37,19 @@ import { formatDisplayDate, todayString } from '../lib/dateUtils';
 import { nextWaterDisplayUnit, nextMovementDisplayUnit } from '../lib/units';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
+import { useT } from '../i18n/useT';
+
+// Matches the TFn convention used across other components (e.g.
+// BatterySourceSheet.tsx) — lets plain helper functions outside the
+// component take the translator as an explicit parameter.
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 // Gentle, referential water/sleep recommendation line for IntakeModal (CHANGE
 // 3) — a plain derivation from the daily-recommendation rules + today's
 // activity, never a prescriptive target. Returns undefined for every other
 // battery (they don't show this hint).
-function buildRecommendationVi(
+function buildRecommendation(
+  t: TFn,
   battery: BatteryType | null,
   profile: UserProfile,
   hasWorkoutToday: boolean
@@ -52,20 +59,29 @@ function buildRecommendationVi(
     const rec = waterRecommendationMl(profile, hasWorkoutToday);
     const minL = (rec.minMl / 1000).toFixed(1);
     const maxL = (rec.maxMl / 1000).toFixed(1);
-    const workoutExtra = rec.workoutExtraMinMl > 0 ? ' · hôm nay có vận động: +0.5–1 L' : '';
-    return `Khuyến nghị chung: ~${minL}–${maxL} L/ngày cho ${profile.weightKg} kg${workoutExtra}. Chỉ để tham khảo.`;
+    const workoutExtra = rec.workoutExtraMinMl > 0 ? t('screens.home.waterWorkoutExtra') : '';
+    return t('screens.home.waterRecommendation', {
+      minL,
+      maxL,
+      weight: profile.weightKg,
+      workoutExtra,
+    });
   }
   if (battery.id === 'sleep') {
     const rec = sleepRecommendationH(profile.age, hasWorkoutToday);
-    const recoveryExtra = rec.trainingRecovery
-      ? ' · có tập hôm nay: nên ngủ gần mức cao để phục hồi'
-      : '';
-    return `Khuyến nghị chung: ${rec.minH}–${rec.maxH} giờ/đêm cho ${profile.age} tuổi${recoveryExtra}. Chỉ để tham khảo.`;
+    const recoveryExtra = rec.trainingRecovery ? t('screens.home.sleepRecoveryExtra') : '';
+    return t('screens.home.sleepRecommendation', {
+      minH: rec.minH,
+      maxH: rec.maxH,
+      age: profile.age,
+      recoveryExtra,
+    });
   }
   return undefined;
 }
 
 export function HomeScreen() {
+  const { t, language } = useT();
   const {
     readings,
     foodLog,
@@ -157,11 +173,11 @@ export function HomeScreen() {
   function handleDeleteFood(id: string) {
     const entry = foodLog.find((f) => f.id === id);
     Alert.alert(
-      'Xoá món đã ghi?',
-      entry ? `“${entry.foodNameVi}” sẽ bị xoá và pin được hoàn lại.` : undefined,
+      t('screens.home.deleteFoodTitle'),
+      entry ? t('screens.home.deleteFoodMessage', { name: entry.foodNameVi }) : undefined,
       [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Xoá', style: 'destructive', onPress: () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => {
           haptics.warning();
           removeFood(id);
         } },
@@ -171,11 +187,11 @@ export function HomeScreen() {
 
   function handleDeleteActivity(id: string) {
     Alert.alert(
-      'Xoá vận động đã ghi?',
-      'Mục này sẽ bị xoá và pin được hoàn lại.',
+      t('screens.home.deleteActivityTitle'),
+      t('screens.home.deleteActivityMessage'),
       [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Xoá', style: 'destructive', onPress: () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: () => {
           haptics.warning();
           removeActivity(id);
         } },
@@ -190,11 +206,11 @@ export function HomeScreen() {
   function handleDeleteIntake(id: string) {
     const entry = intakeLog.find((e) => e.id === id);
     Alert.alert(
-      'Hoàn tác lần nạp này?',
-      entry ? `Sẽ hoàn tác lần nạp ${entry.amount} và trừ lại pin tương ứng.` : undefined,
+      t('screens.home.deleteIntakeTitle'),
+      entry ? t('screens.home.deleteIntakeMessage', { amount: entry.amount }) : undefined,
       [
-        { text: 'Huỷ', style: 'cancel' },
-        { text: 'Hoàn tác', style: 'destructive', onPress: () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('screens.home.undoButton'), style: 'destructive', onPress: () => {
           haptics.warning();
           removeIntake(id);
         } },
@@ -218,7 +234,7 @@ export function HomeScreen() {
 
   // Plain render-time derivations for the two sheets below — no effects.
   const hasWorkoutToday = activityLog.some((e) => e.workouts.length > 0 || e.steps > 0);
-  const recommendationVi = buildRecommendationVi(selectedBattery, userProfile, hasWorkoutToday);
+  const recommendation = buildRecommendation(t, selectedBattery, userProfile, hasWorkoutToday);
   const selectedBatteryLevel =
     readings.find((r) => r.batteryTypeId === selectedBattery?.id)?.level ?? 0;
   // Kcal estimate of the movement pin's step level (walking rate — the v1
@@ -231,7 +247,7 @@ export function HomeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Đang khởi động pin...</Text>
+          <Text style={styles.loadingText}>{t('screens.home.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -249,7 +265,7 @@ export function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Body Batteries</Text>
-          <Text style={styles.headerDate}>{formatDisplayDate(todayString())}</Text>
+          <Text style={styles.headerDate}>{formatDisplayDate(todayString(), language)}</Text>
         </View>
 
         {/* Mode selector */}
@@ -264,7 +280,7 @@ export function HomeScreen() {
         <EnergyActionsBar />
 
         {/* Sub-batteries */}
-        <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp / xem nguồn ⚡</Text>
+        <Text style={styles.sectionLabel}>{t('screens.home.subBatteriesLabel')}</Text>
         <BatteryStack
           batteries={batteryStates}
           onPressCell={handleCellPress}
@@ -289,9 +305,12 @@ export function HomeScreen() {
           dates={microBattery.dates}
           selectedDate={microBattery.selectedDate}
           onSelectDate={microBattery.setSelectedDate}
-          recommendNote={`KN = mức khuyến nghị chung cho ${
-            userProfile.sex === 'male' ? 'nam' : 'nữ'
-          } ${userProfile.age} tuổi — không phải chỉ định y tế.`}
+          recommendNote={t(
+            userProfile.sex === 'male'
+              ? 'screens.home.recommendNoteMale'
+              : 'screens.home.recommendNoteFemale',
+            { age: userProfile.age }
+          )}
         />
 
         {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
@@ -311,9 +330,7 @@ export function HomeScreen() {
         />
 
         {/* Hint */}
-        <Text style={styles.hint}>
-          Kéo xuống để làm mới • Nước/Giấc ngủ: bấm để nạp — pin khác: bấm để xem nguồn
-        </Text>
+        <Text style={styles.hint}>{t('screens.home.hint')}</Text>
       </ScrollView>
 
       <IntakeModal
@@ -323,7 +340,7 @@ export function HomeScreen() {
         onClose={() => setModalVisible(false)}
         waterDisplayUnit={waterDisplayUnit}
         onToggleWaterUnit={handleToggleWaterUnit}
-        recommendationVi={recommendationVi}
+        recommendationVi={recommendation}
       />
 
       <BatterySourceSheet

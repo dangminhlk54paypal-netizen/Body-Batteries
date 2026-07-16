@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Line, Polyline, Circle, Text as SvgText } from 'react-native-svg';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 export interface TrendPoint {
   date: string;
@@ -23,10 +24,12 @@ const NUTRIENT_COLOR = colors.accent;
 const ENERGY_COLOR = colors.warning;
 
 export function TrendChart({ data, energyData }: TrendChartProps) {
+  const { t } = useT();
+
   if (data.length < 2) {
     return (
       <View style={[styles.container, styles.emptyContainer]}>
-        <Text style={styles.emptyText}>Chưa đủ dữ liệu để vẽ biểu đồ</Text>
+        <Text style={styles.emptyText}>{t('components.trendChart.emptyText')}</Text>
       </View>
     );
   }
@@ -101,11 +104,11 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: NUTRIENT_COLOR }]} />
-            <Text style={styles.legendLabel}>Dinh dưỡng</Text>
+            <Text style={styles.legendLabel}>{t('components.trendChart.nutrientLegend')}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: ENERGY_COLOR }]} />
-            <Text style={styles.legendLabel}>Năng lượng</Text>
+            <Text style={styles.legendLabel}>{t('batteries.energy.name')}</Text>
           </View>
         </View>
       )}

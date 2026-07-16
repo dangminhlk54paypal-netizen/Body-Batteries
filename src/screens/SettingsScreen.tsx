@@ -24,6 +24,9 @@ import {
 import type { MealWindow } from '../lib/constants';
 import { colors } from '../lib/theme';
 import { formatRelativeTime } from '../lib/relativeTime';
+import { useT } from '../i18n/useT';
+import { LANGUAGES, LANGUAGE_NAMES } from '../i18n/types';
+import type { Language } from '../i18n/types';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -71,12 +74,14 @@ function MealWindowRow({
   label,
   color,
   window,
+  overlapWarning,
   onChangeStart,
   onChangeEnd,
 }: {
   label: string;
   color: string;
   window: MealWindow;
+  overlapWarning: string;
   onChangeStart: (delta: number) => void;
   onChangeEnd: (delta: number) => void;
 }) {
@@ -93,15 +98,14 @@ function MealWindowRow({
         <HourStepper value={window.endHour} onChange={onChangeEnd} />
         <Text style={styles.mealUnit}>h</Text>
       </View>
-      {overlapping && (
-        <Text style={styles.mealWarning}>⚠ Giờ bắt đầu phải nhỏ hơn giờ kết thúc</Text>
-      )}
+      {overlapping && <Text style={styles.mealWarning}>{overlapWarning}</Text>}
     </View>
   );
 }
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
 export function SettingsScreen() {
+  const { t, language } = useT();
   const {
     notificationsEnabled,
     setNotificationsEnabled,
@@ -114,6 +118,7 @@ export function SettingsScreen() {
     setMealWindow,
     particleEffectsEnabled,
     setParticleEffectsEnabled,
+    setLanguage,
   } = useSettingsStore();
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
 
@@ -142,8 +147,8 @@ export function SettingsScreen() {
       const granted = await requestNotificationPermission();
       if (!granted) {
         Alert.alert(
-          'Thiếu quyền thông báo',
-          'Hãy vào Cài đặt của điện thoại → cấp quyền thông báo cho app này, rồi bật lại.'
+          t('settings.notifications.permissionMissingTitle'),
+          t('settings.notifications.permissionMissingMessage')
         );
         return;
       }
@@ -184,9 +189,9 @@ export function SettingsScreen() {
   async function handleExport() {
     setExporting(true);
     try {
-      await exportWeeklyData();
+      await exportWeeklyData(language);
     } catch {
-      Alert.alert('Lỗi', 'Không thể xuất file. Thử lại sau.');
+      Alert.alert(t('common.error'), t('settings.data.exportError'));
     } finally {
       setExporting(false);
     }
@@ -195,9 +200,9 @@ export function SettingsScreen() {
   async function handleExportMonthly() {
     setExporting(true);
     try {
-      await exportMonthlyData();
+      await exportMonthlyData(language);
     } catch {
-      Alert.alert('Lỗi', 'Không thể xuất file. Thử lại sau.');
+      Alert.alert(t('common.error'), t('settings.data.exportError'));
     } finally {
       setExporting(false);
     }
@@ -208,18 +213,14 @@ export function SettingsScreen() {
   }
 
   function handleCleanup() {
-    Alert.alert(
-      'Xoá dữ liệu cũ',
-      'Dữ liệu hơn 35 ngày sẽ bị xoá VĨNH VIỄN và không thể khôi phục.\n\nHãy bấm "Xuất Excel" trước để giữ lại bản lưu. Bạn có chắc muốn xoá?',
-      [
-        { text: 'Huỷ', style: 'cancel' },
-        {
-          text: 'Xoá vĩnh viễn',
-          style: 'destructive',
-          onPress: () => runWeeklyCleanup(),
-        },
-      ]
-    );
+    Alert.alert(t('settings.data.cleanupTitle'), t('settings.data.cleanupMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.deletePermanently'),
+        style: 'destructive',
+        onPress: () => runWeeklyCleanup(),
+      },
+    ]);
   }
 
   const thresholdOptions = [0.1, 0.2, 0.3];
@@ -229,9 +230,9 @@ export function SettingsScreen() {
     label: string;
     color: string;
   }[] = [
-    { key: 'breakfast', label: 'Bữa sáng', color: colors.mealBreakfast },
-    { key: 'lunch', label: 'Bữa trưa', color: colors.accent },
-    { key: 'dinner', label: 'Bữa tối', color: colors.accentAlt },
+    { key: 'breakfast', label: t('meals.breakfast'), color: colors.mealBreakfast },
+    { key: 'lunch', label: t('meals.lunch'), color: colors.accent },
+    { key: 'dinner', label: t('meals.dinner'), color: colors.accentAlt },
   ];
 
   return (
@@ -239,18 +240,41 @@ export function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Page title */}
         <View style={styles.titleWrap}>
-          <Text style={styles.title}>Cài đặt</Text>
-          <Text style={styles.subtitle}>Tuỳ chỉnh theo thói quen của bạn</Text>
+          <Text style={styles.title}>{t('settings.title')}</Text>
+          <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* ── Language ─────────────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <SectionHeader icon="🌐" label={t('settings.language.sectionTitle')} />
+          <Text style={styles.sectionDesc}>{t('settings.language.sectionDesc')}</Text>
+          <View style={styles.chipRow}>
+            {LANGUAGES.map((lang: Language) => (
+              <Pressable
+                key={lang}
+                onPress={() => setLanguage(lang)}
+                style={({ pressed }) => [
+                  styles.chip,
+                  language === lang && styles.chipActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={[styles.chipText, language === lang && styles.chipTextActive]}>
+                  {LANGUAGE_NAMES[lang]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View style={styles.divider} />
 
         {/* ── Body profile ────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <SectionHeader icon="🧬" label="HỒ SƠ CƠ THỂ" />
-          <Text style={styles.sectionDesc}>
-            Dùng để tính nhu cầu năng lượng (pin Năng lượng). Chỉ tham khảo — không phải tư vấn y tế.
-          </Text>
+          <SectionHeader icon="🧬" label={t('settings.bodyProfile.sectionTitle')} />
+          <Text style={styles.sectionDesc}>{t('settings.bodyProfile.sectionDesc')}</Text>
           <BodyProfileCard />
         </View>
 
@@ -258,11 +282,8 @@ export function SettingsScreen() {
 
         {/* ── Health (Apple Health) ───────────────────────────────────────── */}
         <View style={styles.section}>
-          <SectionHeader icon="🏥" label="SỨC KHOẺ" />
-          <Text style={styles.sectionDesc}>
-            Apple Health tự động theo dõi kcal đã đốt mỗi ngày — chỉ cần ghi vận động thủ công khi
-            muốn bổ sung thêm.
-          </Text>
+          <SectionHeader icon="🏥" label={t('settings.health.sectionTitle')} />
+          <Text style={styles.sectionDesc}>{t('settings.health.sectionDesc')}</Text>
 
           <Pressable
             style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
@@ -272,23 +293,29 @@ export function SettingsScreen() {
             {appleHealthStatus === 'syncing' ? (
               <View style={styles.healthRefreshRow}>
                 <ActivityIndicator size="small" color={colors.textPrimary} />
-                <Text style={styles.actionBtnText}>Đang đồng bộ…</Text>
+                <Text style={styles.actionBtnText}>{t('settings.health.syncing')}</Text>
               </View>
             ) : (
-              <Text style={styles.actionBtnText}>🔄 Làm mới dữ liệu Apple Health</Text>
+              <Text style={styles.actionBtnText}>{t('settings.health.refreshButton')}</Text>
             )}
           </Pressable>
 
           <Text style={styles.sectionDesc}>
-            Lần đồng bộ gần nhất:{' '}
-            {lastAppleHealthSync != null ? formatRelativeTime(lastAppleHealthSync, nowMs) : 'Chưa đồng bộ'}
+            {t('settings.health.lastSync', {
+              time:
+                lastAppleHealthSync != null
+                  ? formatRelativeTime(lastAppleHealthSync, nowMs, language)
+                  : t('settings.health.neverSynced'),
+            })}
           </Text>
 
-          <Text style={[styles.healthStatusText, { color: appleHealthStatusMeta(appleHealthStatus).color }]}>
-            {appleHealthStatus === 'synced' && '✓ Đã kết nối'}
-            {appleHealthStatus === 'estimated' && '⚠️ Ước tính — kiểm tra quyền Health trong Cài đặt máy'}
-            {appleHealthStatus === 'syncing' && 'Đang đồng bộ…'}
-            {appleHealthStatus === 'idle' && '— Chưa đồng bộ'}
+          <Text
+            style={[styles.healthStatusText, { color: appleHealthStatusMeta(appleHealthStatus, language).color }]}
+          >
+            {appleHealthStatus === 'synced' && t('settings.health.statusSynced')}
+            {appleHealthStatus === 'estimated' && t('settings.health.statusEstimated')}
+            {appleHealthStatus === 'syncing' && t('settings.health.statusSyncing')}
+            {appleHealthStatus === 'idle' && t('settings.health.statusIdle')}
           </Text>
         </View>
 
@@ -296,10 +323,10 @@ export function SettingsScreen() {
 
         {/* ── Notifications ────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <SectionHeader icon="🔔" label="THÔNG BÁO" />
+          <SectionHeader icon="🔔" label={t('settings.notifications.sectionTitle')} />
 
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Bật thông báo</Text>
+            <Text style={styles.rowLabel}>{t('settings.notifications.enableLabel')}</Text>
             <Switch
               value={notificationsEnabled}
               onValueChange={handleToggleNotifications}
@@ -307,7 +334,7 @@ export function SettingsScreen() {
             />
           </View>
 
-          <Text style={styles.sectionDesc}>Giờ nhắc nhở cập nhật năng lượng mỗi ngày</Text>
+          <Text style={styles.sectionDesc}>{t('settings.notifications.reminderDesc')}</Text>
           <View style={styles.timeRow}>
             <HourStepper
               value={reminderHour}
@@ -333,26 +360,26 @@ export function SettingsScreen() {
 
           {/* Low battery threshold moved here — logically related to notifications */}
           <Text style={[styles.sectionDesc, { marginTop: 8 }]}>
-            Nhận thông báo khi pin xuống dưới mức này
+            {t('settings.notifications.thresholdDesc')}
           </Text>
           <View style={styles.chipRow}>
-            {thresholdOptions.map((t) => (
+            {thresholdOptions.map((th) => (
               <Pressable
-                key={t}
-                onPress={() => setLowBatteryThreshold(t)}
+                key={th}
+                onPress={() => setLowBatteryThreshold(th)}
                 style={({ pressed }) => [
                   styles.chip,
-                  lowBatteryThreshold === t && styles.chipActive,
+                  lowBatteryThreshold === th && styles.chipActive,
                   pressed && styles.pressed,
                 ]}
               >
                 <Text
                   style={[
                     styles.chipText,
-                    lowBatteryThreshold === t && styles.chipTextActive,
+                    lowBatteryThreshold === th && styles.chipTextActive,
                   ]}
                 >
-                  {Math.round(t * 100)}%
+                  {Math.round(th * 100)}%
                 </Text>
               </Pressable>
             ))}
@@ -363,10 +390,8 @@ export function SettingsScreen() {
 
         {/* ── Meal windows ─────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <SectionHeader icon="🕐" label="KHUNG GIỜ BỮA ĂN" />
-          <Text style={styles.sectionDesc}>
-            App tự xếp món ăn vào bữa sáng/trưa/tối theo giờ bạn ghi. Ngoài khung giờ = Bữa phụ.
-          </Text>
+          <SectionHeader icon="🕐" label={t('settings.mealWindows.sectionTitle')} />
+          <Text style={styles.sectionDesc}>{t('settings.mealWindows.sectionDesc')}</Text>
           <View style={styles.mealWindowCard}>
             {mealConfig.map(({ key, label, color }, idx) => (
               <View key={key}>
@@ -375,6 +400,7 @@ export function SettingsScreen() {
                   label={label}
                   color={color}
                   window={mealWindows[key]}
+                  overlapWarning={t('settings.mealWindows.overlapWarning')}
                   onChangeStart={(d) => handleMealWindowChange(key, 'startHour', d)}
                   onChangeEnd={(d) => handleMealWindowChange(key, 'endHour', d)}
                 />
@@ -387,7 +413,7 @@ export function SettingsScreen() {
 
         {/* ── Data actions ─────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <SectionHeader icon="💾" label="DỮ LIỆU" />
+          <SectionHeader icon="💾" label={t('settings.data.sectionTitle')} />
 
           <Pressable
             style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
@@ -395,7 +421,7 @@ export function SettingsScreen() {
             disabled={exporting}
           >
             <Text style={styles.actionBtnText}>
-              {exporting ? 'Đang xuất...' : '📊 Xuất Excel 7 ngày gần nhất'}
+              {exporting ? t('settings.data.exporting') : t('settings.data.exportWeekly')}
             </Text>
           </Pressable>
 
@@ -405,7 +431,7 @@ export function SettingsScreen() {
             disabled={exporting}
           >
             <Text style={styles.actionBtnText}>
-              {exporting ? 'Đang xuất...' : '📊 Xuất Excel 30 ngày gần nhất'}
+              {exporting ? t('settings.data.exporting') : t('settings.data.exportMonthly')}
             </Text>
           </Pressable>
 
@@ -414,7 +440,7 @@ export function SettingsScreen() {
             onPress={handleCleanup}
           >
             <Text style={[styles.actionBtnText, styles.dangerText]}>
-              🗑️ Xoá dữ liệu cũ hơn 35 ngày
+              {t('settings.data.cleanupButton')}
             </Text>
           </Pressable>
         </View>
@@ -423,25 +449,20 @@ export function SettingsScreen() {
 
         {/* ── Interface effects ────────────────────────────────────────── */}
         <View style={styles.section}>
-          <SectionHeader icon="✨" label="GIAO DIỆN" />
+          <SectionHeader icon="✨" label={t('settings.interface.sectionTitle')} />
 
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Hiệu ứng nạp pin ✨</Text>
+            <Text style={styles.rowLabel}>{t('settings.interface.particleEffectsLabel')}</Text>
             <Switch
               value={particleEffectsEnabled}
               onValueChange={setParticleEffectsEnabled}
               trackColor={{ true: colors.accent }}
             />
           </View>
-          <Text style={styles.sectionDesc}>
-            Vài đốm sáng bay vào pin mỗi khi bạn ghi món ăn thành công. Tắt nếu muốn giao diện đơn giản hơn.
-          </Text>
+          <Text style={styles.sectionDesc}>{t('settings.interface.particleEffectsDesc')}</Text>
         </View>
 
-        <Text style={styles.disclaimer}>
-          ⚠️ App này chỉ để tham khảo cá nhân — không phải thiết bị y tế.
-          Hãy gặp chuyên gia y tế trước khi thay đổi chế độ dinh dưỡng.
-        </Text>
+        <Text style={styles.disclaimer}>{t('settings.disclaimer')}</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -478,7 +499,7 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 15, color: colors.textPrimary },
 
   // ── Chips ──────────────────────────────────────────────────────────────────
-  chipRow: { flexDirection: 'row', gap: 8 },
+  chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {
     paddingHorizontal: 20,
     paddingVertical: 10,

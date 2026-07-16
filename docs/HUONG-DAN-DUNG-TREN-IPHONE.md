@@ -132,6 +132,10 @@ Go (chưa phải bản build App Store/TestFlight riêng):
   — không qua internet) vẫn hoạt động bình thường.
 - **Chạy nền (background fetch)** — việc app tự cập nhật dữ liệu khi không mở
   app — bị giới hạn trong Expo Go so với app cài đặt thật.
+- **Đồng bộ Apple Health (kcal đốt tự động)** không chạy được trong Expo Go —
+  tính năng này cần module gốc (native) chỉ có trong bản build thật. Trong
+  Expo Go, app tự động chuyển sang **ước tính theo BMR** (không phải số thật
+  từ Apple Health) — không lỗi, chỉ là không chính xác bằng.
 - Muốn có **bản build thật, độc lập** (tự cài từ App Store hoặc qua
   TestFlight, không cần Expo Go, không có 2 giới hạn trên) thì cần đăng ký
   **Apple Developer Program (99 USD/năm)**. Việc này **không cần thiết** cho

@@ -5,6 +5,7 @@ import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
 import { BottomSheet } from './ui/BottomSheet';
 import { toMl, type WaterDisplayUnit } from '../lib/units';
+import { useT } from '../i18n/useT';
 
 // Manual charge form. Since the small-battery tap overhaul, only water and
 // sleep route here (see HomeScreen.handleCellPress) — the auto-charged pins
@@ -40,6 +41,7 @@ export function IntakeModal({
   onToggleWaterUnit,
   recommendationVi,
 }: Props) {
+  const { t } = useT();
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const isWater = battery?.id === 'water';
@@ -60,9 +62,13 @@ export function IntakeModal({
   return (
     <BottomSheet visible={visible} onClose={onClose} sheetOffset={400}>
       <View style={styles.content}>
-        <Text style={styles.title}>Nạp {battery.name}</Text>
+        <Text style={styles.title}>
+          {t('components.intakeModal.titleLabel', { name: battery.name })}
+        </Text>
         <Text style={styles.subtitle}>
-          Nhập lượng bạn đã nạp ({isWater ? waterDisplayUnit : battery.unit})
+          {t('components.intakeModal.subtitleLabel', {
+            unit: isWater ? waterDisplayUnit : battery.unit,
+          })}
         </Text>
 
         {recommendationVi && <Text style={styles.kcalHint}>{recommendationVi}</Text>}
@@ -96,7 +102,7 @@ export function IntakeModal({
 
         <TextInput
           style={styles.input}
-          placeholder={`Ví dụ: 30`}
+          placeholder={t('components.intakeModal.amountPlaceholder')}
           placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
           value={amount}
@@ -106,7 +112,7 @@ export function IntakeModal({
 
         <TextInput
           style={[styles.input, styles.noteInput]}
-          placeholder="Ghi chú (tuỳ chọn)"
+          placeholder={t('components.intakeModal.notePlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={note}
           onChangeText={setNote}
@@ -117,7 +123,7 @@ export function IntakeModal({
             style={({ pressed }) => [styles.btn, styles.cancelBtn, pressed && styles.pressed]}
             onPress={onClose}
           >
-            <Text style={styles.cancelText}>Huỷ</Text>
+            <Text style={styles.cancelText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -128,7 +134,7 @@ export function IntakeModal({
             ]}
             onPress={handleConfirm}
           >
-            <Text style={styles.confirmText}>Nạp ⚡</Text>
+            <Text style={styles.confirmText}>{t('components.intakeModal.confirmButton')}</Text>
           </Pressable>
         </View>
       </View>

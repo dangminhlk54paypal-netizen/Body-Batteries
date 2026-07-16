@@ -10,6 +10,7 @@ import { gramsForPortion } from '../domain/food/foodNutrition';
 import type { FoodItem, FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
+import { useT } from '../i18n/useT';
 
 // One-tap logging for supplement-category foods (fish oil, whey, vitamins…).
 // Each tap logs one default serving through the normal logFood flow, so the
@@ -29,6 +30,7 @@ interface Props {
 const BUILT_IN_SUPPLEMENTS = FOOD_ITEMS.filter((f) => f.category === 'supplement');
 
 export function SupplementQuickLog({ todayLog }: Props) {
+  const { t } = useT();
   const logFood = useEnergyStore((s) => s.logFood);
 
   // Bumped after add/edit so the memoised list re-reads the custom registry.
@@ -51,7 +53,7 @@ export function SupplementQuickLog({ todayLog }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>💊 Thực phẩm chức năng — bấm để nạp 1 liều</Text>
+      <Text style={styles.title}>{t('components.supplementQuickLog.title')}</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -97,7 +99,9 @@ export function SupplementQuickLog({ todayLog }: Props) {
                 </Pressable>
               </View>
               <Text style={[styles.chipMeta, count > 0 && styles.chipMetaLogged]}>
-                {count > 0 ? `hôm nay ×${count}` : 'chưa nạp hôm nay'}
+                {count > 0
+                  ? t('components.supplementQuickLog.loggedCountLabel', { count })
+                  : t('components.supplementQuickLog.notLoggedLabel')}
               </Text>
             </Pressable>
           );
@@ -107,14 +111,10 @@ export function SupplementQuickLog({ todayLog }: Props) {
           onPress={() => setAdding(true)}
           style={({ pressed }) => [styles.chip, styles.chipAdd, pressed && styles.pressed]}
         >
-          <Text style={styles.chipAddText}>➕ Thêm{'\n'}TPCN</Text>
+          <Text style={styles.chipAddText}>{t('components.supplementQuickLog.addSupplementLabel')}</Text>
         </Pressable>
       </ScrollView>
-      <Text style={styles.hint}>
-        Mỗi lần bấm = 1 liều mặc định (VD: 1 viên dầu cá 1220mg = 600mg EPA + 400mg DHA).
-        Liều nạp cộng thẳng vào pin vi chất ở trên — pin vượt 100% nghĩa là đã quá mức
-        khuyến nghị. Bấm nhầm thì xoá trong danh sách bữa ăn bên dưới.
-      </Text>
+      <Text style={styles.hint}>{t('components.supplementQuickLog.hintText')}</Text>
 
       <FoodNutritionEditModal
         visible={adding}

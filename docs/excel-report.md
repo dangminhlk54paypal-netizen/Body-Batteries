@@ -3,9 +3,29 @@
 > ⚠️ Toàn bộ cột **"Đánh giá"** trong file Excel này chỉ là gợi ý tự theo dõi,
 > **không phải chẩn đoán hay tư vấn y tế**. Xem thêm mục 6 bên dưới.
 
+## 0. Đa ngôn ngữ (Session 14, 2026-07-17)
+
+Từ session 14, **tên sheet + toàn bộ tiêu đề cột đều đổi theo ngôn ngữ đang
+chọn trong Cài đặt** (Tiếng Việt / English / Deutsch — mục "🌐 NGÔN NGỮ" đầu
+màn Settings). `exportWeeklyData(language)`/`exportMonthlyData(language)`
+nhận tham số `language` và truyền xuống toàn bộ chuỗi build sheet trong
+`excelExportService.ts` + `domain/nutrition/excelSheets.ts`, tra cứu qua
+`translate(language, 'export.sheets.xxx' | 'export.columns.xxx')` trong
+`src/i18n/locales/{vi,en,de}.ts`.
+
+**Cố ý KHÔNG đổi theo ngôn ngữ** (xem `src/types/food.ts` +
+`domain/nutrition/excelSheets.ts` comment): cột **tên món ăn** luôn giữ
+nguyên tiếng Việt (`FoodLogEntry.foodNameVi`) — đây là snapshot tại đúng thời
+điểm ghi món, không phải dữ liệu tra cứu sống, nên không thể "dịch lại" theo
+ngôn ngữ chọn sau này mà không viết lại lịch sử. Toàn bộ **nhãn cấu trúc**
+xung quanh nó (tiêu đề cột, tên sheet, tên vi chất, câu gợi ý "Đánh giá",
+dòng cảnh báo y tế) đều đổi ngôn ngữ đầy đủ.
+
 Nút **"Xuất Excel"** trong Cài đặt (`SettingsScreen.tsx` →
 `exportWeeklyData()` trong `src/services/export/excelExportService.ts`) xuất
-dữ liệu 7 ngày gần nhất thành 6 sheet:
+dữ liệu 7 ngày gần nhất thành **8 sheet** (2 sheet "Daily Totals"/"Food
+Entries" thêm từ Session 14 — xem `domain/nutrition/excelSheets.ts` — cộng 6
+sheet gốc mô tả bên dưới; tên hiển thị dưới đây là bản tiếng Việt mặc định):
 
 ## 1. Battery Readings
 Lịch sử các lần đọc pin (Năng lượng + các pin phụ): ngày, loại pin, mức hiện
@@ -20,7 +40,7 @@ khoáng chất.
 
 ## 4. Dinh dưỡng ngày (mới)
 Một dòng cho mỗi **ngày có ghi món ăn** trong 7 ngày qua:
-- **Ngày, Kcal, Đạm (g), Béo (g), Tinh bột (g)**: tổng trong ngày, cộng từ
+- **Ngày, Kcal, Đạm (g), Béo (g), Carbs (g)**: tổng trong ngày, cộng từ
   các dòng Food Log của ngày đó (dùng đúng số đã snapshot lúc ghi món, không
   tính lại).
 - Một cột cho **mỗi vi chất** (chất xơ, sắt, canxi, chất béo, kali, magie,
@@ -81,7 +101,11 @@ Bảng tra cứu đứng sau toàn bộ cột "Đánh giá" ở sheet 4 và 5 �
 - `src/domain/nutrition/dailyNutritionSummary.ts` — thuần, gom Food Log theo
   ngày (giờ địa phương, **không** dùng mốc reset 6h của Sổ calo) +
   `summarizeWeeklyNutrition` (có test).
-- `src/services/export/excelExportService.ts` — lắp 6 sheet, lấy hồ sơ người
-  dùng qua `useSettingsStore.getState()` rồi tính `nutrientTargetsForProfile`.
+- `src/services/export/excelExportService.ts` — lắp 8 sheet, lấy hồ sơ người
+  dùng qua `useSettingsStore.getState()` rồi tính `nutrientTargetsForProfile`;
+  nhận `language` để dịch toàn bộ tên sheet/tiêu đề cột (xem mục 0).
+- `src/i18n/` (mới, Session 14/2026-07-17) — `translate.ts` + `locales/{vi,en,de}.ts`
+  chứa toàn bộ chuỗi `export.sheets.*`/`export.columns.*` dùng ở đây.
 - Test: `src/domain/nutrition/__tests__/nutritionAssessment.test.ts`,
-  `src/domain/nutrition/__tests__/dailyNutritionSummary.test.ts`.
+  `src/domain/nutrition/__tests__/dailyNutritionSummary.test.ts`,
+  `src/domain/nutrition/__tests__/excelSheets.test.ts`.

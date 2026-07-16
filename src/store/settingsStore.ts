@@ -5,6 +5,7 @@ import type { ModeId } from '../types/modes';
 import type { CustomActivity, UserProfile } from '../types/energy';
 import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../lib/constants';
 import type { MovementDisplayUnit, WaterDisplayUnit } from '../lib/units';
+import type { Language } from '../i18n/types';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -45,6 +46,9 @@ interface SettingsState {
   // User-defined activities (not in MET_TABLE) available in the activity
   // picker alongside the built-in ActivityType list — see types/energy.ts.
   customActivities: CustomActivity[];
+  // Display language — drives every useT()/translate() call and the Excel
+  // export's headers/labels. Persisted like everything else in this store.
+  language: Language;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -58,6 +62,7 @@ interface SettingsState {
   setMicroCollapsed: (value: boolean) => void;
   addCustomActivity: (activity: Omit<CustomActivity, 'id'>) => void;
   removeCustomActivity: (id: string) => void;
+  setLanguage: (language: Language) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -76,6 +81,7 @@ export const useSettingsStore = create<SettingsState>()(
       movementDisplayUnit: 'kcal',
       microCollapsed: false,
       customActivities: [],
+      language: 'vi',
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -95,6 +101,7 @@ export const useSettingsStore = create<SettingsState>()(
         })),
       removeCustomActivity: (id) =>
         set((s) => ({ customActivities: s.customActivities.filter((a) => a.id !== id) })),
+      setLanguage: (language) => set({ language }),
     }),
     {
       name: 'settings-storage',

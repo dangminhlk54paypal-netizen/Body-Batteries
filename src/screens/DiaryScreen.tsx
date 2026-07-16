@@ -19,6 +19,8 @@ import { encryptDiary } from '../lib/encryption';
 import { saveDiaryEntry } from '../data/repositories/dailyLogRepository';
 import { todayString, formatDisplayDate } from '../lib/dateUtils';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import { LOCALE_TAGS } from '../i18n/types';
 
 // Base64 helper definitions for safe decryption compatibility
 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -88,6 +90,7 @@ function xorDecrypt(encryptedBase64: string, key: string): string {
 }
 
 export function DiaryScreen() {
+  const { t, language } = useT();
   const navigation = useNavigation<any>();
   const [text, setText] = useState('');
   const [saved, setSaved] = useState(false);
@@ -120,18 +123,18 @@ export function DiaryScreen() {
   async function handleSave() {
     if (!text.trim()) return;
 
-    const alertTitle = 'Lưu nhật ký';
+    const alertTitle = t('screens.diary.saveTitle');
     const alertMessage = hasSavedToday
-      ? 'Hôm nay bạn đã lưu nhật ký. Ghi thêm này sẽ tự động được nối tiếp (thêm mới) vào nhật ký của hôm nay. Bạn có chắc không?'
-      : 'Nhật ký sẽ được mã hoá và không thể đọc lại trong app. Bạn có chắc không?';
+      ? t('screens.diary.saveMessageAppend')
+      : t('screens.diary.saveMessageNew');
 
     Alert.alert(
       alertTitle,
       alertMessage,
       [
-        { text: 'Huỷ', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Lưu & mã hoá',
+          text: t('screens.diary.saveConfirmButton'),
           onPress: async () => {
             try {
               let finalOutput = text.trim();
@@ -146,11 +149,13 @@ export function DiaryScreen() {
                   if (key) {
                     const decryptedPrev = xorDecrypt(row.encrypted_content, key);
                     const now = new Date();
-                    const timeStr = now.toLocaleTimeString('vi-VN', {
+                    const timeStr = now.toLocaleTimeString(LOCALE_TAGS[language], {
                       hour: '2-digit',
                       minute: '2-digit',
                     });
-                    finalOutput = `${decryptedPrev}\n\n[Ghi thêm lúc ${timeStr}]:\n${text.trim()}`;
+                    finalOutput =
+                      decryptedPrev +
+                      t('screens.diary.appendEntry', { time: timeStr, text: text.trim() });
                   }
                 }
               }
@@ -162,7 +167,7 @@ export function DiaryScreen() {
               setHasSavedToday(true);
             } catch (e) {
               console.error('Error saving diary:', e);
-              Alert.alert('Lỗi', 'Không thể lưu nhật ký. Vui lòng thử lại.');
+              Alert.alert(t('common.error'), t('screens.diary.saveError'));
             }
           },
         },
@@ -175,7 +180,7 @@ export function DiaryScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accentAlt} />
-          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+          <Text style={styles.loadingText}>{t('screens.diary.loadingText')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -190,8 +195,8 @@ export function DiaryScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Nhật ký</Text>
-              <Text style={styles.date}>📅 {formatDisplayDate(todayString())}</Text>
+              <Text style={styles.title}>{t('screens.diary.title')}</Text>
+              <Text style={styles.date}>📅 {formatDisplayDate(todayString(), language)}</Text>
             </View>
             <View
               style={[
@@ -205,7 +210,7 @@ export function DiaryScreen() {
                   hasSavedToday ? styles.badgeTextSaved : styles.badgeTextNew,
                 ]}
               >
-                {hasSavedToday ? '🔒 Đã bảo mật hôm nay' : '📝 Nhật ký mới'}
+                {hasSavedToday ? t('screens.diary.badgeSaved') : t('screens.diary.badgeNew')}
               </Text>
             </View>
           </View>
@@ -213,10 +218,10 @@ export function DiaryScreen() {
           <View style={styles.lockBox}>
             <Text style={styles.lockIcon}>🔒</Text>
             <Text style={styles.lockText}>
-              Nhật ký được mã hoá ngay khi lưu.{'\n'}
-              App không thể đọc lại nội dung.{'\n'}
+              {t('screens.diary.lockLine1')}
+              {'\n'}
               <Text style={{ fontWeight: '600', color: colors.accentAltLighter }}>
-                Bảo vệ riêng tư tuyệt đối cho bạn.
+                {t('screens.diary.lockLine2Bold')}
               </Text>
             </Text>
           </View>
@@ -225,23 +230,21 @@ export function DiaryScreen() {
             <View style={styles.savedBox}>
               <View style={styles.successCard}>
                 <Text style={styles.successIcon}>🛡️</Text>
-                <Text style={styles.successTitle}>Đã lưu & mã hoá!</Text>
-                <Text style={styles.successSubtitle}>
-                  Nhật ký hôm nay đã được khóa an toàn bằng mật mã riêng tư trên điện thoại.
-                </Text>
+                <Text style={styles.successTitle}>{t('screens.diary.savedTitle')}</Text>
+                <Text style={styles.successSubtitle}>{t('screens.diary.savedSubtitle')}</Text>
               </View>
               <View style={styles.actionButtons}>
                 <Pressable
                   onPress={() => setSaved(false)}
                   style={({ pressed }) => [styles.newEntryBtn, pressed && styles.pressed]}
                 >
-                  <Text style={styles.newEntryText}>✍️ Viết thêm nội dung</Text>
+                  <Text style={styles.newEntryText}>{t('screens.diary.writeMoreButton')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => navigation.navigate('History')}
                   style={({ pressed }) => [styles.historyBtn, pressed && styles.pressed]}
                 >
-                  <Text style={styles.historyText}>📊 Xem Lịch sử pin</Text>
+                  <Text style={styles.historyText}>{t('screens.diary.viewHistoryButton')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -254,7 +257,7 @@ export function DiaryScreen() {
                     isFocused && styles.inputFocused,
                   ]}
                   multiline
-                  placeholder="Hôm nay bạn cảm thấy thế nào?"
+                  placeholder={t('screens.diary.placeholder')}
                   placeholderTextColor={colors.textSubtle}
                   value={text}
                   onChangeText={setText}
@@ -263,7 +266,7 @@ export function DiaryScreen() {
                   onBlur={() => setIsFocused(false)}
                 />
                 <Text style={styles.charCount}>
-                  {text.length} ký tự
+                  {t('screens.diary.charCount', { n: text.length })}
                 </Text>
               </View>
 
@@ -277,15 +280,15 @@ export function DiaryScreen() {
                 disabled={!text.trim()}
               >
                 <Text style={styles.saveBtnText}>
-                  {hasSavedToday ? '🔒 Lưu nối tiếp nhật ký' : '🔒 Lưu & mã hoá'}
+                  {hasSavedToday
+                    ? t('screens.diary.saveButtonAppend')
+                    : t('screens.diary.saveButtonNew')}
                 </Text>
               </Pressable>
             </>
           )}
 
-          <Text style={styles.disclaimer}>
-            ⚠️ Nội dung nhật ký chỉ để tự theo dõi cảm xúc cá nhân. Đây không phải tư vấn tâm lý hoặc chẩn đoán y tế.
-          </Text>
+          <Text style={styles.disclaimer}>{t('screens.diary.disclaimer')}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

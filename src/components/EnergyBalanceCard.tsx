@@ -4,6 +4,7 @@ import { colors } from '../lib/theme';
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import type { FoodLogEntry } from '../types/food';
 import { AppleHealthStatusBadge, type AppleHealthStatus } from './AppleHealthStatusBadge';
+import { useT } from '../i18n/useT';
 
 interface Props {
   foodLog: FoodLogEntry[]; // today's meals — "Eaten Today" is derived from this, same source TodayMeals uses
@@ -24,6 +25,7 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
   // minute-granularity relative time, and this re-renders naturally whenever
   // the store updates (loadToday, syncAppleHealthBurned, food log changes).
   const [nowMs] = useState(() => Date.now());
+  const { t } = useT();
 
   const eatenKcal = summarizeFoodLog(foodLog).totalKcal;
   const balance = Math.round(eatenKcal - burnedKcal);
@@ -31,28 +33,29 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
 
   return (
     <View style={styles.card}>
-      <Text style={styles.sectionLabel}>Cân bằng năng lượng</Text>
+      <Text style={styles.sectionLabel}>{t('components.energyBalanceCard.sectionLabel')}</Text>
 
       <View style={styles.row}>
         <View style={styles.rowLeft}>
-          <Text style={styles.rowLabel}>Đã đốt hôm nay</Text>
+          <Text style={styles.rowLabel}>{t('components.energyBalanceCard.burnedTodayLabel')}</Text>
           <AppleHealthStatusBadge status={status} lastSyncAt={lastSyncAt} nowMs={nowMs} />
         </View>
         <Text style={styles.rowValue}>{Math.round(burnedKcal)} kcal</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.rowLabel}>Đã ăn hôm nay</Text>
+        <Text style={styles.rowLabel}>{t('components.energyBalanceCard.eatenTodayLabel')}</Text>
         <Text style={styles.rowValue}>{Math.round(eatenKcal)} kcal</Text>
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.row}>
-        <Text style={styles.balanceLabel}>Chênh lệch</Text>
+        <Text style={styles.balanceLabel}>{t('components.energyBalanceCard.balanceLabel')}</Text>
         <Text style={[styles.balanceValue, { color: isSurplus ? colors.mint : colors.danger }]}>
-          {isSurplus ? '+' : ''}
-          {balance} kcal ({isSurplus ? 'dư' : 'thiếu'})
+          {isSurplus
+            ? t('components.energyBalanceCard.balanceSurplusLine', { amount: balance })
+            : t('components.energyBalanceCard.balanceDeficitLine', { amount: balance })}
         </Text>
       </View>
     </View>

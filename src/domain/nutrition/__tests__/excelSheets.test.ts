@@ -1,5 +1,8 @@
 import { buildDailyTotals, buildFoodEntryRows } from '../excelSheets';
+import { vi } from '../../../i18n/locales/vi';
 import type { FoodLogEntry } from '../../../types/food';
+
+const col = vi.export.columns;
 
 function entry(overrides: Partial<FoodLogEntry>): FoodLogEntry {
   return {
@@ -48,28 +51,28 @@ describe('buildDailyTotals', () => {
       }),
     ];
 
-    const rows = buildDailyTotals(entries, []);
+    const rows = buildDailyTotals(entries, [], 'vi');
 
     expect(rows).toHaveLength(2);
     // Ascending order: July 1 before July 2.
-    expect(rows[0].Date).toBe('1-Jul-2026');
-    expect(rows[1].Date).toBe('2-Jul-2026');
+    expect(rows[0][col.date]).toBe('1-Jul-2026');
+    expect(rows[1][col.date]).toBe('2-Jul-2026');
 
     // July 1 aggregates entries b + c (200 + 50.05 = 250.05, rounded to 1dp).
-    expect(rows[0]['Calories (kcal)']).toBeCloseTo(250.1, 5);
-    expect(rows[0]['Fat (g)']).toBeCloseTo(4.1, 5);
-    expect(rows[0]['Carbs (g)']).toBeCloseTo(5, 5);
-    expect(rows[0]['Protein (g)']).toBeCloseTo(6.1, 5);
+    expect(rows[0][col.calories]).toBeCloseTo(250.1, 5);
+    expect(rows[0][col.fat]).toBeCloseTo(4.1, 5);
+    expect(rows[0][col.carbs]).toBeCloseTo(5, 5);
+    expect(rows[0][col.protein]).toBeCloseTo(6.1, 5);
 
     // July 2 has just entry a.
-    expect(rows[1]['Calories (kcal)']).toBe(100);
+    expect(rows[1][col.calories]).toBe(100);
   });
 
   it('only includes days that actually have logged food', () => {
     const entries: FoodLogEntry[] = [entry({ timestamp: new Date('2026-07-05T12:00:00').getTime() })];
-    const rows = buildDailyTotals(entries, []);
+    const rows = buildDailyTotals(entries, [], 'vi');
     expect(rows).toHaveLength(1);
-    expect(rows[0].Date).toBe('5-Jul-2026');
+    expect(rows[0][col.date]).toBe('5-Jul-2026');
   });
 
   it('carries forward the most recent weight logged on or before the day', () => {
@@ -81,8 +84,8 @@ describe('buildDailyTotals', () => {
       { timestamp: new Date('2026-06-25T09:00:00').getTime(), value: 68 },
     ];
 
-    const rows = buildDailyTotals(entries, weights);
-    expect(rows[0]['Weight (kg)']).toBe(70);
+    const rows = buildDailyTotals(entries, weights, 'vi');
+    expect(rows[0][col.weight]).toBe(70);
   });
 
   it('picks the latest same-day weight when multiple are logged that day', () => {
@@ -94,8 +97,8 @@ describe('buildDailyTotals', () => {
       { timestamp: new Date('2026-07-03T20:00:00').getTime(), value: 71 },
     ];
 
-    const rows = buildDailyTotals(entries, weights);
-    expect(rows[0]['Weight (kg)']).toBe(71);
+    const rows = buildDailyTotals(entries, weights, 'vi');
+    expect(rows[0][col.weight]).toBe(71);
   });
 
   it('ignores weights logged after the day and leaves the cell blank when none exist yet', () => {
@@ -104,8 +107,8 @@ describe('buildDailyTotals', () => {
     ];
     const weights = [{ timestamp: new Date('2026-07-05T09:00:00').getTime(), value: 70 }];
 
-    const rows = buildDailyTotals(entries, weights);
-    expect(rows[0]['Weight (kg)']).toBe('');
+    const rows = buildDailyTotals(entries, weights, 'vi');
+    expect(rows[0][col.weight]).toBe('');
   });
 });
 
@@ -134,20 +137,20 @@ describe('buildFoodEntryRows', () => {
       }),
     ];
 
-    const rows = buildFoodEntryRows(entries);
+    const rows = buildFoodEntryRows(entries, 'vi');
 
     expect(rows).toHaveLength(2); // same day → no separator row
     expect(rows[0]).toEqual({
-      Date: '1-Jul-2026',
-      Brand: '',
-      Food: 'Cơm trắng',
-      Qty: '150 g',
-      'Calories (kcal)': 195,
-      'Fat (g)': 0.5,
-      'Carbs (g)': 43,
-      'Protein (g)': 4,
+      [col.date]: '1-Jul-2026',
+      [col.brand]: '',
+      [col.food]: 'Cơm trắng',
+      [col.qty]: '150 g',
+      [col.calories]: 195,
+      [col.fat]: 0.5,
+      [col.carbs]: 43,
+      [col.protein]: 4,
     });
-    expect(rows[1].Food).toBe('Phở bò');
+    expect((rows[1] as Record<string, unknown>)[col.food]).toBe('Phở bò');
   });
 
   it('inserts a blank separator row between entries on different calendar days', () => {
@@ -156,12 +159,12 @@ describe('buildFoodEntryRows', () => {
       entry({ id: 'day2', timestamp: new Date('2026-07-02T08:00:00').getTime() }),
     ];
 
-    const rows = buildFoodEntryRows(entries);
+    const rows = buildFoodEntryRows(entries, 'vi');
 
     expect(rows).toHaveLength(3);
-    expect(rows[0].Date).toBe('1-Jul-2026');
+    expect(rows[0][col.date]).toBe('1-Jul-2026');
     expect(rows[1]).toEqual({});
-    expect(rows[2].Date).toBe('2-Jul-2026');
+    expect(rows[2][col.date]).toBe('2-Jul-2026');
   });
 
   it('inserts one separator per day boundary across 3 days', () => {
@@ -171,13 +174,13 @@ describe('buildFoodEntryRows', () => {
       entry({ id: 'd3', timestamp: new Date('2026-07-03T08:00:00').getTime() }),
     ];
 
-    const rows = buildFoodEntryRows(entries);
+    const rows = buildFoodEntryRows(entries, 'vi');
     expect(rows).toHaveLength(5); // 3 entry rows + 2 separators
     expect(rows[1]).toEqual({});
     expect(rows[3]).toEqual({});
   });
 
   it('returns an empty array for no entries', () => {
-    expect(buildFoodEntryRows([])).toEqual([]);
+    expect(buildFoodEntryRows([], 'vi')).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import type { MicroBatteryState } from '../types/nutrition';
 import { computeOverdoseWarnings } from '../domain/nutrition/overdoseWarning';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 interface Props {
   // Reuse the same micronutrient states MicroBatteryStack already computed —
@@ -15,15 +16,16 @@ interface Props {
 // crossed its reference upper limit. Renders nothing when the list is
 // empty (see .ai/CONTEXT.md §5 — gentle, referential wording only).
 export function OverdoseNotice({ states }: Props) {
-  const warnings = computeOverdoseWarnings(states);
+  const { t, language } = useT();
+  const warnings = computeOverdoseWarnings(states, language);
   if (warnings.length === 0) return null;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Vượt mức dung nạp tối đa tham khảo</Text>
+      <Text style={styles.title}>{t('overdose.title')}</Text>
       {warnings.map((w) => (
         <Text key={w.id} style={styles.message}>
-          {w.messageVi}
+          {w.message}
         </Text>
       ))}
     </View>

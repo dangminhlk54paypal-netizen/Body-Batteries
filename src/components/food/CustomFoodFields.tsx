@@ -3,6 +3,9 @@ import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import type { CustomFoodInput } from '../../domain/food/customFoodInput';
 import type { PortionUnit } from '../../types/food';
 import { colors } from '../../lib/theme';
+import { useT } from '../../i18n/useT';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 // Shared field-rendering body for the "add/edit a custom food" form, used by
 // both FoodLogModal's inline "Thêm món mới" branch and FoodNutritionEditModal
@@ -19,42 +22,50 @@ interface Props {
 
 // Short unit label used in the nutrition field suffixes below — matches how
 // buildCustomFoodItem interprets the entered numbers (per 100g vs per serving).
-function unitSuffix(portionUnit: PortionUnit): string {
-  if (portionUnit === 'pack') return '/ gói';
-  if (portionUnit === 'capsule') return '/ viên';
-  return '/ 100g';
+function unitSuffix(portionUnit: PortionUnit, t: TFn): string {
+  if (portionUnit === 'pack') return t('components.customFoodFields.suffixPack');
+  if (portionUnit === 'capsule') return t('components.customFoodFields.suffixCapsule');
+  return t('components.customFoodFields.suffixGram');
 }
 
-const PORTION_UNIT_OPTIONS: { key: PortionUnit; label: string }[] = [
-  { key: 'gram', label: 'Gram' },
-  { key: 'pack', label: 'Gói' },
-  { key: 'capsule', label: 'Viên' },
-];
+function portionUnitOptions(t: TFn): { key: PortionUnit; label: string }[] {
+  return [
+    { key: 'gram', label: t('components.customFoodFields.unitOptionGram') },
+    { key: 'pack', label: t('components.customFoodFields.unitOptionPack') },
+    { key: 'capsule', label: t('components.customFoodFields.unitOptionCapsule') },
+  ];
+}
 
-const MACRO_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
-  { key: 'energyKcal', label: 'Kcal' },
-  { key: 'proteinG', label: 'Đạm (g)' },
-  { key: 'fatG', label: 'Béo (g)' },
-];
+function macroFieldBase(t: TFn): { key: keyof CustomFoodInput; label: string }[] {
+  return [
+    { key: 'energyKcal', label: t('components.customFoodFields.macroKcal') },
+    { key: 'proteinG', label: t('components.customFoodFields.macroProtein') },
+    { key: 'fatG', label: t('components.customFoodFields.macroFat') },
+  ];
+}
 
-const MICRO_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
-  { key: 'calciumMg', label: 'Canxi (mg)' },
-  { key: 'ironMg', label: 'Sắt (mg)' },
-  { key: 'zincMg', label: 'Kẽm (mg)' },
-  { key: 'epaMg', label: 'EPA (mg)' },
-  { key: 'dhaMg', label: 'DHA (mg)' },
-];
+function microFieldBase(t: TFn): { key: keyof CustomFoodInput; label: string }[] {
+  return [
+    { key: 'calciumMg', label: t('components.customFoodFields.microCalcium') },
+    { key: 'ironMg', label: t('components.customFoodFields.microIron') },
+    { key: 'zincMg', label: t('components.customFoodFields.microZinc') },
+    { key: 'epaMg', label: t('components.customFoodFields.microEpa') },
+    { key: 'dhaMg', label: t('components.customFoodFields.microDha') },
+  ];
+}
 
 // Rendered separately under a "Muối & điện giải" sub-heading, right after the
 // macro/micro split, so salt-adjacent nutrients aren't scattered among the
 // other micros. Salt (NaCl) itself is NEVER a stored field — it's derived
 // from sodium below (see microBatteryEngine.per100gValue's 'salt' case:
 // sodium_mg × 2.5 / 1000), so this list only holds real CustomFoodInput keys.
-const ELECTROLYTE_FIELD_BASE: { key: keyof CustomFoodInput; label: string }[] = [
-  { key: 'sodiumMg', label: 'Natri (mg)' },
-  { key: 'potassiumMg', label: 'Kali (mg)' },
-  { key: 'magnesiumMg', label: 'Magie (mg)' },
-];
+function electrolyteFieldBase(t: TFn): { key: keyof CustomFoodInput; label: string }[] {
+  return [
+    { key: 'sodiumMg', label: t('components.customFoodFields.electrolyteSodium') },
+    { key: 'potassiumMg', label: t('components.customFoodFields.electrolytePotassium') },
+    { key: 'magnesiumMg', label: t('components.customFoodFields.electrolyteMagnesium') },
+  ];
+}
 
 // Same conversion microBatteryEngine uses for the derived "salt" micro-battery
 // (2.5 g NaCl per 1 g sodium) — pure display-only preview, nothing is stored.
@@ -69,36 +80,42 @@ export function CustomFoodFields({
   onToggleMicros,
   autoFocusName,
 }: Props) {
-  const suffix = unitSuffix(input.portionUnit);
+  const { t } = useT();
+  const suffix = unitSuffix(input.portionUnit, t);
   const isServingBased = input.portionUnit !== 'gram';
 
   const sodiumValue = parseFloat(input.sodiumMg);
   const hasValidSodium = input.sodiumMg.trim() !== '' && !isNaN(sodiumValue);
 
+  const servingUnitNoun =
+    input.portionUnit === 'pack'
+      ? t('components.customFoodFields.unitPackNoun')
+      : t('components.customFoodFields.unitCapsuleNoun');
+
   return (
     <>
-      <Text style={styles.fieldLabel}>Tên món</Text>
+      <Text style={styles.fieldLabel}>{t('components.customFoodFields.nameLabel')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Ví dụ: Canh chua cá lóc"
+        placeholder={t('components.customFoodFields.namePlaceholder')}
         placeholderTextColor={colors.textMuted}
         value={input.name}
         onChangeText={(v) => onChange('name', v)}
         autoFocus={autoFocusName}
       />
 
-      <Text style={styles.fieldLabel}>Nhóm</Text>
+      <Text style={styles.fieldLabel}>{t('components.customFoodFields.categoryLabel')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="dish, snack, supplement..."
+        placeholder={t('components.customFoodFields.categoryPlaceholder')}
         placeholderTextColor={colors.textMuted}
         value={input.category}
         onChangeText={(v) => onChange('category', v)}
       />
 
-      <Text style={styles.fieldLabel}>Đơn vị tính</Text>
+      <Text style={styles.fieldLabel}>{t('components.customFoodFields.portionUnitLabel')}</Text>
       <View style={styles.unitRow}>
-        {PORTION_UNIT_OPTIONS.map((opt) => (
+        {portionUnitOptions(t).map((opt) => (
           <Pressable
             key={opt.key}
             style={({ pressed }) => [
@@ -122,10 +139,12 @@ export function CustomFoodFields({
 
       {isServingBased ? (
         <>
-          <Text style={styles.fieldLabel}>Khối lượng 1 {input.portionUnit === 'pack' ? 'gói' : 'viên'} (g)</Text>
+          <Text style={styles.fieldLabel}>
+            {t('components.customFoodFields.servingWeightLabel', { unit: servingUnitNoun })}
+          </Text>
           <TextInput
             style={styles.input}
-            placeholder="Ví dụ: 5"
+            placeholder={t('components.customFoodFields.servingWeightPlaceholder')}
             placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             value={input.servingWeightG}
@@ -134,10 +153,10 @@ export function CustomFoodFields({
         </>
       ) : (
         <>
-          <Text style={styles.fieldLabel}>Khẩu phần mặc định (gram)</Text>
+          <Text style={styles.fieldLabel}>{t('components.customFoodFields.defaultServingLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="100"
+            placeholder={t('components.customFoodFields.defaultServingPlaceholder')}
             placeholderTextColor={colors.textMuted}
             keyboardType="decimal-pad"
             value={input.defaultServingG}
@@ -146,7 +165,7 @@ export function CustomFoodFields({
         </>
       )}
 
-      {MACRO_FIELD_BASE.map((f) => (
+      {macroFieldBase(t).map((f) => (
         <React.Fragment key={f.key}>
           <Text style={styles.fieldLabel}>
             {f.label} {suffix}
@@ -162,7 +181,9 @@ export function CustomFoodFields({
         </React.Fragment>
       ))}
 
-      <Text style={styles.fieldLabel}>Carbs (Carbohydrate) {suffix}</Text>
+      <Text style={styles.fieldLabel}>
+        {t('components.customFoodFields.carbsLabel', { suffix })}
+      </Text>
       <TextInput
         style={styles.input}
         placeholder="0"
@@ -177,9 +198,11 @@ export function CustomFoodFields({
           and never adds them into carbG. */}
       <View style={styles.carbBreakdown}>
         <Text style={styles.carbBreakdownNote}>
-          Đường và chất xơ đã nằm TRONG Carbs — nhập để theo dõi chi tiết, không cộng thêm.
+          {t('components.customFoodFields.carbBreakdownNote')}
         </Text>
-        <Text style={styles.fieldLabelNested}>Đường (g) {suffix}</Text>
+        <Text style={styles.fieldLabelNested}>
+          {t('components.customFoodFields.sugarLabel', { suffix })}
+        </Text>
         <TextInput
           style={styles.input}
           placeholder="0"
@@ -188,7 +211,9 @@ export function CustomFoodFields({
           value={input.sugarG}
           onChangeText={(v) => onChange('sugarG', v)}
         />
-        <Text style={styles.fieldLabelNested}>Chất xơ (g) {suffix}</Text>
+        <Text style={styles.fieldLabelNested}>
+          {t('components.customFoodFields.fiberLabel', { suffix })}
+        </Text>
         <TextInput
           style={styles.input}
           placeholder="0"
@@ -199,7 +224,9 @@ export function CustomFoodFields({
         />
       </View>
 
-      <Text style={styles.fieldLabel}>Nước (ml) {suffix}</Text>
+      <Text style={styles.fieldLabel}>
+        {t('components.customFoodFields.waterLabel', { suffix })}
+      </Text>
       <TextInput
         style={styles.input}
         placeholder="0"
@@ -213,15 +240,17 @@ export function CustomFoodFields({
         style={({ pressed }) => [styles.microsToggle, pressed && styles.pressed]}
         onPress={onToggleMicros}
       >
-        <Text style={styles.chipText}>{showMicros ? '▾ Ẩn vi chất' : '▸ Thêm vi chất'}</Text>
+        <Text style={styles.chipText}>
+          {showMicros
+            ? t('components.customFoodFields.hideMicrosToggle')
+            : t('components.customFoodFields.showMicrosToggle')}
+        </Text>
       </Pressable>
-      <Text style={styles.microsHint}>
-        Bỏ trống vi chất → món này không đóng góp vào các pin vi chất.
-      </Text>
+      <Text style={styles.microsHint}>{t('components.customFoodFields.microsHint')}</Text>
 
       {showMicros && (
         <>
-          {MICRO_FIELD_BASE.map((f) => (
+          {microFieldBase(t).map((f) => (
             <React.Fragment key={f.key}>
               <Text style={styles.fieldLabel}>
                 {f.label} {suffix}
@@ -237,8 +266,10 @@ export function CustomFoodFields({
             </React.Fragment>
           ))}
 
-          <Text style={styles.subHeading}>Muối & điện giải</Text>
-          {ELECTROLYTE_FIELD_BASE.map((f) => (
+          <Text style={styles.subHeading}>
+            {t('components.customFoodFields.electrolyteSectionLabel')}
+          </Text>
+          {electrolyteFieldBase(t).map((f) => (
             <React.Fragment key={f.key}>
               <Text style={styles.fieldLabel}>
                 {f.label} {suffix}
@@ -252,10 +283,12 @@ export function CustomFoodFields({
                 onChangeText={(v) => onChange(f.key, v)}
               />
               {/* Salt (NaCl) is derived, never stored — see
-                  ELECTROLYTE_FIELD_BASE comment above. */}
+                  electrolyteFieldBase comment above. */}
               {f.key === 'sodiumMg' && hasValidSodium && (
                 <Text style={styles.saltDerived}>
-                  ≈ {saltGramsFromSodiumMg(sodiumValue).toFixed(1)} g muối (NaCl) — quy đổi từ natri
+                  {t('components.customFoodFields.saltDerivedLabel', {
+                    grams: saltGramsFromSodiumMg(sodiumValue).toFixed(1),
+                  })}
                 </Text>
               )}
             </React.Fragment>

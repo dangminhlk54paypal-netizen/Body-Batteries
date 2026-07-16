@@ -6,10 +6,11 @@ import Animated, {
   withTiming,
   interpolateColor,
 } from 'react-native-reanimated';
-import { MODES } from '../domain/modes/modeDefinitions';
+import { MODES, modeName } from '../domain/modes/modeDefinitions';
 import type { ModeId, ModeDefinition } from '../types/modes';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
+import { useLanguage } from '../i18n/useT';
 
 interface Props {
   currentMode: ModeId;
@@ -19,12 +20,14 @@ interface Props {
 const INACTIVE_BG = colors.bgElevated;
 
 export function ModeSelector({ currentMode, onChange }: Props) {
+  const language = useLanguage();
   return (
     <View style={styles.row}>
       {Object.values(MODES).map((mode) => (
         <ModeChip
           key={mode.id}
           mode={mode}
+          label={modeName(mode.id, language)}
           active={mode.id === currentMode}
           onPress={() => onChange(mode.id as ModeId)}
         />
@@ -37,10 +40,12 @@ export function ModeSelector({ currentMode, onChange }: Props) {
 // color on the UI thread, instead of snapping instantly on selection.
 function ModeChip({
   mode,
+  label,
   active,
   onPress,
 }: {
   mode: ModeDefinition;
+  label: string;
   active: boolean;
   onPress: () => void;
 }) {
@@ -63,7 +68,7 @@ function ModeChip({
         }}
         style={({ pressed }) => [styles.chipInner, pressed && styles.pressed]}
       >
-        <Text style={[styles.chipText, active && styles.chipTextActive]}>{mode.name}</Text>
+        <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );

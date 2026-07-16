@@ -117,6 +117,14 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > đã lưu lại (hoàn tác phải dùng delta tương đối, không recompute tuyệt đối — xem
 > `.ai/skills/learned/`). Verify: **291/291 test**, tsc/lint sạch. Chi tiết: `.ai/SESSION_LOG.md`
 > Session 16.
+>
+> **Session 14/2026-07-17, CODE XONG chưa test máy — Đa ngôn ngữ (Việt/Anh/Đức):** toàn bộ giao
+> diện + file Excel xuất ra giờ đổi được ngôn ngữ từ mục "🌐 NGÔN NGỮ" đầu màn Cài đặt, lưu bền qua
+> `settingsStore.language` (AsyncStorage có sẵn). Module mới `src/i18n/` (tự viết, không dùng
+> i18next — xem `docs/02-tech-stack.md` + `docs/03-architecture.md`). ~460 chuỗi trên toàn bộ 33
+> file giao diện + toàn bộ 8 sheet Excel (`docs/excel-report.md` mục 0) đã chuyển qua `t()`/
+> `translate()`. Verify: **444/444 test PASS**, `tsc`/`eslint` sạch toàn dự án, `expo export
+> --platform web` bundle sạch 1104 module. Chi tiết: `.ai/SESSION_LOG.md` Session 14 (2026-07-17).
 
 ---
 
@@ -159,7 +167,7 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 | 0 | Chuẩn bị | ✅ | 🟡 | Đã quét QR thật trên iPhone qua Expo Go. Còn thiếu xác nhận Home đủ 7 pin |
 | 1 | MVP màn hình pin | ✅ | ⏳ | Code + bundle OK (1424 module). Cần chạy thật: nạp pin + đóng/mở lại |
 | 2 | Modes & tự động | ✅ | ⏳ | Nhắc nhở thật + tự xả pin định kỳ thật đã xong (S-C, S-D). Cần test thật |
-| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5) + Excel đa-sheet/override/Muối/TPCN (Session 14) + TPCN Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin nhỏ (Session 16, ngoài phạm vi gốc) |
+| 3 | Excel, Diary, dọn dẹp | ✅ | ⏳ | Đủ 4/4 mục kể cả biểu đồ xu hướng (S-B). + Food Log/live drain (Session 5) + Excel đa-sheet/override/Muối/TPCN (Session 14, 2026-07-08) + TPCN Gói/Viên + Vận động Sửa/Xoá + đồng bộ pin nhỏ (Session 16) + **đa ngôn ngữ Việt/Anh/Đức toàn app + Excel** (Session 14, 2026-07-17 — ngoài phạm vi gốc) |
 | 4 | Tích hợp dữ liệu | 🔄 | ⬜ | S-F2 (Session 19): HealthKit kcal đốt/ngày — CODE XONG (377 test PASS), cần build dev client (`eas build --profile development`) mới test máy được, KHÔNG chạy qua Expo Go. Bước chân/nhịp tim/giấc ngủ/Android chưa làm |
 | 5 | Lớp thông minh | ⬜ | ⬜ | Chưa bắt đầu — cần dữ liệu cân nặng từ S-L trước (xem `.ai/NEXT_SESSIONS.md`) |
 

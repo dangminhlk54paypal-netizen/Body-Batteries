@@ -19,51 +19,40 @@ import { PowerliftingSheet } from './PowerliftingSheet';
 import { parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityType, CustomActivity, WorkoutSession } from '../types/energy';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import { translate } from '../i18n/translate';
+import type { Language } from '../i18n/types';
 
-// Vietnamese labels for the MET-based activity types. Exported so the
-// activity-history edit form (TodayActivities) can reuse the same chip set
-// instead of duplicating it.
-export const ACTIVITY_LABELS: Record<ActivityType, string> = {
-  walking: 'Đi bộ',
-  brisk_walking: 'Đi nhanh',
-  running: 'Chạy bộ',
-  cycling: 'Đạp xe',
-  elliptical: 'Elliptical',
-  swimming: 'Bơi lội',
-  football: 'Đá bóng',
-  basketball: 'Bóng rổ',
-  badminton: 'Cầu lông',
-  tennis: 'Tennis',
-  gym_strength: 'Bodybuilding',
-  hiit: 'HIIT',
-  yoga: 'Yoga',
-  squat: 'Squat',
-  bench_press: 'Bench press',
-  deadlift: 'Deadlift',
-  custom: 'Môn tự thêm',
-};
+// Display label for a MET-based activity type, following the current app
+// language. Exported so the activity-history edit form (TodayActivities) and
+// BatterySourceSheet can reuse the same lookup instead of duplicating it.
+export function activityLabel(type: ActivityType, language: Language): string {
+  return translate(language, `activities.${type}`);
+}
 export const ACTIVITY_TYPES = Object.keys(MET_TABLE).filter((t) => t !== 'custom') as ActivityType[];
 
 // The activity picker's top-level groups. Squat/bench/deadlift are absent on
 // purpose: they're logged set-based through the Powerlifting sheet (S-PL),
 // which the Gym/Tạ group opens — their MET entries remain only for rows
 // logged before S-PL. `gym_strength` keeps its id but reads "Bodybuilding"
-// (the user's naming); it stays minutes-based in v1.
-export const ACTIVITY_CATEGORIES: { key: string; label: string; types: ActivityType[] }[] = [
-  { key: 'cardio', label: 'Cardio', types: ['walking', 'brisk_walking', 'running', 'cycling', 'elliptical'] },
-  { key: 'sports', label: 'Thể thao', types: ['swimming', 'football', 'basketball', 'badminton', 'tennis'] },
-  { key: 'gym', label: 'Gym/Tạ', types: ['gym_strength', 'hiit'] },
-  { key: 'other', label: 'Khác', types: ['yoga'] },
+// (the user's naming); it stays minutes-based in v1. Group labels are looked
+// up at render time via `t(\`activityCategories.${key}\`)` — no separate
+// helper needed since every call site already has the `t` function in scope.
+export const ACTIVITY_CATEGORIES: { key: string; types: ActivityType[] }[] = [
+  { key: 'cardio', types: ['walking', 'brisk_walking', 'running', 'cycling', 'elliptical'] },
+  { key: 'sports', types: ['swimming', 'football', 'basketball', 'badminton', 'tennis'] },
+  { key: 'gym', types: ['gym_strength', 'hiit'] },
+  { key: 'other', types: ['yoga'] },
 ];
 
 // Rough MET presets offered when adding a user-defined activity — the user
 // picks by "how hard it feels" instead of researching an exact MET number.
 // The numeric TextInput below them still allows a direct value.
-const CUSTOM_MET_PRESETS: { met: number; label: string }[] = [
-  { met: 3, label: 'Nhẹ ~3 MET' },
-  { met: 5, label: 'Vừa ~5 MET' },
-  { met: 8, label: 'Cao ~8 MET' },
-  { met: 10, label: 'Rất cao ~10 MET' },
+const CUSTOM_MET_PRESETS: { met: number; labelKey: 'light' | 'moderate' | 'high' | 'veryHigh' }[] = [
+  { met: 3, labelKey: 'light' },
+  { met: 5, labelKey: 'moderate' },
+  { met: 8, labelKey: 'high' },
+  { met: 10, labelKey: 'veryHigh' },
 ];
 
 // Upper bound for a hand-typed MET. The Compendium 2024's most intense
@@ -89,6 +78,7 @@ function useSheetSlide(visible: boolean) {
 }
 
 export function EnergyActionsBar() {
+  const { t } = useT();
   const addCalories = useEnergyStore((s) => s.addCalories);
   const logActivity = useEnergyStore((s) => s.logActivity);
   const customActivities = useSettingsStore((s) => s.customActivities);
@@ -189,17 +179,21 @@ export function EnergyActionsBar() {
   }
 
   function confirmDeleteCustom(c: CustomActivity) {
-    Alert.alert('Xoá môn tự thêm?', `Xoá "${c.nameVi}" khỏi danh sách môn tự thêm?`, [
-      { text: 'Huỷ', style: 'cancel' },
-      {
-        text: 'Xoá',
-        style: 'destructive',
-        onPress: () => {
-          removeCustomActivity(c.id);
-          if (selectedCustomId === c.id) setSelectedCustomId(null);
+    Alert.alert(
+      t('components.energyActionsBar.deleteCustomTitle'),
+      t('components.energyActionsBar.deleteCustomMessage', { name: c.nameVi }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: () => {
+            removeCustomActivity(c.id);
+            if (selectedCustomId === c.id) setSelectedCustomId(null);
+          },
         },
-      },
-    ]);
+      ]
+    );
   }
 
   function confirmActivity() {
@@ -235,7 +229,7 @@ export function EnergyActionsBar() {
         style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
         onPress={() => setFoodOpen(true)}
       >
-        <Text style={styles.btnText}>🍱 Ghi món ăn (từ danh sách)</Text>
+        <Text style={styles.btnText}>{t('components.energyActionsBar.logFoodButton')}</Text>
       </Pressable>
 
       {/* Manual fallbacks: kept as supplementary inputs */}
@@ -244,13 +238,13 @@ export function EnergyActionsBar() {
           style={({ pressed }) => [styles.btn, styles.eat, pressed && styles.pressed]}
           onPress={() => setCalorieOpen(true)}
         >
-          <Text style={styles.btnText}>🍽️ Ăn thêm (kcal)</Text>
+          <Text style={styles.btnText}>{t('components.energyActionsBar.addCaloriesButton')}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.btn, styles.move, pressed && styles.pressed]}
           onPress={() => setActivityOpen(true)}
         >
-          <Text style={styles.btnText}>🏃 Vận động</Text>
+          <Text style={styles.btnText}>{t('components.energyActionsBar.activityButton')}</Text>
         </Pressable>
       </View>
 
@@ -260,11 +254,11 @@ export function EnergyActionsBar() {
       <Modal visible={calorieOpen} transparent animationType="fade" onRequestClose={() => setCalorieOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
           <Animated.View style={[styles.sheet, calorieSheetStyle]}>
-            <Text style={styles.title}>Nạp năng lượng đã ăn</Text>
-            <Text style={styles.subtitle}>Nhập số kcal bạn đã ăn (ngoài Protein/Carbs đã ghi)</Text>
+            <Text style={styles.title}>{t('components.energyActionsBar.calorieSheetTitle')}</Text>
+            <Text style={styles.subtitle}>{t('components.energyActionsBar.calorieSheetSubtitle')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Ví dụ: 500"
+              placeholder={t('components.energyActionsBar.kcalPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={kcal}
@@ -276,13 +270,13 @@ export function EnergyActionsBar() {
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                 onPress={() => setCalorieOpen(false)}
               >
-                <Text style={styles.cancelText}>Huỷ</Text>
+                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.eat, pressed && styles.pressed]}
                 onPress={confirmCalories}
               >
-                <Text style={styles.btnText}>Nạp ⚡</Text>
+                <Text style={styles.btnText}>{t('components.energyActionsBar.chargeButton')}</Text>
               </Pressable>
             </View>
           </Animated.View>
@@ -293,8 +287,8 @@ export function EnergyActionsBar() {
       <Modal visible={activityOpen} transparent animationType="fade" onRequestClose={() => setActivityOpen(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
           <Animated.View style={[styles.sheet, activitySheetStyle]}>
-            <Text style={styles.title}>Ghi vận động</Text>
-            <Text style={styles.subtitle}>Chọn nhóm → môn + số phút (và/hoặc số bước chân)</Text>
+            <Text style={styles.title}>{t('components.energyActionsBar.activitySheetTitle')}</Text>
+            <Text style={styles.subtitle}>{t('components.energyActionsBar.activitySheetSubtitle')}</Text>
             <View style={styles.categoryRow}>
               {ACTIVITY_CATEGORIES.map((c) => (
                 <Pressable
@@ -309,23 +303,23 @@ export function EnergyActionsBar() {
                   <Text
                     style={[styles.categoryText, category === c.key && styles.categoryTextActive]}
                   >
-                    {c.label}
+                    {t(`activityCategories.${c.key}`)}
                   </Text>
                 </Pressable>
               ))}
             </View>
             {addingCustom ? (
               <View style={styles.addCustomForm}>
-                <Text style={styles.fieldLabel}>Tên môn</Text>
+                <Text style={styles.fieldLabel}>{t('components.energyActionsBar.customNameLabel')}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ví dụ: Pickleball"
+                  placeholder={t('components.energyActionsBar.customNamePlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   value={newCustomName}
                   onChangeText={setNewCustomName}
                   autoFocus
                 />
-                <Text style={styles.fieldLabel}>Nhóm</Text>
+                <Text style={styles.fieldLabel}>{t('components.energyActionsBar.groupLabel')}</Text>
                 <View style={styles.categoryRow}>
                   {ACTIVITY_CATEGORIES.map((c) => (
                     <Pressable
@@ -343,12 +337,12 @@ export function EnergyActionsBar() {
                           newCustomCategory === c.key && styles.categoryTextActive,
                         ]}
                       >
-                        {c.label}
+                        {t(`activityCategories.${c.key}`)}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
-                <Text style={styles.fieldLabel}>Cường độ</Text>
+                <Text style={styles.fieldLabel}>{t('components.energyActionsBar.intensityLabel')}</Text>
                 <View style={styles.chips}>
                   {CUSTOM_MET_PRESETS.map((p) => (
                     <Pressable
@@ -366,36 +360,34 @@ export function EnergyActionsBar() {
                           newCustomMet === String(p.met) && styles.chipTextActive,
                         ]}
                       >
-                        {p.label}
+                        {t(`components.energyActionsBar.metPresets.${p.labelKey}`)}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
                 <TextInput
                   style={styles.input}
-                  placeholder="Hoặc nhập MET trực tiếp (ví dụ: 6.5)"
+                  placeholder={t('components.energyActionsBar.metManualPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                   value={newCustomMet}
                   onChangeText={setNewCustomMet}
                 />
                 <Text style={styles.explainer}>
-                  MET = mức tiêu hao năng lượng so với lúc ngồi yên. Chọn theo cảm nhận độ nặng của
-                  môn (tối đa {CUSTOM_MET_MAX} — môn nặng nhất trong nghiên cứu cũng chỉ quanh mức
-                  này).
+                  {t('components.energyActionsBar.metExplainer', { max: CUSTOM_MET_MAX })}
                 </Text>
                 <View style={styles.row}>
                   <Pressable
                     style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                     onPress={cancelAddCustom}
                   >
-                    <Text style={styles.cancelText}>Huỷ</Text>
+                    <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                   </Pressable>
                   <Pressable
                     style={({ pressed }) => [styles.modalBtn, styles.move, pressed && styles.pressed]}
                     onPress={saveCustomActivity}
                   >
-                    <Text style={styles.btnText}>Lưu môn</Text>
+                    <Text style={styles.btnText}>{t('components.energyActionsBar.saveActivityButton')}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -408,26 +400,28 @@ export function EnergyActionsBar() {
                     onPress={openPowerlifting}
                     style={({ pressed }) => [styles.chip, styles.chipLifting, pressed && styles.pressed]}
                   >
-                    <Text style={styles.chipLiftingText}>🏋️ Powerlifting (set × rep × tạ)</Text>
+                    <Text style={styles.chipLiftingText}>
+                      {t('components.energyActionsBar.powerliftingChip')}
+                    </Text>
                   </Pressable>
                 )}
-                {(ACTIVITY_CATEGORIES.find((c) => c.key === category)?.types ?? []).map((t) => (
+                {(ACTIVITY_CATEGORIES.find((c) => c.key === category)?.types ?? []).map((actType) => (
                   <Pressable
-                    key={t}
-                    onPress={() => selectBuiltIn(t)}
+                    key={actType}
+                    onPress={() => selectBuiltIn(actType)}
                     style={({ pressed }) => [
                       styles.chip,
-                      selectedCustomId === null && activity === t && styles.chipActive,
+                      selectedCustomId === null && activity === actType && styles.chipActive,
                       pressed && styles.pressed,
                     ]}
                   >
                     <Text
                       style={[
                         styles.chipText,
-                        selectedCustomId === null && activity === t && styles.chipTextActive,
+                        selectedCustomId === null && activity === actType && styles.chipTextActive,
                       ]}
                     >
-                      {ACTIVITY_LABELS[t]}
+                      {t(`activities.${actType}`)}
                     </Text>
                   </Pressable>
                 ))}
@@ -465,13 +459,13 @@ export function EnergyActionsBar() {
                   onPress={openAddCustom}
                   style={({ pressed }) => [styles.chip, styles.chipAdd, pressed && styles.pressed]}
                 >
-                  <Text style={styles.chipAddText}>＋ Thêm môn</Text>
+                  <Text style={styles.chipAddText}>{t('components.energyActionsBar.addActivityChip')}</Text>
                 </Pressable>
               </View>
             )}
             <TextInput
               style={styles.input}
-              placeholder="Số phút tập (ví dụ: 45)"
+              placeholder={t('components.energyActionsBar.minutesPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={minutes}
@@ -479,17 +473,17 @@ export function EnergyActionsBar() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Số bước chân (tuỳ chọn)"
+              placeholder={t('components.energyActionsBar.stepsPlaceholder')}
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={steps}
               onChangeText={setSteps}
             />
-            <Text style={styles.subtitle}>Khoảng thời gian diễn ra (tuỳ chọn, để trống = bây giờ)</Text>
+            <Text style={styles.subtitle}>{t('components.energyActionsBar.timeRangeSubtitle')}</Text>
             <View style={styles.row}>
               <TextInput
                 style={[styles.input, styles.timeInput]}
-                placeholder="Từ HH:mm"
+                placeholder={t('components.energyActionsBar.fromTimePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
@@ -498,7 +492,7 @@ export function EnergyActionsBar() {
               />
               <TextInput
                 style={[styles.input, styles.timeInput]}
-                placeholder="Đến HH:mm"
+                placeholder={t('components.energyActionsBar.toTimePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
@@ -511,13 +505,13 @@ export function EnergyActionsBar() {
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                 onPress={() => setActivityOpen(false)}
               >
-                <Text style={styles.cancelText}>Huỷ</Text>
+                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.move, pressed && styles.pressed]}
                 onPress={confirmActivity}
               >
-                <Text style={styles.btnText}>Ghi 🔥</Text>
+                <Text style={styles.btnText}>{t('components.energyActionsBar.logActivityButton')}</Text>
               </Pressable>
             </View>
           </Animated.View>

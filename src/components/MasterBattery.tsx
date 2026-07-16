@@ -13,6 +13,9 @@ import Animated, {
 import { colors } from '../lib/theme';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { useT } from '../i18n/useT';
+import { LOCALE_TAGS } from '../i18n/types';
+import type { Language } from '../i18n/types';
 
 interface Props {
   // Headline fullness battery (S-Q): drains with the clock, engine floors it
@@ -41,8 +44,8 @@ const R = 10;
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-function formatKcal(n: number): string {
-  return Math.round(n).toLocaleString('vi-VN');
+function formatKcal(n: number, language: Language): string {
+  return Math.round(n).toLocaleString(LOCALE_TAGS[language]);
 }
 
 // ── Charge particle burst (P7) ──────────────────────────────────────────────
@@ -123,6 +126,7 @@ export function MasterBattery({
   activityBonusKcal,
   targetLine,
 }: Props) {
+  const { t, language } = useT();
   const fillPercentage = Math.min(100, Math.max(0, satietyPct));
   const isOver = levelKcal != null && capacityKcal != null && levelKcal > capacityKcal;
 
@@ -281,26 +285,35 @@ export function MasterBattery({
       </View>
 
       <Text style={styles.pct}>{Math.round(fillPercentage)}%</Text>
-      <Text style={styles.label}>Năng lượng cơ thể</Text>
+      <Text style={styles.label}>{t('components.masterBattery.label')}</Text>
 
       <View style={styles.ledgerSection}>
         <View style={styles.divider} />
         {capacityKcal != null && levelKcal != null && (
           <Text style={styles.ledger}>
-            Sổ calo hôm nay: {formatKcal(levelKcal)} / {formatKcal(capacityKcal)} kcal
+            {t('components.masterBattery.ledgerLine', {
+              eaten: formatKcal(levelKcal, language),
+              goal: formatKcal(capacityKcal, language),
+            })}
           </Text>
         )}
         {isOver && levelKcal != null && capacityKcal != null && (
-          <Text style={styles.overText}>Ăn dư {formatKcal(levelKcal - capacityKcal)} kcal</Text>
+          <Text style={styles.overText}>
+            {t('components.masterBattery.overAmount', {
+              amount: formatKcal(levelKcal - capacityKcal, language),
+            })}
+          </Text>
         )}
         {activityBonusKcal != null && activityBonusKcal > 0 && (
           <Text style={styles.activityBonus}>
-            🏃 Vận động hôm nay: +{formatKcal(activityBonusKcal)} kcal vào mục tiêu ăn
+            {t('components.masterBattery.activityBonusLine', {
+              amount: formatKcal(activityBonusKcal, language),
+            })}
           </Text>
         )}
         {goalLabel != null && <Text style={styles.goal}>{goalLabel}</Text>}
         {targetLine != null && <Text style={styles.targetLine}>{targetLine}</Text>}
-        <Text style={styles.disclaimer}>* Chỉ để tham khảo.</Text>
+        <Text style={styles.disclaimer}>{t('components.masterBattery.disclaimer')}</Text>
       </View>
     </View>
   );

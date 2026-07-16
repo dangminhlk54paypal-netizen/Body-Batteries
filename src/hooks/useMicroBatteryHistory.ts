@@ -7,6 +7,9 @@ import { daysAgo, formatDisplayDate, isToday, todayString } from '../lib/dateUti
 import type { FoodLogEntry } from '../types/food';
 import type { UserProfile } from '../types/energy';
 import type { MicroBatteryState } from '../types/nutrition';
+import { translate } from '../i18n/translate';
+import { useLanguage } from '../i18n/useT';
+import type { Language } from '../i18n/types';
 
 export interface DateOption {
   value: string; // YYYY-MM-DD
@@ -15,10 +18,15 @@ export interface DateOption {
 
 const HISTORY_DAYS = 7; // matches DATA_RETENTION_DAYS — food_log doesn't keep more anyway
 
-function buildDateOptions(): DateOption[] {
+function buildDateOptions(language: Language): DateOption[] {
   return Array.from({ length: HISTORY_DAYS }, (_, i) => {
     const value = i === 0 ? todayString() : daysAgo(i);
-    const label = i === 0 ? 'Hôm nay' : i === 1 ? 'Hôm qua' : formatDisplayDate(value);
+    const label =
+      i === 0
+        ? translate(language, 'common.today')
+        : i === 1
+          ? translate(language, 'common.yesterday')
+          : formatDisplayDate(value, language);
     return { value, label };
   });
 }
@@ -30,8 +38,9 @@ function buildDateOptions(): DateOption[] {
 export function useMicroBatteryHistory(todayFoodLog: FoodLogEntry[], profile: UserProfile) {
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [pastEntries, setPastEntries] = useState<FoodLogEntry[]>([]);
+  const language = useLanguage();
 
-  const dates = useMemo(() => buildDateOptions(), []);
+  const dates = useMemo(() => buildDateOptions(language), [language]);
 
   useEffect(() => {
     if (isToday(selectedDate)) return; // today comes from todayFoodLog, no fetch needed

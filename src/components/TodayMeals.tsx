@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
-import { MEAL_LABELS } from '../lib/constants';
+import { mealLabel } from '../lib/constants';
 import type { FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
+import { useT } from '../i18n/useT';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface Props {
   entries: FoodLogEntry[];
@@ -21,12 +24,12 @@ function timeLabel(timestamp: number): string {
 
 // Packs/capsules (TPCN) are displayed by count ("2 viên") rather than the
 // converted gram weight — matches how the user actually thinks about a dose.
-function amountLabel(entry: FoodLogEntry): string {
+function amountLabel(entry: FoodLogEntry, t: TFn): string {
   if (entry.portionUnit === 'pack' && entry.count != null) {
-    return `${entry.count} gói`;
+    return t('components.todayMeals.packCount', { count: entry.count });
   }
   if (entry.portionUnit === 'capsule' && entry.count != null) {
-    return `${entry.count} viên`;
+    return t('components.todayMeals.capsuleCount', { count: entry.count });
   }
   return `${entry.grams}g`;
 }
@@ -37,11 +40,14 @@ function isPortionEntry(entry: FoodLogEntry): boolean {
   return entry.portionUnit === 'pack' || entry.portionUnit === 'capsule';
 }
 
-function countFieldLabel(entry: FoodLogEntry): string {
-  return entry.portionUnit === 'capsule' ? 'Số viên' : 'Số gói';
+function countFieldLabel(entry: FoodLogEntry, t: TFn): string {
+  return entry.portionUnit === 'capsule'
+    ? t('components.todayMeals.countFieldLabelCapsule')
+    : t('components.todayMeals.countFieldLabelPack');
 }
 
 export function TodayMeals({ entries, onDelete, onEdit }: Props) {
+  const { t, language } = useT();
   const summary = summarizeFoodLog(entries);
 
   const [editingEntry, setEditingEntry] = useState<FoodLogEntry | null>(null);
@@ -81,26 +87,27 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionLabel}>Hôm nay đã ăn</Text>
+        <Text style={styles.sectionLabel}>{t('components.todayMeals.sectionLabel')}</Text>
         <Text style={styles.totalKcal}>⚡ {summary.totalKcal} kcal</Text>
       </View>
 
       {summary.groups.length === 0 ? (
         <View style={styles.card}>
-          <Text style={styles.empty}>
-            Chưa có món nào được ghi hôm nay. Bấm “🍱 Ghi món ăn” để bắt đầu.
-          </Text>
+          <Text style={styles.empty}>{t('components.todayMeals.emptyText')}</Text>
         </View>
       ) : (
         <>
           <Text style={styles.macroLine}>
-            Đạm {summary.totalProteinG}g · Carbs {summary.totalCarbG}g · Béo{' '}
-            {summary.totalFatG}g
+            {t('components.todayMeals.macroLine', {
+              protein: summary.totalProteinG,
+              carb: summary.totalCarbG,
+              fat: summary.totalFatG,
+            })}
           </Text>
           {summary.groups.map((group) => (
             <View key={group.mealType} style={styles.card}>
               <View style={styles.mealHeader}>
-                <Text style={styles.mealTitle}>{MEAL_LABELS[group.mealType]}</Text>
+                <Text style={styles.mealTitle}>{mealLabel(group.mealType, language)}</Text>
                 <Text style={styles.mealKcal}>{group.totalKcal} kcal</Text>
               </View>
               {group.entries.map((e) => (
@@ -113,7 +120,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
                       {e.foodNameVi}
                     </Text>
                     <Text style={styles.entryMeta}>
-                      {timeLabel(e.timestamp)} · {amountLabel(e)} · {e.energyKcal} kcal
+                      {timeLabel(e.timestamp)} · {amountLabel(e, t)} · {e.energyKcal} kcal
                     </Text>
                   </Pressable>
                   <Pressable
@@ -144,11 +151,15 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
       <Modal visible={editingEntry !== null && !detailVisible} transparent animationType="fade" onRequestClose={() => setEditingEntry(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
           <View style={styles.sheet}>
-            <Text style={styles.title}>Sửa món ăn</Text>
+            <Text style={styles.title}>{t('components.todayMeals.editModalTitle')}</Text>
             {editingEntry && <Text style={styles.editingName}>{editingEntry.foodNameVi}</Text>}
             <TextInput
               style={styles.input}
-              placeholder={editingIsPortion && editingEntry ? countFieldLabel(editingEntry) : 'Khối lượng (g)'}
+              placeholder={
+                editingIsPortion && editingEntry
+                  ? countFieldLabel(editingEntry, t)
+                  : t('components.todayMeals.gramsFieldLabel')
+              }
               placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={editAmount}
@@ -159,13 +170,13 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                 onPress={() => setEditingEntry(null)}
               >
-                <Text style={styles.cancelText}>Huỷ</Text>
+                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.save, pressed && styles.pressed]}
                 onPress={confirmEdit}
               >
-                <Text style={styles.saveText}>Lưu</Text>
+                <Text style={styles.saveText}>{t('common.save')}</Text>
               </Pressable>
             </View>
           </View>

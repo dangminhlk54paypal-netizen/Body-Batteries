@@ -5,6 +5,8 @@ import { exportDataInRangeToFile } from './excelExportService';
 import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { runWeeklyCleanup } from '../cleanup/cleanupService';
+import { translate } from '../../i18n/translate';
+import { getCurrentLanguage } from '../../i18n/useT';
 
 // Persisted marker: the "YYYY-MM" of the month during which we last ran the
 // monthly export. Comparing it to the current month makes the export run at
@@ -42,7 +44,7 @@ export async function maybeRunMonthlyExport(now: Date = new Date()): Promise<Mon
       return { ran: false };
     }
 
-    await exportDataInRangeToFile(range.from, range.to, range.filename);
+    await exportDataInRangeToFile(range.from, range.to, range.filename, getCurrentLanguage());
     await AsyncStorage.setItem(MARKER_KEY, range.marker);
     return { ran: true, filename: range.filename };
   } catch {
@@ -55,14 +57,14 @@ export async function maybeRunMonthlyExport(now: Date = new Date()): Promise<Mon
 // window. Deletion runs ONLY on explicit confirmation. Call this after a
 // successful monthly write so the just-saved Excel acts as the backup.
 export function confirmAndCleanupAfterExport(filename: string): void {
+  const language = getCurrentLanguage();
   Alert.alert(
-    'Đã lưu dữ liệu tháng trước',
-    `Đã lưu file "${filename}" vào bộ nhớ của app (mở bằng ứng dụng Files).\n\n` +
-      'Bạn có muốn xoá dữ liệu cũ hơn 35 ngày để gọn nhẹ không? Bản Excel vừa lưu vẫn được giữ.',
+    translate(language, 'export.autoBackup.title'),
+    translate(language, 'export.autoBackup.message', { filename }),
     [
-      { text: 'Giữ lại', style: 'cancel' },
+      { text: translate(language, 'export.autoBackup.keep'), style: 'cancel' },
       {
-        text: 'Xoá dữ liệu cũ',
+        text: translate(language, 'export.autoBackup.deleteOld'),
         style: 'destructive',
         onPress: () => {
           void runWeeklyCleanup();

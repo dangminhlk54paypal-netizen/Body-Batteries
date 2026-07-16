@@ -9,19 +9,21 @@ import { PROFILE_LIMITS } from '../lib/metabolicConstants';
 import { GOAL_WEIGHT_LIMITS, GOAL_WEEKS_LIMITS } from '../lib/weightGoalConstants';
 import type { OccupationLevel, Sex, UserProfile } from '../types/energy';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
-const SEX_LABELS: { value: Sex; label: string }[] = [
-  { value: 'male', label: 'Nam' },
-  { value: 'female', label: 'Nữ' },
+const SEX_OPTIONS: { value: Sex; labelKey: string }[] = [
+  { value: 'male', labelKey: 'components.bodyProfileCard.sexMale' },
+  { value: 'female', labelKey: 'components.bodyProfileCard.sexFemale' },
 ];
-const OCCUPATION_LABELS: { value: OccupationLevel; label: string }[] = [
-  { value: 'sedentary', label: 'Ít vận động' },
-  { value: 'light', label: 'Vừa' },
-  { value: 'active', label: 'Nhiều' },
+const OCCUPATION_OPTIONS: { value: OccupationLevel; labelKey: string }[] = [
+  { value: 'sedentary', labelKey: 'components.bodyProfileCard.occupationSedentary' },
+  { value: 'light', labelKey: 'components.bodyProfileCard.occupationLight' },
+  { value: 'active', labelKey: 'components.bodyProfileCard.occupationActive' },
 ];
 
 // Lets the user enter their body profile (used to size the energy battery).
 export function BodyProfileCard() {
+  const { t } = useT();
   const { userProfile, setUserProfile, currentMode } = useSettingsStore();
 
   const [weight, setWeight] = useState(String(userProfile.weightKg));
@@ -79,40 +81,46 @@ export function BodyProfileCard() {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.explainer}>
-        Đây là lượng năng lượng tối thiểu cơ thể bạn cần mỗi ngày để duy trì sự
-        sống (thở, tim đập, tiêu hoá...) — chưa tính vận động. Công thức tính
-        dựa trên đúng 4 số liệu dưới đây của BẠN, nên áp dụng đúng cho bất kỳ
-        ai nhập đúng số của mình.
-      </Text>
+      <Text style={styles.explainer}>{t('components.bodyProfileCard.explainer')}</Text>
 
       <View style={styles.fieldRow}>
         <Field
-          label={`Cân nặng (kg, ${PROFILE_LIMITS.weightKg.min}-${PROFILE_LIMITS.weightKg.max})`}
+          label={t('components.bodyProfileCard.weightLabel', {
+            min: PROFILE_LIMITS.weightKg.min,
+            max: PROFILE_LIMITS.weightKg.max,
+          })}
           value={weight}
           onChange={withReset(setWeight)}
         />
         <Field
-          label={`Chiều cao (cm, ${PROFILE_LIMITS.heightCm.min}-${PROFILE_LIMITS.heightCm.max})`}
+          label={t('components.bodyProfileCard.heightLabel', {
+            min: PROFILE_LIMITS.heightCm.min,
+            max: PROFILE_LIMITS.heightCm.max,
+          })}
           value={height}
           onChange={withReset(setHeight)}
         />
         <Field
-          label={`Tuổi (${PROFILE_LIMITS.age.min}-${PROFILE_LIMITS.age.max})`}
+          label={t('components.bodyProfileCard.ageLabel', {
+            min: PROFILE_LIMITS.age.min,
+            max: PROFILE_LIMITS.age.max,
+          })}
           value={age}
           onChange={withReset(setAge)}
         />
       </View>
 
       <Field
-        label={`Số bước trung bình/ngày (0-${PROFILE_LIMITS.averageDailySteps.max} — tạm thời ước tính, sẽ cập nhật từ dữ liệu thật sau)`}
+        label={t('components.bodyProfileCard.stepsLabel', {
+          max: PROFILE_LIMITS.averageDailySteps.max,
+        })}
         value={averageDailySteps}
         onChange={withReset(setAverageDailySteps)}
       />
 
-      <Text style={styles.fieldLabel}>Giới tính</Text>
+      <Text style={styles.fieldLabel}>{t('components.bodyProfileCard.sexSectionLabel')}</Text>
       <View style={styles.chipRow}>
-        {SEX_LABELS.map((o) => (
+        {SEX_OPTIONS.map((o) => (
           <Pressable
             key={o.value}
             onPress={() => withReset(setSex)(o.value)}
@@ -122,14 +130,14 @@ export function BodyProfileCard() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.chipText, sex === o.value && styles.chipTextActive]}>{o.label}</Text>
+            <Text style={[styles.chipText, sex === o.value && styles.chipTextActive]}>{t(o.labelKey)}</Text>
           </Pressable>
         ))}
       </View>
 
-      <Text style={styles.fieldLabel}>Mức vận động công việc/lối sống</Text>
+      <Text style={styles.fieldLabel}>{t('components.bodyProfileCard.occupationSectionLabel')}</Text>
       <View style={styles.chipRow}>
-        {OCCUPATION_LABELS.map((o) => (
+        {OCCUPATION_OPTIONS.map((o) => (
           <Pressable
             key={o.value}
             onPress={() => withReset(setOccupation)(o.value)}
@@ -139,26 +147,35 @@ export function BodyProfileCard() {
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.chipText, occupation === o.value && styles.chipTextActive]}>{o.label}</Text>
+            <Text style={[styles.chipText, occupation === o.value && styles.chipTextActive]}>
+              {t(o.labelKey)}
+            </Text>
           </Pressable>
         ))}
       </View>
 
       <Text style={styles.tdee}>
-        Nhu cầu năng lượng ước tính: <Text style={styles.tdeeValue}>{tdee} kcal/ngày</Text>
+        {t('components.bodyProfileCard.tdeeLabel')}{' '}
+        <Text style={styles.tdeeValue}>{t('components.bodyProfileCard.kcalPerDayValue', { value: tdee })}</Text>
       </Text>
 
       <View style={styles.divider} />
 
-      <Text style={styles.fieldLabel}>Mục tiêu cân nặng (không bắt buộc)</Text>
+      <Text style={styles.fieldLabel}>{t('components.bodyProfileCard.goalSectionLabel')}</Text>
       <View style={styles.fieldRow}>
         <Field
-          label={`Cân nặng mong muốn (kg, ${GOAL_WEIGHT_LIMITS.min}-${GOAL_WEIGHT_LIMITS.max})`}
+          label={t('components.bodyProfileCard.goalWeightLabel', {
+            min: GOAL_WEIGHT_LIMITS.min,
+            max: GOAL_WEIGHT_LIMITS.max,
+          })}
           value={goalWeightKg}
           onChange={withReset(setGoalWeightKg)}
         />
         <Field
-          label={`Trong bao lâu (tuần, ${GOAL_WEEKS_LIMITS.min}-${GOAL_WEEKS_LIMITS.max} — để trống = tốc độ an toàn nhất)`}
+          label={t('components.bodyProfileCard.goalWeeksLabel', {
+            min: GOAL_WEEKS_LIMITS.min,
+            max: GOAL_WEEKS_LIMITS.max,
+          })}
           value={goalWeeks}
           onChange={withReset(setGoalWeeks)}
         />
@@ -167,25 +184,28 @@ export function BodyProfileCard() {
       {hasGoal && (
         <View>
           <Text style={styles.tdee}>
-            Mục tiêu calo/ngày: <Text style={styles.tdeeValue}>{calorieGoal.targetKcal} kcal</Text>
+            {t('components.bodyProfileCard.goalCalorieLabel')}{' '}
+            <Text style={styles.tdeeValue}>
+              {t('components.bodyProfileCard.kcalValue', { value: calorieGoal.targetKcal })}
+            </Text>
           </Text>
           {calorieGoal.wasClamped && (
-            <Text style={styles.noteText}>
-              Để an toàn, app đề xuất mức vừa phải hơn thay vì tốc độ bạn nhập.
-            </Text>
+            <Text style={styles.noteText}>{t('components.bodyProfileCard.clampedNote')}</Text>
           )}
-          <Text style={styles.disclaimerText}>Chỉ để tham khảo, không thay thế tư vấn y tế.</Text>
+          <Text style={styles.disclaimerText}>{t('components.bodyProfileCard.medicalDisclaimer')}</Text>
         </View>
       )}
 
       {error && <Text style={styles.errorText}>⚠️ {error}</Text>}
-      {saved && !error && <Text style={styles.savedText}>✅ Đã lưu hồ sơ.</Text>}
+      {saved && !error && (
+        <Text style={styles.savedText}>{t('components.bodyProfileCard.savedText')}</Text>
+      )}
 
       <Pressable
         style={({ pressed }) => [styles.saveBtn, pressed && styles.pressed]}
         onPress={handleSave}
       >
-        <Text style={styles.saveText}>Lưu hồ sơ</Text>
+        <Text style={styles.saveText}>{t('components.bodyProfileCard.saveButton')}</Text>
       </Pressable>
     </View>
   );

@@ -13,28 +13,33 @@ import { getReadingsInRange } from '../data/repositories/batteryRepository';
 import { getLogsInRange } from '../data/repositories/dailyLogRepository';
 import { getFoodLogForDate } from '../data/repositories/foodLogRepository';
 import { useEnergyStore } from '../store/energyStore';
-import type { BatteryReading, DailyLog } from '../types/battery';
+import type { BatteryReading, DailyLog, BatteryType } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
 import { todayString, daysAgo, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
-import { DEFAULT_BATTERIES } from '../lib/constants';
+import { DEFAULT_BATTERIES, batteryTypeName } from '../lib/constants';
 import { TrendChart } from '../components/TrendChart';
 import { WeightLogCard } from '../components/WeightLogCard';
 import { DayDetailSheet } from '../components/DayDetailSheet';
 import { FoodLogModal } from '../components/FoodLogModal';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import { translate } from '../i18n/translate';
+import type { Language } from '../i18n/types';
 
-// Short labels for the mini bars in each day card. A fixed-length name.slice()
-// used to cut mid-word (e.g. "Khoáng chất" -> "Khoá", which reads as the
-// unrelated word "lock"), so each battery gets a hand-picked short label instead.
-const BATTERY_SHORT_LABELS: Record<string, string> = {
-  protein: 'Đạm',
-  carbs: 'Carb',
-  water: 'Nước',
-  minerals: 'Khoáng',
-  sleep: 'Ngủ',
-  movement: 'Bước',
-};
+// Short labels for the mini bars in each day card — a hand-picked short
+// label per battery id (rather than a fixed-length name.slice(), which can
+// cut mid-word — e.g. "Khoáng chất" -> "Khoá", which reads as the unrelated
+// word "lock"). Falls back to the full battery name for any id outside the
+// known set (defensive — every current battery id is covered above).
+const KNOWN_SHORT_LABEL_IDS = ['protein', 'carbs', 'water', 'minerals', 'sleep', 'movement'];
+
+function batteryShortLabel(id: string, language: Language): string {
+  if (!KNOWN_SHORT_LABEL_IDS.includes(id)) {
+    return batteryTypeName(id as BatteryType['id'], language);
+  }
+  return translate(language, `screens.history.batteryShortLabels.${id}`);
+}
 
 interface DayData {
   date: string;
@@ -46,6 +51,7 @@ interface DayData {
 }
 
 export function HistoryScreen() {
+  const { t, language } = useT();
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -176,15 +182,13 @@ export function HistoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Lịch sử 7 ngày</Text>
+        <Text style={styles.title}>{t('screens.history.title')}</Text>
 
         <TrendChart data={chronologicalTrend(days)} energyData={chronologicalEnergyTrend(days)} />
 
         <WeightLogCard />
 
-        {days.length === 0 && (
-          <Text style={styles.empty}>Chưa có dữ liệu nào. Hãy nạp pin đầu tiên!</Text>
-        )}
+        {days.length === 0 && <Text style={styles.empty}>{t('screens.history.empty')}</Text>}
 
         {days.map((day) => (
           <Pressable
@@ -193,14 +197,18 @@ export function HistoryScreen() {
             onPress={() => openDaySheet(day.date)}
           >
             <View style={styles.cardHeader}>
-              <Text style={styles.cardDate}>{formatDisplayDate(day.date)}</Text>
+              <Text style={styles.cardDate}>{formatDisplayDate(day.date, language)}</Text>
               <View style={styles.badgeRow}>
                 <View style={[styles.avgBadge, avgColor(day.averagePercentage)]}>
-                  <Text style={styles.avgText}>DD {day.averagePercentage}%</Text>
+                  <Text style={styles.avgText}>
+                    {t('screens.history.nutritionBadge', { pct: day.averagePercentage })}
+                  </Text>
                 </View>
                 {day.energyPercentage !== null && (
                   <View style={[styles.avgBadge, avgColor(day.energyPercentage)]}>
-                    <Text style={styles.avgText}>NL {day.energyPercentage}%</Text>
+                    <Text style={styles.avgText}>
+                      {t('screens.history.energyBadge', { pct: day.energyPercentage })}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -219,7 +227,7 @@ export function HistoryScreen() {
                         { height: (pct / 100) * 32, backgroundColor: type.color },
                       ]}
                     />
-                    <Text style={styles.miniLabel}>{BATTERY_SHORT_LABELS[type.id] ?? type.name}</Text>
+                    <Text style={styles.miniLabel}>{batteryShortLabel(type.id, language)}</Text>
                   </View>
                 );
               })}

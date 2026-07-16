@@ -1,4 +1,6 @@
-import type { ModeDefinition } from '../../types/modes';
+import type { ModeDefinition, ModeId } from '../../types/modes';
+import { translate } from '../../i18n/translate';
+import type { Language } from '../../i18n/types';
 
 export const MODES: Record<string, ModeDefinition> = {
   training: {
@@ -50,4 +52,15 @@ export const MODES: Record<string, ModeDefinition> = {
 
 export function getModeById(id: string): ModeDefinition {
   return MODES[id] ?? MODES['maintain'];
+}
+
+// `ModeDefinition.name`/`.description` above stay Vietnamese (they're only
+// read for capacityMultipliers/drainRatePerHour by the battery engine) —
+// display always goes through these, following the current app language.
+export function modeName(id: ModeId, language: Language): string {
+  return translate(language, `modes.${id}.name`);
+}
+
+export function modeDescription(id: ModeId, language: Language): string {
+  return translate(language, `modes.${id}.description`);
 }

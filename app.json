@@ -21,7 +21,8 @@
       "policy": "sdkVersion"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/b94421af-d4b8-4756-971e-c81130bd7c90"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,6 +30,9 @@
       },
       "package": "com.bellybuilder.bodybatteries",
       "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS"
@@ -50,6 +54,12 @@
           "healthSharePermission": "BodyBatteries reads your daily burned calories from Apple Health to show your energy balance."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b94421af-d4b8-4756-971e-c81130bd7c90"
+      }
+    },
+    "owner": "bodybuilder007"
   }
 }

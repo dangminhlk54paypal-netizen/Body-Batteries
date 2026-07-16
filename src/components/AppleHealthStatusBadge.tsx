@@ -3,6 +3,9 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '../lib/theme';
 import { formatRelativeTime } from '../lib/relativeTime';
 import type { useEnergyStore } from '../store/energyStore';
+import { translate } from '../i18n/translate';
+import { useT } from '../i18n/useT';
+import type { Language } from '../i18n/types';
 
 // energyStore doesn't export a named type for this union (out of scope to
 // add — energyStore.ts is off-limits, see task constraints), so derive it
@@ -13,27 +16,46 @@ export type AppleHealthStatus = ReturnType<typeof useEnergyStore.getState>['appl
 // Shared icon/color/label mapping for the 4 appleHealthStatus states — used by
 // both the compact badge below (Home) and the "Health Settings" status line
 // (Settings), so the two screens never drift on what each state means.
-export function appleHealthStatusMeta(status: AppleHealthStatus): {
+export function appleHealthStatusMeta(
+  status: AppleHealthStatus,
+  language: Language
+): {
   icon: string;
   color: string;
   bg: string;
   label: string;
 } {
+  const t = (key: string) => translate(language, key);
   switch (status) {
     case 'synced':
-      return { icon: '✓', color: colors.mint, bg: colors.successBgSoft, label: 'Đã kết nối Apple Health' };
+      return {
+        icon: '✓',
+        color: colors.mint,
+        bg: colors.successBgSoft,
+        label: t('components.appleHealthStatusBadge.labelSynced'),
+      };
     case 'estimated':
       return {
         icon: 'ℹ️',
         color: colors.warning,
         bg: colors.warningBgSoft,
-        label: 'Ước tính (BMR) — Apple Health không khả dụng',
+        label: t('components.appleHealthStatusBadge.labelEstimated'),
       };
     case 'syncing':
-      return { icon: '', color: colors.textTertiary, bg: 'transparent', label: 'Đang cập nhật…' };
+      return {
+        icon: '',
+        color: colors.textTertiary,
+        bg: 'transparent',
+        label: t('components.appleHealthStatusBadge.labelSyncing'),
+      };
     case 'idle':
     default:
-      return { icon: '—', color: colors.textFaint, bg: 'transparent', label: 'Chưa đồng bộ' };
+      return {
+        icon: '—',
+        color: colors.textFaint,
+        bg: 'transparent',
+        label: t('components.appleHealthStatusBadge.labelIdle'),
+      };
   }
 }
 
@@ -52,6 +74,8 @@ interface Props {
 // presentational — reads its icon/color/label from appleHealthStatusMeta and
 // (for the synced state) the relative sync time.
 export function AppleHealthStatusBadge({ status, lastSyncAt, nowMs }: Props) {
+  const { t, language } = useT();
+
   if (status === 'idle') {
     return (
       <View style={styles.badge}>
@@ -60,7 +84,7 @@ export function AppleHealthStatusBadge({ status, lastSyncAt, nowMs }: Props) {
     );
   }
 
-  const meta = appleHealthStatusMeta(status);
+  const meta = appleHealthStatusMeta(status, language);
 
   if (status === 'syncing') {
     return (
@@ -71,12 +95,12 @@ export function AppleHealthStatusBadge({ status, lastSyncAt, nowMs }: Props) {
     );
   }
 
-  const relLabel = lastSyncAt != null ? formatRelativeTime(lastSyncAt, nowMs) : null;
+  const relLabel = lastSyncAt != null ? formatRelativeTime(lastSyncAt, nowMs, language) : null;
   const detail =
     status === 'synced'
       ? relLabel
-        ? `Apple Health, đồng bộ ${relLabel}`
-        : 'Apple Health'
+        ? t('components.appleHealthStatusBadge.detailWithSync', { time: relLabel })
+        : t('components.appleHealthStatusBadge.detailNoSync')
       : meta.label;
 
   return (

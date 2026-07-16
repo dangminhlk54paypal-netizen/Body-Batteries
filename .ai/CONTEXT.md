@@ -107,7 +107,28 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-10 (Session 19).** Gói **S-F2 — tích hợp Apple Health** (tự động lấy
+**Cập nhật lần cuối: 2026-07-17 (Session 14 mới, xem `.ai/SESSION_LOG.md`).** Tích hợp **đa ngôn
+ngữ (Việt/Anh/Đức)** cho toàn bộ giao diện + file Excel xuất ra, chọn từ mục "🌐 NGÔN NGỮ" đầu màn
+Cài đặt. Module mới `src/i18n/` — tự viết (không dùng i18next), dựa trên `settingsStore.language`
+(Zustand + AsyncStorage có sẵn) + hook `useT()` chỉ theo dõi đúng field `language` nên đổi ngôn
+ngữ không vẽ lại cả app, không giật/khựng. `en.ts`/`de.ts` được `tsc` ép kiểu khớp chính xác cấu
+trúc `vi.ts` — không thể "quên dịch" 1 chuỗi mà không bị `tsc` báo lỗi. Migrate toàn bộ ~460 chuỗi
+trên 33 file giao diện (4 màn hình + ~29 component) qua 1 lượt tự làm phần lõi/domain nhạy cảm +
+4 wave `mobile-frontend` subagent tuần tự. Cố ý giữ nguyên tiếng Việt cho tên món ăn ĐÃ GHI vào
+Nhật ký (snapshot lịch sử, không viết lại). Verify: `tsc`/`eslint` sạch toàn dự án, **444/444 test
+PASS**, `expo export --platform web` bundle sạch 1104 module. **CHƯA TEST MÁY THẬT** (đổi ngôn ngữ
+mượt, không giật — cần người dùng xác nhận trên điện thoại). Chi tiết đầy đủ:
+`.ai/SESSION_LOG.md` Session 14 (2026-07-17), `docs/02-tech-stack.md`, `docs/03-architecture.md`
+mục "🌐 Đa ngôn ngữ", `docs/excel-report.md` mục 0.
+
+**Trước đó — Session 12/13 (2026-07-15 → 07-16, chưa từng cập nhật vào mục này — xem
+`.ai/SESSION_LOG.md` để biết chi tiết):** Xem chi tiết dinh dưỡng món ăn (bottom sheet vi chất),
+đồng bộ 2 chiều pin Vận động ↔ pin Năng lượng, 3 bài powerlifting (squat/bench/deadlift MET), rồi
+**S-PL** (ghi powerlifting theo set×rep×tạ, mô hình năng lượng hybrid) + 6 hạng mục UX (custom
+activities, hiển thị nguồn nạp pin, khuyến nghị nước/ngủ, muối & vi chất, thu gọn micro section).
+**443 test PASS** lúc đó, CHƯA test máy thật.
+
+**Trước đó — Cập nhật 2026-07-10 (Session 19).** Gói **S-F2 — tích hợp Apple Health** (tự động lấy
 kcal đốt trong ngày, hiện cạnh kcal đã ăn): thiết kế kiến trúc qua agent Fable (5 quyết định — đồng
 bộ lúc mở app + nút tay, giữ ghi vận động thủ công làm dự phòng, breakdown để v1.1, chỉ hiện tổng
 kcal ở v1.0, fallback về ước tính BMR nếu Apple Health từ chối quyền/lỗi), triển khai qua 3 subagent

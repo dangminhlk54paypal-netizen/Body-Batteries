@@ -9,8 +9,10 @@ import {
 import { dateString, formatDisplayDate } from '../lib/dateUtils';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 export function WeightLogCard() {
+  const { t, language } = useT();
   const [weightText, setWeightText] = useState('');
   const [entries, setEntries] = useState<WeightEntry[]>([]);
 
@@ -36,15 +38,13 @@ export function WeightLogCard() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Cân nặng theo thời gian</Text>
-      <Text style={styles.subtitle}>
-        Ghi nhận tự nguyện, không bắt buộc — chỉ để xem xu hướng theo thời gian, không đánh giá.
-      </Text>
+      <Text style={styles.title}>{t('components.weightLogCard.title')}</Text>
+      <Text style={styles.subtitle}>{t('components.weightLogCard.subtitle')}</Text>
 
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
-          placeholder="Ví dụ: 65"
+          placeholder={t('components.weightLogCard.weightPlaceholder')}
           placeholderTextColor={colors.textMuted}
           keyboardType="decimal-pad"
           value={weightText}
@@ -54,17 +54,17 @@ export function WeightLogCard() {
           style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
           onPress={handleLog}
         >
-          <Text style={styles.btnText}>Ghi nhận hôm nay</Text>
+          <Text style={styles.btnText}>{t('components.weightLogCard.logButton')}</Text>
         </Pressable>
       </View>
 
       {entries.length === 0 ? (
-        <Text style={styles.empty}>Chưa ghi cân nặng nào.</Text>
+        <Text style={styles.empty}>{t('components.weightLogCard.emptyText')}</Text>
       ) : (
         entries.map((e, i) => (
           <View key={`${e.timestamp}-${i}`} style={styles.entryRow}>
             <Text style={styles.entryDate}>
-              {formatDisplayDate(dateString(new Date(e.timestamp)))}
+              {formatDisplayDate(dateString(new Date(e.timestamp)), language)}
             </Text>
             <Text style={styles.entryValue}>{e.value.toFixed(1)} kg</Text>
           </View>

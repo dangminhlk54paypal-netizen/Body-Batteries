@@ -22,6 +22,7 @@ import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import type { FoodItem } from '../types/food';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 // Reusable modal for two flows:
 //  - mode 'edit': correct an existing food's nutrition. Saved as a food OVERRIDE
@@ -48,6 +49,7 @@ export function FoodNutritionEditModal({
   onClose,
   onSaved,
 }: Props) {
+  const { t } = useT();
   const [input, setInput] = useState<CustomFoodInput>(EMPTY_CUSTOM_FOOD_INPUT);
   const [showMicros, setShowMicros] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -77,7 +79,11 @@ export function FoodNutritionEditModal({
   // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
   // its field suffixes, so the intro subtitle always says the same thing.
   const nutritionBasisLabel =
-    input.portionUnit === 'pack' ? '1 gói' : input.portionUnit === 'capsule' ? '1 viên' : '100g';
+    input.portionUnit === 'pack'
+      ? t('components.foodNutritionEditModal.basisPack')
+      : input.portionUnit === 'capsule'
+        ? t('components.foodNutritionEditModal.basisCapsule')
+        : t('components.foodNutritionEditModal.basisGram');
 
   function set<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
     if (key === 'portionUnit') {
@@ -129,7 +135,9 @@ export function FoodNutritionEditModal({
         <View style={styles.sheet}>
           <View style={styles.headerRow}>
             <Text style={styles.title}>
-              {mode === 'edit' ? 'Sửa thành phần' : 'Thêm món mới'}
+              {mode === 'edit'
+                ? t('components.foodNutritionEditModal.titleEdit')
+                : t('components.foodNutritionEditModal.titleAdd')}
             </Text>
             <Pressable
               onPress={onClose}
@@ -141,8 +149,8 @@ export function FoodNutritionEditModal({
           </View>
           <Text style={styles.subtitle}>
             {mode === 'edit'
-              ? 'Chỉ để tham khảo — giá trị bạn sửa sẽ được ưu tiên hiển thị.'
-              : `Nhập dinh dưỡng tính cho mỗi ${nutritionBasisLabel}.`}
+              ? t('components.foodNutritionEditModal.subtitleEdit')
+              : t('components.foodNutritionEditModal.subtitleAdd', { basis: nutritionBasisLabel })}
           </Text>
 
           <ScrollView
@@ -163,7 +171,7 @@ export function FoodNutritionEditModal({
               style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
               onPress={onClose}
             >
-              <Text style={styles.cancelText}>Huỷ</Text>
+              <Text style={styles.cancelText}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [
@@ -175,7 +183,11 @@ export function FoodNutritionEditModal({
               onPress={handleSave}
               disabled={!valid || saving}
             >
-              <Text style={styles.btnText}>{mode === 'edit' ? 'Lưu sửa' : 'Lưu món'}</Text>
+              <Text style={styles.btnText}>
+                {mode === 'edit'
+                  ? t('components.foodNutritionEditModal.saveEditButton')
+                  : t('components.foodNutritionEditModal.saveAddButton')}
+              </Text>
             </Pressable>
           </View>
         </View>

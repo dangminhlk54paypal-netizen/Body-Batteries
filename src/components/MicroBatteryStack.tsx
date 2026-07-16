@@ -8,6 +8,7 @@ import type { DateOption } from '../hooks/useMicroBatteryHistory';
 import { OverdoseNotice } from './OverdoseNotice';
 import { useSettingsStore } from '../store/settingsStore';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 interface Props {
   states: MicroBatteryState[];
@@ -45,21 +46,23 @@ function isOverReference(state: MicroBatteryState): boolean {
 // (see CONTEXT.md §5 + S-R spec §6), so this cell always renders the
 // nutrient's own fixed color regardless of level.
 function MicroCell({ state }: { state: MicroBatteryState }) {
+  const { t } = useT();
   // The tank drawing tops out at 100%; anything past that is conveyed by the
   // real percentage figure (e.g. 134%) plus the caption below.
   const fillHeight = CELL_HEIGHT * (Math.min(state.percentage, 100) / 100);
   const caption =
     state.kind === 'limit'
       ? state.over
-        ? 'vượt ngưỡng gợi ý'
-        : 'trong ngưỡng'
+        ? t('components.microBatteryStack.overThreshold')
+        : t('components.microBatteryStack.withinThreshold')
       : state.over
-        ? 'vượt khuyến nghị'
+        ? t('components.microBatteryStack.overRecommended')
         : null;
   // A small ⚠️ glyph next to the percentage — colors stay neutral (no red),
   // the glyph itself is the only extra emphasis. See isOverReference for the
   // exact rule (goal-type "over target" alone never warns).
   const warn = isOverReference(state);
+  const name = t(`nutrients.${state.id}.name`);
   return (
     <View style={styles.cell}>
       <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
@@ -87,14 +90,13 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
       <Text style={styles.cellPct}>
         {state.percentage}%{warn ? ' ⚠️' : ''}
       </Text>
-      <Text style={styles.cellName}>{state.nameVi}</Text>
+      <Text style={styles.cellName}>{name}</Text>
       <Text style={styles.cellAmount}>
         {state.current}
         {state.unit}
       </Text>
       <Text style={styles.cellTarget}>
-        KN {state.target}
-        {state.unit}/ngày
+        {t('components.microBatteryStack.recommendedPerDay', { target: state.target, unit: state.unit })}
       </Text>
       {caption && <Text style={styles.cellCaption}>{caption}</Text>}
     </View>
@@ -109,6 +111,7 @@ export function MicroBatteryStack({
   recommendNote,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useT();
   // Persisted collapse state for this whole section — same read-the-store-
   // directly pattern MasterBattery uses for particleEffectsEnabled.
   const microCollapsed = useSettingsStore((s) => s.microCollapsed);
@@ -129,17 +132,18 @@ export function MicroBatteryStack({
       >
         <View style={styles.headerLeft}>
           <Text style={styles.chevron}>{microCollapsed ? '▸' : '▾'}</Text>
-          <Text style={styles.title}>Vi chất đã nạp</Text>
+          <Text style={styles.title}>{t('components.microBatteryStack.title')}</Text>
         </View>
-        <Text style={styles.disclaimer}>Chỉ để tham khảo.</Text>
+        <Text style={styles.disclaimer}>{t('components.microBatteryStack.disclaimer')}</Text>
       </Pressable>
 
       {microCollapsed ? (
         <Pressable onPress={() => setMicroCollapsed(false)}>
           <Text style={styles.collapsedLine}>
-            {`▸ Đang thu gọn — bấm để xem ${states.length} vi chất${
-              warnCount > 0 ? ` · ⚠️ ${warnCount} vượt ngưỡng` : ''
-            }`}
+            {t('components.microBatteryStack.collapsedLine', { count: states.length }) +
+              (warnCount > 0
+                ? t('components.microBatteryStack.collapsedWarnSuffix', { count: warnCount })
+                : '')}
           </Text>
         </Pressable>
       ) : (
@@ -170,7 +174,11 @@ export function MicroBatteryStack({
           {more.length > 0 && (
             <Pressable onPress={() => setExpanded((e) => !e)} style={styles.moreToggle}>
               <Text style={styles.moreToggleText}>
-                {expanded ? '▾ Ẩn bớt' : `▸ Xem thêm: ${more.map((s) => s.nameVi).join(' · ')}`}
+                {expanded
+                  ? t('components.microBatteryStack.hideMore')
+                  : t('components.microBatteryStack.seeMoreList', {
+                      list: more.map((s) => t(`nutrients.${s.id}.name`)).join(' · '),
+                    })}
               </Text>
             </Pressable>
           )}
@@ -184,7 +192,7 @@ export function MicroBatteryStack({
 
           {limits.length > 0 && (
             <View style={styles.limitSection}>
-              <Text style={styles.limitLabel}>Nên giữ dưới mốc</Text>
+              <Text style={styles.limitLabel}>{t('components.microBatteryStack.limitSectionLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
                 {limits.map((s) => (
                   <MicroCell key={s.id} state={s} />
@@ -195,7 +203,7 @@ export function MicroBatteryStack({
 
           {electrolytes.length > 0 && (
             <View style={styles.limitSection}>
-              <Text style={styles.limitLabel}>Muối & điện giải</Text>
+              <Text style={styles.limitLabel}>{t('components.microBatteryStack.electrolyteSectionLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
                 {electrolytes.map((s) => (
                   <MicroCell key={s.id} state={s} />

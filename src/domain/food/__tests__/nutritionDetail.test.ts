@@ -75,7 +75,7 @@ function makeEntry(overrides: Partial<FoodLogEntry> = {}): FoodLogEntry {
 
 describe('buildNutritionDetail — item resolved (full breakdown)', () => {
   it('scales kcal + the 4 macros + water to the logged grams', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon, 'vi');
     expect(rows).toEqual(
       expect.arrayContaining([
         { label: 'Năng lượng', value: 312, unit: 'kcal' }, // 208 * 1.5
@@ -88,7 +88,7 @@ describe('buildNutritionDetail — item resolved (full breakdown)', () => {
   });
 
   it('always shows Carbs even when it is 0 for this food', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon, 'vi');
     expect(rows.find((r) => r.label === 'Carbs')).toEqual({
       label: 'Carbs',
       value: 0,
@@ -97,7 +97,7 @@ describe('buildNutritionDetail — item resolved (full breakdown)', () => {
   });
 
   it('includes individual minerals scaled to the portion', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon, 'vi');
     expect(rows.find((r) => r.label === 'Canxi')).toEqual({
       label: 'Canxi',
       value: 13.5, // 9 * 1.5
@@ -111,7 +111,7 @@ describe('buildNutritionDetail — item resolved (full breakdown)', () => {
   });
 
   it('shows a combined EPA/DHA row when the food declares it', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon, 'vi');
     // (690 + 1100) * 1.5 = 2685
     expect(rows.find((r) => r.label === 'EPA/DHA')).toEqual({
       label: 'EPA/DHA',
@@ -121,18 +121,18 @@ describe('buildNutritionDetail — item resolved (full breakdown)', () => {
   });
 
   it('omits EPA/DHA entirely when the food does not declare it', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150, foodId: rice.id }), rice);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150, foodId: rice.id }), rice, 'vi');
     expect(rows.find((r) => r.label === 'EPA/DHA')).toBeUndefined();
   });
 
   it('skips zero-valued micro rows (fiber/sugar) to keep the sheet compact', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), salmon, 'vi');
     expect(rows.find((r) => r.label === 'Chất xơ')).toBeUndefined();
     expect(rows.find((r) => r.label === 'Đường')).toBeUndefined();
   });
 
   it('includes non-zero fiber/sugar rows for foods that declare them', () => {
-    const rows = buildNutritionDetail(makeEntry({ grams: 150, foodId: rice.id }), rice);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150, foodId: rice.id }), rice, 'vi');
     expect(rows.find((r) => r.label === 'Chất xơ')).toEqual({
       label: 'Chất xơ',
       value: 0.6, // 0.4 * 1.5
@@ -155,7 +155,7 @@ describe('buildNutritionDetail — item resolved (full breakdown)', () => {
       waterG: 0,
       mineralsMg: 0,
     });
-    const rows = buildNutritionDetail(zeroEntry, salmon);
+    const rows = buildNutritionDetail(zeroEntry, salmon, 'vi');
     expect(rows.find((r) => r.label === 'Năng lượng')).toEqual({
       label: 'Năng lượng',
       value: 0,
@@ -172,7 +172,7 @@ describe('buildNutritionDetail — item resolved (full breakdown)', () => {
       ...salmon,
       per100g: { ...salmon.per100g, energyKcal: 300, proteinG: 40 },
     };
-    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), editedSalmon);
+    const rows = buildNutritionDetail(makeEntry({ grams: 150 }), editedSalmon, 'vi');
     expect(rows.find((r) => r.label === 'Năng lượng')).toEqual({
       label: 'Năng lượng',
       value: 312, // the snapshot, not 300 * 1.5 = 450
@@ -197,7 +197,7 @@ describe('buildNutritionDetail — item is null (food deleted from catalog)', ()
       waterG: 94.5,
       mineralsMg: 150.5,
     });
-    const rows = buildNutritionDetail(entry, null);
+    const rows = buildNutritionDetail(entry, null, 'vi');
     expect(rows).toEqual([
       { label: 'Năng lượng', value: 312, unit: 'kcal' },
       { label: 'Đạm', value: 30, unit: 'g' },

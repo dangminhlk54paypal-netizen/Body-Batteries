@@ -6,6 +6,7 @@ import { HistoryScreen } from '../screens/HistoryScreen';
 import { DiaryScreen } from '../screens/DiaryScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
 
 const Tab = createBottomTabNavigator();
 
@@ -14,6 +15,10 @@ function TabIcon({ emoji }: { emoji: string }) {
 }
 
 export function AppNavigator() {
+  // useT() subscribes to the language slice, so this re-renders (and
+  // re-reads the tab labels below) whenever the user switches language —
+  // React Navigation's `options` are plain values re-evaluated every render.
+  const { t } = useT();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -31,7 +36,7 @@ export function AppNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Pin hôm nay',
+          tabBarLabel: t('nav.home'),
           tabBarIcon: () => <TabIcon emoji="⚡" />,
         }}
       />
@@ -39,7 +44,7 @@ export function AppNavigator() {
         name="History"
         component={HistoryScreen}
         options={{
-          tabBarLabel: 'Lịch sử',
+          tabBarLabel: t('nav.history'),
           tabBarIcon: () => <TabIcon emoji="📊" />,
         }}
       />
@@ -47,7 +52,7 @@ export function AppNavigator() {
         name="Diary"
         component={DiaryScreen}
         options={{
-          tabBarLabel: 'Nhật ký',
+          tabBarLabel: t('nav.diary'),
           tabBarIcon: () => <TabIcon emoji="📔" />,
         }}
       />
@@ -55,7 +60,7 @@ export function AppNavigator() {
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Cài đặt',
+          tabBarLabel: t('nav.settings'),
           tabBarIcon: () => <TabIcon emoji="⚙️" />,
         }}
       />

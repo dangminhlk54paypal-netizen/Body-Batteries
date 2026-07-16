@@ -11,10 +11,14 @@ import {
 } from 'react-native';
 import { BottomSheet } from './ui/BottomSheet';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
-import { MEAL_LABELS } from '../lib/constants';
+import { mealLabel } from '../lib/constants';
 import { formatDisplayDate } from '../lib/dateUtils';
 import type { FoodLogEntry, MealType } from '../types/food';
 import { colors } from '../lib/theme';
+import { useT } from '../i18n/useT';
+import type { Language } from '../i18n/types';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface DayDetailSheetProps {
   visible: boolean;
@@ -43,10 +47,11 @@ function groupEntriesByMeal(entries: FoodLogEntry[]): Record<MealType, FoodLogEn
 }
 
 // Format portion display: "X viên" or "Yg g"
-function formatPortion(entry: FoodLogEntry): string {
+function formatPortion(entry: FoodLogEntry, t: TFn): string {
   if (entry.portionUnit && entry.count !== undefined) {
-    const unitLabel = entry.portionUnit === 'pack' ? 'gói' : 'viên';
-    return `${entry.count} ${unitLabel}`;
+    return entry.portionUnit === 'pack'
+      ? t('components.dayDetailSheet.packCount', { count: entry.count })
+      : t('components.dayDetailSheet.capsuleCount', { count: entry.count });
   }
   return `${entry.grams}g`;
 }
@@ -59,7 +64,10 @@ interface MealSection {
 }
 
 // Build SectionList data from grouped meals
-function buildSectionData(grouped: Record<MealType, FoodLogEntry[]>): MealSection[] {
+function buildSectionData(
+  grouped: Record<MealType, FoodLogEntry[]>,
+  language: Language
+): MealSection[] {
   const mealOrder: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
   const sections: MealSection[] = [];
 
@@ -67,7 +75,7 @@ function buildSectionData(grouped: Record<MealType, FoodLogEntry[]>): MealSectio
     const items = grouped[mealType];
     if (items.length > 0) {
       sections.push({
-        title: MEAL_LABELS[mealType],
+        title: mealLabel(mealType, language),
         mealType,
         data: items,
       });
@@ -86,6 +94,7 @@ export function DayDetailSheet({
   onAddFood,
   onDeleteEntry,
 }: DayDetailSheetProps) {
+  const { t, language } = useT();
   const grouped = useMemo(() => groupEntriesByMeal(entries), [entries]);
 
   // The entry whose full nutrition breakdown is shown in the read-only
@@ -99,17 +108,21 @@ export function DayDetailSheet({
     return { totalKcal: Math.round(totalKcal), totalProtein: Math.round(totalProtein * 10) / 10 };
   }, [entries]);
 
-  const sectionData = useMemo(() => buildSectionData(grouped), [grouped]);
+  const sectionData = useMemo(() => buildSectionData(grouped, language), [grouped, language]);
 
   const handleDelete = (entry: FoodLogEntry) => {
-    Alert.alert('Xoá món ăn', `Bạn chắc chắn muốn xoá "${entry.foodNameVi}"?`, [
-      { text: 'Huỷ', onPress: () => {}, style: 'cancel' },
-      {
-        text: 'Xoá',
-        onPress: () => onDeleteEntry(entry),
-        style: 'destructive',
-      },
-    ]);
+    Alert.alert(
+      t('components.dayDetailSheet.deleteConfirmTitle'),
+      t('components.dayDetailSheet.deleteConfirmMessage', { name: entry.foodNameVi }),
+      [
+        { text: t('common.cancel'), onPress: () => {}, style: 'cancel' },
+        {
+          text: t('common.delete'),
+          onPress: () => onDeleteEntry(entry),
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
   const renderEntry = ({ item: entry }: { item: FoodLogEntry }) => (
@@ -124,7 +137,7 @@ export function DayDetailSheet({
         <Text style={styles.foodName} numberOfLines={2}>
           {entry.foodNameVi}
         </Text>
-        <Text style={styles.portion}>{formatPortion(entry)}</Text>
+        <Text style={styles.portion}>{formatPortion(entry, t)}</Text>
       </Pressable>
       <View style={styles.entryRight}>
         <Text style={styles.energyLabel}>{entry.energyKcal} kcal</Text>
@@ -147,7 +160,7 @@ export function DayDetailSheet({
 
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Chưa ghi món nào cho ngày này</Text>
+      <Text style={styles.emptyText}>{t('components.dayDetailSheet.emptyText')}</Text>
     </View>
   );
 
@@ -163,7 +176,7 @@ export function DayDetailSheet({
           contentContainerStyle={styles.contentContainer}
         >
           {/* Header: Date title */}
-          <Text style={styles.sheetTitle}>{formatDisplayDate(date)}</Text>
+          <Text style={styles.sheetTitle}>{formatDisplayDate(date, language)}</Text>
 
           {/* Loading state */}
           {loading && (
@@ -176,7 +189,10 @@ export function DayDetailSheet({
           {!loading && entries.length > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryText}>
-                Tổng: {summary.totalKcal} kcal · Đạm {summary.totalProtein}g
+                {t('components.dayDetailSheet.summaryLabel', {
+                  kcal: summary.totalKcal,
+                  protein: summary.totalProtein,
+                })}
               </Text>
             </View>
           )}
@@ -205,7 +221,9 @@ export function DayDetailSheet({
               ]}
               onPress={onAddFood}
             >
-              <Text style={styles.addButtonText}>＋ Thêm món cho ngày này</Text>
+              <Text style={styles.addButtonText}>
+                {t('components.dayDetailSheet.addButtonLabel')}
+              </Text>
             </Pressable>
           )}
         </ScrollView>

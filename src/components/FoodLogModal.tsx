@@ -19,11 +19,12 @@ import {
   EMPTY_CUSTOM_FOOD_INPUT,
   type CustomFoodInput,
 } from '../domain/food/customFoodInput';
-import { FOOD_CATEGORY_LABELS, MEAL_LABELS, DATA_RETENTION_DAYS } from '../lib/constants';
+import { foodCategoryLabel, mealLabel, DATA_RETENTION_DAYS } from '../lib/constants';
 import { daysAgo, todayString, formatDisplayDate, isToday } from '../lib/dateUtils';
 import type { FoodItem, FoodLogEntry } from '../types/food';
 import { colors } from '../lib/theme';
 import * as haptics from '../lib/haptics';
+import { useT } from '../i18n/useT';
 
 interface Props {
   visible: boolean;
@@ -32,10 +33,6 @@ interface Props {
   // e.g. when opened from HistoryScreen's "+ Thêm món cho ngày này". Defaults
   // to today when omitted (unchanged behaviour for every existing caller).
   initialDate?: string;
-}
-
-function categoryLabel(category: string): string {
-  return FOOD_CATEGORY_LABELS[category] ?? category;
 }
 
 // Vietnamese name is the main line, English name the small second line.
@@ -88,6 +85,7 @@ export function buildTimestampForDate(dateStr: string, hourStr: string, minuteSt
 }
 
 export function FoodLogModal({ visible, onClose, initialDate }: Props) {
+  const { t, language } = useT();
   const logFood = useEnergyStore((s) => s.logFood);
   const logFoodForPastDate = useEnergyStore((s) => s.logFoodForPastDate);
 
@@ -221,10 +219,10 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   // its field suffixes (see that component for the source of truth).
   const customNutritionBasisLabel =
     customInput.portionUnit === 'pack'
-      ? '1 gói'
+      ? t('components.foodLogModal.basisPack')
       : customInput.portionUnit === 'capsule'
-        ? '1 viên'
-        : '100g';
+        ? t('components.foodLogModal.basisCapsule')
+        : t('components.foodLogModal.basisGram');
 
   // Builds the FoodItem, persists it via the registry (SQLite + searchable
   // immediately), then hands off into the existing selected-entry view so
@@ -255,7 +253,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
 
   const preview =
     selected && validAmount ? nutritionForGrams(selected, effectiveGrams) : null;
-  const mealLabel = MEAL_LABELS[mealTypeForHour(hourNum)];
+  const mealTimeLabel = mealLabel(mealTypeForHour(hourNum), language);
 
   async function confirm() {
     // BUG-1 (S-S6): same double-tap guard as savingCustomFood — a second tap
@@ -348,7 +346,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   onPress={() => setAdding(false)}
                   style={({ pressed }) => pressed && styles.pressed}
                 >
-                  <Text style={styles.back}>‹ Quay lại</Text>
+                  <Text style={styles.back}>{t('components.foodLogModal.backToSearch')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleClose}
@@ -358,9 +356,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   <Text style={styles.closeX}>✕</Text>
                 </Pressable>
               </View>
-              <Text style={styles.title}>Thêm món mới</Text>
+              <Text style={styles.title}>{t('components.foodLogModal.addCustomTitle')}</Text>
               <Text style={styles.subtitle}>
-                Nhập dinh dưỡng tính cho mỗi {customNutritionBasisLabel}
+                {t('components.foodLogModal.addCustomSubtitle', { basis: customNutritionBasisLabel })}
               </Text>
 
               <ScrollView
@@ -382,7 +380,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                   onPress={() => setAdding(false)}
                 >
-                  <Text style={styles.cancelText}>Huỷ</Text>
+                  <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -394,14 +392,14 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   onPress={saveCustomFood}
                   disabled={!customValid || savingCustomFood}
                 >
-                  <Text style={styles.btnText}>Lưu món</Text>
+                  <Text style={styles.btnText}>{t('components.foodLogModal.saveCustomFoodButton')}</Text>
                 </Pressable>
               </View>
             </>
           ) : !selected ? (
             <>
               <View style={styles.headerRow}>
-                <Text style={styles.title}>Ghi món ăn</Text>
+                <Text style={styles.title}>{t('components.foodLogModal.title')}</Text>
                 <Pressable
                   onPress={handleClose}
                   hitSlop={12}
@@ -410,10 +408,10 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   <Text style={styles.closeX}>✕</Text>
                 </Pressable>
               </View>
-              <Text style={styles.subtitle}>Tìm món trong danh sách rồi chọn</Text>
+              <Text style={styles.subtitle}>{t('components.foodLogModal.searchSubtitle')}</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Tìm món (ví dụ: cơm, gà, cá...)"
+                placeholder={t('components.foodLogModal.searchPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 value={query}
                 onChangeText={setQuery}
@@ -421,7 +419,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
               />
               {query.trim().length === 0 && suggestions.length > 0 && (
                 <View style={styles.suggestSection}>
-                  <Text style={styles.suggestLabel}>Gợi ý cho bữa này</Text>
+                  <Text style={styles.suggestLabel}>{t('components.foodLogModal.suggestLabel')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={styles.suggestRow}>
                       {suggestions.map((s) => (
@@ -446,13 +444,15 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 keyboardShouldPersistTaps="handled"
                 ListEmptyComponent={
                   <View>
-                    <Text style={styles.empty}>Không tìm thấy món nào.</Text>
+                    <Text style={styles.empty}>{t('components.foodLogModal.emptyResults')}</Text>
                     {query.trim().length > 0 && (
                       <Pressable
                         style={({ pressed }) => [styles.addNewBtn, pressed && styles.pressed]}
                         onPress={startAddingCustomFood}
                       >
-                        <Text style={styles.addNewText}>➕ Thêm món mới: &apos;{query.trim()}&apos;</Text>
+                        <Text style={styles.addNewText}>
+                          {t('components.foodLogModal.addNewFoodButton', { query: query.trim() })}
+                        </Text>
                       </Pressable>
                     )}
                   </View>
@@ -468,7 +468,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                         <Text style={styles.foodName}>{main}</Text>
                         {sub ? <Text style={styles.foodNameEn}>{sub}</Text> : null}
                         <Text style={styles.foodMeta}>
-                          {categoryLabel(item.category)} · {item.per100g.energyKcal} kcal/100g
+                          {foodCategoryLabel(item.category, language)} · {item.per100g.energyKcal} kcal/100g
                         </Text>
                       </View>
                       <Text style={styles.foodChevron}>›</Text>
@@ -480,7 +480,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                 onPress={handleClose}
               >
-                <Text style={styles.cancelText}>Đóng</Text>
+                <Text style={styles.cancelText}>{t('common.close')}</Text>
               </Pressable>
             </>
           ) : (
@@ -490,7 +490,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   onPress={() => setSelected(null)}
                   style={({ pressed }) => pressed && styles.pressed}
                 >
-                  <Text style={styles.back}>‹ Chọn món khác</Text>
+                  <Text style={styles.back}>{t('components.foodLogModal.backToOtherFood')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleClose}
@@ -510,13 +510,13 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 );
               })()}
               <Text style={styles.subtitle}>
-                {categoryLabel(selected.category)} · {selected.per100g.energyKcal} kcal / 100g
+                {foodCategoryLabel(selected.category, language)} · {selected.per100g.energyKcal} kcal / 100g
               </Text>
               <Pressable
                 onPress={() => setEditingNutrition(true)}
                 style={({ pressed }) => pressed && styles.pressed}
               >
-                <Text style={styles.editLink}>✎ Sửa thành phần</Text>
+                <Text style={styles.editLink}>{t('components.foodLogModal.editNutritionLink')}</Text>
               </Pressable>
 
               <ScrollView
@@ -527,11 +527,16 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 {isServingBased ? (
                   <>
                     <Text style={styles.fieldLabel}>
-                      Số {selected.portionUnit === 'pack' ? 'gói' : 'viên'}
+                      {t('components.foodLogModal.portionCountLabel', {
+                        unit:
+                          selected.portionUnit === 'pack'
+                            ? t('components.foodLogModal.unitPack')
+                            : t('components.foodLogModal.unitCapsule'),
+                      })}
                     </Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Ví dụ: 1"
+                      placeholder={t('components.foodLogModal.portionCountPlaceholder')}
                       placeholderTextColor={colors.textMuted}
                       keyboardType="decimal-pad"
                       value={portionCount}
@@ -540,10 +545,10 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   </>
                 ) : (
                   <>
-                    <Text style={styles.fieldLabel}>Khối lượng (gram)</Text>
+                    <Text style={styles.fieldLabel}>{t('components.foodLogModal.gramsFieldLabel')}</Text>
                     <TextInput
                       style={styles.input}
-                      placeholder="Ví dụ: 150"
+                      placeholder={t('components.foodLogModal.gramsPlaceholder')}
                       placeholderTextColor={colors.textMuted}
                       keyboardType="decimal-pad"
                       value={grams}
@@ -554,7 +559,11 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                         style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
                         onPress={() => setGrams(String(selected.defaultServingG))}
                       >
-                        <Text style={styles.chipText}>mặc định={selected.defaultServingG}g</Text>
+                        <Text style={styles.chipText}>
+                          {t('components.foodLogModal.defaultChipLabel', {
+                            grams: selected.defaultServingG,
+                          })}
+                        </Text>
                       </Pressable>
                       {selected.servingPresets.map((p) => (
                         <Pressable
@@ -571,7 +580,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   </>
                 )}
 
-                <Text style={styles.fieldLabel}>Giờ ăn → {mealLabel}</Text>
+                <Text style={styles.fieldLabel}>
+                  {t('components.foodLogModal.mealTimeFieldLabel', { meal: mealTimeLabel })}
+                </Text>
                 <View style={styles.timeRow}>
                   <TextInput
                     style={[styles.input, styles.timeInput]}
@@ -594,7 +605,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   />
                 </View>
 
-                <Text style={styles.fieldLabel}>Ngày ghi</Text>
+                <Text style={styles.fieldLabel}>{t('components.foodLogModal.logDateFieldLabel')}</Text>
                 <PastDateField
                   value={logDate}
                   onChange={setLogDate}
@@ -603,9 +614,15 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
 
                 {preview && (
                   <View style={styles.preview}>
-                    <Text style={styles.previewKcal}>⚡ {preview.energyKcal} kcal</Text>
+                    <Text style={styles.previewKcal}>
+                      {t('components.foodLogModal.previewKcalLabel', { kcal: preview.energyKcal })}
+                    </Text>
                     <Text style={styles.previewMacro}>
-                      P {preview.proteinG}g · C {preview.carbG}g · F {preview.fatG}g
+                      {t('components.foodLogModal.previewMacroLabel', {
+                        p: preview.proteinG,
+                        c: preview.carbG,
+                        f: preview.fatG,
+                      })}
                     </Text>
                   </View>
                 )}
@@ -613,7 +630,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
 
               {!isToday(logDate) && (
                 <Text style={styles.backfillNotice}>
-                  🕓 Ghi cho ngày {formatDisplayDate(logDate)}
+                  {t('components.foodLogModal.backfillNotice', {
+                    date: formatDisplayDate(logDate, language),
+                  })}
                 </Text>
               )}
 
@@ -622,7 +641,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                   onPress={handleClose}
                 >
-                  <Text style={styles.cancelText}>Huỷ</Text>
+                  <Text style={styles.cancelText}>{t('common.cancel')}</Text>
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [
@@ -634,7 +653,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   onPress={confirm}
                   disabled={!validAmount || savingFood}
                 >
-                  <Text style={styles.btnText}>Ghi món 🍽️</Text>
+                  <Text style={styles.btnText}>{t('components.foodLogModal.confirmButton')}</Text>
                 </Pressable>
               </View>
             </>

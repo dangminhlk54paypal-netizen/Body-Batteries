@@ -5,6 +5,9 @@ import { buildNutritionDetail } from '../../domain/food/nutritionDetail';
 import { getAnyFoodById } from '../../data/food/foodLookup';
 import type { FoodLogEntry } from '../../types/food';
 import { colors } from '../../lib/theme';
+import { useT } from '../../i18n/useT';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface Props {
   // The logged entry to show the breakdown for. null/undefined means "closed"
@@ -24,12 +27,12 @@ function timeLabel(timestamp: number): string {
 
 // Mirrors TodayMeals.amountLabel: packs/capsules (TPCN) are shown by count
 // ("2 viên"), everything else by gram weight.
-function portionLabel(entry: FoodLogEntry): string {
+function portionLabel(entry: FoodLogEntry, t: TFn): string {
   if (entry.portionUnit === 'pack' && entry.count != null) {
-    return `${entry.count} gói`;
+    return t('components.nutritionDetailSheet.packCount', { count: entry.count });
   }
   if (entry.portionUnit === 'capsule' && entry.count != null) {
-    return `${entry.count} viên`;
+    return t('components.nutritionDetailSheet.capsuleCount', { count: entry.count });
   }
   return `${entry.grams}g`;
 }
@@ -41,11 +44,12 @@ const MAX_TABLE_HEIGHT = Dimensions.get('window').height * 0.6;
 // logged foods, merging any user override) and hands it to the pure domain
 // helper buildNutritionDetail for the actual row derivation.
 export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
+  const { t, language } = useT();
   // Both calls below are plain, synchronous, deterministic lookups/derivations
   // (in-memory map/registry reads + pure math) — safe to run directly during
   // render, same pattern as TodayMeals' summarizeFoodLog(entries) call.
   const item = entry ? (getAnyFoodById(entry.foodId) ?? null) : null;
-  const rows = entry ? buildNutritionDetail(entry, item) : [];
+  const rows = entry ? buildNutritionDetail(entry, item, language) : [];
 
   return (
     <BottomSheet visible={visible} onClose={onClose} sheetOffset={500}>
@@ -55,7 +59,7 @@ export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
             {entry.foodNameVi}
           </Text>
           <Text style={styles.subtitle}>
-            {portionLabel(entry)} · {timeLabel(entry.timestamp)}
+            {portionLabel(entry, t)} · {timeLabel(entry.timestamp)}
           </Text>
 
           <ScrollView

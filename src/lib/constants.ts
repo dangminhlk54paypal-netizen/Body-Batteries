@@ -1,5 +1,7 @@
 import type { BatteryType } from '../types/battery';
 import type { MealType } from '../types/food';
+import { translate } from '../i18n/translate';
+import type { Language } from '../i18n/types';
 
 export const DEFAULT_BATTERIES: BatteryType[] = [
   {
@@ -71,6 +73,15 @@ export const ENERGY_BATTERY: BatteryType = {
   isActive: true,
 };
 
+// Display name for a battery type, following the current app language.
+// DEFAULT_BATTERIES/ENERGY_BATTERY.name above is only the seed value written
+// to SQLite `battery_types.name` at first install — display always goes
+// through this lookup (keyed by the stable `id`) instead of reading that
+// column, so the label follows a language switch without a DB migration.
+export function batteryTypeName(id: BatteryType['id'], language: Language): string {
+  return translate(language, `batteries.${id}.name`);
+}
+
 // Each gram of protein or carbohydrate provides ~4 kcal (Atwater factors).
 // Used to auto-charge the energy battery when those nutrients are logged.
 export const KCAL_PER_GRAM: Partial<Record<BatteryType['id'], number>> = {
@@ -91,29 +102,32 @@ export const DEFAULT_MEAL_WINDOWS: Record<'breakfast' | 'lunch' | 'dinner', Meal
   dinner: { startHour: 17, endHour: 21 },
 };
 
-export const MEAL_LABELS: Record<MealType, string> = {
-  breakfast: 'Bữa sáng',
-  lunch: 'Bữa trưa',
-  dinner: 'Bữa tối',
-  snack: 'Bữa phụ',
-};
+export function mealLabel(meal: MealType, language: Language): string {
+  return translate(language, `meals.${meal}`);
+}
 
-// Vietnamese labels for the food-database categories (CSV `category` column).
-// Falls back to the raw category string for anything not listed here.
-export const FOOD_CATEGORY_LABELS: Record<string, string> = {
-  grain: 'Tinh bột',
-  meat: 'Thịt',
-  fish: 'Cá & hải sản',
-  egg_dairy: 'Trứng & sữa',
-  legume_nut: 'Đậu & hạt',
-  vegetable: 'Rau củ',
-  fruit: 'Trái cây',
-  fat_sugar: 'Dầu mỡ & đường',
-  dish: 'Món chế biến',
-  drink: 'Đồ uống',
-  supplement: 'Thực phẩm chức năng',
-  snack: 'Bánh & ăn vặt',
-};
+const FOOD_CATEGORY_IDS = new Set([
+  'grain',
+  'meat',
+  'fish',
+  'egg_dairy',
+  'legume_nut',
+  'vegetable',
+  'fruit',
+  'fat_sugar',
+  'dish',
+  'drink',
+  'supplement',
+  'snack',
+]);
+
+// Label for a food-database category (CSV `category` column), following the
+// current app language. Falls back to the raw category string for anything
+// not in the known set.
+export function foodCategoryLabel(category: string, language: Language): string {
+  if (!FOOD_CATEGORY_IDS.has(category)) return category;
+  return translate(language, `foodCategories.${category}`);
+}
 
 export const LOW_BATTERY_THRESHOLD = 0.2; // 20% — trigger warning below this
 
