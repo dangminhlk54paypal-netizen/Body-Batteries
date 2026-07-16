@@ -861,6 +861,57 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 
 ---
 
+## Session 13 — 2026-07-16 (S-PL + UX: Powerlifting, Custom Activities, Battery Display, Water/Sleep, Micro Collapse)
+
+**Làm gì:** Phiên Fable điều phối 4 Sonnet agents chạy TUẦN TỰ (logic-backend, 3× mobile-frontend) để triển khai bộ nâng cấp **S-PL** (ghi powerlifting theo set×rep×tạ + công thức hybrid năng lượng) + **6 hạng mục UX khác**; cuối phiên 1 qa-reviewer Sonnet rà soát diff toàn bộ tìm bug.
+
+**Kết quả — Công việc code:** Tất cả 8 tính năng dưới đây đã commit vào cây làm việc (chưa push):
+
+1. **S-PL — Powerlifting set-based logging (`src/domain/energy/liftingEngine.ts` +12 test):**
+   - Mô hình năng lượng **hybrid**: kcal = công nâng tạ vật lý (m_eff × g × ROM × rep × 1.33 eccentric / 20% hiệu suất, hệ số per-bài de Leva 1996) + đốt lúc nghỉ (2.0 MET × phút ước lượng: set chính 3', khởi động 1.5').
+   - Squat k=0.88/ROM=0.25H, Bench 0.10/0.19H, Deadlift 0.25/0.30H; buổi 3 bài ≈ 250–350 kcal, khớp VO2 thực tế.
+   - **`WorkoutSession.sets?: LiftingSet[]`** (lưu JSON trong `activity_log.workouts`, **không cần migration**); hàng cũ tự dùng MET×phút như trước.
+   - `workoutKcal/totalWorkoutKcal` nhận `heightCm` tuỳ chọn; có sets → lifting, không → MET (backward compat).
+   - **`PowerliftingSheet.tsx` (mới):** 3 tab Squat/Bench/Deadlift; mỗi tab Khởi động + Bài chính; nút ⚡ gợi ý ramp (bar×10→50%×6→70%×4→85%×2, làm tròn 2.5kg); "Buổi trước" 60 ngày + e1RM Epley (working sets) + tấn số; live kcal preview; edit prefill qua key remount.
+   - **Docs 06 mục 1B rewrite:** công thức hybrid, bảng hệ số, giới hạn v1, thêm de Leva 1996 + Abbott 1952 vào Sources.
+
+2. **Activity modal grouped + Elliptical:** chia Cardio / Thể thao / Gym-Tạ / Khác (`ACTIVITY_CATEGORIES`); thêm Elliptical MET 5.0 (code 02048); Gym-Tạ có chip 🏋️ Powerlifting (sheet) + Bodybuilding (phút) + HIIT; squat/bench/deadlift rời khỏi chip phút.
+
+3. **Custom activities** (`settingsStore.customActivities`): Modal "＋ Thêm môn"; preset MET Nhẹ 3/Vừa 5/Cao 8/Rất cao 10, input cap 20; chip theo category; delete với confirm; `WorkoutSession` type 'custom' + customName/customMet; TodayActivities hiển thị customName, editable phút/bước/time.
+
+4. **Master battery area:** thêm dòng "🏃 Vận động hôm nay: +N kcal vào mục tiêu ăn" (activityBonusKcal) + dòng mục tiêu "Cần ~X kcal/ngày để đạt Y kg · BMR ~Z" (dailyCalorieTarget / basalMetabolicRate) hoặc variant maintenance.
+
+5. **Movement pin kcal display:** default hiển thị kcal (walking-rate stepsKcal), tap label toggle kcal↔steps (persisted movementDisplayUnit); `formatMovementAmount`/`nextMovementDisplayUnit` trong `lib/units.ts` +4 test (no domain import — layering rule).
+
+6. **Small-battery tap routing:** Water/Sleep tap mở IntakeModal (input mode) + dòng recommendation (water 30–40 ml/kg/day +500–1000 EFSA/ACSM; sleep NSF 2015 + recovery hint). Protein/Carbs/Minerals/Movement → **DISPLAY-ONLY** → `BatterySourceSheet` (mới) liệt kê nguồn nạp hôm nay (per-food protein/carb/minerals, per-activity steps+kcal), total + "tự nạp, không cần nạp tay". Movement quick-tap manual charge **RETIRED** (IntakeModal stepType selector removed — S-T3 không còn UI path để xảy ra lỗi).
+
+7. **Food form regrouping:** Natri/Kali/Magiê → "Muối & điện giải" sub-heading + live line "≈ X g muối (NaCl) — quy đổi từ natri" (salt=Na×2.5/1000, display-only).
+
+8. **Micro section collapsible:** header collapse toggle (state persisted settingsStore.microCollapsed); collapsed show count + warning count; ⚠️ badge per-nutrient chỉ khi vượt reference (goal-type over-target stay neutral).
+
+**Kiểm tra trước & sau:**
+- Session start baseline: **408 test / 36 suite**
+- Sau S-PL: **427 test / 37 suite** (liftingEngine +12, metabolismEngine +3, energyStore +4)
+- Final (sau 6 UX): **443 test / 38 suite** — **tất cả PASS ✅**
+- `npm run verify` (tsc + eslint + jest): sạch
+
+**QA findings & Fixes:** qa-reviewer Sonnet tìm 1 major + 3 moderate + 4 minor → lead tự sửa all actionable: dead movement branch cleanup (IntakeModal, BatterySourceSheet), lib/units domain-import layering fix, units test add, MET cap 20, PowerliftingSheet confirm truly disabled no sets, punctuation in strings.
+
+**Quyết định thiết kế (người dùng thoát plan mode, lead chọn theo khuyến nghị):**
+- Công thức **hybrid** (pure mechanics = 60–100 kcal/session, 3–5× under VO2 per João 2021).
+- **V1 = foundation:** per-set storage + previous-session + e1RM; **6-week block dashboard defer next session**.
+- **Bodybuilding stay minutes-based v1** (nâng cấp set-based sau).
+
+**Vấn đề gặp phải:** Không có cản trở nào — orchestration 4 phiên song song tuần tự + QA rà soát cuối + verify sạch = trình tự suôn sẻ.
+
+**Session tiếp theo phải làm:**
+1. **Manual device test checklist (25 items):** qa-reviewer chuẩn bị; chạy từng section: **Powerlifting** (sheet 3 tab, warmup + main, previous session, kcal live, edit + delete), **Môn tự thêm** (add + preset MET + delete), **Pin Vận động** (kcal default, toggle steps), **Nước/Giấc ngủ** (tap recommendation), **Pin tổng** (activity bonus + target line), **Muối & vi chất** (regrouping + salt line + collapse), **Hồi quy** (cũ activity vẫn phút, undo OK).
+2. **S-PL2 — Block dashboard 6 tuần:** e1RM + tonnage chart per-exercise per-week.
+3. **Bodybuilding set-based upgrade** (danh sách bài + ROM/mass hệ số riêng).
+4. **Known limitation:** movement pin kcal dùng walking-rate conversion, có thể khác per-session kcal trong TodayActivities.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
