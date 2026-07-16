@@ -939,6 +939,23 @@ và 1 lượt `/code-review` (8 finder agent + verify) trước khi commit.
 3. Rà lại 1 lượt các câu dịch tiếng Đức bằng người biết tiếng Đức thật (AI dịch tự động, chưa có người bản ngữ xác nhận) — ưu tiên các câu y tế/dinh dưỡng vì cần chính xác.
 4. Nếu về sau muốn tên món ăn ĐÃ GHI cũng đổi theo ngôn ngữ (hiện tại cố ý giữ tiếng Việt, xem "Vấn đề gặp phải" bên trên) — cần thêm cột `food_name_en`/`food_name_de` snapshot vào bảng `food_log` lúc ghi (migration DB), không đơn giản như phần còn lại của session này.
 
+**Bổ sung cùng session (commit `a2a776f`) — biến i18n thành LUẬT vĩnh viễn:**
+Theo yêu cầu người dùng, hệ i18n không chỉ là tính năng mà thành "bản năng
+mặc định" cho mọi phiên AI về sau khi đụng UI:
+- `AGENTS.md` thêm mục **"MANDATORY RULE: UI text & multi-language (i18n)"**
+  (file này được CLAUDE.md nạp tự động vào MỌI phiên): cấm hardcode chuỗi
+  hiển thị, quy trình vi.ts-trước → en/de, `useT()` cho component / tham số
+  `language` cho domain, `LOCALE_TAGS` cho ngày giờ, hợp đồng bắt buộc khi
+  giao việc cho subagent, tự cập nhật docs không cần hỏi. Mở đầu luật nêu rõ
+  lý do KHÔNG dùng i18next (tận dụng Zustand có sẵn, không thêm thư viện,
+  không re-render toàn app) — là quyết định kiến trúc, không phải thiếu sót.
+- Skill mới `.ai/skills/add-language.md`: checklist 4 bước thêm ngôn ngữ
+  thứ 4 (sửa `types.ts` + tạo locale file + đăng ký `DICTIONARIES`; nút chọn
+  tự render từ `LANGUAGES`). Đã đăng ký vào bảng `.ai/skills/README.md`.
+- `.ai/CONTEXT.md` §4 thêm bullet luật i18n; skill `create-screen` thêm bước
+  i18n bắt buộc; `docs/02-tech-stack.md`/`docs/03-architecture.md` thêm liên
+  kết chéo + checklist thêm-ngôn-ngữ cho người đọc.
+
 ---
 
 ## 📌 Hướng dẫn viết session log
