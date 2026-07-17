@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ModeId } from '../types/modes';
-import type { CustomActivity, UserProfile } from '../types/energy';
+import type { CustomActivity, CustomExercise, UserProfile } from '../types/energy';
 import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../lib/constants';
 import type { MovementDisplayUnit, WaterDisplayUnit } from '../lib/units';
 import type { Language } from '../i18n/types';
@@ -46,6 +46,10 @@ interface SettingsState {
   // User-defined activities (not in MET_TABLE) available in the activity
   // picker alongside the built-in ActivityType list — see types/energy.ts.
   customActivities: CustomActivity[];
+  // User-defined S-BB exercises (not in BODYBUILDING_EXERCISES) available in
+  // the muscle-group browser alongside the built-in library — see
+  // types/energy.ts CustomExercise and src/lib/bodybuildingExercises.ts.
+  customExercises: CustomExercise[];
   // Display language — drives every useT()/translate() call and the Excel
   // export's headers/labels. Persisted like everything else in this store.
   language: Language;
@@ -62,6 +66,8 @@ interface SettingsState {
   setMicroCollapsed: (value: boolean) => void;
   addCustomActivity: (activity: Omit<CustomActivity, 'id'>) => void;
   removeCustomActivity: (id: string) => void;
+  addCustomExercise: (exercise: Omit<CustomExercise, 'id'>) => void;
+  removeCustomExercise: (id: string) => void;
   setLanguage: (language: Language) => void;
 }
 
@@ -81,6 +87,7 @@ export const useSettingsStore = create<SettingsState>()(
       movementDisplayUnit: 'kcal',
       microCollapsed: false,
       customActivities: [],
+      customExercises: [],
       language: 'vi',
 
       setMode: (mode) => set({ currentMode: mode }),
@@ -101,6 +108,12 @@ export const useSettingsStore = create<SettingsState>()(
         })),
       removeCustomActivity: (id) =>
         set((s) => ({ customActivities: s.customActivities.filter((a) => a.id !== id) })),
+      addCustomExercise: (exercise) =>
+        set((s) => ({
+          customExercises: [...s.customExercises, { ...exercise, id: `bbx_${Date.now()}` }],
+        })),
+      removeCustomExercise: (id) =>
+        set((s) => ({ customExercises: s.customExercises.filter((e) => e.id !== id) })),
       setLanguage: (language) => set({ language }),
     }),
     {

@@ -958,6 +958,61 @@ mặc định" cho mọi phiên AI về sau khi đụng UI:
 
 ---
 
+## Session 15 — 2026-07-17 (S-BB: Bodybuilding theo nhóm cơ — MET-tier × cường độ × set)
+
+**Làm gì:** Triển khai tính năng **Bodybuilding (S-BB)** — cho phép người dùng tự tạo buổi tập theo nhóm cơ (ngực, lưng, chân, vai, tay trước, tay sau, bụng, mông) với ~45 bài phụ trợ/cô lập, dùng mô hình **MET-tier × cường độ × thời-từ-set** (tách biệt hoàn toàn khỏi S-PL vật lý).
+
+**Kết quả (CODE XONG, PASS npm run verify, CHƯA test máy thật, CHƯA COMMIT lúc viết):**
+
+**Files mới tạo (4):**
+- `src/lib/bodybuildingExercises.ts` — thư viện 45 bài (id, muscle, tier, NO tên hiển thị)
+- `src/domain/energy/bodybuildingEngine.ts` — công thức kcal + helper (bbEffectiveMet, bbSetMinutes, bodybuildingSessionKcal)
+- `src/domain/energy/__tests__/bodybuildingEngine.test.ts` — 16 test, PASS (khớp ví dụ 27 kcal cable curl 4×10@78kg)
+- `src/components/BodybuildingSheet.tsx` — UI sheet chính (8 tab nhóm cơ, picker bài, set rows, intensity, preview kcal, edit-mode, custom exercise form)
+
+**Files sửa (11):**
+- `src/types/energy.ts` — MuscleGroup, BbMetTier, BbIntensity, BodybuildingExercise, CustomExercise, WorkoutSession fields (bbExerciseId, bbMuscle, bbTier, bbMet, bbName)
+- `src/lib/metabolicConstants.ts` — BB_MET_TIER (iso 3.5, compound 5.0, big_compound 6.0), BB_INTENSITY_FACTOR (light 0.9, moderate 1.0, superset 1.15), BB_SEC_PER_REP, BB_REST_SEC
+- `src/domain/energy/metabolismEngine.ts` — nhánh bbMet trước bbSetsMet trong workoutKcal, bbMet ưu tiên trong workoutStepEquivalent
+- `src/store/settingsStore.ts` — customExercises array + add/removeCustomExercise (persist AsyncStorage)
+- `src/store/energyStore.ts` — note branch cho session S-BB (intake_events)
+- `src/i18n/locales/{vi,en,de}.ts` — muscleGroups (8), bbTiers (3), bbIntensity (3), bbExercises (~45), components.bodybuildingSheet namespace (30+ key), activities.bodybuilding, đổi nhãn activities.gym_strength (fix trùng tên)
+- `src/components/EnergyActionsBar.tsx` — chip Bodybuilding mới, filter ACTIVITY_TYPES loại 'bodybuilding'
+- `src/components/TodayActivities.tsx` — isBodybuildingEntry check **TRƯỚC** isLiftingEntry, mở BodybuildingSheet prefilled
+- `src/components/BatterySourceSheet.tsx` — workoutLabel nhánh S-BB trước generic sets
+
+**Verify:**
+- `npx tsc --noEmit` — sạch, 0 lỗi
+- `npx eslint 'src/**/*.{ts,tsx}'` — sạch, 0 lỗi/cảnh báo
+- `npx jest src/domain/energy/__tests__/bodybuildingEngine.test.ts` — PASS 16/16
+- `npm run verify` (full) — PASS 460/460 test, 39 suite, lint sạch
+
+**3 lỗi tiềm ẩn (đã biết từ plan, lần này vá hoàn chỉnh):**
+1. ⚠️ **Trùng tên chip:** `activities.gym_strength` = "Bodybuilding" → đổi thành "Tập tạ (theo phút)" ở cả 3 locale, key giữ nguyên.
+2. ⚠️ **Lộ chip 0 kcal:** ACTIVITY_TYPES filter thêm `&& t !== 'bodybuilding'`.
+3. ⚠️ **Mất dữ liệu khi sửa:** TodayActivities.startEdit check `isBodybuildingEntry` TRƯỚC `isLiftingEntry`.
+
+**QA review phát hiện + vá 2 lỗi mới:**
+1. **Kcal lịch sử drift khi sửa entry cũ dùng bài custom đã xoá** — edit lại → tier sai → kcal sai dù người dùng không cố ý đổi. **Vá:** thêm snapshot `bbTier` vào WorkoutSession, exercisesFromEntry dùng `w.bbTier` thay vì suy ngược từ resolveExercise (fallback chỉ cho entry cũ).
+2. **Set mất âm thầm khi để ô tạ trống cho bài bodyweight** (pull-up, plank...). **Vá:** prefill ô tạ mặc định "0" thay vì trống, + comment giải thích trong addExercise/addRow.
+
+**Docs:**
+- `docs/06-energy-expenditure.md` — thêm §1C "Bodybuilding (cơ hypertrophy theo nhóm cơ)" (công thức, bảng tier×intensity, ví dụ 27 kcal kiểm chứng, khác biệt S-BB vs S-PL, giới hạn v1).
+- `docs/01-vision-and-features.md` — update mục "Nạp & Xả năng lượng" thêm S-PL + S-BB.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Plan viết kỹ → implementation không có "surprise bug" ở runtime (chỉ 2 edge case từ QA). QA review read-only + manual-test checklist VN (17 bước) khá kỹ lưỡng.
+- Quyết định nhỏ: không thêm field `bbIntensity` mới vào WorkoutSession — thay vào đó suy ngược intensity từ bbMet + tier qua hàm `deriveIntensity` khi edit. Tiết kiệm 1 field snapshot, complexity vẫn được.
+- Không viết lại lịch sử (bài custom cũ) → entry gốc dùng custom đã xoá sẽ fallback tier → có rủi ro nhỏ, nhưng snapshot `bbTier` mới đã bảo vệ entry **sau khi vá này**.
+
+**Session tiếp theo phải làm:**
+1. **Test tay thật trên điện thoại** (phải chạy app từ đầu): (a) Mở Gym → chọn chip Bodybuilding (b) Chọn nhóm cơ, thêm bài (c) Nhập set/rep/tạ, đổi intensity (d) Preview kcal thay đổi đúng chiều (e) Lưu → kiểm tra "Vận động hôm nay" + pin Vận động + BatterySourceSheet (f) Sửa lại entry → PHẢI mở đúng BodybuildingSheet, KHÔNG phải PowerliftingSheet (g) Xoá (h) Tự thêm bài (i) Xoá bài custom đang dùng (j) Đổi ngôn ngữ VI/EN/DE, không sót chuỗi (k) Form sửa-theo-phút KHÔNG có chip bodybuilding (l) 2 chip khác tên.
+   → Checklist chi tiết 17 bước có sẵn từ QA report.
+2. Nếu test xong ổn → `git add` + commit (message: "feat(S-BB): Bodybuilding theo nhóm cơ, MET-tier model, custom exercises" + Co-Authored-By).
+3. `git push` → cập nhật project-cloud để dùng trên điện thoại từ xa.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

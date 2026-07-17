@@ -15,6 +15,7 @@ import {
   VIGOROUS_MET_THRESHOLD,
 } from '../../lib/metabolicConstants';
 import { liftingSessionKcal } from './liftingEngine';
+import { bodybuildingSessionKcal } from './bodybuildingEngine';
 
 // Pure functions modelling the body's energy expenditure (its "self-discharge").
 // All outputs are kcal unless noted. v1 / general — see docs/06-energy-expenditure.md.
@@ -50,21 +51,31 @@ export function stepsKcal(
   return Math.round(steps * STEP_KCAL_PER_KG[stepType] * weightKg);
 }
 
-// Kcal for one workout session. Two paths:
+// Kcal for one workout session. Three paths, checked in order:
+//   - set-based bodybuilding (S-BB): the session carries `sets` AND a
+//     snapshotted `bbMet` → MET-tier model (bodybuildingEngine), which prices
+//     the session from reps/rest time, not mechanical work. Checked FIRST —
+//     a bb session also has `sets`, so it must not fall into the S-PL branch
+//     below (isLiftingExercise('bodybuilding') is false anyway, but bbMet is
+//     the authoritative discriminator regardless of `type`).
 //   - set-based powerlifting (S-PL): the session carries `sets` and the
 //     caller provides `heightCm` → tonnage hybrid model (liftingEngine),
 //     which is what actually responds to bar weight × reps.
-//   - everything else (and pre-S-PL rows, which have no `sets`): the classic
-//     MET × weight(kg) × duration(hours) estimate, where the MET comes from
-//     `session.customMet` when set (custom activities), otherwise MET_TABLE.
+//   - everything else (and pre-S-PL/pre-S-BB rows, which have no `sets`): the
+//     classic MET × weight(kg) × duration(hours) estimate, where the MET
+//     comes from `session.customMet` when set (custom activities), otherwise
+//     MET_TABLE.
 // `heightCm` is optional so pre-S-PL call sites keep compiling; without it a
-// set-based session falls back to the MET path (its `minutes` is the
-// estimateLiftingMinutes value, so the fallback stays sane).
+// set-based powerlifting session falls back to the MET path (its `minutes`
+// is the estimateLiftingMinutes value, so the fallback stays sane).
 export function workoutKcal(
   session: WorkoutSession,
   weightKg: number,
   heightCm?: number
 ): number {
+  if (session.bbMet != null && session.sets && session.sets.length > 0) {
+    return bodybuildingSessionKcal(session, weightKg);
+  }
   if (session.sets && session.sets.length > 0 && heightCm && isLiftingExercise(session.type)) {
     return liftingSessionKcal(session.type, session.sets, weightKg, heightCm);
   }
@@ -90,9 +101,12 @@ function isLiftingExercise(type: WorkoutSession['type']): type is LiftingExercis
 // (MET < VIGOROUS_MET_THRESHOLD), 130 steps/min for vigorous ones. Lets a
 // workout-only log (type + minutes, no steps) still charge the movement pin
 // (BUG A fix), which has no other unit for exercise minutes. MET comes from
-// `session.customMet` when set (custom activities), otherwise MET_TABLE.
+// `session.bbMet` (S-BB) first, then `session.customMet` (custom activities),
+// otherwise MET_TABLE — without the bbMet check, every bodybuilding session
+// would fall back to MET_TABLE.bodybuilding (0), always reading as "moderate"
+// cadence regardless of how vigorous the actual session was.
 export function workoutStepEquivalent(session: WorkoutSession): number {
-  const met = session.customMet ?? MET_TABLE[session.type] ?? 0;
+  const met = session.bbMet ?? session.customMet ?? MET_TABLE[session.type] ?? 0;
   const cadence =
     met >= VIGOROUS_MET_THRESHOLD ? STEP_EQUIV_VIGOROUS_PER_MIN : STEP_EQUIV_MODERATE_PER_MIN;
   return Math.round(session.minutes * cadence);

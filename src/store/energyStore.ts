@@ -1102,10 +1102,15 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       for (let i = 0; i < workouts.length; i++) {
         const session = workouts[i];
         const kcal = workoutKcal(session, profile.weightKg, profile.heightCm);
-        // Set-based powerlifting sessions (S-PL) get a tonnage note so the
-        // Excel export shows what was actually lifted, not just minutes.
+        // Set-based sessions (S-PL powerlifting and S-BB bodybuilding) get a
+        // tonnage note so the Excel export shows what was actually lifted,
+        // not just minutes. S-BB additionally identifies which exercise (its
+        // built-in id or custom name) since `type` is the same generic
+        // 'bodybuilding' for every exercise in the muscle-group library.
         const note = session.sets?.length
-          ? `workout: ${session.type} ${session.sets.length} set, ${liftingTonnageKg(session.sets)}kg`
+          ? session.bbMet != null
+            ? `workout: bodybuilding ${session.bbName ?? session.bbExerciseId} ${session.sets.length} set, ${liftingTonnageKg(session.sets)}kg`
+            : `workout: ${session.type} ${session.sets.length} set, ${liftingTonnageKg(session.sets)}kg`
           : `workout: ${session.type} ${session.minutes}m`;
         await addIntakeEvent({
           id: `workout_${ts}_${i}`,

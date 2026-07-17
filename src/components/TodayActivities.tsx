@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { ACTIVITY_TYPES, activityLabel } from './EnergyActionsBar';
 import { PowerliftingSheet, describeLiftingSets } from './PowerliftingSheet';
+import { BodybuildingSheet, bbExerciseName } from './BodybuildingSheet';
 import { formatTimeHHmm, parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityLogEntry, ActivityType, WorkoutSession } from '../types/energy';
 import { colors } from '../lib/theme';
@@ -42,9 +43,12 @@ function timeRangeLabel(entry: ActivityLogEntry, t: TFn): string {
   return formatTimeHHmm(entry.timestamp);
 }
 
-// The label a workout shows in the history list — a custom activity's own
-// nameVi takes priority over the generic "custom activity" activityLabel entry.
+// The label a workout shows in the history list — an S-BB session shows its
+// specific exercise name (checked FIRST: it also has `sets`, so it must not
+// fall through to the generic paths below); a custom activity's own nameVi
+// takes priority over the generic "custom activity" activityLabel entry.
 function workoutLabel(w: WorkoutSession, language: Language): string {
+  if (w.bbMet != null) return bbExerciseName(w, language);
   return w.customName ?? activityLabel(w.type, language);
 }
 
@@ -65,6 +69,16 @@ function summaryLabel(entry: ActivityLogEntry, t: TFn, language: Language): stri
   return parts.length > 0 ? parts.join(' · ') : t('components.todayActivities.fallbackLabel');
 }
 
+// Entries logged through the Bodybuilding sheet (S-BB) are edited there too.
+// MUST be checked BEFORE isLiftingEntry below: an S-BB session also carries
+// `sets`, so isLiftingEntry would otherwise misclassify it as a Powerlifting
+// entry — opening the wrong sheet, which would then silently DROP the
+// bodybuilding workouts on save (PowerliftingSheet only knows squat/bench/
+// deadlift and replaces the entry's entire `workouts` array).
+function isBodybuildingEntry(entry: ActivityLogEntry): boolean {
+  return entry.workouts.some((w) => w.bbMet != null);
+}
+
 // Entries logged through the Powerlifting sheet are edited there too — the
 // minutes form below can't represent sets and would silently flatten them.
 function isLiftingEntry(entry: ActivityLogEntry): boolean {
@@ -82,6 +96,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   const { t, language } = useT();
   const [editingEntry, setEditingEntry] = useState<ActivityLogEntry | null>(null);
   const [liftingEntry, setLiftingEntry] = useState<ActivityLogEntry | null>(null);
+  const [bodybuildingEntry, setBodybuildingEntry] = useState<ActivityLogEntry | null>(null);
   const [editActivity, setEditActivity] = useState<ActivityType>('running');
   const [editMinutes, setEditMinutes] = useState('');
   const [editSteps, setEditSteps] = useState('');
@@ -91,6 +106,11 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   const totalKcal = entries.reduce((sum, e) => sum + e.energyKcal, 0);
 
   function startEdit(entry: ActivityLogEntry) {
+    // MUST check isBodybuildingEntry first — see its comment above.
+    if (isBodybuildingEntry(entry)) {
+      setBodybuildingEntry(entry);
+      return;
+    }
     if (isLiftingEntry(entry)) {
       setLiftingEntry(entry);
       return;
@@ -276,6 +296,19 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
         onSaveEdit={(id, workouts) => {
           onEdit(id, { workouts });
           setLiftingEntry(null);
+        }}
+      />
+
+      {/* S-BB: set-based bodybuilding entries reopen the Bodybuilding sheet
+          prefilled — same remount-by-key convention as PowerliftingSheet. */}
+      <BodybuildingSheet
+        key={bodybuildingEntry?.id ?? 'bodybuilding-edit'}
+        visible={bodybuildingEntry !== null}
+        onClose={() => setBodybuildingEntry(null)}
+        editingEntry={bodybuildingEntry}
+        onSaveEdit={(id, workouts) => {
+          onEdit(id, { workouts });
+          setBodybuildingEntry(null);
         }}
       />
     </View>

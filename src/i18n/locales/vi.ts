@@ -91,12 +91,13 @@ export const vi = {
     basketball: 'Bóng rổ',
     badminton: 'Cầu lông',
     tennis: 'Tennis',
-    gym_strength: 'Bodybuilding',
+    gym_strength: 'Tập tạ (theo phút)',
     hiit: 'HIIT',
     yoga: 'Yoga',
     squat: 'Squat',
     bench_press: 'Bench press',
     deadlift: 'Deadlift',
+    bodybuilding: 'Bodybuilding',
     custom: 'Môn tự thêm',
   },
 
@@ -105,6 +106,96 @@ export const vi = {
     sports: 'Thể thao',
     gym: 'Gym/Tạ',
     other: 'Khác',
+  },
+
+  // S-BB muscle-group tab labels — keyed by MuscleGroup (types/energy.ts),
+  // shown in BodybuildingSheet's muscle-group browser and the custom-exercise
+  // form's group picker.
+  muscleGroups: {
+    chest: 'Ngực',
+    back: 'Lưng',
+    legs: 'Chân',
+    shoulders: 'Vai',
+    biceps: 'Tay trước',
+    triceps: 'Tay sau',
+    core: 'Bụng',
+    glutes: 'Mông',
+  },
+
+  // S-BB exercise MET tier labels — keyed by BbMetTier, shown in the
+  // custom-exercise form's "độ nặng" picker (see docs/06 §1C for the
+  // Compendium anchors each tier maps to).
+  bbTiers: {
+    isolation: 'Cô lập',
+    compound: 'Phối hợp',
+    big_compound: 'Phối hợp lớn',
+  },
+
+  // S-BB rest-style/intensity labels — keyed by BbIntensity, shown per
+  // exercise in BodybuildingSheet.
+  bbIntensity: {
+    light: 'Nhẹ',
+    moderate: 'Vừa',
+    superset: 'Superset (nghỉ ngắn)',
+  },
+
+  // S-BB built-in exercise library display names — keyed by
+  // BodybuildingExercise['id'] (src/lib/bodybuildingExercises.ts, stable,
+  // NOT stored in WorkoutSession for built-ins — always looked up live).
+  bbExercises: {
+    // Ngực
+    dumbbell_bench_press: 'Đẩy ngực tạ đơn',
+    incline_dumbbell_press: 'Đẩy ngực tạ đơn trên ghế dốc',
+    chest_press_machine: 'Đẩy ngực máy',
+    dumbbell_fly: 'Bay ngực tạ đơn',
+    cable_crossover: 'Cáp chéo ngực (Cable Crossover)',
+    // Lưng
+    lat_pulldown: 'Kéo xô (Lat Pulldown)',
+    seated_cable_row: 'Kéo cáp ngồi (Seated Row)',
+    barbell_row: 'Kéo lưng đòn tạ (Barbell Row)',
+    pull_up: 'Hít xà (Pull-up)',
+    one_arm_dumbbell_row: 'Kéo lưng tạ đơn 1 tay',
+    straight_arm_pulldown: 'Kéo cáp tay thẳng (Straight-arm Pulldown)',
+    face_pull: 'Kéo mặt (Face Pull)',
+    // Chân
+    leg_press: 'Đẩy đùi (Leg Press)',
+    walking_lunge: 'Lunge bước đi',
+    leg_extension: 'Duỗi đùi (Leg Extension)',
+    leg_curl: 'Gập gối (Leg Curl)',
+    bulgarian_split_squat: 'Squat chân trước Bulgaria',
+    calf_raise: 'Nhón bắp chân (Calf Raise)',
+    goblet_squat: 'Squat ôm tạ (Goblet Squat)',
+    // Vai
+    overhead_press: 'Đẩy vai (Overhead Press)',
+    lateral_raise: 'Nâng vai ngang tạ đơn',
+    cable_lateral_raise: 'Nâng vai ngang cáp',
+    front_raise: 'Nâng vai trước',
+    rear_delt_fly: 'Bay vai sau',
+    arnold_press: 'Đẩy vai Arnold (Arnold Press)',
+    // Tay trước
+    barbell_curl: 'Cuốn tay đòn tạ',
+    dumbbell_curl: 'Cuốn tay tạ đơn',
+    hammer_curl: 'Cuốn tay búa (Hammer Curl)',
+    cable_curl: 'Cuốn tay cáp',
+    // Tay sau
+    triceps_pushdown: 'Ép cáp tay sau (Pushdown)',
+    skull_crusher: 'Ép tay sau nằm (Skull Crusher)',
+    overhead_triceps_extension: 'Duỗi tay sau qua đầu',
+    close_grip_bench_press: 'Đẩy ngực tay hẹp',
+    dips: 'Xà kép (Dips)',
+    dumbbell_kickback: 'Đá tay sau tạ đơn (Kickback)',
+    // Bụng
+    crunch: 'Gập bụng (Crunch)',
+    plank: 'Plank',
+    hanging_leg_raise: 'Nâng chân treo xà',
+    russian_twist: 'Xoay eo kiểu Nga (Russian Twist)',
+    cable_woodchop: 'Chặt cáp chéo bụng (Woodchop)',
+    ab_wheel_rollout: 'Lăn bánh xe bụng (Ab Wheel)',
+    // Mông
+    hip_thrust: 'Đẩy hông (Hip Thrust)',
+    glute_bridge: 'Cầu mông (Glute Bridge)',
+    cable_kickback: 'Đá mông cáp (Cable Kickback)',
+    romanian_deadlift_dumbbell: 'Deadlift Romania tạ đơn',
   },
 
   // Micronutrient names + gentle assessment advice (see
@@ -440,6 +531,7 @@ export const vi = {
         'MET = mức tiêu hao năng lượng so với lúc ngồi yên. Chọn theo cảm nhận độ nặng của môn (tối đa {{max}} — môn nặng nhất trong nghiên cứu cũng chỉ quanh mức này).',
       saveActivityButton: 'Lưu môn',
       powerliftingChip: '🏋️ Powerlifting (set × rep × tạ)',
+      bodybuildingChip: '💪 Bodybuilding (theo nhóm cơ)',
       addActivityChip: '＋ Thêm môn',
       minutesPlaceholder: 'Số phút tập (ví dụ: 45)',
       stepsPlaceholder: 'Số bước chân (tuỳ chọn)',
@@ -657,6 +749,34 @@ export const vi = {
       warmupSetsOnly: '{{count}} set khởi động',
       setsTonnage: '{{count}} set · {{tonnage}}kg',
       plusWarmups: '{{main}} (+{{count}} khởi động)',
+    },
+    bodybuildingSheet: {
+      titleNew: '💪 Bodybuilding',
+      titleEditSuffix: ' — sửa buổi tập',
+      subtitle:
+        'Chọn nhóm cơ → bài tập → nhập set/rep/tạ. kcal ước tính theo cường độ & số rep, không theo mức tạ.',
+      muscleSectionTitle: 'Chọn nhóm cơ',
+      addExerciseHint: 'Bấm một bài để thêm vào buổi tập',
+      noExercisesInMuscle: 'Nhóm này chưa có bài nào — bấm "＋ Tự thêm bài" bên dưới.',
+      selectedSectionTitle: 'Bài đã thêm',
+      noExercisesYet: 'Chưa thêm bài nào. Chọn nhóm cơ ở trên rồi bấm một bài.',
+      intensityLabel: 'Cường độ',
+      weightPlaceholder: 'kg',
+      weightUnitLabel: 'kg ×',
+      repsPlaceholder: 'rep',
+      repsUnitLabel: 'rep',
+      addSetButton: '＋ Thêm set',
+      addCustomExerciseButton: '＋ Tự thêm bài',
+      customExerciseNameLabel: 'Tên bài',
+      customExerciseNamePlaceholder: 'Ví dụ: Cuốn tay dây kháng lực',
+      customExerciseMuscleLabel: 'Nhóm cơ',
+      customExerciseTierLabel: 'Độ nặng bài tập',
+      saveExerciseButton: 'Lưu bài',
+      deleteCustomExerciseTitle: 'Xoá bài tự thêm?',
+      deleteCustomExerciseMessage: 'Xoá "{{name}}" khỏi danh sách bài tự thêm?',
+      previewSummary: 'Ước tính cả buổi: 🔥 ~{{kcal}} kcal · ~{{minutes}} phút',
+      previewEmpty: 'Thêm ít nhất một bài có set (kg × rep) để tính kcal.',
+      confirmNewButton: 'Ghi buổi tập 💪',
     },
     masterBattery: {
       label: 'Năng lượng cơ thể',

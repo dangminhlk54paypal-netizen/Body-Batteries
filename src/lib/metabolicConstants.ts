@@ -1,5 +1,7 @@
 import type {
   ActivityType,
+  BbIntensity,
+  BbMetTier,
   LiftingExercise,
   OccupationLevel,
   StepActivityType,
@@ -63,7 +65,55 @@ export const MET_TABLE: Record<ActivityType, number> = {
   // itself (WorkoutSession.customMet), never looked up here. Present only so
   // MET_TABLE stays a total Record<ActivityType, number>.
   custom: 0,
+  // Placeholder — same reason as 'custom': S-BB sessions carry their own
+  // effective rate on WorkoutSession.bbMet (see bodybuildingEngine.ts),
+  // computed from BB_MET_TIER × BB_INTENSITY_FACTOR, never looked up here.
+  // MUST stay excluded from EnergyActionsBar's ACTIVITY_TYPES picker (it has
+  // no minutes-based meaning) — see the filter there.
+  bodybuilding: 0,
 };
+
+// --- S-BB: bodybuilding-by-muscle-group energy model (MET-tier) -------------
+// kcal = effMET × weightKg × (sessionMinutes / 60), where effMET is derived
+// from the exercise's tier and the user's chosen intensity/rest style — NOT
+// from mechanical work like liftingEngine.ts. Research (Compendium 2024,
+// MyFitnessPal, Hevy/Strong) agrees per-exercise physics isn't reliable for
+// isolation movements; a MET tier anchored to the Compendium's own resistance
+// training codes is the honest, industry-standard estimate. See
+// docs/06-energy-expenditure.md §1C for the full derivation + sources.
+
+// Per-exercise MET tier (Compendium of Physical Activities 2024):
+//   isolation    — code 02054, 3.5 MET, "multiple exercises, 8-15 reps,
+//                  varied resistance" — single-joint/small-muscle moves
+//                  (curls, raises, extensions, flys).
+//   compound     — code 02052, 5.0 MET, squat/deadlift-class effort —
+//                  standard multi-joint lifts (presses, rows, lunges).
+//   big_compound — code 02050, 6.0 MET, "power lifting or body building,
+//                  vigorous effort" — the largest multi-joint/large-muscle
+//                  moves (leg press, pull-ups, hip thrust).
+export const BB_MET_TIER: Record<BbMetTier, number> = {
+  isolation: 3.5,
+  compound: 5.0,
+  big_compound: 6.0,
+};
+
+// Rest-style multiplier the user picks per exercise (default 'moderate').
+// Short-rest circuits keep the heart rate elevated relative to plain
+// moderate resistance training — the Compendium's own circuit/superset code
+// (02055 = 5.8 MET) sits ~1.15× above the plain compound tier (5.0), which
+// is where the 'superset' factor below is anchored.
+export const BB_INTENSITY_FACTOR: Record<BbIntensity, number> = {
+  light: 0.9,
+  moderate: 1.0,
+  superset: 1.15,
+};
+
+// Nominal seconds "under tension" per rep, and nominal rest seconds after
+// each set — used to derive a session's minutes from sets×reps alone (the
+// user never types a duration for S-BB, same UX as S-PL). Population-average
+// v1 estimates, not a personal cadence measurement.
+export const BB_SEC_PER_REP = 3;
+export const BB_REST_SEC = 60;
 
 // --- S-PL: set-based powerlifting energy model (tonnage hybrid) -------------
 // kcal per SET = mechanical lifting work / muscle efficiency, plus a separate

@@ -82,12 +82,13 @@ export const de: TranslationSchema = {
     basketball: 'Basketball',
     badminton: 'Badminton',
     tennis: 'Tennis',
-    gym_strength: 'Bodybuilding',
+    gym_strength: 'Krafttraining (nach Minuten)',
     hiit: 'HIIT',
     yoga: 'Yoga',
     squat: 'Kniebeuge',
     bench_press: 'Bankdrücken',
     deadlift: 'Kreuzheben',
+    bodybuilding: 'Bodybuilding',
     custom: 'Eigene Aktivität',
   },
 
@@ -96,6 +97,96 @@ export const de: TranslationSchema = {
     sports: 'Sport',
     gym: 'Fitnessstudio/Gewichte',
     other: 'Sonstiges',
+  },
+
+  // S-BB muscle-group tab labels — keyed by MuscleGroup (types/energy.ts),
+  // shown in BodybuildingSheet's muscle-group browser and the custom-exercise
+  // form's group picker.
+  muscleGroups: {
+    chest: 'Brust',
+    back: 'Rücken',
+    legs: 'Beine',
+    shoulders: 'Schultern',
+    biceps: 'Bizeps',
+    triceps: 'Trizeps',
+    core: 'Bauch',
+    glutes: 'Gesäß',
+  },
+
+  // S-BB exercise MET tier labels — keyed by BbMetTier, shown in the
+  // custom-exercise form's tier picker (see docs/06 §1C for the Compendium
+  // anchors each tier maps to).
+  bbTiers: {
+    isolation: 'Isolationsübung',
+    compound: 'Verbundübung',
+    big_compound: 'Große Verbundübung',
+  },
+
+  // S-BB rest-style/intensity labels — keyed by BbIntensity, shown per
+  // exercise in BodybuildingSheet.
+  bbIntensity: {
+    light: 'Leicht',
+    moderate: 'Moderat',
+    superset: 'Superset (kurze Pause)',
+  },
+
+  // S-BB built-in exercise library display names — keyed by
+  // BodybuildingExercise['id'] (src/lib/bodybuildingExercises.ts, stable,
+  // NOT stored in WorkoutSession for built-ins — always looked up live).
+  bbExercises: {
+    // Brust
+    dumbbell_bench_press: 'Kurzhantel-Bankdrücken',
+    incline_dumbbell_press: 'Kurzhantel-Schrägbankdrücken',
+    chest_press_machine: 'Brustpresse (Maschine)',
+    dumbbell_fly: 'Kurzhantel-Fliegende',
+    cable_crossover: 'Kabelzug über Kreuz (Crossover)',
+    // Rücken
+    lat_pulldown: 'Latzug',
+    seated_cable_row: 'Rudern am Kabelzug (sitzend)',
+    barbell_row: 'Langhantelrudern',
+    pull_up: 'Klimmzug',
+    one_arm_dumbbell_row: 'Einarmiges Kurzhantelrudern',
+    straight_arm_pulldown: 'Gestrecktes Kabelziehen (Pullover)',
+    face_pull: 'Face Pull',
+    // Beine
+    leg_press: 'Beinpresse',
+    walking_lunge: 'Gehender Ausfallschritt',
+    leg_extension: 'Beinstrecker',
+    leg_curl: 'Beinbeuger',
+    bulgarian_split_squat: 'Bulgarische Kniebeuge',
+    calf_raise: 'Wadenheben',
+    goblet_squat: 'Goblet Squat',
+    // Schultern
+    overhead_press: 'Schulterdrücken',
+    lateral_raise: 'Seitheben',
+    cable_lateral_raise: 'Seitheben am Kabelzug',
+    front_raise: 'Frontheben',
+    rear_delt_fly: 'Reverse Butterfly (hintere Schulter)',
+    arnold_press: 'Arnold Press',
+    // Bizeps
+    barbell_curl: 'Langhantel-Bizepscurl',
+    dumbbell_curl: 'Kurzhantel-Bizepscurl',
+    hammer_curl: 'Hammercurl',
+    cable_curl: 'Bizepscurl am Kabelzug',
+    // Trizeps
+    triceps_pushdown: 'Trizepsdrücken am Kabelzug',
+    skull_crusher: 'Trizepsstrecken liegend (Skull Crusher)',
+    overhead_triceps_extension: 'Trizepsstrecken über Kopf',
+    close_grip_bench_press: 'Enges Bankdrücken',
+    dips: 'Dips',
+    dumbbell_kickback: 'Trizeps-Kickback mit Kurzhantel',
+    // Bauch
+    crunch: 'Crunch',
+    plank: 'Unterarmstütz (Plank)',
+    hanging_leg_raise: 'Hängendes Beinheben',
+    russian_twist: 'Russian Twist',
+    cable_woodchop: 'Holzhacker am Kabelzug (Woodchop)',
+    ab_wheel_rollout: 'Ab-Roller',
+    // Gesäß
+    hip_thrust: 'Hüftheben (Hip Thrust)',
+    glute_bridge: 'Gesäßbrücke',
+    cable_kickback: 'Kickback am Kabelzug',
+    romanian_deadlift_dumbbell: 'Rumänisches Kreuzheben mit Kurzhanteln',
   },
 
   nutrients: {
@@ -414,6 +505,7 @@ export const de: TranslationSchema = {
         'MET = Energieverbrauch im Vergleich zum Sitzen. Wähle nach gefühlter Intensität (max. {{max}} — selbst die anstrengendsten untersuchten Aktivitäten liegen etwa in diesem Bereich).',
       saveActivityButton: 'Aktivität speichern',
       powerliftingChip: '🏋️ Powerlifting (Sätze × Wdh. × Gewicht)',
+      bodybuildingChip: '💪 Bodybuilding (nach Muskelgruppe)',
       addActivityChip: '＋ Aktivität hinzufügen',
       minutesPlaceholder: 'Minuten (z. B. 45)',
       stepsPlaceholder: 'Schritte (optional)',
@@ -632,6 +724,34 @@ export const de: TranslationSchema = {
       warmupSetsOnly: '{{count}} Aufwärmsätze',
       setsTonnage: '{{count}} Sätze · {{tonnage}}kg',
       plusWarmups: '{{main}} (+{{count}} Aufwärmen)',
+    },
+    bodybuildingSheet: {
+      titleNew: '💪 Bodybuilding',
+      titleEditSuffix: ' — Einheit bearbeiten',
+      subtitle:
+        'Muskelgruppe → Übung wählen → Sätze/Wdh./Gewicht eingeben. Kcal wird aus Intensität & Wdh. geschätzt, nicht aus dem Gewicht.',
+      muscleSectionTitle: 'Muskelgruppe wählen',
+      addExerciseHint: 'Tippe auf eine Übung, um sie zur Einheit hinzuzufügen',
+      noExercisesInMuscle: 'Noch keine Übungen in dieser Gruppe — tippe unten auf "＋ Übung hinzufügen".',
+      selectedSectionTitle: 'Hinzugefügte Übungen',
+      noExercisesYet: 'Noch keine Übungen hinzugefügt. Wähle oben eine Muskelgruppe und tippe eine Übung an.',
+      intensityLabel: 'Intensität',
+      weightPlaceholder: 'kg',
+      weightUnitLabel: 'kg ×',
+      repsPlaceholder: 'Wdh.',
+      repsUnitLabel: 'Wdh.',
+      addSetButton: '＋ Satz hinzufügen',
+      addCustomExerciseButton: '＋ Übung hinzufügen',
+      customExerciseNameLabel: 'Übungsname',
+      customExerciseNamePlaceholder: 'z. B. Bizepscurl mit Widerstandsband',
+      customExerciseMuscleLabel: 'Muskelgruppe',
+      customExerciseTierLabel: 'Belastungsstufe der Übung',
+      saveExerciseButton: 'Übung speichern',
+      deleteCustomExerciseTitle: 'Eigene Übung löschen?',
+      deleteCustomExerciseMessage: '"{{name}}" aus deinen eigenen Übungen entfernen?',
+      previewSummary: 'Schätzung für die Einheit: 🔥 ~{{kcal}} kcal · ~{{minutes}} Min.',
+      previewEmpty: 'Füge mindestens eine Übung mit einem Satz (kg × Wdh.) hinzu, um kcal zu schätzen.',
+      confirmNewButton: 'Einheit eintragen 💪',
     },
     masterBattery: {
       label: 'Körperenergie',

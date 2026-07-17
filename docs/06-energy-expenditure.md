@@ -170,6 +170,110 @@ phút, không có sets) và khi caller không truyền chiều cao.
 
 ---
 
+## 1C. Bodybuilding (cơ hypertrophy theo nhóm cơ) — mô hình MET-tier (S-BB)
+
+> Từ S-BB (2026-07-17), các bài tập **cô lập và phụ trợ theo nhóm cơ** (không phải
+> 3 bài lớn của S-PL) được ghi **theo set** qua sheet Bodybuilding riêng, dùng mô hình
+> **MET-tier × cường độ × thời-gian-từ-set**, hoàn toàn tách biệt khỏi công thức vật
+> lý của Powerlifting. Lý do: nghiên cứu cho thấy **công nâng tạ không dự đoán được năng
+> lượng** cho các bài cô lập (cơ bộ phận, kiểu ROM ngắn); dùng MET-chung từ Compendium
+> (trừu tượng và ổn định) thay vì mô hình vật lý chi tiết hơn nhiều mà chỉ mang lại sai số.
+
+### Công thức MET-tier × cường độ × thời gian
+
+```
+kcal(buổi)  =  effMET × cân_nặng_kg × (phút_buổi / 60)
+
+effMET      =  BB_MET_TIER[tier] × BB_INTENSITY_FACTOR[intensity]
+phút_buổi   =  Σ_set  setMinutes(reps)
+setMinutes  =  (reps × 3 giây + 60 giây_nghỉ) / 60
+```
+
+### Hằng số BB (Compendium of Physical Activities 2024 + lập trình)
+
+| Tầng tier | Loại bài | MET | Compendium code | Ghi chú |
+|-----------|----------|-----|-----------------|---------|
+| **isolation** | Cô lập, 8–15 rep, ROM ngắn, 1 khớp | 3.5 | 02054 | Curl, raise, extension (không hạ tạ quá nặng) |
+| **compound** | Phức hợp, 6–12 rep, đa khớp, ROM trung bình | 5.0 | 02052 | Squat, deadlift, row, press (cùng Powerlifting fallback) |
+| **big_compound** | Compound nặng/mạnh, 2–8 rep, ROM lớn, lực nổ | 6.0 | 02050 | High-bar squat, speed squat, max-effort deadlift |
+
+| Cường độ | Hệ số | Mô tả | Khởi động/rest time | Nguồn |
+|---------|-------|-------|---------------------|--------|
+| **light** | ×0.9 | Nhẹ, dưới sức, pump nhẹ | 60 giây nghỉ chuẩn, ~RPE 5–6 | Underload, accumulation phase |
+| **moderate** | ×1.0 | Vừa phải (mặc định) | 60 giây nghỉ chuẩn, ~RPE 7–8 | Hypertrophy zone chuẩn |
+| **superset** | ×1.15 | Superset/circuit, 30–45s nghỉ | Nghỉ ngắn + no-rest pairs | Compendium 02055 (5.8 MET); circuit-heavy → MET cao hơn |
+
+**Hằng số thời gian:**
+- `BB_SEC_PER_REP = 3` giây (thời gian dưới tạ/rep, cadence chậm hypertrophy)
+- `BB_REST_SEC = 60` giây (nghỉ danh nghĩa giữa set, cơ sở cho estimate)
+
+### Ví dụ kiểm chứng (78 kg)
+
+**Cable curl (cô lập) — 4 set × 10 rep @ 20 kg, cường độ "moderate"**
+- tier = isolation → MET = 3.5
+- intensity = moderate → hệ số = 1.0
+- effMET = 3.5 × 1.0 = 3.5
+- phút/set = (10×3 + 60) / 60 = 0.5 phút
+- phút_buổi = 4 × 0.5 = 2 phút
+- kcal = 3.5 × 78 × (2 / 60) = **9.1 kcal**
+
+**Barbell row (phức hợp) — 5 set × 6 rep @ 80 kg, cường độ "superset"**
+- tier = compound → MET = 5.0
+- intensity = superset → hệ số = 1.15
+- effMET = 5.0 × 1.15 = 5.75
+- phút/set = (6×3 + 60) / 60 = 0.267 phút
+- phút_buổi = 5 × 0.267 = 1.33 phút
+- kcal = 5.75 × 78 × (1.33 / 60) = **9.4 kcal**
+
+**Buổi tập gồm curl + row + thêm 4 bài khác ~ 48 phút trung bình compound-lẫn-isolation →
+ước tính 200–260 kcal** — khớp dải danh sách trên MyFitnessPal / RepCount / Hevy cho buổi
+hypertrophy đầy đủ.
+
+### Tạ nạp lịch sử (không vào công thức kcal)
+
+Các bộ set `{ reps, weightKg }` được **ghi toàn bộ** cho lịch sử và phân tích volume (tonnage
+= Σ weightKg × reps), nhưng **`weightKg` KHÔNG** xác định kcal — chỉ có `reps` qua `setMinutes`
+(ước lượng cadence hypertrophy chung). Lý do: nghiên cứu (Schoenfeld, Tipton) cho thấy năng
+lượng ở isolation phụ thuộc **time-under-tension × activation** chứ không phụ thuộc nặng tạ
+tuyến tính.
+
+### Khác biệt **S-PL vs S-BB**
+
+| Khía cạnh | Powerlifting (S-PL) | Bodybuilding (S-BB) |
+|-----------|---------------------|---------------------|
+| **Công thức kcal** | Công nâng tạ (từng set riêng) + đốt lúc nghỉ (MET 2.0) | MET-tier × cường độ × thời-từ-set |
+| **Input bắt buộc** | Rep + Weight + (Height+Weight để tính) | Rep + Weight (tạ, đơn vị lịch sử) — kcal KHÔNG dùng weight |
+| **Loại bài** | 3 bài lớn (squat, deadlift, bench) | ~45 bài phụ trợ/cô lập theo 8 nhóm cơ |
+| **Snapshot** | Tính lại kcal từ công thức nếu re-save | Snapshot `bbMet` + `bbTier` → nếu xoá bài custom → vẫn dùng tier cũ, không drift |
+| **Độ tin cậy** | Cao (vật lý chắc chắn) | Trung bình (MET chung dân số) |
+| **Mục đích chính** | Theo dõi sức mạnh tuyệt đối (1RM, volume) | Pump + hypertrophy volume (tonnage) |
+
+### Ranh giới rõ ràng
+
+Trong code (`metabolismEngine.ts`):
+```
+if (session.bbMet != null && session.sets?.length)
+  return bodybuildingSessionKcal(session, weightKg);
+if (session.sets && session.sets.length > 0 && heightCm && isLiftingExercise(session.type))
+  return liftingSessionKcal(...);  // S-PL
+// Còn lại dùng MET_TABLE / customMet
+```
+
+Discriminator `bbMet != null` xác định duy nhất là S-BB; không thể rơi vào S-PL.
+
+### Giới hạn v1
+- **Hệ số MET là chung** (dân số bình thường) — chưa hiệu chỉnh theo fitness level /
+  kinh nghiệm cá nhân (beginner vs advanced có cadence khác).
+- **Thời gian rep cố định 3 giây** — người tập slow/pause sẽ tốn hơn, tập nhanh sẽ tốt hơn;
+  chưa có tuning.
+- **Tạ không ảnh hưởng công thức** — ước lượng này phù hợp cho hypertrophy (rep cao, không
+  max-effort), nhưng nếu người dùng tập nặng × ít rep (gần powerlifting) thì underestimate.
+- **Undo:** buổi tập bodybuilding có thể edit lại, nhưng nếu xoá bài custom rồi edit lại entry
+  cũ dùng bài đó, app sẽ dùng tier snapshot để tránh drift kcal — chỉ hoạt động nếu tier được
+  lưu; entry cũ trước khi có snapshot sẽ fallback tier → có rủi ro nhỏ.
+
+---
+
 ## 2. Đã làm (foundation — Session review + Opus)
 
 Phần **tính toán thuần** đã viết & test xong (không đụng tính năng cũ):

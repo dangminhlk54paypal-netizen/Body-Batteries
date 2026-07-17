@@ -82,12 +82,13 @@ export const en: TranslationSchema = {
     basketball: 'Basketball',
     badminton: 'Badminton',
     tennis: 'Tennis',
-    gym_strength: 'Bodybuilding',
+    gym_strength: 'Weight training (by minutes)',
     hiit: 'HIIT',
     yoga: 'Yoga',
     squat: 'Squat',
     bench_press: 'Bench press',
     deadlift: 'Deadlift',
+    bodybuilding: 'Bodybuilding',
     custom: 'Custom activity',
   },
 
@@ -96,6 +97,96 @@ export const en: TranslationSchema = {
     sports: 'Sports',
     gym: 'Gym/Weights',
     other: 'Other',
+  },
+
+  // S-BB muscle-group tab labels — keyed by MuscleGroup (types/energy.ts),
+  // shown in BodybuildingSheet's muscle-group browser and the custom-exercise
+  // form's group picker.
+  muscleGroups: {
+    chest: 'Chest',
+    back: 'Back',
+    legs: 'Legs',
+    shoulders: 'Shoulders',
+    biceps: 'Biceps',
+    triceps: 'Triceps',
+    core: 'Core',
+    glutes: 'Glutes',
+  },
+
+  // S-BB exercise MET tier labels — keyed by BbMetTier, shown in the
+  // custom-exercise form's tier picker (see docs/06 §1C for the Compendium
+  // anchors each tier maps to).
+  bbTiers: {
+    isolation: 'Isolation',
+    compound: 'Compound',
+    big_compound: 'Big compound',
+  },
+
+  // S-BB rest-style/intensity labels — keyed by BbIntensity, shown per
+  // exercise in BodybuildingSheet.
+  bbIntensity: {
+    light: 'Light',
+    moderate: 'Moderate',
+    superset: 'Superset (short rest)',
+  },
+
+  // S-BB built-in exercise library display names — keyed by
+  // BodybuildingExercise['id'] (src/lib/bodybuildingExercises.ts, stable,
+  // NOT stored in WorkoutSession for built-ins — always looked up live).
+  bbExercises: {
+    // Chest
+    dumbbell_bench_press: 'Dumbbell bench press',
+    incline_dumbbell_press: 'Incline dumbbell press',
+    chest_press_machine: 'Chest press machine',
+    dumbbell_fly: 'Dumbbell fly',
+    cable_crossover: 'Cable crossover',
+    // Back
+    lat_pulldown: 'Lat pulldown',
+    seated_cable_row: 'Seated cable row',
+    barbell_row: 'Barbell row',
+    pull_up: 'Pull-up',
+    one_arm_dumbbell_row: 'One-arm dumbbell row',
+    straight_arm_pulldown: 'Straight-arm pulldown',
+    face_pull: 'Face pull',
+    // Legs
+    leg_press: 'Leg press',
+    walking_lunge: 'Walking lunge',
+    leg_extension: 'Leg extension',
+    leg_curl: 'Leg curl',
+    bulgarian_split_squat: 'Bulgarian split squat',
+    calf_raise: 'Calf raise',
+    goblet_squat: 'Goblet squat',
+    // Shoulders
+    overhead_press: 'Overhead press',
+    lateral_raise: 'Lateral raise',
+    cable_lateral_raise: 'Cable lateral raise',
+    front_raise: 'Front raise',
+    rear_delt_fly: 'Rear delt fly',
+    arnold_press: 'Arnold press',
+    // Biceps
+    barbell_curl: 'Barbell curl',
+    dumbbell_curl: 'Dumbbell curl',
+    hammer_curl: 'Hammer curl',
+    cable_curl: 'Cable curl',
+    // Triceps
+    triceps_pushdown: 'Triceps pushdown',
+    skull_crusher: 'Skull crusher',
+    overhead_triceps_extension: 'Overhead triceps extension',
+    close_grip_bench_press: 'Close-grip bench press',
+    dips: 'Dips',
+    dumbbell_kickback: 'Dumbbell kickback',
+    // Core
+    crunch: 'Crunch',
+    plank: 'Plank',
+    hanging_leg_raise: 'Hanging leg raise',
+    russian_twist: 'Russian twist',
+    cable_woodchop: 'Cable woodchop',
+    ab_wheel_rollout: 'Ab wheel rollout',
+    // Glutes
+    hip_thrust: 'Hip thrust',
+    glute_bridge: 'Glute bridge',
+    cable_kickback: 'Cable kickback',
+    romanian_deadlift_dumbbell: 'Dumbbell Romanian deadlift',
   },
 
   nutrients: {
@@ -412,6 +503,7 @@ export const en: TranslationSchema = {
         'MET = how much energy an activity burns compared to sitting still. Pick based on how hard it feels (max {{max}} — even the most intense activities studied land around there).',
       saveActivityButton: 'Save activity',
       powerliftingChip: '🏋️ Powerlifting (sets × reps × weight)',
+      bodybuildingChip: '💪 Bodybuilding (by muscle group)',
       addActivityChip: '＋ Add activity',
       minutesPlaceholder: 'Minutes (e.g. 45)',
       stepsPlaceholder: 'Steps (optional)',
@@ -629,6 +721,34 @@ export const en: TranslationSchema = {
       warmupSetsOnly: '{{count}} warm-up sets',
       setsTonnage: '{{count}} sets · {{tonnage}}kg',
       plusWarmups: '{{main}} (+{{count}} warm-up)',
+    },
+    bodybuildingSheet: {
+      titleNew: '💪 Bodybuilding',
+      titleEditSuffix: ' — edit session',
+      subtitle:
+        'Pick a muscle group → exercise → enter sets/reps/weight. Kcal is estimated from intensity & reps, not the weight lifted.',
+      muscleSectionTitle: 'Pick a muscle group',
+      addExerciseHint: 'Tap an exercise to add it to the session',
+      noExercisesInMuscle: 'No exercises in this group yet — tap "＋ Add exercise" below.',
+      selectedSectionTitle: 'Added exercises',
+      noExercisesYet: 'No exercises added yet. Pick a muscle group above, then tap one.',
+      intensityLabel: 'Intensity',
+      weightPlaceholder: 'kg',
+      weightUnitLabel: 'kg ×',
+      repsPlaceholder: 'reps',
+      repsUnitLabel: 'reps',
+      addSetButton: '＋ Add set',
+      addCustomExerciseButton: '＋ Add exercise',
+      customExerciseNameLabel: 'Exercise name',
+      customExerciseNamePlaceholder: 'e.g. Resistance band curl',
+      customExerciseMuscleLabel: 'Muscle group',
+      customExerciseTierLabel: 'Exercise intensity tier',
+      saveExerciseButton: 'Save exercise',
+      deleteCustomExerciseTitle: 'Delete custom exercise?',
+      deleteCustomExerciseMessage: 'Remove "{{name}}" from your custom exercises?',
+      previewSummary: 'Estimated for the session: 🔥 ~{{kcal}} kcal · ~{{minutes}} min',
+      previewEmpty: 'Add at least one exercise with a set (kg × reps) to estimate kcal.',
+      confirmNewButton: 'Log session 💪',
     },
     masterBattery: {
       label: 'Body energy',

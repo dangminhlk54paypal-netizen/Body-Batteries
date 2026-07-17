@@ -26,6 +26,9 @@ export interface UserProfile {
 // 'custom' is the escape hatch for a user-defined activity (see
 // CustomActivity below) — it has no fixed MET_TABLE rate; the rate travels
 // with the individual WorkoutSession/CustomActivity instead.
+// 'bodybuilding' is the S-BB set-based muscle-group model (see below) — its
+// MET_TABLE entry is a 0 placeholder for the same reason as 'custom': the
+// real effective MET travels on the session itself (WorkoutSession.bbMet).
 export type ActivityType =
   | 'walking'
   | 'brisk_walking'
@@ -43,6 +46,7 @@ export type ActivityType =
   | 'squat'
   | 'bench_press'
   | 'deadlift'
+  | 'bodybuilding'
   | 'custom';
 
 // A user-defined activity (not in MET_TABLE), persisted in settingsStore so
@@ -82,6 +86,65 @@ export interface LiftingSet {
 // energyStore.addIntake/logActivity), instead of always assuming walking.
 export type StepActivityType = 'walking' | 'running' | 'hiking';
 
+// --- S-BB: bodybuilding-by-muscle-group energy model -----------------------
+// A self-built workout browsed by muscle group (chest/back/legs/...), logged
+// set-based like S-PL but priced via a MET-tier model instead of physics —
+// see docs/06-energy-expenditure.md §1C. Deliberately NOT the same model as
+// liftingEngine.ts: research (Compendium 2024, MyFitnessPal, Hevy/Strong) is
+// unanimous that per-exercise mechanical work isn't reliable for isolation
+// movements — a MET tier anchored to the Compendium's own resistance-training
+// codes is the honest estimate here.
+export type MuscleGroup =
+  | 'chest'
+  | 'back'
+  | 'legs'
+  | 'shoulders'
+  | 'biceps'
+  | 'triceps'
+  | 'core'
+  | 'glutes';
+
+export const MUSCLE_GROUPS: MuscleGroup[] = [
+  'chest',
+  'back',
+  'legs',
+  'shoulders',
+  'biceps',
+  'triceps',
+  'core',
+  'glutes',
+];
+
+// How metabolically demanding the exercise itself is (Compendium 2024 codes:
+// 02054=3.5 isolation/multi-exercise, 02052=5.0 squat/deadlift-class compound,
+// 02050=6.0 vigorous bodybuilding/powerlifting-class) — see BB_MET_TIER.
+export type BbMetTier = 'isolation' | 'compound' | 'big_compound';
+
+// Rest-style / pacing the user picks per exercise when logging — the
+// Compendium's own circuit/superset code (02055=5.8) sits ABOVE plain
+// moderate resistance training because short rest keeps heart rate elevated
+// (see BB_INTENSITY_FACTOR).
+export type BbIntensity = 'light' | 'moderate' | 'superset';
+
+// One built-in library entry (src/lib/bodybuildingExercises.ts). `id` is the
+// i18n key suffix (`bbExercises.<id>`) — never a display string itself.
+export interface BodybuildingExercise {
+  id: string;
+  muscle: MuscleGroup;
+  tier: BbMetTier;
+}
+
+// A user-defined bodybuilding exercise, mirroring CustomActivity — persisted
+// in settingsStore.customExercises so it can be re-picked from the
+// muscle-group browser. `nameVi` is free text (same convention as
+// CustomActivity.nameVi) regardless of the app's current display language.
+export interface CustomExercise {
+  id: string;
+  nameVi: string;
+  muscle: MuscleGroup;
+  tier: BbMetTier;
+}
+
 export interface WorkoutSession {
   type: ActivityType;
   minutes: number;
@@ -106,6 +169,29 @@ export interface WorkoutSession {
   // no DB migration is needed.
   customName?: string;
   customMet?: number;
+  // S-BB: set-based bodybuilding-by-muscle-group fields. Present ONLY when
+  // type === 'bodybuilding'. `bbExerciseId` is the built-in library id
+  // (BODYBUILDING_EXERCISES) or a custom exercise id (`bbx_*`); `bbMuscle`,
+  // `bbTier`, and `bbMet` are snapshotted at log time (bbMet = the effective
+  // MET — tier × intensity factor — see bodybuildingEngine.bbEffectiveMet) so
+  // a later change to the constants or a deleted custom exercise never
+  // rewrites history. `bbTier` specifically exists so re-opening an entry for
+  // editing can reconstruct the intensity that produced `bbMet` (see
+  // BodybuildingSheet.deriveIntensity) WITHOUT needing to look the exercise
+  // back up — a custom exercise's tier is otherwise unrecoverable once the
+  // user deletes it from settingsStore.customExercises, which would silently
+  // drift a re-saved historical session's kcal. `bbName` is set ONLY for a
+  // custom exercise (its free-text name, same convention as customName); a
+  // built-in exercise's display name is always looked up live via
+  // `t('bbExercises.' + bbExerciseId)`, never stored, since the library
+  // itself is bundled data, not user history. `sets` (LiftingSet[], reused)
+  // carries the logged sets — reps drive kcal, weightKg is recorded for
+  // tonnage/volume display only (see docs/06 §1C).
+  bbExerciseId?: string;
+  bbMuscle?: MuscleGroup;
+  bbTier?: BbMetTier;
+  bbMet?: number;
+  bbName?: string;
 }
 
 // Breakdown of one day's energy expenditure, all in kcal.

@@ -39,6 +39,10 @@ Mỗi Mode thay đổi *mục tiêu nạp* và *tốc độ xả* của từng p
 ### 2. Nạp & Xả năng lượng
 - **Nạp:** ghi lại bữa ăn / dưỡng chất → pin tăng.
 - **Xả:** tự động giảm theo thời gian trong ngày + theo Mode + theo hoạt động.
+- **Ghi tập luyện chi tiết:**
+  - **S-PL (Powerlifting):** Squat/Bench/Deadlift theo set×rep×tạ, mô hình vật lý (công nâng + đốt lúc nghỉ).
+  - **S-BB (Bodybuilding):** ~45 bài phụ trợ/cô lập theo 8 nhóm cơ, mô hình MET-tier×cường độ (isolate, compound, superset).
+  - Các hoạt động khác: chạy, đạp xe, HIIT, yoga... (MET-based, theo phút hoặc bước chân).
 
 ### 3. Backend thông minh & tự động
 - 🔄 **Reset mỗi ngày:** đầu ngày các pin nạp lại theo mục tiêu của Mode.

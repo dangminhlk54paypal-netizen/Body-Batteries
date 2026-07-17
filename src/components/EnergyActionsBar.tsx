@@ -16,6 +16,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { MET_TABLE } from '../lib/metabolicConstants';
 import { FoodLogModal } from './FoodLogModal';
 import { PowerliftingSheet } from './PowerliftingSheet';
+import { BodybuildingSheet } from './BodybuildingSheet';
 import { parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityType, CustomActivity, WorkoutSession } from '../types/energy';
 import { colors } from '../lib/theme';
@@ -29,13 +30,21 @@ import type { Language } from '../i18n/types';
 export function activityLabel(type: ActivityType, language: Language): string {
   return translate(language, `activities.${type}`);
 }
-export const ACTIVITY_TYPES = Object.keys(MET_TABLE).filter((t) => t !== 'custom') as ActivityType[];
+// Excludes 'custom' (rate travels on the session, see CustomActivity) AND
+// 'bodybuilding' (S-BB — rate travels on WorkoutSession.bbMet, see S-BB
+// exercises logged only through BodybuildingSheet's own muscle-group picker,
+// never this generic minutes-based chip list).
+export const ACTIVITY_TYPES = Object.keys(MET_TABLE).filter(
+  (t) => t !== 'custom' && t !== 'bodybuilding'
+) as ActivityType[];
 
 // The activity picker's top-level groups. Squat/bench/deadlift are absent on
 // purpose: they're logged set-based through the Powerlifting sheet (S-PL),
-// which the Gym/Tạ group opens — their MET entries remain only for rows
-// logged before S-PL. `gym_strength` keeps its id but reads "Bodybuilding"
-// (the user's naming); it stays minutes-based in v1. Group labels are looked
+// which the Gym/Tạ group opens. `gym_strength` keeps its id but now reads
+// "Weight training (by minutes)" — its old "Bodybuilding" label was renamed
+// to make room for the S-BB muscle-group feature's own "Bodybuilding" chip in
+// the same group (they'd otherwise collide); `gym_strength` itself stays
+// minutes-based/MET-table-driven, unrelated to S-BB. Group labels are looked
 // up at render time via `t(\`activityCategories.${key}\`)` — no separate
 // helper needed since every call site already has the `t` function in scope.
 export const ACTIVITY_CATEGORIES: { key: string; types: ActivityType[] }[] = [
@@ -89,6 +98,7 @@ export function EnergyActionsBar() {
   const [calorieOpen, setCalorieOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [powerliftingOpen, setPowerliftingOpen] = useState(false);
+  const [bodybuildingOpen, setBodybuildingOpen] = useState(false);
   const calorieSheetStyle = useSheetSlide(calorieOpen);
   const activitySheetStyle = useSheetSlide(activityOpen);
 
@@ -135,6 +145,11 @@ export function EnergyActionsBar() {
   function openPowerlifting() {
     setActivityOpen(false);
     setPowerliftingOpen(true);
+  }
+
+  function openBodybuilding() {
+    setActivityOpen(false);
+    setBodybuildingOpen(true);
   }
 
   function selectBuiltIn(t: ActivityType) {
@@ -393,17 +408,28 @@ export function EnergyActionsBar() {
               </View>
             ) : (
               <View style={styles.chips}>
-                {/* Set-based powerlifting lives in its own sheet (S-PL) — this
-                    chip hands over instead of picking a minutes-based type. */}
+                {/* Set-based powerlifting (S-PL) and bodybuilding-by-muscle-group
+                    (S-BB) each live in their own sheet — these chips hand over
+                    instead of picking a minutes-based type. */}
                 {category === 'gym' && (
-                  <Pressable
-                    onPress={openPowerlifting}
-                    style={({ pressed }) => [styles.chip, styles.chipLifting, pressed && styles.pressed]}
-                  >
-                    <Text style={styles.chipLiftingText}>
-                      {t('components.energyActionsBar.powerliftingChip')}
-                    </Text>
-                  </Pressable>
+                  <>
+                    <Pressable
+                      onPress={openPowerlifting}
+                      style={({ pressed }) => [styles.chip, styles.chipLifting, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.chipLiftingText}>
+                        {t('components.energyActionsBar.powerliftingChip')}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={openBodybuilding}
+                      style={({ pressed }) => [styles.chip, styles.chipLifting, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.chipLiftingText}>
+                        {t('components.energyActionsBar.bodybuildingChip')}
+                      </Text>
+                    </Pressable>
+                  </>
                 )}
                 {(ACTIVITY_CATEGORIES.find((c) => c.key === category)?.types ?? []).map((actType) => (
                   <Pressable
@@ -520,6 +546,9 @@ export function EnergyActionsBar() {
 
       {/* S-PL: set-based powerlifting logging (squat/bench/deadlift) */}
       <PowerliftingSheet visible={powerliftingOpen} onClose={() => setPowerliftingOpen(false)} />
+
+      {/* S-BB: set-based bodybuilding logging, browsed by muscle group */}
+      <BodybuildingSheet visible={bodybuildingOpen} onClose={() => setBodybuildingOpen(false)} />
     </View>
   );
 }
