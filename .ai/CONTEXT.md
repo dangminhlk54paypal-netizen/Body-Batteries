@@ -112,7 +112,17 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-17 (Session 14 mới, xem `.ai/SESSION_LOG.md`).** Tích hợp **đa ngôn
+**Cập nhật lần cuối: 2026-07-17 (Session 16, xem `.ai/SESSION_LOG.md`).** **Popup minh bạch công
+thức** ở Cài đặt → Hồ sơ cơ thể: 2 con số kcal ("Nhu cầu năng lượng ước tính" và "Mục tiêu
+calo/ngày") giờ **bấm được** (gạch chân + ⓘ) → mở popup nhỏ giữa màn hình giải thích từng bước
+tính với đúng số liệu đang nhập (BMR Mifflin-St Jeor → × hệ số vận động → + kcal bước chân;
+mức duy trì → Δkg×7 700 → chia ngày → chặn an toàn ≤20%/≤750 kcal/không dưới BMR). Số hiển thị
+lấy từ chính hàm engine nên luôn khớp; i18n đủ VI/EN/DE. `npm run verify` PASS (tsc + eslint sạch,
+**460/460 test**). **CHƯA TEST MÁY THẬT.** Cùng ngày trước đó: **Session 15 — S-BB Bodybuilding
+theo nhóm cơ** (MET-tier × cường độ × set, ~45 bài/8 nhóm cơ, đã commit `eaf1de0`, cũng chưa test
+máy thật — checklist 17 bước trong SESSION_LOG Session 15).
+
+**Trước đó — Session 14 (2026-07-17, xem `.ai/SESSION_LOG.md`):** Tích hợp **đa ngôn
 ngữ (Việt/Anh/Đức)** cho toàn bộ giao diện + file Excel xuất ra, chọn từ mục "🌐 NGÔN NGỮ" đầu màn
 Cài đặt. Module mới `src/i18n/` — tự viết (không dùng i18next), dựa trên `settingsStore.language`
 (Zustand + AsyncStorage có sẵn) + hook `useT()` chỉ theo dõi đúng field `language` nên đổi ngôn
@@ -262,7 +272,13 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (cập nhật Session 18, 2026-07-10):** Người dùng cần **test tay trên điện
+**Việc phải làm KẾ TIẾP (cập nhật Session 16 mới, 2026-07-17):** Người dùng **test tay trên điện
+thoại** 2 việc mới nhất: (1) 2 popup minh bạch công thức ở Hồ sơ cơ thể (Session 16 mới — bấm
+"X kcal/ngày ⓘ" và "Y kcal ⓘ", đổi số liệu/giới tính/ngôn ngữ xem popup đổi theo) → test ổn thì
+commit; (2) S-BB Bodybuilding (Session 15 mới — checklist 17 bước, đã commit `eaf1de0`). Sau đó
+tiếp tục backlog cũ bên dưới (đánh số theo track cũ của SESSION_LOG):
+
+**Backlog cũ (cập nhật Session 18 track cũ, 2026-07-10):** Người dùng cần **test tay trên điện
 thoại** 4 bug vừa vá + tính năng ml/L (checklist cụ thể ở cuối Session 18 trong `.ai/SESSION_LOG.md`
 và `.ai/parallel-reports/S-A.md`) — đặc biệt bug 3d (modal "Sửa thành phần") là hành vi RN Modal
 runtime, không có test tự động nào phủ được. Sau khi test tay ổn → **commit** (hiện toàn bộ CHƯA

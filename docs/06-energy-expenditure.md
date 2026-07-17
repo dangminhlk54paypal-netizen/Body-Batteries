@@ -336,6 +336,19 @@ chỉ là giá trị khởi tạo ban đầu; mỗi người dùng tự sửa đ
   - Cân nặng: 20–300 kg · Chiều cao: 50–250 cm · Tuổi: 1–120.
 - `BodyProfileCard.tsx` hiển thị khoảng hợp lệ ngay trên nhãn ô nhập, giải
   thích ngắn gọn ý nghĩa của BMR, và báo lỗi/thành công rõ ràng khi lưu.
+- **Minh bạch công thức (2026-07-17):** hai con số kcal trên card đều **bấm
+  được** (gạch chân + ⓘ) và mở popup nhỏ giữa màn hình giải thích từng bước
+  tính bằng đúng số liệu đang nhập (live, chưa cần bấm Lưu):
+  - "Nhu cầu năng lượng ước tính" → BMR Mifflin-St Jeor (đúng hằng số ±5/−161
+    theo giới tính) → × hệ số vận động (`OCCUPATION_FACTORS`) → + kcal bước
+    chân trung bình (`KCAL_PER_STEP_PER_KG`) = TDEE.
+  - "Mục tiêu calo/ngày" → mức duy trì → Δkg × 7 700 kcal/kg → chia số ngày
+    (hoặc "tốc độ an toàn tối đa" nếu bỏ trống tuần) → chặn an toàn
+    (≤20% duy trì, ≤750 kcal, không dưới BMR) → mục tiêu cuối.
+  - Các số hiển thị lấy từ CHÍNH các hàm engine (`basalMetabolicRate`,
+    `stepsKcal`, `dailyCalorieTarget`) nên luôn khớp con số ngoài card; popup
+    có i18n đủ VI/EN/DE (`components.bodyProfileCard.tdeeBreakdown` /
+    `goalBreakdown`).
 
 ---
 

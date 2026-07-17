@@ -1013,6 +1013,51 @@ mặc định" cho mọi phiên AI về sau khi đụng UI:
 
 ---
 
+## Session 16 — 2026-07-17 (Popup minh bạch công thức BMR/TDEE + mục tiêu calo)
+
+**Làm gì:** Trong Cài đặt → Hồ sơ cơ thể, làm 2 con số kcal bấm được để mở
+popup nhỏ giữa màn hình giải thích từng bước tính: (1) "Nhu cầu năng lượng ước
+tính: X kcal/ngày ⓘ" → BMR Mifflin-St Jeor (số thật của người dùng thế vào
+công thức) → × hệ số vận động → + kcal bước chân = TDEE; (2) "Mục tiêu
+calo/ngày: Y kcal ⓘ" → mức duy trì → Δkg × 7 700 → chia số ngày (hoặc tốc độ
+an toàn tối đa) → chặn an toàn (≤20%, ≤750 kcal, không dưới BMR) → mục tiêu.
+
+**Kết quả:**
+- `src/components/BodyProfileCard.tsx` — 2 giá trị kcal thành Pressable (gạch
+  chân + ⓘ, có accessibilityLabel); thêm `InfoPopup` (Modal fade giữa màn
+  hình, bấm nền/nút Đóng để tắt, ScrollView chống tràn) + `InfoStep` (nhãn →
+  công thức → kết quả). Số hiển thị lấy từ CHÍNH hàm engine
+  (`basalMetabolicRate`, `stepsKcal`, `dailyCalorieTarget` +
+  `OCCUPATION_FACTORS`/`KCAL_PER_STEP_PER_KG`/`MAX_DEFICIT_*`/
+  `KCAL_PER_KG_BODY_FAT`) nên luôn khớp số ngoài card; popup phản ánh live số
+  đang nhập (chưa cần Lưu). Edge case: Δ/ngày làm tròn về 0 → dòng "mục tiêu =
+  mức duy trì"; tăng cân hiển thị phép cộng thay vì trừ.
+- i18n đủ 3 ngôn ngữ (vi → en → de): `components.bodyProfileCard.tdeeBreakdown`
+  + `goalBreakdown` (+ `tdeeInfoA11y`/`goalInfoA11y`; `kcalPerDayValue`/
+  `kcalValue` thêm hậu tố ⓘ). KHÔNG chuỗi cứng — tuân thủ MANDATORY RULE.
+- `npm run verify` — PASS: tsc sạch, eslint sạch, 460/460 test (39 suite).
+- Docs: `docs/06-energy-expenditure.md` §5 thêm mục "Minh bạch công thức".
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- App chưa có pattern popup nhỏ giữa màn hình (mọi modal đều là BottomSheet) →
+  làm `InfoPopup` cục bộ trong BodyProfileCard, chưa tách ra `ui/` vì mới có 1
+  nơi dùng; nếu nơi thứ 2 cần thì tách.
+- Số trong dòng công thức (ví dụ perDay theo tuần) làm tròn để hiển thị nên có
+  thể lệch ≤1 kcal so với số engine tính nội bộ — các dòng đều dùng "≈", còn
+  số "áp dụng"/"mục tiêu" cuối lấy thẳng từ `dailyCalorieTarget` nên khớp
+  tuyệt đối.
+
+**Session tiếp theo phải làm:**
+1. **Test tay trên điện thoại:** Cài đặt → Hồ sơ cơ thể → (a) bấm "X kcal/ngày
+   ⓘ" → popup BMR hiện đúng số đang nhập, đổi giới tính/mức vận động → số đổi
+   theo; (b) nhập mục tiêu cân nặng (giảm, tăng, để trống tuần, tuần quá nhanh
+   để dính chặn an toàn) → bấm "Y kcal ⓘ" kiểm tra từng dòng; (c) đổi VI/EN/DE
+   trong cả 2 popup; (d) bấm nền tối + nút Đóng để tắt popup.
+2. Test ổn → commit (gợi ý message: "feat(profile): tappable BMR/TDEE & calorie-goal breakdown popups" + Co-Authored-By).
+3. Vẫn còn nợ test tay S-BB của Session 15 (checklist 17 bước) nếu chưa làm.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
