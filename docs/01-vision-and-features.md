@@ -44,11 +44,49 @@ Mỗi Mode thay đổi *mục tiêu nạp* và *tốc độ xả* của từng p
   - **S-BB (Bodybuilding):** ~45 bài phụ trợ/cô lập theo 8 nhóm cơ, mô hình MET-tier×cường độ (isolate, compound, superset).
   - Các hoạt động khác: chạy, đạp xe, HIIT, yoga... (MET-based, theo phút hoặc bước chân).
 
+### 2.1. Ghi Nạp/Xả cho ngày quá khứ (3 ngày gần nhất)
+- **Món ăn (Nạp):** trước đây cho lùi tối đa 35 ngày, giờ SIẾT về tối đa 3 ngày (hôm qua/hôm kia/hôm kìa) để thống nhất.
+- **Vận động (Xả):** giờ đã thêm khả năng ghi cho ngày quá khứ, cũng tối đa 3 ngày, có chip nhanh "Hôm kìa" và dòng cảnh báo hiển thị đang ghi cho ngày nào.
+- **Cơ chế:** khi ghi vận động cho ngày cũ, pin Vận động/mục tiêu ăn của **NGÀY ĐÓ** được cập nhật, còn pin Năng lượng/Vận động của **HÔM NAY** không hề bị ảnh hưởng.
+- **Giới hạn đã biết:** hiện chưa có màn hình xem lại hoặc xoá vận động đã ghi cho ngày quá khứ — nếu gõ nhầm số cho "Hôm kìa" thì chưa có cách sửa trong app ở bản này.
+
 ### 3. Backend thông minh & tự động
 - 🔄 **Reset mỗi ngày:** đầu ngày các pin nạp lại theo mục tiêu của Mode.
 - 🔔 **Nhắc nhở trong ngày:** nếu một pin sắp cạn → gửi thông báo.
 - 🚨 **Cảnh báo thiếu ăn nghiêm trọng:** theo ngưỡng người dùng tự thiết lập.
 - 📊 **Tự lưu Excel:** dữ liệu năng lượng/ăn uống tự xuất ra file Excel lưu trên điện thoại, và **tự xoá khỏi app sau 1 tuần** (chỉ giữ bản Excel).
+
+### 3.1. Fix parse dấu phẩy thập phân
+- Bàn phím decimal-pad trên iPhone locale VI/DE dùng dấu phẩy (vd gõ "79,4"), nhưng `parseFloat` cắt tại dấu phẩy.
+- Đã thêm hàm `parseDecimal()` trong `src/lib/units.ts` (thay `,` thành `.` trước khi parse).
+- Áp dụng ở TẤT CẢ các ô nhập số thập phân trong app: cân nặng, hồ sơ cơ thể, khối lượng món ăn, gram/khẩu phần, kcal thủ công, số phút/số bước vận động, tạa/reps, form thêm món tùy chỉnh.
+
+### 3.2. Đổi tên nút dưới pin chính
+- Bỏ nút "🍽️ Ăn thêm (kcal)" và modal nhập calo tay đi kèm.
+- 2 nút còn lại đổi tên: "🍱 Ghi món ăn (từ danh sách)" → "⚡ Nạp", "🏃 Vận động" → "🔥 Xả".
+- Đã dịch đủ 3 ngôn ngữ (VI/EN/DE) — i18n-covered.
+
+### 3.3. Tiêu đề mục trong Cài đặt to/đậm hơn
+- Các tiêu đề mục (NGÔN NGỮ, HỒ SƠ CƠ THỂ, SỨC KHOẺ, THÔNG BÁO, KHUNG GIỜ BỮA ĂN, DỮ LIỆU, GIAO DIỆN) tăng cỡ chữ và độ đậm để nổi bật hơn so với mô tả bên dưới.
+
+### 3.4. Biểu đồ/badge "Lịch sử 7 ngày" đổi màu để dễ phân biệt
+- Trước đây "Dinh dưỡng" và "Năng lượng" đều dùng tông vàng-cam khó phân biệt.
+- Giờ Dinh dưỡng = xanh dương, Năng lượng = cam — áp dụng cho cả đường biểu đồ lẫn viền badge trên từng thẻ ngày.
+
+### 3.5. Sheet "Khuyến nghị hàng ngày" khi bấm vào pin chính
+- Bấm vào viên pin năng lượng chính ở màn Home giờ mở ra 1 bảng khuyến nghị dinh dưỡng/lối sống tổng quan dựa theo hồ sơ cơ thể (tuổi/giới/chiều cao/cân nặng).
+- Nội dung: mục tiêu calo, cân nặng khỏe mạnh theo BMI, đạm, tinh bột, giới hạn đường và muối, nước, vận động, giấc ngủ.
+- Mỗi mục có ghi chú nguồn tham khảo (WHO/EFSA/IOM/National Sleep Foundation...).
+- Có dòng miễn trừ trách nhiệm "Chỉ để tham khảo — không phải tư vấn y tế" ở cuối.
+- Đầy đủ 3 ngôn ngữ (VI/EN/DE) — i18n-covered.
+- **Quyết định kỹ thuật:** tái sử dụng đúng công thức tính nước và giấc ngủ đã có sẵn trong app (dùng ở màn Home khi ghi nước/ngủ tay) thay vì tạo công thức riêng — để đảm bảo 2 nơi trong app luôn cho ra cùng 1 con số cho cùng 1 hồ sơ.
+
+### 3.6. Giao diện Sáng/Tối (light/dark theme)
+- Thêm lựa chọn chủ đề trong Cài đặt → mục GIAO DIỆN: 2 nút "🌙 Tối" / "☀️ Sáng".
+- Chọn Sáng thì toàn bộ app (mọi màn hình, thanh tab, thanh trạng thái) đổi sang nền trắng ngay lập tức, không cần khởi động lại app.
+- Chế độ Tối là mặc định và giữ nguyên y hệt giao diện cũ (không có gì đổi nếu không bấm sang Sáng).
+- Lựa chọn được ghi nhớ qua lần mở app sau.
+- Đầy đủ i18n — i18n-covered.
 
 ### 4. Diary (Nhật ký) — chế độ riêng tư
 - Người dùng **ghi đè (write-only)** vào nhật ký.

@@ -389,6 +389,31 @@ chỉ là giá trị khởi tạo ban đầu; mỗi người dùng tự sửa đ
 
 ---
 
+## 2. Ghi vận động cho ngày quá khứ (Session 2026-07-17)
+
+> Tính năng cho phép ghi lại vận động của ngày quá khứ (tối đa 3 ngày: hôm qua/hôm kia/hôm kìa).
+> Cơ chế: khi ghi vận động cho một ngày cũ, pin Vận động và mục tiêu ăn của **NGÀY ĐÓ** được cập nhật;
+> pin Năng lượng/Vận động của **HÔM NAY** không hề bị ảnh hưởng.
+
+### Giao diện
+- Form ghi vận động có thêm lựa chọn ngày: "Hôm nay", "Hôm qua", "Hôm kia", "Hôm kìa" (tối đa -3 ngày).
+- Chip nhanh "Hôm kìa" để lấy nhanh, hoặc bấm ngày để chọn.
+- Dòng cảnh báo hiển thị "Đang ghi vận động cho: [ngày]" để tránh nhầm.
+
+### Quy tắc lưu
+- Kcal tính từ công thức (MET-based hoặc Powerlifting/Bodybuilding) vẫn như thường.
+- Bước tương đương (step-equivalent) được tính cùng cách.
+- Pin Vận động của **ngày ghi** được nạp; ngày hôm nay **không đổi**.
+- Mục tiêu ăn của **ngày ghi** được cập nhật dựa theo mục tiêu calo - vận động đã ghi.
+
+### Giới hạn đã biết (v1)
+- **Không có UI xem lại hoặc xoá:** hiện chưa có màn hình để xem/sửa/xoá vận động đã ghi cho ngày quá khứ.
+  Nếu gõ nhầm số cho "Hôm kìa" thì không có cách sửa trong app ở bản này (cần chờ phiên sau hoặc sửa trong 
+  database trực tiếp ngoài app).
+- Chỉ áp dụng cho **Diary/History/Activity tabs**, không xuyên qua Apple Health sync (Health chỉ lấy ngày hôm nay).
+
+---
+
 ## Sources (Tài liệu tham khảo)
 
 ### Bước chân & Cadence

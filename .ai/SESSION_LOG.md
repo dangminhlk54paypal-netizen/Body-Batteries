@@ -1058,6 +1058,59 @@ an toàn tối đa) → chặn an toàn (≤20%, ≤750 kcal, không dưới BMR
 
 ---
 
+## Session 17 — 2026-07-17 (UI feedback round 3: Nạp/Xả rename + theme + parse dấu phẩy + khuyến nghị + color-badge)
+
+**Làm gì:** Bốn wave phiên Sonnet đã QA và commit xong những thay đổi UI/UX: (1) sửa bug parse dấu phẩy thập phân từ bàn phím VI/DE; (2) đổi tên nút Nạp/Xả + bỏ modal "ăn thêm kcal"; (3) thêm giao diện Sáng/Tối; (4) thêm sheet khuyến nghị khi bấm pin chính + đổi màu biểu đồ để phân biệt dễ hơn + tiêu đề mục Cài đặt to/đậm hơn + ghi vận động cho ngày quá khứ (3 ngày gần nhất). **Phiên này (Haiku):** chỉ cập nhật docs + session log + commit + push (CHƯA test trên máy thật).
+
+**Kết quả (CODE ĐÃ XONG, VERIFY SẠCH, CHƯA TEST MÁY THẬT):**
+
+**7 mục tính năng đã hoàn thành & commit (Session 15–16 làm code, phiên này ghi log/docs):**
+1. **Fix parse dấu phẩy:** hàm `parseDecimal()` trong `src/lib/units.ts`, áp dụng ở tất cả ô nhập số thập phân (cân nặng, gram, phút, bước, tạa/rep, form nhập món tùy chỉnh).
+2. **Nút Nạp/Xả:** bỏ nút "Ăn thêm (kcal)" + modal nhập calo tay; đổi tên "🍱 Ghi món ăn" → "⚡ Nạp", "🏃 Vận động" → "🔥 Xả"; i18n đầy đủ 3 ngôn ngữ.
+3. **Giao diện Sáng/Tối:** thêm lựa chọn trong Cài đặt mục GIAO DIỆN; field `themeMode` trong `settingsStore`; 2 palette `darkColors`/`lightColors` trong `src/lib/theme.ts`; chuyển đổi ngay lập tức không cần khởi động lại app; hook `useThemeColors()` chỉ re-render component có dùng.
+4. **Sheet khuyến nghị hàng ngày:** bấm pin Năng lượng chính mở ra bảng dựa trên hồ sơ cơ thể (mục tiêu calo, BMI, đạm, tinh bột, muối, nước, vận động, giấc ngủ); mỗi mục có ghi chú nguồn (WHO/EFSA/IOM/NSF); dòng miễn trừ trách nhiệm "Chỉ để tham khảo"; tái sử dụng công thức nước/giấc ngủ có sẵn để đảm bảo nhất quán.
+5. **Màu biểu đồ/badge:** Dinh dưỡng = xanh dương, Năng lượng = cam; áp dụng cho đường biểu đồ + viền badge trên từng thẻ ngày trong Lịch sử.
+6. **Tiêu đề mục Cài đặt:** tăng cỡ chữ và độ đậm (NGÔN NGỮ, HỒ SƠ CƠ THỂ, SỨC KHOẺ, THÔNG BÁO, KHUNG GIỜ BỮA ĂN, DỮ LIỆU, GIAO DIỆN).
+7. **Ghi vận động ngày quá khứ:** thêm lựa chọn ngày (Hôm nay/Hôm qua/Hôm kia/Hôm kìa, tối đa -3 ngày); pin Vận động của **NGÀY ĐÓ** được cập nhật, nhưng pin Năng lượng **HÔM NAY** không ảnh hưởng; giới hạn đã biết: chưa có UI xem/xoá lại.
+
+**Kiểm tra trước commit:**
+- `npm run verify` — ✅ **503 test PASS / 42 suite**, tsc sạch, eslint sạch.
+- Số liệu cuối phiên: `npx tsc --noEmit` 0 lỗi · `npx eslint 'src/**/*.{ts,tsx}'` 0 lỗi/cảnh báo · `npm run verify` full 503/503 test.
+
+**Docs cập nhật (phiên này):**
+- `docs/01-vision-and-features.md` — thêm các mục 1-7 ở phần Nạp & Xả + các mục 3.1-3.6 (fix dấu phẩy, Nạp/Xả, tiêu đề, màu, khuyến nghị, theme).
+- `docs/03-architecture.md` — thêm mục "🎨 Giao diện Sáng/Tối" (cơ chế `themeMode`, 2 palette, hook, persist) + mục "🔢 Parse số thập phân" (`parseDecimal()` bắt buộc dùng).
+- `docs/06-energy-expenditure.md` — thêm mục "2. Ghi vận động cho ngày quá khứ" (giao diện, quy tắc lưu, giới hạn v1).
+- `docs/HUONG-DAN-SU-DUNG-APP.md` (tiếng Việt) — bổ sung mục 3.2-3.3 (pin khuyến nghị, nút Nạp/Xả + ghi ngày quá khứ, parse dấu phẩy), mục 4 (biểu đồ màu), mục 6.7 (giao diện Sáng/Tối).
+- `docs/USER-GUIDE-DE.md` (tiếng Đức) — tương tự như Việt.
+
+**Files tạo mới (phiên này — docs/log):**
+- `.ai/SESSION_LOG.md` — thêm entry này.
+
+**2 commits được tạo (tuần tự, không gộp):**
+1. Commit 1 (code, toàn bộ wave S-S1…S-S7):
+   ```
+   feat(ui): Nạp/Xả rename + backfill 3 ngày, sheet khuyến nghị dinh dưỡng, theme sáng/tối, fix parse dấu phẩy cân nặng
+   
+   Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+   ```
+2. Commit 2 (docs + session log):
+   ```
+   docs: cập nhật hướng dẫn + kiến trúc cho round UI feedback 2026-07-17
+   
+   Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+   ```
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Code 4 wave đã hoàn thành & QA từ các phiên trước; phiên này chỉ ghi log, không tìm thấy vấn đề mới.
+- Nhắc nhở bắt buộc: **CHƯA test trên máy thật** — cần user tự kiểm tra qua Expo Go (tuân theo quy ước project: "CHƯA TEST TRÊN MÁY THẬT — cần user tự kiểm tra").
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật bắt buộc** (chưa ai xác nhận): (a) Cài đặt → đổi ngôn ngữ VI/EN/DE rồi đổi theme Sáng/Tối, xác nhận mọi chữ hiển thị đúng; (b) bấm pin Năng lượng → xem sheet khuyến nghị (6 mục + disclaimer); (c) ghi cân nặng dùng dấu phẩy "78,5" và dấu chấm "78.5" → app chấp nhận cả 2; (d) nạp 1 món + xã vận động 3 ngày quá khứ (dùng 3 chip nhanh) → pin Vận động ngày đó cập nhật, HÔM NAY không ảnh hưởng; (e) biểu đồ Lịch sử: 2 đường khác màu (xanh dương vs cam) rõ ràng, thẻ ngày badge có màu tương ứng.
+2. Nếu ổn → chuẩn bị pull request cho `main` (dùng `gh pr create`), hoặc push thẳng nếu user cho phép.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

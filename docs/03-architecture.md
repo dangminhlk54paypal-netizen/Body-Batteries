@@ -123,6 +123,32 @@ dịch này (không hardcode chuỗi) — luật đầy đủ nằm ở `AGENTS.
 4. Xong — nút chọn ở Cài đặt render tự động từ `LANGUAGES`.
 Quy trình chi tiết: skill `.ai/skills/add-language.md`.
 
+## 🎨 Giao diện Sáng/Tối (Light/Dark Theme — Session 2026-07-17)
+
+Ứng dụng hỗ trợ chế độ **Sáng (Light)** và **Tối (Dark)** với khả năng chuyển đổi tức thì trong 
+Cài đặt → mục GIAO DIỆN.
+
+**Cơ chế:**
+- Field `themeMode` ('light' | 'dark') trong Zustand `settingsStore` — giống hệt cách `language` đã làm.
+- Không dùng React Context vì app theo quy ước không dùng Context; hook `useThemeColors()` / `useThemedStyles()` 
+  trong `src/hooks/useThemeColors.ts` chỉ theo dõi field `themeMode` của store — đổi theme chỉ vẽ lại 
+  component có gọi hook này, không vẽ lại toàn app.
+- Hai palette màu `darkColors` / `lightColors` định nghĩa trong `src/lib/theme.ts`.
+- Lựa chọn lưu tự động vào AsyncStorage qua middleware `persist`.
+
+**Giới hạn v1:**
+- Màu sắc là cố định (không tuning theo brand); nếu thêm màu tùy chỉnh sau, sửa trong `theme.ts`.
+- Chế độ Tối (mặc định) giữ nguyên giao diện cũ; chế độ Sáng là bổ sung.
+
+## 🔢 Parse số thập phân với dấu phẩy (src/lib/units.ts)
+
+Bàn phím decimal-pad trên iPhone locale VI/DE sử dụng dấu phẩy (`,`) thay vì dấu chấm (`.`).
+Hàm `parseDecimal()` trong `src/lib/units.ts` xử lý tự động: thay `,` thành `.` rồi gọi `parseFloat()`.
+
+**Áp dụng:** tất cả ô nhập số thập phân trong app (cân nặng, chiều cao, khối lượng món ăn, gram, 
+kcal thủ công, phút, bước, tạa/reps, form thêm món tùy chỉnh) phải dùng `parseDecimal()` để tránh 
+mất dữ liệu sau dấu phẩy.
+
 ## 🗃️ Mô hình dữ liệu (Data Model)
 
 Các "bảng" dữ liệu chính lưu trong SQLite. *Tên cột bằng tiếng Anh (theo luật code), mô tả bằng tiếng Việt.*
