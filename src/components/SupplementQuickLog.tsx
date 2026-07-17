@@ -8,7 +8,8 @@ import { getAnyFoodById } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { gramsForPortion } from '../domain/food/foodNutrition';
 import type { FoodItem, FoodLogEntry } from '../types/food';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import * as haptics from '../lib/haptics';
 import { useT } from '../i18n/useT';
 
@@ -31,6 +32,7 @@ const BUILT_IN_SUPPLEMENTS = FOOD_ITEMS.filter((f) => f.category === 'supplement
 
 export function SupplementQuickLog({ todayLog }: Props) {
   const { t } = useT();
+  const styles = useThemedStyles(createStyles);
   const logFood = useEnergyStore((s) => s.logFood);
 
   // Bumped after add/edit so the memoised list re-reads the custom registry.
@@ -134,13 +136,13 @@ export function SupplementQuickLog({ todayLog }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     gap: 8,
   },
   title: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     paddingHorizontal: 20,
   },
   row: {
@@ -149,12 +151,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: c.borderSubtle,
     gap: 2,
     minWidth: 120,
   },
@@ -165,41 +167,41 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chipLogged: {
-    borderColor: colors.info,
+    borderColor: c.info,
   },
   chipAdd: {
     justifyContent: 'center',
     alignItems: 'center',
     borderStyle: 'dashed',
-    borderColor: colors.info,
+    borderColor: c.info,
     minWidth: 90,
   },
   chipAddText: {
-    color: colors.info,
+    color: c.info,
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
   },
   chipName: {
-    color: colors.textLight,
+    color: c.textLight,
     fontSize: 13,
     fontWeight: '600',
     flexShrink: 1,
   },
   chipEdit: {
-    color: colors.textTertiary,
+    color: c.textTertiary,
     fontSize: 13,
   },
   chipMeta: {
-    color: colors.textMuted,
+    color: c.textMuted,
     fontSize: 10,
   },
   chipMetaLogged: {
-    color: colors.info,
+    color: c.info,
   },
   hint: {
     fontSize: 10,
-    color: colors.textFaint,
+    color: c.textFaint,
     lineHeight: 15,
     paddingHorizontal: 20,
   },

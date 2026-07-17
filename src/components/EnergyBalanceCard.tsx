@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import type { FoodLogEntry } from '../types/food';
 import { AppleHealthStatusBadge, type AppleHealthStatus } from './AppleHealthStatusBadge';
@@ -26,6 +27,8 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
   // the store updates (loadToday, syncAppleHealthBurned, food log changes).
   const [nowMs] = useState(() => Date.now());
   const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
 
   const eatenKcal = summarizeFoodLog(foodLog).totalKcal;
   const balance = Math.round(eatenKcal - burnedKcal);
@@ -52,7 +55,7 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
 
       <View style={styles.row}>
         <Text style={styles.balanceLabel}>{t('components.energyBalanceCard.balanceLabel')}</Text>
-        <Text style={[styles.balanceValue, { color: isSurplus ? colors.mint : colors.danger }]}>
+        <Text style={[styles.balanceValue, { color: isSurplus ? c.mint : c.danger }]}>
           {isSurplus
             ? t('components.energyBalanceCard.balanceSurplusLine', { amount: balance })
             : t('components.energyBalanceCard.balanceDeficitLine', { amount: balance })}
@@ -62,17 +65,17 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   card: {
     marginHorizontal: 20,
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.borderAlt,
+    borderColor: c.borderAlt,
     padding: 14,
     gap: 10,
   },
-  sectionLabel: { fontSize: 13, color: colors.textTertiary },
+  sectionLabel: { fontSize: 13, color: c.textTertiary },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -80,9 +83,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rowLeft: { flex: 1, gap: 4 },
-  rowLabel: { fontSize: 14, color: colors.textSoft },
-  rowValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  divider: { height: 1, backgroundColor: colors.divider },
-  balanceLabel: { fontSize: 14, fontWeight: '600', color: colors.textSoft },
+  rowLabel: { fontSize: 14, color: c.textSoft },
+  rowValue: { fontSize: 15, fontWeight: '700', color: c.textPrimary },
+  divider: { height: 1, backgroundColor: c.divider },
+  balanceLabel: { fontSize: 14, fontWeight: '600', color: c.textSoft },
   balanceValue: { fontSize: 16, fontWeight: '800' },
 });

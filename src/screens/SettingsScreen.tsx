@@ -22,7 +22,8 @@ import {
   cancelAllNotifications,
 } from '../services/notifications/notificationService';
 import type { MealWindow } from '../lib/constants';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { useT } from '../i18n/useT';
 import { LANGUAGES, LANGUAGE_NAMES } from '../i18n/types';
@@ -34,6 +35,7 @@ function pad(n: number): string {
 
 // ─── Section header ────────────────────────────────────────────────────────────
 function SectionHeader({ icon, label }: { icon: string; label: string }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionIcon}>{icon}</Text>
@@ -50,6 +52,7 @@ function HourStepper({
   value: number;
   onChange: (delta: number) => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.stepperGroup}>
       <Pressable
@@ -85,6 +88,7 @@ function MealWindowRow({
   onChangeStart: (delta: number) => void;
   onChangeEnd: (delta: number) => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const overlapping = window.startHour >= window.endHour;
   return (
     <View style={styles.mealRow}>
@@ -119,8 +123,12 @@ export function SettingsScreen() {
     particleEffectsEnabled,
     setParticleEffectsEnabled,
     setLanguage,
+    themeMode,
+    setThemeMode,
   } = useSettingsStore();
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
 
   const [exporting, setExporting] = useState(false);
   // Lazy initializer (not a bare Date.now() call during render) — same
@@ -230,9 +238,9 @@ export function SettingsScreen() {
     label: string;
     color: string;
   }[] = [
-    { key: 'breakfast', label: t('meals.breakfast'), color: colors.mealBreakfast },
-    { key: 'lunch', label: t('meals.lunch'), color: colors.accent },
-    { key: 'dinner', label: t('meals.dinner'), color: colors.accentAlt },
+    { key: 'breakfast', label: t('meals.breakfast'), color: c.mealBreakfast },
+    { key: 'lunch', label: t('meals.lunch'), color: c.accent },
+    { key: 'dinner', label: t('meals.dinner'), color: c.accentAlt },
   ];
 
   return (
@@ -292,7 +300,7 @@ export function SettingsScreen() {
           >
             {appleHealthStatus === 'syncing' ? (
               <View style={styles.healthRefreshRow}>
-                <ActivityIndicator size="small" color={colors.textPrimary} />
+                <ActivityIndicator size="small" color={c.textPrimary} />
                 <Text style={styles.actionBtnText}>{t('settings.health.syncing')}</Text>
               </View>
             ) : (
@@ -310,7 +318,7 @@ export function SettingsScreen() {
           </Text>
 
           <Text
-            style={[styles.healthStatusText, { color: appleHealthStatusMeta(appleHealthStatus, language).color }]}
+            style={[styles.healthStatusText, { color: appleHealthStatusMeta(appleHealthStatus, language, c).color }]}
           >
             {appleHealthStatus === 'synced' && t('settings.health.statusSynced')}
             {appleHealthStatus === 'estimated' && t('settings.health.statusEstimated')}
@@ -330,7 +338,7 @@ export function SettingsScreen() {
             <Switch
               value={notificationsEnabled}
               onValueChange={handleToggleNotifications}
-              trackColor={{ true: colors.accent }}
+              trackColor={{ true: c.accent }}
             />
           </View>
 
@@ -456,10 +464,38 @@ export function SettingsScreen() {
             <Switch
               value={particleEffectsEnabled}
               onValueChange={setParticleEffectsEnabled}
-              trackColor={{ true: colors.accent }}
+              trackColor={{ true: c.accent }}
             />
           </View>
           <Text style={styles.sectionDesc}>{t('settings.interface.particleEffectsDesc')}</Text>
+
+          <Text style={styles.rowLabel}>{t('settings.interface.themeSectionLabel')}</Text>
+          <View style={styles.chipRow}>
+            <Pressable
+              onPress={() => setThemeMode('dark')}
+              style={({ pressed }) => [
+                styles.chip,
+                themeMode === 'dark' && styles.chipActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.chipText, themeMode === 'dark' && styles.chipTextActive]}>
+                🌙 {t('settings.interface.themeDark')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setThemeMode('light')}
+              style={({ pressed }) => [
+                styles.chip,
+                themeMode === 'light' && styles.chipActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.chipText, themeMode === 'light' && styles.chipTextActive]}>
+                ☀️ {t('settings.interface.themeLight')}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <Text style={styles.disclaimer}>{t('settings.disclaimer')}</Text>
@@ -468,49 +504,49 @@ export function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.bg },
   scroll: { padding: 20, paddingBottom: 48 },
 
   // ── Title ──────────────────────────────────────────────────────────────────
   titleWrap: { marginBottom: 20 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.textPrimary },
-  subtitle: { fontSize: 13, color: colors.textFaint, marginTop: 2 },
+  title: { fontSize: 26, fontWeight: '800', color: c.textPrimary },
+  subtitle: { fontSize: 13, color: c.textFaint, marginTop: 2 },
 
   // ── Divider ────────────────────────────────────────────────────────────────
-  divider: { height: 1, backgroundColor: colors.divider, marginVertical: 20 },
+  divider: { height: 1, backgroundColor: c.divider, marginVertical: 20 },
 
   // ── Section ────────────────────────────────────────────────────────────────
   section: { gap: 12 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionIcon: { fontSize: 14 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: colors.textTertiary, letterSpacing: 1.5 },
-  sectionDesc: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  sectionIcon: { fontSize: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: c.textPrimary, letterSpacing: 0.5 },
+  sectionDesc: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
 
   // ── Switch row ─────────────────────────────────────────────────────────────
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     padding: 14,
     borderRadius: 12,
   },
-  rowLabel: { fontSize: 15, color: colors.textPrimary },
+  rowLabel: { fontSize: 15, color: c.textPrimary },
 
   // ── Chips ──────────────────────────────────────────────────────────────────
   chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: c.borderSubtle,
   },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textSecondary, fontWeight: '600' },
-  chipTextActive: { color: colors.textPrimary },
+  chipActive: { backgroundColor: c.accent, borderColor: c.accent },
+  chipText: { color: c.textSecondary, fontWeight: '600' },
+  chipTextActive: { color: c.textPrimary },
 
   // ── Reminder time row ──────────────────────────────────────────────────────
   timeRow: {
@@ -518,11 +554,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     padding: 14,
     borderRadius: 12,
   },
-  timeColon: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  timeColon: { color: c.textPrimary, fontSize: 20, fontWeight: '700' },
 
   // ── Stepper (shared) ───────────────────────────────────────────────────────
   stepperGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -530,54 +566,54 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.bgAlt,
+    backgroundColor: c.bgAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperBtnText: { color: colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  timeValue: { color: colors.textPrimary, fontSize: 20, fontWeight: '700', minWidth: 28, textAlign: 'center' },
+  stepperBtnText: { color: c.textPrimary, fontSize: 18, fontWeight: '700' },
+  timeValue: { color: c.textPrimary, fontSize: 20, fontWeight: '700', minWidth: 28, textAlign: 'center' },
 
   // ── Meal window card ───────────────────────────────────────────────────────
   mealWindowCard: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.borderAlt,
+    borderColor: c.borderAlt,
     overflow: 'hidden',
   },
   mealRow: { paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
-  mealDivider: { height: 1, backgroundColor: colors.bgAlt },
+  mealDivider: { height: 1, backgroundColor: c.bgAlt },
   mealLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mealDot: { width: 8, height: 8, borderRadius: 4 },
-  mealLabel: { fontSize: 14, color: colors.textSoft, fontWeight: '600', width: 76 },
+  mealLabel: { fontSize: 14, color: c.textSoft, fontWeight: '600', width: 76 },
   mealSteppers: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flexWrap: 'wrap',
   },
-  mealArrow: { color: colors.textFaint, fontSize: 16, marginHorizontal: 2 },
-  mealUnit: { color: colors.textFaint, fontSize: 13 },
-  mealWarning: { fontSize: 11, color: colors.danger, marginTop: 2 },
+  mealArrow: { color: c.textFaint, fontSize: 16, marginHorizontal: 2 },
+  mealUnit: { color: c.textFaint, fontSize: 13 },
+  mealWarning: { fontSize: 11, color: c.danger, marginTop: 2 },
 
   // ── Action buttons ────────────────────────────────────────────────────────
   actionBtn: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: c.borderSubtle,
   },
-  dangerBtn: { borderColor: colors.dangerStrong },
-  actionBtnText: { color: colors.textPrimary, fontSize: 14 },
-  dangerText: { color: colors.dangerStrong },
+  dangerBtn: { borderColor: c.dangerStrong },
+  actionBtnText: { color: c.textPrimary, fontSize: 14 },
+  dangerText: { color: c.dangerStrong },
   healthRefreshRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   healthStatusText: { fontSize: 13, fontWeight: '600' },
 
   // ── Disclaimer ────────────────────────────────────────────────────────────
   disclaimer: {
     fontSize: 12,
-    color: colors.textFaint,
+    color: c.textFaint,
     lineHeight: 18,
     marginTop: 16,
   },

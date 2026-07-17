@@ -18,7 +18,8 @@ import { getDb } from '../data/db/database';
 import { encryptDiary } from '../lib/encryption';
 import { saveDiaryEntry } from '../data/repositories/dailyLogRepository';
 import { todayString, formatDisplayDate } from '../lib/dateUtils';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import { LOCALE_TAGS } from '../i18n/types';
 
@@ -91,6 +92,8 @@ function xorDecrypt(encryptedBase64: string, key: string): string {
 
 export function DiaryScreen() {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const navigation = useNavigation<any>();
   const [text, setText] = useState('');
   const [saved, setSaved] = useState(false);
@@ -179,7 +182,7 @@ export function DiaryScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accentAlt} />
+          <ActivityIndicator size="large" color={c.accentAlt} />
           <Text style={styles.loadingText}>{t('screens.diary.loadingText')}</Text>
         </View>
       </SafeAreaView>
@@ -220,7 +223,7 @@ export function DiaryScreen() {
             <Text style={styles.lockText}>
               {t('screens.diary.lockLine1')}
               {'\n'}
-              <Text style={{ fontWeight: '600', color: colors.accentAltLighter }}>
+              <Text style={{ fontWeight: '600', color: c.accentAltLighter }}>
                 {t('screens.diary.lockLine2Bold')}
               </Text>
             </Text>
@@ -258,7 +261,7 @@ export function DiaryScreen() {
                   ]}
                   multiline
                   placeholder={t('screens.diary.placeholder')}
-                  placeholderTextColor={colors.textSubtle}
+                  placeholderTextColor={c.textSubtle}
                   value={text}
                   onChangeText={setText}
                   textAlignVertical="top"
@@ -295,10 +298,10 @@ export function DiaryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: c.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -307,7 +310,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    color: colors.textTertiary,
+    color: c.textTertiary,
     fontSize: 14,
   },
   scroll: {
@@ -324,12 +327,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: c.textPrimary,
     letterSpacing: 0.5,
   },
   date: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     marginTop: 4,
   },
   badge: {
@@ -351,10 +354,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   badgeTextSaved: {
-    color: colors.accent,
+    color: c.accent,
   },
   badgeTextNew: {
-    color: colors.accentAltLight,
+    color: c.accentAltLight,
   },
   lockBox: {
     backgroundColor: 'rgba(108, 92, 231, 0.05)',
@@ -370,7 +373,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
   },
   lockText: {
-    color: colors.accentAltLight,
+    color: c.accentAltLight,
     fontSize: 13,
     lineHeight: 20,
     flex: 1,
@@ -379,28 +382,28 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   input: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 16,
     padding: 18,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     minHeight: 220,
     borderWidth: 1,
-    borderColor: colors.bgElevated,
+    borderColor: c.bgElevated,
     lineHeight: 26,
   },
   inputFocused: {
-    borderColor: colors.accentAlt,
+    borderColor: c.accentAlt,
   },
   charCount: {
     position: 'absolute',
     bottom: 12,
     right: 16,
     fontSize: 12,
-    color: colors.textMuted,
+    color: c.textMuted,
   },
   saveBtn: {
-    backgroundColor: colors.accentAlt,
+    backgroundColor: c.accentAlt,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -409,7 +412,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   saveBtnText: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -419,7 +422,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   successCard: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 20,
     padding: 30,
     alignItems: 'center',
@@ -434,10 +437,10 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   successSubtitle: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
@@ -446,32 +449,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   newEntryBtn: {
-    backgroundColor: colors.accentAlt,
+    backgroundColor: c.accentAlt,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
   },
   newEntryText: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   historyBtn: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: c.borderSubtle,
   },
   historyText: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   disclaimer: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: c.textMuted,
     lineHeight: 18,
     textAlign: 'center',
     marginTop: 10,

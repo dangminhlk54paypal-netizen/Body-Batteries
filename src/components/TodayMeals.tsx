@@ -3,7 +3,9 @@ import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingVi
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import { mealLabel } from '../lib/constants';
 import type { FoodLogEntry } from '../types/food';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { useT } from '../i18n/useT';
 
@@ -48,6 +50,8 @@ function countFieldLabel(entry: FoodLogEntry, t: TFn): string {
 
 export function TodayMeals({ entries, onDelete, onEdit }: Props) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const summary = summarizeFoodLog(entries);
 
   const [editingEntry, setEditingEntry] = useState<FoodLogEntry | null>(null);
@@ -75,7 +79,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
 
   function confirmEdit() {
     if (!editingEntry) return;
-    const value = parseFloat(editAmount);
+    const value = parseDecimal(editAmount);
     if (isNaN(value) || value <= 0) {
       setEditingEntry(null);
       return;
@@ -160,7 +164,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
                   ? countFieldLabel(editingEntry, t)
                   : t('components.todayMeals.gramsFieldLabel')
               }
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
               value={editAmount}
               onChangeText={setEditAmount}
@@ -189,79 +193,79 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 10 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  sectionLabel: { fontSize: 13, color: colors.textTertiary },
-  totalKcal: { fontSize: 15, fontWeight: '800', color: colors.accent },
-  macroLine: { fontSize: 12, color: colors.textSubtle, marginTop: -4 },
+  sectionLabel: { fontSize: 13, color: c.textTertiary },
+  totalKcal: { fontSize: 15, fontWeight: '800', color: c.accent },
+  macroLine: { fontSize: 12, color: c.textSubtle, marginTop: -4 },
   card: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 14,
     padding: 14,
     gap: 8,
   },
-  empty: { color: colors.textTertiary, fontSize: 13, lineHeight: 19 },
+  empty: { color: c.textTertiary, fontSize: 13, lineHeight: 19 },
   mealHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: colors.bgElevated,
+    borderBottomColor: c.bgElevated,
     paddingBottom: 6,
   },
-  mealTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  mealKcal: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  mealTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+  mealKcal: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entryMain: { flex: 1 },
-  entryName: { color: colors.textBright, fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 1 },
+  entryName: { color: c.textBright, fontSize: 14, fontWeight: '500' },
+  entryMeta: { color: c.textTertiary, fontSize: 12, marginTop: 1 },
   editBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editText: { color: colors.infoAlt, fontSize: 13, fontWeight: '700' },
+  editText: { color: c.infoAlt, fontSize: 13, fontWeight: '700' },
   deleteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
+  deleteText: { color: c.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  editingName: { fontSize: 14, color: colors.textSecondary, marginTop: -6 },
+  title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
+  editingName: { fontSize: 14, color: c.textSecondary, marginTop: -6 },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: colors.bgElevated },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
-  save: { backgroundColor: colors.infoAlt },
-  saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: c.bgElevated },
+  cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
+  save: { backgroundColor: c.infoAlt },
+  saveText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
 });

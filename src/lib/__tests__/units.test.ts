@@ -4,6 +4,7 @@ import {
   nextWaterDisplayUnit,
   formatMovementAmount,
   nextMovementDisplayUnit,
+  parseDecimal,
 } from '../units';
 
 describe('formatWaterAmount', () => {
@@ -54,5 +55,25 @@ describe('nextMovementDisplayUnit', () => {
   it('cycles kcal -> steps -> kcal', () => {
     expect(nextMovementDisplayUnit('kcal')).toBe('steps');
     expect(nextMovementDisplayUnit('steps')).toBe('kcal');
+  });
+});
+
+// The comma-decimal keyboard bug: VI/DE iPhone locales show a comma as the
+// decimal-pad separator, and a bare parseFloat("79,4") truncates to 79.
+describe('parseDecimal', () => {
+  it('parses a comma-decimal string', () => {
+    expect(parseDecimal('79,4')).toBe(79.4);
+  });
+
+  it('parses a dot-decimal string unchanged', () => {
+    expect(parseDecimal('79.4')).toBe(79.4);
+  });
+
+  it('returns NaN for an empty string', () => {
+    expect(parseDecimal('')).toBeNaN();
+  });
+
+  it('returns NaN for non-numeric text', () => {
+    expect(parseDecimal('abc')).toBeNaN();
   });
 });

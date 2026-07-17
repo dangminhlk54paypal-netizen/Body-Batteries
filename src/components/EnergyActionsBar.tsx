@@ -14,15 +14,25 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import { useEnergyStore } from '../store/energyStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { MET_TABLE } from '../lib/metabolicConstants';
-import { FoodLogModal } from './FoodLogModal';
+import { FoodLogModal, buildTimestampForDate } from './FoodLogModal';
 import { PowerliftingSheet } from './PowerliftingSheet';
 import { BodybuildingSheet } from './BodybuildingSheet';
-import { parseTimeHHmmToday } from '../lib/dateUtils';
+import { PastDateField } from './food/PastDateField';
+import { parseTimeHHmmToday, parseTimeHHmmForDate, todayString, isToday, formatDisplayDate } from '../lib/dateUtils';
+import { BACKFILL_MAX_DAYS_BACK } from '../lib/constants';
 import type { ActivityType, CustomActivity, WorkoutSession } from '../types/energy';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import { translate } from '../i18n/translate';
 import type { Language } from '../i18n/types';
+
+// Module-level wrapper so the impure todayString() call is invisible to the
+// component's purity analysis — same trick as FoodLogModal's getTodayString.
+function getTodayString(): string {
+  return todayString();
+}
 
 // Display label for a MET-based activity type, following the current app
 // language. Exported so the activity-history edit form (TodayActivities) and
@@ -87,22 +97,21 @@ function useSheetSlide(visible: boolean) {
 }
 
 export function EnergyActionsBar() {
-  const { t } = useT();
-  const addCalories = useEnergyStore((s) => s.addCalories);
+  const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const logActivity = useEnergyStore((s) => s.logActivity);
+  const logActivityForPastDate = useEnergyStore((s) => s.logActivityForPastDate);
   const customActivities = useSettingsStore((s) => s.customActivities);
   const addCustomActivity = useSettingsStore((s) => s.addCustomActivity);
   const removeCustomActivity = useSettingsStore((s) => s.removeCustomActivity);
 
   const [foodOpen, setFoodOpen] = useState(false);
-  const [calorieOpen, setCalorieOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
   const [powerliftingOpen, setPowerliftingOpen] = useState(false);
   const [bodybuildingOpen, setBodybuildingOpen] = useState(false);
-  const calorieSheetStyle = useSheetSlide(calorieOpen);
   const activitySheetStyle = useSheetSlide(activityOpen);
 
-  const [kcal, setKcal] = useState('');
   const [category, setCategory] = useState('cardio');
   const [activity, setActivity] = useState<ActivityType>('running');
   // A user-defined activity (types/energy.ts CustomActivity), selected via
@@ -116,19 +125,16 @@ export function EnergyActionsBar() {
   // before this field existed).
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  // T2.2 (backfill): which calendar day this activity is being logged for.
+  // Defaults to today — isToday(activityDate) gates the branch in
+  // confirmActivity that must stay 100% unchanged for today's own flow.
+  const [activityDate, setActivityDate] = useState(() => getTodayString());
 
   // "＋ Thêm môn" inline form state — swaps in for the chip row while open.
   const [addingCustom, setAddingCustom] = useState(false);
   const [newCustomName, setNewCustomName] = useState('');
   const [newCustomCategory, setNewCustomCategory] = useState('cardio');
   const [newCustomMet, setNewCustomMet] = useState('');
-
-  function confirmCalories() {
-    const v = parseFloat(kcal);
-    if (!isNaN(v) && v > 0) addCalories(v);
-    setKcal('');
-    setCalorieOpen(false);
-  }
 
   // Switching groups keeps the selected activity valid: if the current pick
   // isn't in the new group, fall to that group's first activity. A custom
@@ -176,7 +182,7 @@ export function EnergyActionsBar() {
 
   function saveCustomActivity() {
     const name = newCustomName.trim();
-    const met = parseFloat(newCustomMet);
+    const met = parseDecimal(newCustomMet);
     if (!name || isNaN(met) || met <= 0 || met > CUSTOM_MET_MAX) return;
     addCustomActivity({
       nameVi: name,
@@ -212,8 +218,8 @@ export function EnergyActionsBar() {
   }
 
   function confirmActivity() {
-    const mins = parseFloat(minutes);
-    const stepCount = parseFloat(steps);
+    const mins = parseDecimal(minutes);
+    const stepCount = parseDecimal(steps);
     const hasMinutes = !isNaN(mins) && mins > 0;
     let workouts: WorkoutSession[] = [];
     if (hasMinutes) {
@@ -224,36 +230,51 @@ export function EnergyActionsBar() {
         ? [{ type: 'custom', minutes: mins, customName: custom.nameVi, customMet: custom.met }]
         : [{ type: activity, minutes: mins }];
     }
-    logActivity({
-      steps: !isNaN(stepCount) && stepCount > 0 ? stepCount : 0,
-      workouts,
-      startAt: parseTimeHHmmToday(startTime),
-      endAt: parseTimeHHmmToday(endTime),
-    });
+    const stepsValue = !isNaN(stepCount) && stepCount > 0 ? stepCount : 0;
+
+    if (isToday(activityDate)) {
+      // Unchanged today-flow (must never regress) — the one true same-day path.
+      logActivity({
+        steps: stepsValue,
+        workouts,
+        startAt: parseTimeHHmmToday(startTime),
+        endAt: parseTimeHHmmToday(endTime),
+      });
+    } else {
+      // T2.2 (backfill): log onto the selected past day instead. startAt/endAt
+      // respect the entered HH:mm fields, anchored to that day rather than
+      // today; the log-time timestamp defaults to the start time when given,
+      // else noon (mirrors FoodLogModal's buildTimestampForDate fallback).
+      const startAt = parseTimeHHmmForDate(startTime, activityDate);
+      const endAt = parseTimeHHmmForDate(endTime, activityDate);
+      const timestamp = startAt ?? buildTimestampForDate(activityDate, '', '');
+      logActivityForPastDate({ steps: stepsValue, workouts, startAt, endAt }, timestamp);
+    }
+
     setMinutes('');
     setSteps('');
     setStartTime('');
     setEndTime('');
+    // Always land back on today — a fresh open must never inherit a stale
+    // past date (same reasoning as FoodLogModal's reset()).
+    setActivityDate(getTodayString());
     setActivityOpen(false);
   }
 
   return (
     <View style={styles.container}>
-      {/* Primary: log a food from the database (food_items.csv) */}
-      <Pressable
-        style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
-        onPress={() => setFoodOpen(true)}
-      >
-        <Text style={styles.btnText}>{t('components.energyActionsBar.logFoodButton')}</Text>
-      </Pressable>
-
-      {/* Manual fallbacks: kept as supplementary inputs */}
+      {/* Two equal-width entry points: log food (charge) / log activity (burn).
+          The manual "add calories" entry point (calorie-typed shortcut) was
+          removed — logging a food from the list is the only charge path now.
+          useEnergyStore.addCalories itself is left in place (unused by any
+          UI as of this change) so historical entries it already wrote to
+          intake_events keep reading back correctly. */}
       <View style={styles.bar}>
         <Pressable
-          style={({ pressed }) => [styles.btn, styles.eat, pressed && styles.pressed]}
-          onPress={() => setCalorieOpen(true)}
+          style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
+          onPress={() => setFoodOpen(true)}
         >
-          <Text style={styles.btnText}>{t('components.energyActionsBar.addCaloriesButton')}</Text>
+          <Text style={styles.btnText}>{t('components.energyActionsBar.logFoodButton')}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.btn, styles.move, pressed && styles.pressed]}
@@ -264,39 +285,6 @@ export function EnergyActionsBar() {
       </View>
 
       <FoodLogModal visible={foodOpen} onClose={() => setFoodOpen(false)} />
-
-      {/* Manual calories */}
-      <Modal visible={calorieOpen} transparent animationType="fade" onRequestClose={() => setCalorieOpen(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
-          <Animated.View style={[styles.sheet, calorieSheetStyle]}>
-            <Text style={styles.title}>{t('components.energyActionsBar.calorieSheetTitle')}</Text>
-            <Text style={styles.subtitle}>{t('components.energyActionsBar.calorieSheetSubtitle')}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder={t('components.energyActionsBar.kcalPlaceholder')}
-              placeholderTextColor={colors.textMuted}
-              keyboardType="decimal-pad"
-              value={kcal}
-              onChangeText={setKcal}
-              autoFocus
-            />
-            <View style={styles.row}>
-              <Pressable
-                style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
-                onPress={() => setCalorieOpen(false)}
-              >
-                <Text style={styles.cancelText}>{t('common.cancel')}</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.modalBtn, styles.eat, pressed && styles.pressed]}
-                onPress={confirmCalories}
-              >
-                <Text style={styles.btnText}>{t('components.energyActionsBar.chargeButton')}</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {/* Activity / workout */}
       <Modal visible={activityOpen} transparent animationType="fade" onRequestClose={() => setActivityOpen(false)}>
@@ -329,7 +317,7 @@ export function EnergyActionsBar() {
                 <TextInput
                   style={styles.input}
                   placeholder={t('components.energyActionsBar.customNamePlaceholder')}
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={c.textMuted}
                   value={newCustomName}
                   onChangeText={setNewCustomName}
                   autoFocus
@@ -383,7 +371,7 @@ export function EnergyActionsBar() {
                 <TextInput
                   style={styles.input}
                   placeholder={t('components.energyActionsBar.metManualPlaceholder')}
-                  placeholderTextColor={colors.textMuted}
+                  placeholderTextColor={c.textMuted}
                   keyboardType="decimal-pad"
                   value={newCustomMet}
                   onChangeText={setNewCustomMet}
@@ -492,7 +480,7 @@ export function EnergyActionsBar() {
             <TextInput
               style={styles.input}
               placeholder={t('components.energyActionsBar.minutesPlaceholder')}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
               value={minutes}
               onChangeText={setMinutes}
@@ -500,7 +488,7 @@ export function EnergyActionsBar() {
             <TextInput
               style={styles.input}
               placeholder={t('components.energyActionsBar.stepsPlaceholder')}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
               value={steps}
               onChangeText={setSteps}
@@ -510,7 +498,7 @@ export function EnergyActionsBar() {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder={t('components.energyActionsBar.fromTimePlaceholder')}
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={startTime}
@@ -519,13 +507,28 @@ export function EnergyActionsBar() {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder={t('components.energyActionsBar.toTimePlaceholder')}
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={endTime}
                 onChangeText={setEndTime}
               />
             </View>
+
+            <Text style={styles.fieldLabel}>{t('components.energyActionsBar.logDateFieldLabel')}</Text>
+            <PastDateField
+              value={activityDate}
+              onChange={setActivityDate}
+              maxDaysBack={BACKFILL_MAX_DAYS_BACK}
+            />
+            {!isToday(activityDate) && (
+              <Text style={styles.backfillNotice}>
+                {t('components.energyActionsBar.backfillNotice', {
+                  date: formatDisplayDate(activityDate, language),
+                })}
+              </Text>
+            )}
+
             <View style={styles.row}>
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
@@ -553,32 +556,31 @@ export function EnergyActionsBar() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 10 },
   bar: { flexDirection: 'row', gap: 10 },
   btn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  food: { backgroundColor: colors.infoAlt },
-  eat: { backgroundColor: colors.accent },
-  move: { backgroundColor: colors.danger },
-  btnText: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  food: { backgroundColor: c.infoAlt },
+  move: { backgroundColor: c.danger },
+  btnText: { color: c.textPrimary, fontSize: 14, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 14, color: colors.textSecondary },
+  title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
+  subtitle: { fontSize: 14, color: c.textSecondary },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   timeInput: { flex: 1, textAlign: 'center' },
   categoryRow: { flexDirection: 'row', gap: 8 },
@@ -587,45 +589,46 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  categoryTabActive: { backgroundColor: colors.accentAltBg, borderColor: colors.accentAlt },
-  categoryText: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
-  categoryTextActive: { color: colors.textPrimary },
+  categoryTabActive: { backgroundColor: c.accentAltBg, borderColor: c.accentAlt },
+  categoryText: { color: c.textSecondary, fontSize: 12, fontWeight: '700' },
+  categoryTextActive: { color: c.textPrimary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chipLifting: { borderColor: colors.danger, borderWidth: 1 },
-  chipLiftingText: { color: colors.danger, fontSize: 12, fontWeight: '700' },
+  chipLifting: { borderColor: c.danger, borderWidth: 1 },
+  chipLiftingText: { color: c.danger, fontSize: 12, fontWeight: '700' },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  chipActive: { backgroundColor: colors.danger, borderColor: colors.danger },
-  chipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: colors.textPrimary },
-  chipAdd: { borderColor: colors.accentAlt, borderStyle: 'dashed' },
-  chipAddText: { color: colors.accentAlt, fontSize: 12, fontWeight: '700' },
+  chipActive: { backgroundColor: c.danger, borderColor: c.danger },
+  chipText: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: c.textPrimary },
+  chipAdd: { borderColor: c.accentAlt, borderStyle: 'dashed' },
+  chipAddText: { color: c.accentAlt, fontSize: 12, fontWeight: '700' },
   customChipWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   customChipDelete: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  customChipDeleteText: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
+  customChipDeleteText: { color: c.textMuted, fontSize: 11, fontWeight: '700' },
   addCustomForm: { gap: 10 },
-  fieldLabel: { fontSize: 13, color: colors.textSecondary },
-  explainer: { fontSize: 11, color: colors.textSubtle, lineHeight: 15 },
+  fieldLabel: { fontSize: 13, color: c.textSecondary },
+  backfillNotice: { color: c.warning, fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  explainer: { fontSize: 11, color: c.textSubtle, lineHeight: 15 },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: colors.bgElevated },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  cancel: { backgroundColor: c.bgElevated },
+  cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
   pressed: { opacity: 0.6 },
 });

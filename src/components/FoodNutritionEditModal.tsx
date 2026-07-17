@@ -21,7 +21,8 @@ import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import type { FoodItem } from '../types/food';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 
 // Reusable modal for two flows:
@@ -50,6 +51,7 @@ export function FoodNutritionEditModal({
   onSaved,
 }: Props) {
   const { t } = useT();
+  const styles = useThemedStyles(createStyles);
   const [input, setInput] = useState<CustomFoodInput>(EMPTY_CUSTOM_FOOD_INPUT);
   const [showMicros, setShowMicros] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -196,11 +198,11 @@ export function FoodNutritionEditModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   overlayDismiss: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
@@ -216,21 +218,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeX: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 13, color: colors.textSecondary },
+  closeX: { color: c.textSecondary, fontSize: 15, fontWeight: '700' },
+  title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
+  subtitle: { fontSize: 13, color: c.textSecondary },
   scroll: { flexShrink: 1 },
   scrollContent: { gap: 10 },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  save: { backgroundColor: colors.accent },
+  save: { backgroundColor: c.accent },
   disabled: { opacity: 0.4 },
-  cancel: { backgroundColor: colors.bgElevated },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
-  btnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: c.bgElevated },
+  cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
+  btnText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

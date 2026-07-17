@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { MicroBatteryState } from '../types/nutrition';
 import { computeOverdoseWarnings } from '../domain/nutrition/overdoseWarning';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 // empty (see .ai/CONTEXT.md §5 — gentle, referential wording only).
 export function OverdoseNotice({ states }: Props) {
   const { t, language } = useT();
+  const styles = useThemedStyles(createStyles);
   const warnings = computeOverdoseWarnings(states, language);
   if (warnings.length === 0) return null;
 
@@ -32,24 +34,24 @@ export function OverdoseNotice({ states }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     marginHorizontal: 20,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: colors.overdoseBg,
+    backgroundColor: c.overdoseBg,
     borderWidth: 1,
-    borderColor: colors.overdoseBorder,
+    borderColor: c.overdoseBorder,
     gap: 4,
   },
   title: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.overdoseTitle,
+    color: c.overdoseTitle,
   },
   message: {
     fontSize: 10,
-    color: colors.overdoseText,
+    color: c.overdoseText,
     lineHeight: 14,
   },
 });

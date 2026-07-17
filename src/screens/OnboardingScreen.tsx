@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView } from 'react-native';
 import { BodyProfileCard } from '../components/BodyProfileCard';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 
 interface OnboardingScreenProps {
@@ -13,6 +14,7 @@ interface OnboardingScreenProps {
 // using the energy battery, so the daily energy budget is accurate from day one.
 export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const { t } = useT();
+  const styles = useThemedStyles(createStyles);
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -40,10 +42,10 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: c.bg,
   },
   container: {
     flex: 1,
@@ -54,7 +56,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   title: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontSize: 28,
     fontWeight: '800',
     textAlign: 'center',
@@ -62,7 +64,7 @@ const styles = StyleSheet.create({
     lineHeight: 36,
   },
   intro: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
@@ -73,14 +75,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardHeader: {
-    color: colors.textPale,
+    color: c.textPale,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 4,
   },
   disclaimer: {
-    color: colors.textMuted,
+    color: c.textMuted,
     fontSize: 12,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -91,21 +93,21 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: colors.bg,
+    backgroundColor: c.bg,
   },
   startBtn: {
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: colors.accent,
+    shadowColor: c.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   startText: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },

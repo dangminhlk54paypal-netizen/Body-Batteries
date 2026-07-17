@@ -19,10 +19,12 @@ import {
   EMPTY_CUSTOM_FOOD_INPUT,
   type CustomFoodInput,
 } from '../domain/food/customFoodInput';
-import { foodCategoryLabel, mealLabel, DATA_RETENTION_DAYS } from '../lib/constants';
+import { foodCategoryLabel, mealLabel, BACKFILL_MAX_DAYS_BACK } from '../lib/constants';
 import { daysAgo, todayString, formatDisplayDate, isToday } from '../lib/dateUtils';
 import type { FoodItem, FoodLogEntry } from '../types/food';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import * as haptics from '../lib/haptics';
 import { useT } from '../i18n/useT';
 
@@ -86,6 +88,8 @@ export function buildTimestampForDate(dateStr: string, hourStr: string, minuteSt
 
 export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const logFood = useEnergyStore((s) => s.logFood);
   const logFoodForPastDate = useEnergyStore((s) => s.logFoodForPastDate);
 
@@ -242,9 +246,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   // gram weight — see gramsForPortion (the shared count→grams conversion).
   const isServingBased = selected?.portionUnit != null && selected.portionUnit !== 'gram';
 
-  const gramsNum = parseFloat(grams);
+  const gramsNum = parseDecimal(grams);
   const validGrams = !isNaN(gramsNum) && gramsNum > 0;
-  const countNum = parseFloat(portionCount);
+  const countNum = parseDecimal(portionCount);
   const validCount = !isNaN(countNum) && countNum > 0;
   const validAmount = isServingBased ? validCount : validGrams;
   const effectiveGrams = selected && isServingBased ? gramsForPortion(selected, countNum) : gramsNum;
@@ -412,7 +416,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
               <TextInput
                 style={styles.input}
                 placeholder={t('components.foodLogModal.searchPlaceholder')}
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 value={query}
                 onChangeText={setQuery}
                 autoFocus
@@ -537,7 +541,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                     <TextInput
                       style={styles.input}
                       placeholder={t('components.foodLogModal.portionCountPlaceholder')}
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor={c.textMuted}
                       keyboardType="decimal-pad"
                       value={portionCount}
                       onChangeText={setPortionCount}
@@ -549,7 +553,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                     <TextInput
                       style={styles.input}
                       placeholder={t('components.foodLogModal.gramsPlaceholder')}
-                      placeholderTextColor={colors.textMuted}
+                      placeholderTextColor={c.textMuted}
                       keyboardType="decimal-pad"
                       value={grams}
                       onChangeText={setGrams}
@@ -587,7 +591,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   <TextInput
                     style={[styles.input, styles.timeInput]}
                     placeholder="HH"
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={c.textMuted}
                     keyboardType="number-pad"
                     maxLength={2}
                     value={hour}
@@ -597,7 +601,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   <TextInput
                     style={[styles.input, styles.timeInput]}
                     placeholder="MM"
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={c.textMuted}
                     keyboardType="number-pad"
                     maxLength={2}
                     value={minute}
@@ -609,7 +613,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 <PastDateField
                   value={logDate}
                   onChange={setLogDate}
-                  maxDaysBack={DATA_RETENTION_DAYS}
+                  maxDaysBack={BACKFILL_MAX_DAYS_BACK}
                 />
 
                 {preview && (
@@ -681,17 +685,17 @@ function clampInt(n: number, min: number, max: number): number {
   return Math.min(Math.max(n, min), max);
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeX: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
+  closeX: { color: c.textSecondary, fontSize: 15, fontWeight: '700' },
   sheet: {
     padding: 24,
     gap: 12,
@@ -700,95 +704,95 @@ const styles = StyleSheet.create({
     // entryScroll scrollable, and the Huỷ/Lưu row lands under the keyboard.
     flexShrink: 1,
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 14, color: colors.textSecondary },
-  back: { color: colors.mint, fontSize: 14, fontWeight: '600' },
-  editLink: { color: colors.info, fontSize: 13, fontWeight: '600', marginTop: 2 },
-  fieldLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
+  subtitle: { fontSize: 14, color: c.textSecondary },
+  back: { color: c.mint, fontSize: 14, fontWeight: '600' },
+  editLink: { color: c.info, fontSize: 13, fontWeight: '600', marginTop: 2 },
+  fieldLabel: { fontSize: 13, color: c.textSecondary, marginTop: 4 },
   entryScroll: { flexShrink: 1 },
   entryScrollContent: { gap: 12 },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   list: { maxHeight: 320, flexShrink: 1 },
-  empty: { color: colors.textTertiary, textAlign: 'center', paddingVertical: 20 },
+  empty: { color: c.textTertiary, textAlign: 'center', paddingVertical: 20 },
   suggestSection: { gap: 6 },
-  suggestLabel: { color: colors.textTertiary, fontSize: 12, fontWeight: '600' },
+  suggestLabel: { color: c.textTertiary, fontSize: 12, fontWeight: '600' },
   suggestRow: { flexDirection: 'row', gap: 8, paddingRight: 4 },
   suggestChip: {
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 18,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: c.accent,
     maxWidth: 160,
   },
-  suggestChipText: { color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
+  suggestChipText: { color: c.textPrimary, fontSize: 13, fontWeight: '600' },
   addNewBtn: {
     marginTop: 4,
     marginHorizontal: 16,
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.mint,
+    borderColor: c.mint,
   },
-  addNewText: { color: colors.mint, fontSize: 15, fontWeight: '700' },
+  addNewText: { color: c.mint, fontSize: 15, fontWeight: '700' },
   foodRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.bgElevated,
+    borderBottomColor: c.bgElevated,
   },
   foodRowMain: { flex: 1 },
-  foodName: { color: colors.textPrimary, fontSize: 15, fontWeight: '600' },
-  foodNameEn: { color: colors.textDim, fontSize: 12, marginTop: 1 },
-  foodMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 2 },
-  foodChevron: { color: colors.textFaint, fontSize: 22, paddingLeft: 8 },
+  foodName: { color: c.textPrimary, fontSize: 15, fontWeight: '600' },
+  foodNameEn: { color: c.textDim, fontSize: 12, marginTop: 1 },
+  foodMeta: { color: c.textTertiary, fontSize: 12, marginTop: 2 },
+  foodChevron: { color: c.textFaint, fontSize: 22, paddingLeft: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  chipText: { color: colors.textLight, fontSize: 12, fontWeight: '600' },
+  chipText: { color: c.textLight, fontSize: 12, fontWeight: '600' },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, textAlign: 'center' },
-  timeColon: { color: colors.textPrimary, fontSize: 20, fontWeight: '700' },
+  timeColon: { color: c.textPrimary, fontSize: 20, fontWeight: '700' },
   preview: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 12,
     padding: 14,
     gap: 4,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: c.accent,
   },
-  previewKcal: { color: colors.accent, fontSize: 18, fontWeight: '800' },
-  previewMacro: { color: colors.textSoft, fontSize: 13 },
+  previewKcal: { color: c.accent, fontSize: 18, fontWeight: '800' },
+  previewMacro: { color: c.textSoft, fontSize: 13 },
   backfillNotice: {
-    color: colors.warning,
+    color: c.warning,
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
   },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  eat: { backgroundColor: colors.accent },
+  eat: { backgroundColor: c.accent },
   disabled: { opacity: 0.4 },
-  cancel: { backgroundColor: colors.bgElevated },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
-  btnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: c.bgElevated },
+  cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
+  btnText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

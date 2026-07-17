@@ -52,3 +52,11 @@ export function formatMovementAmount(
 export function nextMovementDisplayUnit(unit: MovementDisplayUnit): MovementDisplayUnit {
   return unit === 'kcal' ? 'steps' : 'kcal';
 }
+
+// Parses a decimal typed on a comma-decimal keyboard. iPhones set to VI/DE
+// locale show a comma as the decimal-pad's separator key (not a dot), so a
+// plain parseFloat("79,4") silently truncates to 79 — this normalizes the
+// comma to a dot first. Safe for dot-decimal input too ("79.4" is untouched).
+export function parseDecimal(text: string): number {
+  return parseFloat(text.trim().replace(',', '.'));
+}

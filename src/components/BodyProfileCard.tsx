@@ -14,7 +14,9 @@ import {
   KCAL_PER_KG_BODY_FAT,
 } from '../lib/weightGoalConstants';
 import type { OccupationLevel, Sex, UserProfile } from '../types/energy';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 
 const SEX_OPTIONS: { value: Sex; labelKey: string }[] = [
@@ -30,6 +32,7 @@ const OCCUPATION_OPTIONS: { value: OccupationLevel; labelKey: string }[] = [
 // Lets the user enter their body profile (used to size the energy battery).
 export function BodyProfileCard() {
   const { t } = useT();
+  const styles = useThemedStyles(createStyles);
   const { userProfile, setUserProfile, currentMode } = useSettingsStore();
 
   const [weight, setWeight] = useState(String(userProfile.weightKg));
@@ -51,14 +54,14 @@ export function BodyProfileCard() {
 
   // Live preview of the daily passive energy need from the current inputs.
   const preview: UserProfile = {
-    weightKg: parseFloat(weight) || userProfile.weightKg,
-    heightCm: parseFloat(height) || userProfile.heightCm,
-    age: parseFloat(age) || userProfile.age,
+    weightKg: parseDecimal(weight) || userProfile.weightKg,
+    heightCm: parseDecimal(height) || userProfile.heightCm,
+    age: parseDecimal(age) || userProfile.age,
     sex,
     occupation,
-    averageDailySteps: parseFloat(averageDailySteps) || 0,
-    goalWeightKg: goalWeightKg.trim() === '' ? undefined : parseFloat(goalWeightKg),
-    goalWeeks: goalWeeks.trim() === '' ? undefined : parseFloat(goalWeeks),
+    averageDailySteps: parseDecimal(averageDailySteps) || 0,
+    goalWeightKg: goalWeightKg.trim() === '' ? undefined : parseDecimal(goalWeightKg),
+    goalWeeks: goalWeeks.trim() === '' ? undefined : parseDecimal(goalWeeks),
   };
   const tdee = passiveDailyBurn(preview);
   const calorieGoal = dailyCalorieTarget(preview);
@@ -407,6 +410,7 @@ function InfoPopup({
   closeLabel: string;
   children: React.ReactNode;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.infoOverlay} onPress={onClose}>
@@ -429,6 +433,7 @@ function InfoPopup({
 
 // One numbered step of a breakdown: label + (optional) formula + result.
 function InfoStep({ label, formula, result }: { label: string; formula?: string; result?: string }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.infoStep}>
       <Text style={styles.infoStepLabel}>{label}</Text>
@@ -439,43 +444,45 @@ function InfoStep({ label, formula, result }: { label: string; formula?: string;
 }
 
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholderTextColor={colors.textMuted} />
+      <TextInput style={styles.input} value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholderTextColor={c.textMuted} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: colors.bgCard, borderRadius: 12, padding: 14, gap: 12 },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+  card: { backgroundColor: c.bgCard, borderRadius: 12, padding: 14, gap: 12 },
   fieldRow: { flexDirection: 'row', gap: 10 },
   field: { flex: 1, gap: 6 },
-  fieldLabel: { fontSize: 12, color: colors.textTertiary },
+  fieldLabel: { fontSize: 12, color: c.textTertiary },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: colors.bgAlt,
+    backgroundColor: c.bgAlt,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.textSecondary, fontWeight: '600', fontSize: 13 },
-  chipTextActive: { color: colors.textPrimary },
-  tdee: { color: colors.textSecondary, fontSize: 13 },
+  chipActive: { backgroundColor: c.accent, borderColor: c.accent },
+  chipText: { color: c.textSecondary, fontWeight: '600', fontSize: 13 },
+  chipTextActive: { color: c.textPrimary },
+  tdee: { color: c.textSecondary, fontSize: 13 },
   tdeeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', columnGap: 5, marginTop: 4 },
-  tdeeValue: { color: colors.accent, fontWeight: '700', fontSize: 13 },
+  tdeeValue: { color: c.accent, fontWeight: '700', fontSize: 13 },
   tdeeValueTap: { textDecorationLine: 'underline' },
   infoOverlay: {
     flex: 1,
@@ -485,46 +492,46 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   infoCard: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 16,
     padding: 18,
     gap: 12,
     alignSelf: 'stretch',
     maxHeight: '80%',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  infoTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  infoTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
   infoScroll: { flexGrow: 0, flexShrink: 1 },
   infoScrollContent: { gap: 12 },
-  infoIntro: { color: colors.textTertiary, fontSize: 12, lineHeight: 17 },
+  infoIntro: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
   infoStep: { gap: 2 },
-  infoStepLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  infoFormula: { color: colors.textTertiary, fontSize: 13, fontVariant: ['tabular-nums'] },
-  infoResult: { color: colors.accent, fontSize: 13, fontWeight: '600' },
+  infoStepLabel: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+  infoFormula: { color: c.textTertiary, fontSize: 13, fontVariant: ['tabular-nums'] },
+  infoResult: { color: c.accent, fontSize: 13, fontWeight: '600' },
   infoTotalRow: {
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
+    borderTopColor: c.borderSubtle,
     paddingTop: 10,
     gap: 2,
   },
-  infoTotalLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  infoTotalValue: { color: colors.accent, fontSize: 16, fontWeight: '800' },
-  infoNote: { color: colors.textMuted, fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
+  infoTotalLabel: { color: c.textSecondary, fontSize: 13, fontWeight: '700' },
+  infoTotalValue: { color: c.accent, fontSize: 16, fontWeight: '800' },
+  infoNote: { color: c.textMuted, fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
   infoCloseBtn: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
   },
-  infoCloseText: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
-  explainer: { color: colors.textTertiary, fontSize: 12, lineHeight: 17 },
-  divider: { height: 1, backgroundColor: colors.borderSubtle, marginVertical: 2 },
-  noteText: { color: colors.amber, fontSize: 12, marginTop: 2 },
-  disclaimerText: { color: colors.textMuted, fontSize: 11, marginTop: 2, fontStyle: 'italic' },
-  errorText: { color: colors.dangerStrong, fontSize: 13 },
-  savedText: { color: colors.accent, fontSize: 13 },
-  saveBtn: { backgroundColor: colors.accent, padding: 14, borderRadius: 12, alignItems: 'center' },
-  saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  infoCloseText: { color: c.textPrimary, fontSize: 14, fontWeight: '600' },
+  explainer: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
+  divider: { height: 1, backgroundColor: c.borderSubtle, marginVertical: 2 },
+  noteText: { color: c.amber, fontSize: 12, marginTop: 2 },
+  disclaimerText: { color: c.textMuted, fontSize: 11, marginTop: 2, fontStyle: 'italic' },
+  errorText: { color: c.dangerStrong, fontSize: 13 },
+  savedText: { color: c.accent, fontSize: 13 },
+  saveBtn: { backgroundColor: c.accent, padding: 14, borderRadius: 12, alignItems: 'center' },
+  saveText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

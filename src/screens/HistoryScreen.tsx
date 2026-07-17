@@ -15,14 +15,15 @@ import { getFoodLogForDate } from '../data/repositories/foodLogRepository';
 import { useEnergyStore } from '../store/energyStore';
 import type { BatteryReading, DailyLog, BatteryType } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
-import { todayString, daysAgo, formatDisplayDate } from '../lib/dateUtils';
+import { todayString, daysAgo, daysBetween, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
-import { DEFAULT_BATTERIES, batteryTypeName } from '../lib/constants';
+import { DEFAULT_BATTERIES, batteryTypeName, BACKFILL_MAX_DAYS_BACK } from '../lib/constants';
 import { TrendChart } from '../components/TrendChart';
 import { WeightLogCard } from '../components/WeightLogCard';
 import { DayDetailSheet } from '../components/DayDetailSheet';
 import { FoodLogModal } from '../components/FoodLogModal';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import { translate } from '../i18n/translate';
 import type { Language } from '../i18n/types';
@@ -52,6 +53,8 @@ interface DayData {
 
 export function HistoryScreen() {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -174,7 +177,7 @@ export function HistoryScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={colors.textPrimary} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={c.textPrimary} style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
@@ -199,13 +202,13 @@ export function HistoryScreen() {
             <View style={styles.cardHeader}>
               <Text style={styles.cardDate}>{formatDisplayDate(day.date, language)}</Text>
               <View style={styles.badgeRow}>
-                <View style={[styles.avgBadge, avgColor(day.averagePercentage)]}>
+                <View style={[styles.avgBadge, styles.nutritionBadge, avgColor(day.averagePercentage, c)]}>
                   <Text style={styles.avgText}>
                     {t('screens.history.nutritionBadge', { pct: day.averagePercentage })}
                   </Text>
                 </View>
                 {day.energyPercentage !== null && (
-                  <View style={[styles.avgBadge, avgColor(day.energyPercentage)]}>
+                  <View style={[styles.avgBadge, styles.energyBadge, avgColor(day.energyPercentage, c)]}>
                     <Text style={styles.avgText}>
                       {t('screens.history.energyBadge', { pct: day.energyPercentage })}
                     </Text>
@@ -241,6 +244,7 @@ export function HistoryScreen() {
         date={sheetDate ?? todayString()}
         entries={sheetEntries}
         loading={sheetLoading}
+        canAddFood={daysBetween(sheetDate ?? todayString(), todayString()) <= BACKFILL_MAX_DAYS_BACK}
         onClose={closeDaySheet}
         onAddFood={handleAddFood}
         onDeleteEntry={handleDeleteEntry}
@@ -269,24 +273,24 @@ function chronologicalEnergyTrend(days: DayData[]) {
     .map((d) => ({ date: d.date, averagePercentage: d.energyPercentage as number }));
 }
 
-function avgColor(pct: number) {
-  if (pct >= 60) return { backgroundColor: colors.successBgSoft };
-  if (pct >= 30) return { backgroundColor: colors.warningBgSoft };
-  return { backgroundColor: colors.dangerBgSoft };
+function avgColor(pct: number, c: ThemeColors) {
+  if (pct >= 60) return { backgroundColor: c.successBgSoft };
+  if (pct >= 30) return { backgroundColor: c.warningBgSoft };
+  return { backgroundColor: c.dangerBgSoft };
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.bg },
   scroll: { padding: 20, gap: 16, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.textPrimary },
-  empty: { color: colors.textFaint, fontSize: 14, textAlign: 'center', marginTop: 40 },
+  title: { fontSize: 26, fontWeight: '800', color: c.textPrimary },
+  empty: { color: c.textFaint, fontSize: 14, textAlign: 'center', marginTop: 40 },
   card: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: colors.bgElevated,
+    borderColor: c.bgElevated,
   },
   cardPressed: { opacity: 0.7 },
   cardHeader: {
@@ -294,14 +298,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardDate: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  cardDate: { fontSize: 15, fontWeight: '600', color: c.textPrimary },
   badgeRow: { flexDirection: 'row', gap: 6 },
   avgBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
+    borderWidth: 1,
   },
-  avgText: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+  // Border-only distinction between the two badges — background/text stay
+  // driven by avgColor(pct) (the score-based semantic color), unchanged.
+  nutritionBadge: { borderColor: c.trendNutrition },
+  energyBadge: { borderColor: c.trendEnergy },
+  avgText: { color: c.textPrimary, fontWeight: '700', fontSize: 13 },
   batteryRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-end', height: 48 },
   miniCell: { alignItems: 'center', flex: 1 },
   miniBar: {
@@ -309,5 +318,5 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     minHeight: 2,
   },
-  miniLabel: { fontSize: 8, color: colors.textMuted, marginTop: 2 },
+  miniLabel: { fontSize: 8, color: c.textMuted, marginTop: 2 },
 });

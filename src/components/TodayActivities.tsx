@@ -5,7 +5,9 @@ import { PowerliftingSheet, describeLiftingSets } from './PowerliftingSheet';
 import { BodybuildingSheet, bbExerciseName } from './BodybuildingSheet';
 import { formatTimeHHmm, parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityLogEntry, ActivityType, WorkoutSession } from '../types/energy';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import type { Language } from '../i18n/types';
 
@@ -94,6 +96,8 @@ function isCustomEntry(entry: ActivityLogEntry): boolean {
 
 export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const [editingEntry, setEditingEntry] = useState<ActivityLogEntry | null>(null);
   const [liftingEntry, setLiftingEntry] = useState<ActivityLogEntry | null>(null);
   const [bodybuildingEntry, setBodybuildingEntry] = useState<ActivityLogEntry | null>(null);
@@ -126,8 +130,8 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
 
   function confirmEdit() {
     if (!editingEntry) return;
-    const mins = parseFloat(editMinutes);
-    const stepCount = parseFloat(editSteps);
+    const mins = parseDecimal(editMinutes);
+    const stepCount = parseDecimal(editSteps);
     const hasMinutes = !isNaN(mins) && mins > 0;
     // Custom entries keep their type/customName/customMet untouched — only
     // minutes/steps/time are editable in v1 (see isCustomEntry comment).
@@ -234,7 +238,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             <TextInput
               style={styles.input}
               placeholder={t('components.todayActivities.minutesPlaceholder')}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
               value={editMinutes}
               onChangeText={setEditMinutes}
@@ -242,7 +246,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
             <TextInput
               style={styles.input}
               placeholder={t('components.todayActivities.stepsPlaceholder')}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
               value={editSteps}
               onChangeText={setEditSteps}
@@ -251,7 +255,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder={t('components.todayActivities.fromTimePlaceholder')}
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={editStart}
@@ -260,7 +264,7 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
               <TextInput
                 style={[styles.input, styles.timeInput]}
                 placeholder={t('components.todayActivities.toTimePlaceholder')}
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
                 value={editEnd}
@@ -315,62 +319,62 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 10 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  sectionLabel: { fontSize: 13, color: colors.textTertiary },
-  totalKcal: { fontSize: 15, fontWeight: '800', color: colors.danger },
+  sectionLabel: { fontSize: 13, color: c.textTertiary },
+  totalKcal: { fontSize: 15, fontWeight: '800', color: c.danger },
   card: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 14,
     padding: 14,
     gap: 8,
   },
-  empty: { color: colors.textTertiary, fontSize: 13, lineHeight: 19 },
+  empty: { color: c.textTertiary, fontSize: 13, lineHeight: 19 },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entryMain: { flex: 1 },
-  entryName: { color: colors.textBright, fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 1 },
+  entryName: { color: c.textBright, fontSize: 14, fontWeight: '500' },
+  entryMeta: { color: c.textTertiary, fontSize: 12, marginTop: 1 },
   editBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  editText: { color: colors.infoAlt, fontSize: 13, fontWeight: '700' },
+  editText: { color: c.infoAlt, fontSize: 13, fontWeight: '700' },
   deleteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
+  deleteText: { color: c.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
     gap: 12,
   },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
+  title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   timeInput: { flex: 1, textAlign: 'center' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -378,17 +382,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  chipActive: { backgroundColor: colors.danger, borderColor: colors.danger },
-  chipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: colors.textPrimary },
+  chipActive: { backgroundColor: c.danger, borderColor: c.danger },
+  chipText: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: c.textPrimary },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: colors.bgElevated },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
-  save: { backgroundColor: colors.infoAlt },
-  saveText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  cancel: { backgroundColor: c.bgElevated },
+  cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
+  save: { backgroundColor: c.infoAlt },
+  saveText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
 });

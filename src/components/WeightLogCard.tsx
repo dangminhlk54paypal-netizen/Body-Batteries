@@ -8,11 +8,15 @@ import {
 } from '../data/repositories/healthSignalsRepository';
 import { dateString, formatDisplayDate } from '../lib/dateUtils';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 
 export function WeightLogCard() {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const [weightText, setWeightText] = useState('');
   const [entries, setEntries] = useState<WeightEntry[]>([]);
 
@@ -27,7 +31,7 @@ export function WeightLogCard() {
   }
 
   async function handleLog() {
-    const parsed = parseFloat(weightText);
+    const parsed = parseDecimal(weightText);
     const { min, max } = PROFILE_LIMITS.weightKg;
     if (isNaN(parsed) || parsed < min || parsed > max) return;
     const rounded = Math.round(parsed * 10) / 10;
@@ -45,7 +49,7 @@ export function WeightLogCard() {
         <TextInput
           style={styles.input}
           placeholder={t('components.weightLogCard.weightPlaceholder')}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           keyboardType="decimal-pad"
           value={weightText}
           onChangeText={setWeightText}
@@ -74,44 +78,44 @@ export function WeightLogCard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.bgElevated,
+    borderColor: c.bgElevated,
     padding: 16,
     gap: 10,
   },
-  title: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 12, color: colors.textTertiary, lineHeight: 17 },
+  title: { fontSize: 16, fontWeight: '700', color: c.textPrimary },
+  subtitle: { fontSize: 12, color: c.textTertiary, lineHeight: 17 },
   inputRow: { flexDirection: 'row', gap: 8 },
   input: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 12,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   btn: {
-    backgroundColor: colors.accentAlt,
+    backgroundColor: c.accentAlt,
     borderRadius: 10,
     paddingHorizontal: 14,
     justifyContent: 'center',
   },
-  btnText: { color: colors.textPrimary, fontWeight: '700', fontSize: 13 },
+  btnText: { color: c.textPrimary, fontWeight: '700', fontSize: 13 },
   pressed: { opacity: 0.6 },
-  empty: { color: colors.textFaint, fontSize: 13 },
+  empty: { color: c.textFaint, fontSize: 13 },
   entryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 6,
     borderTopWidth: 1,
-    borderTopColor: colors.bgElevated,
+    borderTopColor: c.bgElevated,
   },
-  entryDate: { color: colors.textSoft, fontSize: 13 },
-  entryValue: { color: colors.textPrimary, fontSize: 13, fontWeight: '600' },
+  entryDate: { color: c.textSoft, fontSize: 13 },
+  entryValue: { color: c.textPrimary, fontSize: 13, fontWeight: '600' },
 });

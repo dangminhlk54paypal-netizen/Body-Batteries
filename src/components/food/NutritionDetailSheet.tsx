@@ -4,7 +4,8 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { buildNutritionDetail } from '../../domain/food/nutritionDetail';
 import { getAnyFoodById } from '../../data/food/foodLookup';
 import type { FoodLogEntry } from '../../types/food';
-import { colors } from '../../lib/theme';
+import type { ThemeColors } from '../../lib/theme';
+import { useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
@@ -45,6 +46,7 @@ const MAX_TABLE_HEIGHT = Dimensions.get('window').height * 0.6;
 // helper buildNutritionDetail for the actual row derivation.
 export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
   const { t, language } = useT();
+  const styles = useThemedStyles(createStyles);
   // Both calls below are plain, synchronous, deterministic lookups/derivations
   // (in-memory map/registry reads + pure math) — safe to run directly during
   // render, same pattern as TodayMeals' summarizeFoodLog(entries) call.
@@ -81,7 +83,7 @@ export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   content: {
     padding: 24,
     gap: 4,
@@ -89,11 +91,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginBottom: 12,
   },
   table: {
@@ -105,15 +107,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    borderBottomColor: c.divider,
   },
   rowLabel: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   rowValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
 });

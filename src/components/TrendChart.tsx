@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Line, Polyline, Circle, Text as SvgText } from 'react-native-svg';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 
 export interface TrendPoint {
@@ -20,11 +21,13 @@ const CHART_PADDING_X = 24;
 const CHART_PADDING_TOP = 16;
 const CHART_PADDING_BOTTOM = 28;
 const GRID_LINES = [0, 25, 50, 75, 100];
-const NUTRIENT_COLOR = colors.accent;
-const ENERGY_COLOR = colors.warning;
 
 export function TrendChart({ data, energyData }: TrendChartProps) {
   const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
+  const NUTRIENT_COLOR = c.trendNutrition;
+  const ENERGY_COLOR = c.trendEnergy;
 
   if (data.length < 2) {
     return (
@@ -50,7 +53,7 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
               y1={y}
               x2={320 - CHART_PADDING_X}
               y2={y}
-              stroke={colors.bgElevated}
+              stroke={c.bgElevated}
               strokeWidth={1}
             />
           );
@@ -71,7 +74,7 @@ export function TrendChart({ data, energyData }: TrendChartProps) {
           return (
             <React.Fragment key={point.date}>
               <Circle cx={x} cy={y} r={4} fill={NUTRIENT_COLOR} />
-              <SvgText x={x} y={CHART_HEIGHT - 6} fontSize={9} fill={colors.textMuted} textAnchor="middle">
+              <SvgText x={x} y={CHART_HEIGHT - 6} fontSize={9} fill={c.textMuted} textAnchor="middle">
                 {dayMonthLabel(point.date)}
               </SvgText>
             </React.Fragment>
@@ -135,12 +138,12 @@ function yForValue(value: number): number {
   return CHART_PADDING_TOP + usableHeight * (1 - clamped / 100);
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.bgElevated,
+    borderColor: c.bgElevated,
     paddingVertical: 8,
   },
   emptyContainer: {
@@ -148,7 +151,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyText: { color: colors.textFaint, fontSize: 13 },
+  emptyText: { color: c.textFaint, fontSize: 13 },
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -158,5 +161,5 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendLabel: { color: colors.textDim, fontSize: 11 },
+  legendLabel: { color: c.textDim, fontSize: 11 },
 });

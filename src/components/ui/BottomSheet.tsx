@@ -7,7 +7,8 @@ import Animated, {
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
-import { colors } from '../../lib/theme';
+import type { ThemeColors } from '../../lib/theme';
+import { useThemedStyles } from '../../hooks/useThemeColors';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -26,6 +27,7 @@ const DISMISS_DISTANCE = 100;
 const DISMISS_VELOCITY = 800;
 
 export function BottomSheet({ visible, onClose, children, sheetOffset = 500 }: BottomSheetProps) {
+  const styles = useThemedStyles(createStyles);
   const translateY = useSharedValue(sheetOffset);
 
   const pan = Gesture.Pan()
@@ -74,11 +76,11 @@ export function BottomSheet({ visible, onClose, children, sheetOffset = 500 }: B
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' },
   overlayDismiss: { flex: 1 },
   sheet: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     maxHeight: '85%',
@@ -93,7 +95,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
     alignSelf: 'center',
     marginTop: 10,
     marginBottom: 2,

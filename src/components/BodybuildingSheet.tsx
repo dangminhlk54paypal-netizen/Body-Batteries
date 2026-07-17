@@ -20,7 +20,9 @@ import type {
   WorkoutSession,
 } from '../types/energy';
 import { MUSCLE_GROUPS } from '../types/energy';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import { translate } from '../i18n/translate';
 import type { Language } from '../i18n/types';
@@ -70,8 +72,8 @@ function setToRow(s: LiftingSet): SetRowInput {
 function parseRows(rows: SetRowInput[]): LiftingSet[] {
   const sets: LiftingSet[] = [];
   for (const r of rows) {
-    const weightKg = parseFloat(r.weight);
-    const reps = parseFloat(r.reps);
+    const weightKg = parseDecimal(r.weight);
+    const reps = parseDecimal(r.reps);
     if (isNaN(weightKg) || weightKg < 0 || isNaN(reps) || reps <= 0) continue;
     sets.push({ kind: 'working', weightKg, reps: Math.round(reps) });
   }
@@ -182,6 +184,8 @@ interface Props {
 
 export function BodybuildingSheet({ visible, onClose, editingEntry, onSaveEdit }: Props) {
   const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const logActivity = useEnergyStore((s) => s.logActivity);
   const profile = useSettingsStore((s) => s.userProfile);
   const customExercises = useSettingsStore((s) => s.customExercises);
@@ -363,7 +367,7 @@ export function BodybuildingSheet({ visible, onClose, editingEntry, onSaveEdit }
             <TextInput
               style={styles.input}
               placeholder={t('components.bodybuildingSheet.customExerciseNamePlaceholder')}
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               value={newExerciseName}
               onChangeText={setNewExerciseName}
               autoFocus
@@ -545,7 +549,7 @@ export function BodybuildingSheet({ visible, onClose, editingEntry, onSaveEdit }
                   <TextInput
                     style={styles.setInput}
                     placeholder={t('components.bodybuildingSheet.weightPlaceholder')}
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={c.textMuted}
                     keyboardType="decimal-pad"
                     value={row.weight}
                     onChangeText={(v) => updateRow(ex.exerciseId, ex.rows, i, { weight: v })}
@@ -556,7 +560,7 @@ export function BodybuildingSheet({ visible, onClose, editingEntry, onSaveEdit }
                   <TextInput
                     style={styles.setInput}
                     placeholder={t('components.bodybuildingSheet.repsPlaceholder')}
-                    placeholderTextColor={colors.textMuted}
+                    placeholderTextColor={c.textMuted}
                     keyboardType="number-pad"
                     value={row.reps}
                     onChangeText={(v) => updateRow(ex.exerciseId, ex.rows, i, { reps: v })}
@@ -619,82 +623,82 @@ export function BodybuildingSheet({ visible, onClose, editingEntry, onSaveEdit }
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   scroll: { flexShrink: 1 },
   content: { padding: 24, paddingTop: 12, gap: 12 },
-  title: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
-  subtitle: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.textBright, marginTop: 4 },
-  hintText: { fontSize: 12, color: colors.textTertiary, marginTop: -6 },
+  title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
+  subtitle: { fontSize: 13, color: c.textSecondary, lineHeight: 18 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: c.textBright, marginTop: 4 },
+  hintText: { fontSize: 12, color: c.textTertiary, marginTop: -6 },
   muscleTabs: { flexDirection: 'row', gap: 8, paddingVertical: 2 },
   muscleTab: {
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 12,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  muscleTabActive: { backgroundColor: colors.accentAlt, borderColor: colors.accentAlt },
-  muscleTabText: { color: colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  muscleTabTextActive: { color: colors.textPrimary },
+  muscleTabActive: { backgroundColor: c.accentAlt, borderColor: c.accentAlt },
+  muscleTabText: { color: c.textSecondary, fontSize: 13, fontWeight: '700' },
+  muscleTabTextActive: { color: c.textPrimary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
-  chipActive: { backgroundColor: colors.accentAlt, borderColor: colors.accentAlt },
-  chipText: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: colors.textPrimary },
+  chipActive: { backgroundColor: c.accentAlt, borderColor: c.accentAlt },
+  chipText: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: c.textPrimary },
   customChipWrap: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   customChipDelete: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  customChipDeleteText: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
-  emptySection: { color: colors.textMuted, fontSize: 12 },
+  customChipDeleteText: { color: c.textMuted, fontSize: 11, fontWeight: '700' },
+  emptySection: { color: c.textMuted, fontSize: 12 },
   addCustomBtn: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.accentAlt,
+    borderColor: c.accentAlt,
     borderStyle: 'dashed',
   },
-  addCustomText: { color: colors.accentAlt, fontSize: 12, fontWeight: '700' },
+  addCustomText: { color: c.accentAlt, fontSize: 12, fontWeight: '700' },
   addCustomForm: { gap: 10 },
-  fieldLabel: { fontSize: 13, color: colors.textSecondary },
+  fieldLabel: { fontSize: 13, color: c.textSecondary },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   exerciseCard: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 12,
     padding: 12,
     gap: 8,
   },
   exerciseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  exerciseName: { flex: 1, color: colors.textBright, fontSize: 14, fontWeight: '700' },
+  exerciseName: { flex: 1, color: c.textBright, fontSize: 14, fontWeight: '700' },
   removeExerciseBtn: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -703,57 +707,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: c.borderSubtle,
   },
-  intensityChipActive: { backgroundColor: colors.mint, borderColor: colors.mint },
-  intensityChipText: { color: colors.textSecondary, fontSize: 11, fontWeight: '600' },
-  intensityChipTextActive: { color: colors.bg },
+  intensityChipActive: { backgroundColor: c.mint, borderColor: c.mint },
+  intensityChipText: { color: c.textSecondary, fontSize: 11, fontWeight: '600' },
+  intensityChipTextActive: { color: c.bg },
   setRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  setIndex: { width: 16, color: colors.textMuted, fontSize: 12, textAlign: 'center' },
+  setIndex: { width: 16, color: c.textMuted, fontSize: 12, textAlign: 'center' },
   setInput: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 8,
     paddingVertical: 9,
     paddingHorizontal: 10,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     textAlign: 'center',
   },
-  setUnit: { color: colors.textTertiary, fontSize: 12 },
+  setUnit: { color: c.textTertiary, fontSize: 12 },
   removeBtn: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removeText: { color: colors.danger, fontSize: 13, fontWeight: '700' },
+  removeText: { color: c.danger, fontSize: 13, fontWeight: '700' },
   addBtn: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
   },
-  addText: { color: colors.infoAlt, fontSize: 12, fontWeight: '700' },
+  addText: { color: c.infoAlt, fontSize: 12, fontWeight: '700' },
   previewCard: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 10,
     padding: 12,
   },
-  previewText: { color: colors.textBright, fontSize: 14, fontWeight: '600' },
+  previewText: { color: c.textBright, fontSize: 14, fontWeight: '600' },
   row: { flexDirection: 'row', gap: 12, marginTop: 4 },
   modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
-  cancel: { backgroundColor: colors.bgElevated },
-  cancelText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
-  confirm: { backgroundColor: colors.accentAlt },
+  cancel: { backgroundColor: c.bgElevated },
+  cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
+  confirm: { backgroundColor: c.accentAlt },
   confirmDisabled: { opacity: 0.5 },
-  btnText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  btnText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

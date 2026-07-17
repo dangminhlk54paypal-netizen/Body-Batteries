@@ -5,7 +5,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { DiaryScreen } from '../screens/DiaryScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
-import { colors } from '../lib/theme';
+import { useThemeColors } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 
 const Tab = createBottomTabNavigator();
@@ -19,16 +19,17 @@ export function AppNavigator() {
   // re-reads the tab labels below) whenever the user switches language —
   // React Navigation's `options` are plain values re-evaluated every render.
   const { t } = useT();
+  const c = useThemeColors();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.bgCard,
-          borderTopColor: colors.bgElevated,
+          backgroundColor: c.bgCard,
+          borderTopColor: c.bgElevated,
         },
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textFaint,
+        tabBarActiveTintColor: c.accent,
+        tabBarInactiveTintColor: c.textFaint,
         tabBarLabelStyle: { fontSize: 11 },
       }}
     >

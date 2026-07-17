@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import type { BatteryType } from '../types/battery';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import * as haptics from '../lib/haptics';
 import { BottomSheet } from './ui/BottomSheet';
-import { toMl, type WaterDisplayUnit } from '../lib/units';
+import { toMl, parseDecimal, type WaterDisplayUnit } from '../lib/units';
 import { useT } from '../i18n/useT';
 
 // Manual charge form. Since the small-battery tap overhaul, only water and
@@ -42,12 +43,14 @@ export function IntakeModal({
   recommendationVi,
 }: Props) {
   const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const isWater = battery?.id === 'water';
 
   function handleConfirm() {
-    const parsed = parseFloat(amount);
+    const parsed = parseDecimal(amount);
     if (!isNaN(parsed) && parsed > 0) {
       onConfirm(isWater ? toMl(parsed, waterDisplayUnit) : parsed, note.trim());
       haptics.success();
@@ -103,7 +106,7 @@ export function IntakeModal({
         <TextInput
           style={styles.input}
           placeholder={t('components.intakeModal.amountPlaceholder')}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           keyboardType="decimal-pad"
           value={amount}
           onChangeText={setAmount}
@@ -113,7 +116,7 @@ export function IntakeModal({
         <TextInput
           style={[styles.input, styles.noteInput]}
           placeholder={t('components.intakeModal.notePlaceholder')}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           value={note}
           onChangeText={setNote}
         />
@@ -142,7 +145,7 @@ export function IntakeModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   content: {
     padding: 24,
     gap: 12,
@@ -150,27 +153,27 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   noteInput: {
     fontSize: 14,
   },
   kcalHint: {
     fontSize: 12,
-    color: colors.textSubtle,
+    color: c.textSubtle,
   },
   unitRow: {
     flexDirection: 'row',
@@ -180,22 +183,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
   },
   unitChipActive: {
-    backgroundColor: colors.bgHighlight,
-    borderColor: colors.accent,
+    backgroundColor: c.bgHighlight,
+    borderColor: c.accent,
   },
   unitChipText: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
   unitChipTextActive: {
-    color: colors.accent,
+    color: c.accent,
   },
   buttons: {
     flexDirection: 'row',
@@ -209,16 +212,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
   },
   confirmBtn: {},
   cancelText: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   confirmText: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },

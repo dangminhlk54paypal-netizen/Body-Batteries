@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { formatRelativeTime } from '../lib/relativeTime';
 import type { useEnergyStore } from '../store/energyStore';
 import { translate } from '../i18n/translate';
@@ -18,7 +19,8 @@ export type AppleHealthStatus = ReturnType<typeof useEnergyStore.getState>['appl
 // (Settings), so the two screens never drift on what each state means.
 export function appleHealthStatusMeta(
   status: AppleHealthStatus,
-  language: Language
+  language: Language,
+  c: ThemeColors
 ): {
   icon: string;
   color: string;
@@ -30,21 +32,21 @@ export function appleHealthStatusMeta(
     case 'synced':
       return {
         icon: '✓',
-        color: colors.mint,
-        bg: colors.successBgSoft,
+        color: c.mint,
+        bg: c.successBgSoft,
         label: t('components.appleHealthStatusBadge.labelSynced'),
       };
     case 'estimated':
       return {
         icon: 'ℹ️',
-        color: colors.warning,
-        bg: colors.warningBgSoft,
+        color: c.warning,
+        bg: c.warningBgSoft,
         label: t('components.appleHealthStatusBadge.labelEstimated'),
       };
     case 'syncing':
       return {
         icon: '',
-        color: colors.textTertiary,
+        color: c.textTertiary,
         bg: 'transparent',
         label: t('components.appleHealthStatusBadge.labelSyncing'),
       };
@@ -52,7 +54,7 @@ export function appleHealthStatusMeta(
     default:
       return {
         icon: '—',
-        color: colors.textFaint,
+        color: c.textFaint,
         bg: 'transparent',
         label: t('components.appleHealthStatusBadge.labelIdle'),
       };
@@ -75,6 +77,8 @@ interface Props {
 // (for the synced state) the relative sync time.
 export function AppleHealthStatusBadge({ status, lastSyncAt, nowMs }: Props) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
 
   if (status === 'idle') {
     return (
@@ -84,7 +88,7 @@ export function AppleHealthStatusBadge({ status, lastSyncAt, nowMs }: Props) {
     );
   }
 
-  const meta = appleHealthStatusMeta(status, language);
+  const meta = appleHealthStatusMeta(status, language, c);
 
   if (status === 'syncing') {
     return (
@@ -113,7 +117,7 @@ export function AppleHealthStatusBadge({ status, lastSyncAt, nowMs }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,5 +129,5 @@ const styles = StyleSheet.create({
   },
   icon: { fontSize: 12, fontWeight: '700' },
   text: { fontSize: 11, fontWeight: '600', flexShrink: 1 },
-  idleText: { fontSize: 12, color: colors.textFaint },
+  idleText: { fontSize: 12, color: c.textFaint },
 });

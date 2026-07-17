@@ -8,7 +8,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { MODES, modeName } from '../domain/modes/modeDefinitions';
 import type { ModeId, ModeDefinition } from '../types/modes';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import * as haptics from '../lib/haptics';
 import { useLanguage } from '../i18n/useT';
 
@@ -17,10 +18,9 @@ interface Props {
   onChange: (mode: ModeId) => void;
 }
 
-const INACTIVE_BG = colors.bgElevated;
-
 export function ModeSelector({ currentMode, onChange }: Props) {
   const language = useLanguage();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
       {Object.values(MODES).map((mode) => (
@@ -49,14 +49,17 @@ function ModeChip({
   active: boolean;
   onPress: () => void;
 }) {
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const progress = useSharedValue(active ? 1 : 0);
+  const inactiveBg = c.bgElevated;
 
   useEffect(() => {
     progress.value = withTiming(active ? 1 : 0, { duration: 250 });
   }, [active, progress]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(progress.value, [0, 1], [INACTIVE_BG, mode.color]),
+    backgroundColor: interpolateColor(progress.value, [0, 1], [inactiveBg, mode.color]),
   }));
 
   return (
@@ -74,7 +77,7 @@ function ModeChip({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 8,
@@ -84,7 +87,7 @@ const styles = StyleSheet.create({
   chip: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     overflow: 'hidden',
   },
   chipInner: {
@@ -95,11 +98,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   chipText: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
   chipTextActive: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
 });

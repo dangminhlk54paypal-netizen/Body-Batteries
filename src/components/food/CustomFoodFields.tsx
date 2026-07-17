@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import type { CustomFoodInput } from '../../domain/food/customFoodInput';
 import type { PortionUnit } from '../../types/food';
-import { colors } from '../../lib/theme';
+import type { ThemeColors } from '../../lib/theme';
+import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
+import { parseDecimal } from '../../lib/units';
 import { useT } from '../../i18n/useT';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
@@ -81,10 +83,12 @@ export function CustomFoodFields({
   autoFocusName,
 }: Props) {
   const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const suffix = unitSuffix(input.portionUnit, t);
   const isServingBased = input.portionUnit !== 'gram';
 
-  const sodiumValue = parseFloat(input.sodiumMg);
+  const sodiumValue = parseDecimal(input.sodiumMg);
   const hasValidSodium = input.sodiumMg.trim() !== '' && !isNaN(sodiumValue);
 
   const servingUnitNoun =
@@ -98,7 +102,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder={t('components.customFoodFields.namePlaceholder')}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={c.textMuted}
         value={input.name}
         onChangeText={(v) => onChange('name', v)}
         autoFocus={autoFocusName}
@@ -108,7 +112,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder={t('components.customFoodFields.categoryPlaceholder')}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={c.textMuted}
         value={input.category}
         onChangeText={(v) => onChange('category', v)}
       />
@@ -145,7 +149,7 @@ export function CustomFoodFields({
           <TextInput
             style={styles.input}
             placeholder={t('components.customFoodFields.servingWeightPlaceholder')}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={c.textMuted}
             keyboardType="decimal-pad"
             value={input.servingWeightG}
             onChangeText={(v) => onChange('servingWeightG', v)}
@@ -157,7 +161,7 @@ export function CustomFoodFields({
           <TextInput
             style={styles.input}
             placeholder={t('components.customFoodFields.defaultServingPlaceholder')}
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={c.textMuted}
             keyboardType="decimal-pad"
             value={input.defaultServingG}
             onChangeText={(v) => onChange('defaultServingG', v)}
@@ -173,7 +177,7 @@ export function CustomFoodFields({
           <TextInput
             style={styles.input}
             placeholder="0"
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={c.textMuted}
             keyboardType="decimal-pad"
             value={input[f.key]}
             onChangeText={(v) => onChange(f.key, v)}
@@ -187,7 +191,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder="0"
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={c.textMuted}
         keyboardType="decimal-pad"
         value={input.carbG}
         onChangeText={(v) => onChange('carbG', v)}
@@ -206,7 +210,7 @@ export function CustomFoodFields({
         <TextInput
           style={styles.input}
           placeholder="0"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           keyboardType="decimal-pad"
           value={input.sugarG}
           onChangeText={(v) => onChange('sugarG', v)}
@@ -217,7 +221,7 @@ export function CustomFoodFields({
         <TextInput
           style={styles.input}
           placeholder="0"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           keyboardType="decimal-pad"
           value={input.fiberG}
           onChangeText={(v) => onChange('fiberG', v)}
@@ -230,7 +234,7 @@ export function CustomFoodFields({
       <TextInput
         style={styles.input}
         placeholder="0"
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={c.textMuted}
         keyboardType="decimal-pad"
         value={input.waterG}
         onChangeText={(v) => onChange('waterG', v)}
@@ -258,7 +262,7 @@ export function CustomFoodFields({
               <TextInput
                 style={styles.input}
                 placeholder="0"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 keyboardType="decimal-pad"
                 value={input[f.key]}
                 onChangeText={(v) => onChange(f.key, v)}
@@ -277,7 +281,7 @@ export function CustomFoodFields({
               <TextInput
                 style={styles.input}
                 placeholder="0"
-                placeholderTextColor={colors.textMuted}
+                placeholderTextColor={c.textMuted}
                 keyboardType="decimal-pad"
                 value={input[f.key]}
                 onChangeText={(v) => onChange(f.key, v)}
@@ -299,60 +303,60 @@ export function CustomFoodFields({
   );
 }
 
-const styles = StyleSheet.create({
-  fieldLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
-  fieldLabelNested: { fontSize: 12, color: colors.textDim, marginTop: 4 },
+const createStyles = (c: ThemeColors) => StyleSheet.create({
+  fieldLabel: { fontSize: 13, color: c.textSecondary, marginTop: 4 },
+  fieldLabelNested: { fontSize: 12, color: c.textDim, marginTop: 4 },
   unitRow: { flexDirection: 'row', gap: 8 },
   unitChip: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     alignItems: 'center',
   },
   unitChipActive: {
-    backgroundColor: colors.bgHighlight,
-    borderColor: colors.accent,
+    backgroundColor: c.bgHighlight,
+    borderColor: c.accent,
   },
-  unitChipText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
-  unitChipTextActive: { color: colors.accent },
+  unitChipText: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+  unitChipTextActive: { color: c.accent },
   carbBreakdown: {
     borderLeftWidth: 2,
-    borderLeftColor: colors.bgElevated,
+    borderLeftColor: c.bgElevated,
     paddingLeft: 12,
     gap: 8,
   },
-  carbBreakdownNote: { fontSize: 11, color: colors.textSubtle, lineHeight: 15 },
+  carbBreakdownNote: { fontSize: 11, color: c.textSubtle, lineHeight: 15 },
   subHeading: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textDim,
+    color: c.textDim,
     marginTop: 10,
     textTransform: 'uppercase',
   },
-  saltDerived: { fontSize: 11, color: colors.textSubtle, marginTop: -2 },
-  microsHint: { fontSize: 11, color: colors.textSubtle, marginTop: -4 },
+  saltDerived: { fontSize: 11, color: c.textSubtle, marginTop: -2 },
+  microsHint: { fontSize: 11, color: c.textSubtle, marginTop: -4 },
   input: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderRadius: 10,
     padding: 14,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: c.textPrimary,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
   },
   microsToggle: {
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 16,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: c.border,
     marginTop: 4,
   },
-  chipText: { color: colors.textLight, fontSize: 12, fontWeight: '600' },
+  chipText: { color: c.textLight, fontSize: 12, fontWeight: '600' },
   pressed: { opacity: 0.6 },
 });

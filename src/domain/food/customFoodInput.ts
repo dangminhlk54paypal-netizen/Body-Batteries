@@ -1,4 +1,5 @@
 import type { FoodItem, Nutrition, PortionUnit } from '../../types/food';
+import { parseDecimal } from '../../lib/units';
 
 // Pure form-state → domain-object logic for the "add a custom food" flow in
 // FoodLogModal. No I/O, no state — unit-tested. The modal only calls
@@ -97,8 +98,11 @@ export function resetNutritionForUnitChange(
 
 // Tolerant numeric parse: blank/whitespace/NaN → 0 (never throws, never
 // produces NaN downstream — the form must stay usable even half-filled).
+// Uses parseDecimal (not raw parseFloat) so a comma-decimal keyboard (VI/DE
+// locale, e.g. "12,5") isn't silently truncated to "12" — same fix as the
+// weight-input bug from Wave 1.
 function parseNum(s: string): number {
-  const n = parseFloat(s);
+  const n = parseDecimal(s);
   return isNaN(n) ? 0 : n;
 }
 
@@ -162,7 +166,7 @@ function scalePer100gToPerServing(n: Nutrition, servingWeightG: number): Nutriti
 // throw or silently mis-scale every macro/micro). Used to gate the save button.
 export function isValidCustomFoodInput(input: CustomFoodInput): boolean {
   if (input.name.trim().length === 0) return false;
-  const kcal = parseFloat(input.energyKcal);
+  const kcal = parseDecimal(input.energyKcal);
   if (isNaN(kcal) || kcal < 0) return false;
   if (input.portionUnit === 'pack' || input.portionUnit === 'capsule') {
     const servingWeightG = parseNum(input.servingWeightG);

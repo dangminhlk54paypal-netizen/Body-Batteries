@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { todayString, dateString, formatDisplayDate, isToday } from '../../lib/dateUtils';
-import { colors } from '../../lib/theme';
+import type { ThemeColors } from '../../lib/theme';
+import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
@@ -84,17 +85,23 @@ function parseDdMmInput(input: string, today: string): string | null {
 
 export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldProps) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const [inputValue, setInputValue] = useState('');
 
   // Memoize today so it's a stable dependency for other useMemo hooks.
   const today = useMemo(() => getTodayString(), []);
 
   // Quick-select chips: 0 days ago (today), 1 day ago, 2 days ago, etc.
+  // "Hôm kìa" (3 days ago) has its own dedicated Vietnamese word — a generic
+  // common.daysAgo("3 ngày trước") reads unnaturally next to "Hôm qua", so it
+  // gets its own key (common.threeDaysAgo) instead.
   const quickSelects = useMemo(() => {
     return [
       { label: t('common.today'), days: 0 },
       { label: t('common.yesterday'), days: 1 },
       { label: t('common.daysAgo', { n: 2 }), days: 2 },
+      { label: t('common.threeDaysAgo'), days: 3 },
     ];
   }, [t]);
 
@@ -179,7 +186,7 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
         <TextInput
           style={[styles.input, inputError && styles.inputError]}
           placeholder="dd/mm"
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           value={inputValue}
           onChangeText={handleInputChange}
           onBlur={handleInputBlur}
@@ -199,13 +206,14 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     marginVertical: 8,
   },
 
   chipsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
@@ -215,23 +223,23 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    backgroundColor: colors.bgAlt,
+    borderColor: c.borderSubtle,
+    backgroundColor: c.bgAlt,
   },
 
   chipActive: {
-    borderColor: colors.accentAlt,
-    backgroundColor: colors.accentAltBg,
+    borderColor: c.accentAlt,
+    backgroundColor: c.accentAltBg,
   },
 
   chipLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
 
   chipLabelActive: {
-    color: colors.accentAlt,
+    color: c.accentAlt,
   },
 
   inputRow: {
@@ -243,26 +251,26 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    backgroundColor: colors.bgCard,
+    borderColor: c.borderSubtle,
+    backgroundColor: c.bgCard,
     fontSize: 14,
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
 
   inputError: {
-    borderColor: colors.danger,
+    borderColor: c.danger,
   },
 
   errorText: {
     fontSize: 12,
-    color: colors.danger,
+    color: c.danger,
     marginTop: 4,
     marginBottom: 4,
   },
 
   displayLabel: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginTop: 4,
   },
 });

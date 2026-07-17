@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { DEFAULT_BATTERIES, batteryTypeName } from '../lib/constants';
 import type { IntakeEvent } from '../types/battery';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import type { Language } from '../i18n/types';
 
@@ -30,6 +31,7 @@ function intakeLabel(entry: IntakeEvent, language: Language): string {
 
 export function TodayIntakes({ entries, onDelete }: Props) {
   const { t, language } = useT();
+  const styles = useThemedStyles(createStyles);
   const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
@@ -70,33 +72,33 @@ export function TodayIntakes({ entries, onDelete }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 10 },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'baseline',
   },
-  sectionLabel: { fontSize: 13, color: colors.textTertiary },
+  sectionLabel: { fontSize: 13, color: c.textTertiary },
   card: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 14,
     padding: 14,
     gap: 8,
   },
-  empty: { color: colors.textTertiary, fontSize: 13, lineHeight: 19 },
+  empty: { color: c.textTertiary, fontSize: 13, lineHeight: 19 },
   entryRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   entryMain: { flex: 1 },
-  entryName: { color: colors.textBright, fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: colors.textTertiary, fontSize: 12, marginTop: 1 },
+  entryName: { color: c.textBright, fontSize: 14, fontWeight: '500' },
+  entryMeta: { color: c.textTertiary, fontSize: 12, marginTop: 1 },
   deleteBtn: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  deleteText: { color: colors.danger, fontSize: 14, fontWeight: '700' },
+  deleteText: { color: c.danger, fontSize: 14, fontWeight: '700' },
   pressed: { opacity: 0.5 },
 });

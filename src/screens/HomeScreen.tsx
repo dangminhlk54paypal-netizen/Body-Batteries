@@ -35,7 +35,8 @@ import { stepsKcal } from '../domain/energy/metabolismEngine';
 import { waterRecommendationMl, sleepRecommendationH } from '../domain/rules/dailyRecommendations';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
 import { nextWaterDisplayUnit, nextMovementDisplayUnit } from '../lib/units';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import * as haptics from '../lib/haptics';
 import { useT } from '../i18n/useT';
 
@@ -108,7 +109,10 @@ export function HomeScreen() {
     setWaterDisplayUnit,
     movementDisplayUnit,
     setMovementDisplayUnit,
+    themeMode,
   } = useSettingsStore();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
   // water/sleep: manual charge form (unchanged input, now with a recommendation hint)
@@ -255,11 +259,14 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+      <StatusBar
+        barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={c.bg}
+      />
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.textPrimary} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.textPrimary} />
         }
       >
         {/* Header */}
@@ -356,10 +363,10 @@ export function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: c.bg,
   },
   loadingContainer: {
     flex: 1,
@@ -367,7 +374,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontSize: 16,
   },
   scroll: {
@@ -382,11 +389,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 26,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   headerDate: {
     fontSize: 14,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   masterContainer: {
     alignItems: 'center',
@@ -394,13 +401,13 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     paddingHorizontal: 20,
     marginBottom: -12,
   },
   hint: {
     fontSize: 11,
-    color: colors.textFaint,
+    color: c.textFaint,
     textAlign: 'center',
     paddingHorizontal: 20,
   },

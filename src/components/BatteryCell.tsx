@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { Text, StyleSheet, Pressable } from 'react-native';
 import Svg, { Rect, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withTiming } from 'react-native-reanimated';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 
 interface Props {
   id: string;
@@ -43,6 +44,8 @@ export function BatteryCell({
   levelLabel,
   onToggleUnit,
 }: Props) {
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const progress = useSharedValue(percentage);
 
   useEffect(() => {
@@ -58,7 +61,7 @@ export function BatteryCell({
   });
 
   const levelColor =
-    percentage > 50 ? color : percentage > 20 ? colors.warning : colors.dangerStrong;
+    percentage > 50 ? color : percentage > 20 ? c.warning : c.dangerStrong;
 
   return (
     <Pressable
@@ -80,7 +83,7 @@ export function BatteryCell({
           width={CELL_WIDTH * 0.4}
           height={TERMINAL_H}
           rx={2}
-          fill={colors.textFaint}
+          fill={c.textFaint}
         />
 
         {/* Body outline */}
@@ -90,8 +93,8 @@ export function BatteryCell({
           width={CELL_WIDTH}
           height={CELL_HEIGHT}
           rx={BORDER_R}
-          fill={colors.bgCard}
-          stroke={colors.borderSubtle}
+          fill={c.bgCard}
+          stroke={c.borderSubtle}
           strokeWidth={2}
         />
 
@@ -125,7 +128,7 @@ export function BatteryCell({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     gap: 4,
@@ -137,16 +140,16 @@ const styles = StyleSheet.create({
   percentage: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   name: {
     fontSize: 11,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   level: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: c.textMuted,
   },
   levelToggle: {
     textDecorationLine: 'underline',

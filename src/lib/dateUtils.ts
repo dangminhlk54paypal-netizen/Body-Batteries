@@ -84,6 +84,20 @@ export function parseTimeHHmmToday(value: string): number | undefined {
   return d.getTime();
 }
 
+// Backfill counterpart of parseTimeHHmmToday: parses a "HH:mm" (24h) time
+// string anchored to an ARBITRARY calendar date (not always today) — used
+// when logging an activity onto a past day (S-S6 T2.2), so the entered
+// start/end time lands on the picked day instead of today's.
+export function parseTimeHHmmForDate(value: string, dateStr: string): number | undefined {
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(value.trim());
+  if (!match) return undefined;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setHours(hours, minutes, 0, 0);
+  return d.getTime();
+}
+
 // Inverse of parseTimeHHmmToday: formats a unix ms timestamp as "HH:mm"
 // (local time) for display or for prefilling an edit form.
 export function formatTimeHHmm(timestamp: number): string {

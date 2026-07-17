@@ -7,7 +7,8 @@ import { UPPER_LIMITS } from '../lib/upperLimits';
 import type { DateOption } from '../hooks/useMicroBatteryHistory';
 import { OverdoseNotice } from './OverdoseNotice';
 import { useSettingsStore } from '../store/settingsStore';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 
 interface Props {
@@ -47,6 +48,8 @@ function isOverReference(state: MicroBatteryState): boolean {
 // nutrient's own fixed color regardless of level.
 function MicroCell({ state }: { state: MicroBatteryState }) {
   const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   // The tank drawing tops out at 100%; anything past that is conveyed by the
   // real percentage figure (e.g. 134%) plus the caption below.
   const fillHeight = CELL_HEIGHT * (Math.min(state.percentage, 100) / 100);
@@ -72,8 +75,8 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
           width={CELL_WIDTH}
           height={CELL_HEIGHT}
           rx={BORDER_R}
-          fill={colors.bgCard}
-          stroke={state.over ? state.color : colors.borderSubtle}
+          fill={c.bgCard}
+          stroke={state.over ? state.color : c.borderSubtle}
           strokeWidth={2}
         />
         {fillHeight > 0 && (
@@ -112,6 +115,7 @@ export function MicroBatteryStack({
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useT();
+  const styles = useThemedStyles(createStyles);
   // Persisted collapse state for this whole section — same read-the-store-
   // directly pattern MasterBattery uses for particleEffectsEnabled.
   const microCollapsed = useSettingsStore((s) => s.microCollapsed);
@@ -219,7 +223,7 @@ export function MicroBatteryStack({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     gap: 8,
   },
@@ -236,19 +240,19 @@ const styles = StyleSheet.create({
   },
   chevron: {
     fontSize: 12,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   title: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   disclaimer: {
     fontSize: 11,
-    color: colors.textFaint,
+    color: c.textFaint,
   },
   collapsedLine: {
     fontSize: 12,
-    color: colors.textMuted,
+    color: c.textMuted,
     paddingHorizontal: 20,
   },
   dateRow: {
@@ -260,20 +264,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
+    borderColor: c.borderSubtle,
   },
   dateChipActive: {
-    backgroundColor: colors.accentAltBg,
-    borderColor: colors.accentAlt,
+    backgroundColor: c.accentAltBg,
+    borderColor: c.accentAlt,
   },
   dateChipText: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: c.textTertiary,
   },
   dateChipTextActive: {
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   row: {
     flexDirection: 'row',
@@ -289,30 +293,30 @@ const styles = StyleSheet.create({
   cellPct: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   cellName: {
     fontSize: 10,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     textAlign: 'center',
   },
   cellAmount: {
     fontSize: 9,
-    color: colors.textMuted,
+    color: c.textMuted,
   },
   cellTarget: {
     fontSize: 8,
-    color: colors.textCool,
+    color: c.textCool,
     textAlign: 'center',
   },
   recommendNote: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: c.textMuted,
     paddingHorizontal: 20,
   },
   cellCaption: {
     fontSize: 8,
-    color: colors.textSubtle,
+    color: c.textSubtle,
     textAlign: 'center',
   },
   moreToggle: {
@@ -320,14 +324,14 @@ const styles = StyleSheet.create({
   },
   moreToggleText: {
     fontSize: 11,
-    color: colors.accentAlt,
+    color: c.accentAlt,
   },
   limitSection: {
     gap: 4,
   },
   limitLabel: {
     fontSize: 11,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     paddingHorizontal: 20,
   },
 });

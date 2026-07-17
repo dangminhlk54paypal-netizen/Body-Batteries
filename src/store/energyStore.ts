@@ -74,6 +74,10 @@ import {
   reverseFoodOnDayReadings,
   buildReadingsForMissedDay,
 } from '../domain/food/backfillEngine';
+import {
+  applyActivityToDayReadings,
+  reverseActivityOnDayReadings,
+} from '../domain/energy/activityBackfillEngine';
 import { useSettingsStore } from './settingsStore';
 import { todayString, dateString, energyDayString, nowTimestamp } from '../lib/dateUtils';
 import { DEFAULT_BATTERIES } from '../lib/constants';
@@ -203,6 +207,28 @@ interface EnergyState {
   // applied on top. See the implementation below for why in-place editing
   // (keeping the same id) was not worth the extra complexity here.
   updateActivity: (id: string, patch: ActivityPatch) => Promise<void>;
+  // T2.2 (backfill activity): log an activity onto a PAST day's readings —
+  // the activity counterpart of logFoodForPastDate. Grows THAT day's own
+  // energy goal (never today's live goal) and charges THAT day's movement
+  // battery (never today's live pin) — see
+  // domain/energy/activityBackfillEngine for the exact charging rules.
+  // `timestamp` alone determines both the target calendar day and energy
+  // day, same convention as logFoodForPastDate. A timestamp that lands fully
+  // on the current day delegates to logActivity (the one true same-day
+  // path).
+  logActivityForPastDate: (
+    activity: {
+      steps?: number;
+      workouts?: WorkoutSession[];
+      startAt?: number;
+      endAt?: number;
+    },
+    timestamp: number
+  ) => Promise<void>;
+  // Exact inverse of logActivityForPastDate for an entry fetched from the DB
+  // (not in store.activityLog). If it is (today's list), delegates to
+  // removeActivity, which also owns the same-day reversal.
+  removeActivityForPastDate: (entry: ActivityLogEntry) => Promise<void>;
   tickDrain: (elapsedHours: number, modeId: ModeId) => Promise<void>;
   resetForNewDay: (modeId: ModeId) => Promise<void>;
 }
@@ -1257,6 +1283,211 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       },
       originalTimestamp
     );
+  },
+
+  // T2.2: log an activity onto a past day. Split per target exactly like
+  // logFoodForPastDate (spec 3c): the entry's CALENDAR day owns the movement
+  // battery, its ENERGY day (6am reset) owns the goal — each charged in the
+  // store when it happens to be the currently loaded day (0h-6am overlap),
+  // and via a read-modify-write of that day's persisted rows otherwise.
+  // Satiety is never touched on either path (see activityBackfillEngine doc).
+  logActivityForPastDate: async ({ steps = 0, workouts = [], startAt, endAt }, timestamp) => {
+    const entryCalendarDay = dateString(new Date(timestamp));
+    const entryEnergyDay = energyDayString(new Date(timestamp));
+    const calendarIsCurrent = entryCalendarDay === todayString();
+    const energyIsCurrent = entryEnergyDay === energyDayString();
+
+    // Fully on the current day → the normal same-day path (growGoalFromActivity
+    // for TODAY's own goal + satiety drain + movement pin) is exactly right.
+    if (calendarIsCurrent && energyIsCurrent) {
+      await get().logActivity({ steps, workouts, startAt, endAt }, timestamp);
+      return;
+    }
+
+    const profile = currentProfile();
+    const workoutBurn = totalWorkoutKcal(workouts, profile.weightKg, profile.heightCm);
+    const energyKcal = stepsKcal(steps, profile.weightKg) + workoutBurn;
+    const movementCharge = steps + totalStepEquivalent(workouts);
+
+    const entry: ActivityLogEntry = {
+      id: `activity_${timestamp}_${Math.round(Math.random() * 1e6)}`,
+      timestamp,
+      startAt,
+      endAt,
+      steps,
+      workouts,
+      energyKcal,
+      // Deliberately 0 — a backfilled workout must NOT drain the continuous,
+      // real-time satiety reserve (that "makes you hungrier" effect has
+      // already worn off by the time it's entered).
+      satietyDrainKcal: 0,
+      energyDayApplied: entryEnergyDay,
+      movementStepsApplied: movementCharge,
+    };
+
+    // Targets that ARE the currently loaded day (0h-6am overlap): charge them
+    // in place so Home updates immediately — mirrors logFoodForPastDate.
+    if (calendarIsCurrent || energyIsCurrent) {
+      const { readings, activityLog } = get();
+      const updated = readings.map((r) => {
+        const targeted = r.batteryTypeId === 'energy' ? energyIsCurrent : calendarIsCurrent;
+        return targeted ? applyActivityToDayReadings([r], profile, steps, workouts)[0] : r;
+      });
+      set({
+        readings: updated,
+        masterPercentage: energyPercentage(updated),
+        // A same-calendar-day entry belongs in today's "Hôm nay đã vận động" list.
+        activityLog: calendarIsCurrent
+          ? [...activityLog, entry].sort((a, b) => a.timestamp - b.timestamp)
+          : activityLog,
+      });
+      try {
+        await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      } catch (e) {
+        console.warn('logActivityForPastDate persistence failed:', e);
+      }
+    }
+
+    // Historical targets: read-modify-write those days' rows on their own —
+    // today's in-memory readings must NOT be touched. A day the app was never
+    // opened on gets a fresh reading set built for it.
+    try {
+      const dayModeId = await modeIdForDate(entryCalendarDay);
+      const built = () =>
+        buildReadingsForMissedDay(
+          entryCalendarDay,
+          entryEnergyDay,
+          profile,
+          getModeById(dayModeId)
+        );
+
+      const toCharge: BatteryReading[] = [];
+      if (!calendarIsCurrent) {
+        const nutrients = (await getReadingsForDate(entryCalendarDay)).filter(
+          (r) => r.batteryTypeId !== 'energy' && r.batteryTypeId !== 'master'
+        );
+        toCharge.push(...(nutrients.length > 0 ? nutrients : built().nutrients));
+      }
+      if (!energyIsCurrent) {
+        const energy = (await getReadingsForDate(entryEnergyDay)).find(
+          (r) => r.batteryTypeId === 'energy'
+        );
+        toCharge.push(energy ?? built().energy);
+      }
+      await upsertReadings(applyActivityToDayReadings(toCharge, profile, steps, workouts));
+
+      // Make the day exist for History/export even if it never had a log row.
+      await upsertDailyLog({ date: entryCalendarDay, modeId: dayModeId });
+      await addActivityLogEntry(entry);
+
+      // Mirrors logActivity's intake_events writes — unlike food (which has
+      // its own food_log-based Excel sheet), activity has NO other export
+      // path: the weekly/monthly Excel export's only activity data comes
+      // from getIntakeEventsInRange, so a backfilled entry must land here too.
+      if (steps > 0) {
+        await addIntakeEvent({
+          id: `movement_${timestamp}`,
+          timestamp,
+          batteryTypeId: 'movement',
+          amount: steps,
+          note: 'steps',
+        });
+      }
+      for (let i = 0; i < workouts.length; i++) {
+        const session = workouts[i];
+        const kcal = workoutKcal(session, profile.weightKg, profile.heightCm);
+        const note = session.sets?.length
+          ? session.bbMet != null
+            ? `workout: bodybuilding ${session.bbName ?? session.bbExerciseId} ${session.sets.length} set, ${liftingTonnageKg(session.sets)}kg`
+            : `workout: ${session.type} ${session.sets.length} set, ${liftingTonnageKg(session.sets)}kg`
+          : `workout: ${session.type} ${session.minutes}m`;
+        await addIntakeEvent({
+          id: `workout_${timestamp}_${i}`,
+          timestamp,
+          batteryTypeId: 'energy',
+          amount: kcal,
+          note,
+        });
+      }
+    } catch (e) {
+      console.warn('logActivityForPastDate persistence failed:', e);
+    }
+  },
+
+  // T2.2: undo a backfilled/past activity entry fetched from the DB — the
+  // exact mirror of logActivityForPastDate, target by target, again without
+  // ever touching the satiety reserve (a backfilled workout never drained it).
+  removeActivityForPastDate: async (entry) => {
+    // In today's loaded list → removeActivity already owns the full reversal
+    // (including the movement-pin delta math and its own historical-energy-
+    // day branch).
+    if (get().activityLog.some((a) => a.id === entry.id)) {
+      await get().removeActivity(entry.id);
+      return;
+    }
+
+    const entryCalendarDay = dateString(new Date(entry.timestamp));
+    const entryEnergyDay = entry.energyDayApplied ?? energyDayString(new Date(entry.timestamp));
+    const calendarIsCurrent = entryCalendarDay === todayString();
+    const energyIsCurrent = entryEnergyDay === energyDayString();
+
+    // Idempotence guard (mirrors removeFoodForPastDate's BUG-2 fix): only
+    // proceed if the row still exists in the DB.
+    try {
+      const stillLogged = (await getActivityLogForDate(entryCalendarDay)).some(
+        (a) => a.id === entry.id
+      );
+      if (!stillLogged) return;
+    } catch (e) {
+      console.warn('removeActivityForPastDate existence check failed:', e);
+    }
+
+    // Currently loaded targets (0h-6am overlap): reverse in place.
+    if (calendarIsCurrent || energyIsCurrent) {
+      const updated = get().readings.map((r) => {
+        const targeted = r.batteryTypeId === 'energy' ? energyIsCurrent : calendarIsCurrent;
+        return targeted ? reverseActivityOnDayReadings([r], entry)[0] : r;
+      });
+      set({ readings: updated, masterPercentage: energyPercentage(updated) });
+      try {
+        await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      } catch (e) {
+        console.warn('removeActivityForPastDate persistence failed:', e);
+      }
+    }
+
+    // Historical targets: reverse on that day's persisted rows. A missing row
+    // (e.g. already swept by cleanup) is skipped — deleting the log entry
+    // still proceeds so the list reflects the user's intent.
+    try {
+      const toReverse: BatteryReading[] = [];
+      if (!calendarIsCurrent) {
+        const rows = await getReadingsForDate(entryCalendarDay);
+        toReverse.push(
+          ...rows.filter((r) => r.batteryTypeId !== 'energy' && r.batteryTypeId !== 'master')
+        );
+      }
+      if (!energyIsCurrent) {
+        const energy = (await getReadingsForDate(entryEnergyDay)).find(
+          (r) => r.batteryTypeId === 'energy'
+        );
+        if (energy) toReverse.push(energy);
+      }
+      if (toReverse.length > 0) {
+        await upsertReadings(reverseActivityOnDayReadings(toReverse, entry));
+      }
+      await deleteActivityLogEntry(entry.id);
+
+      // Mirrors removeActivity's FIX #4: clean up the intake_events rows
+      // logActivityForPastDate also wrote (for the Excel export), or a
+      // deleted backfilled entry keeps showing up (and can double-count).
+      const intakeEventIds: string[] = [];
+      if (entry.steps > 0) intakeEventIds.push(`movement_${entry.timestamp}`);
+      entry.workouts.forEach((_, i) => intakeEventIds.push(`workout_${entry.timestamp}_${i}`));
+      await deleteIntakeEventsByIds(intakeEventIds);
+    } catch (e) {
+      console.warn('removeActivityForPastDate persistence failed:', e);
+    }
   },
 
   tickDrain: async (elapsedHours, modeId) => {

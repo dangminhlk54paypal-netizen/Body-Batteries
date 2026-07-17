@@ -10,7 +10,8 @@ import Animated, {
   withDelay,
   type SharedValue,
 } from 'react-native-reanimated';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useT } from '../i18n/useT';
@@ -127,6 +128,8 @@ export function MasterBattery({
   targetLine,
 }: Props) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const fillPercentage = Math.min(100, Math.max(0, satietyPct));
   const isOver = levelKcal != null && capacityKcal != null && levelKcal > capacityKcal;
 
@@ -232,7 +235,7 @@ export function MasterBattery({
   // A low fullness battery is normal (mornings, between meals) — the fill is
   // always the same calm green, never red, at any % (CONTEXT mục 5). Amber is
   // only used for the neutral "ăn dư" ledger text below, never for the bar.
-  const color = colors.accent;
+  const color = c.accent;
 
   return (
     <View style={styles.container}>
@@ -251,10 +254,10 @@ export function MasterBattery({
             </Defs>
 
             {/* Terminal */}
-            <Rect x={W * 0.35} y={0} width={W * 0.3} height={TERMINAL_H} rx={3} fill={colors.textFaint} />
+            <Rect x={W * 0.35} y={0} width={W * 0.3} height={TERMINAL_H} rx={3} fill={c.textFaint} />
 
             {/* Body */}
-            <Rect x={0} y={TERMINAL_H} width={W} height={H} rx={R} fill={colors.bgCard} stroke={colors.borderSubtle} strokeWidth={2.5} />
+            <Rect x={0} y={TERMINAL_H} width={W} height={H} rx={R} fill={c.bgCard} stroke={c.borderSubtle} strokeWidth={2.5} />
 
             {/* Fill — animates smoothly between percentage changes */}
             <AnimatedRect
@@ -272,13 +275,13 @@ export function MasterBattery({
         {particleEffectsEnabled && (
           <View pointerEvents="none" style={styles.particleLayer}>
             <Svg width={W} height={H + TERMINAL_H}>
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps0} />
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps1} />
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps2} />
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps3} />
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps4} />
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps5} />
-              <AnimatedCircle r={3} fill={colors.accent} animatedProps={particleProps6} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps0} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps1} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps2} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps3} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps4} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps5} />
+              <AnimatedCircle r={3} fill={c.accent} animatedProps={particleProps6} />
             </Svg>
           </View>
         )}
@@ -319,7 +322,7 @@ export function MasterBattery({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     gap: 6,
@@ -339,20 +342,20 @@ const styles = StyleSheet.create({
     left: -20,
     right: -20,
     bottom: -20,
-    backgroundColor: colors.accent,
+    backgroundColor: c.accent,
     borderRadius: 40,
-    shadowColor: colors.accent,
+    shadowColor: c.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowRadius: 20,
   },
   pct: {
     fontSize: 28,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   label: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   ledgerSection: {
     alignItems: 'center',
@@ -363,34 +366,34 @@ const styles = StyleSheet.create({
   divider: {
     width: '80%',
     height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.borderSubtle,
+    backgroundColor: c.borderSubtle,
     marginBottom: 4,
   },
   ledger: {
     fontSize: 13,
-    color: colors.accent,
+    color: c.accent,
     fontWeight: '600',
   },
   overText: {
     fontSize: 12,
-    color: colors.warning,
+    color: c.warning,
     fontWeight: '600',
   },
   activityBonus: {
     fontSize: 12,
-    color: colors.mint,
+    color: c.mint,
   },
   goal: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   targetLine: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   disclaimer: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: c.textMuted,
     fontStyle: 'italic',
   },
 });

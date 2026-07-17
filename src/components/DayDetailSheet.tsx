@@ -14,7 +14,8 @@ import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { mealLabel } from '../lib/constants';
 import { formatDisplayDate } from '../lib/dateUtils';
 import type { FoodLogEntry, MealType } from '../types/food';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import type { Language } from '../i18n/types';
 
@@ -25,6 +26,11 @@ interface DayDetailSheetProps {
   date: string; // YYYY-MM-DD
   entries: FoodLogEntry[];
   loading?: boolean;
+  // T2.1: whether this day is still within the backfill window
+  // ([today - BACKFILL_MAX_DAYS_BACK, today]) — hides the "add food" button
+  // for older days, where FoodLogModal's own PastDateField would reject the
+  // date anyway. Deleting an entry stays allowed regardless (unchanged).
+  canAddFood: boolean;
   onClose: () => void;
   onAddFood: () => void;
   onDeleteEntry: (entry: FoodLogEntry) => void;
@@ -90,11 +96,14 @@ export function DayDetailSheet({
   date,
   entries,
   loading = false,
+  canAddFood,
   onClose,
   onAddFood,
   onDeleteEntry,
 }: DayDetailSheetProps) {
   const { t, language } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
   const grouped = useMemo(() => groupEntriesByMeal(entries), [entries]);
 
   // The entry whose full nutrition breakdown is shown in the read-only
@@ -181,7 +190,7 @@ export function DayDetailSheet({
           {/* Loading state */}
           {loading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.accent} />
+              <ActivityIndicator size="large" color={c.accent} />
             </View>
           )}
 
@@ -212,8 +221,8 @@ export function DayDetailSheet({
             renderEmptyState()
           ) : null}
 
-          {/* Add food button */}
-          {!loading && (
+          {/* Add food button — hidden past the backfill window (T2.1) */}
+          {!loading && canAddFood && (
             <Pressable
               style={({ pressed }) => [
                 styles.addButton,
@@ -238,7 +247,7 @@ export function DayDetailSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   sheetContent: {
     flex: 1,
   },
@@ -249,7 +258,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: c.textPrimary,
     marginBottom: 12,
   },
   loadingContainer: {
@@ -257,7 +266,7 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   summaryRow: {
-    backgroundColor: colors.bgHighlight,
+    backgroundColor: c.bgHighlight,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -266,7 +275,7 @@ const styles = StyleSheet.create({
   summaryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.textBright,
+    color: c.textBright,
   },
   entriesContainer: {
     marginBottom: 12,
@@ -274,7 +283,7 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textSecondary,
+    color: c.textSecondary,
     marginTop: 12,
     marginBottom: 8,
   },
@@ -284,7 +293,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: colors.bgCard,
+    backgroundColor: c.bgCard,
     borderRadius: 8,
     marginBottom: 8,
   },
@@ -295,12 +304,12 @@ const styles = StyleSheet.create({
   foodName: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.textPrimary,
+    color: c.textPrimary,
     marginBottom: 4,
   },
   portion: {
     fontSize: 13,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   entryRight: {
     flexDirection: 'row',
@@ -310,19 +319,19 @@ const styles = StyleSheet.create({
   energyLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.accent,
+    color: c.accent,
   },
   deleteButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: c.bgElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteIcon: {
     fontSize: 16,
-    color: colors.danger,
+    color: c.danger,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -331,13 +340,13 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: c.textSecondary,
     fontStyle: 'italic',
   },
   addButton: {
-    backgroundColor: colors.accentAltBg,
+    backgroundColor: c.accentAltBg,
     borderWidth: 1.5,
-    borderColor: colors.accentAlt,
+    borderColor: c.accentAlt,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -347,6 +356,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.accentAlt,
+    color: c.accentAlt,
   },
 });

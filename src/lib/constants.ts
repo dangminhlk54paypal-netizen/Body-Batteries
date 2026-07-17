@@ -135,6 +135,12 @@ export const LOW_BATTERY_THRESHOLD = 0.2; // 20% — trigger warning below this
 // calendar month to write before old data is (optionally) cleaned up.
 export const DATA_RETENTION_DAYS = 35;
 
+// How far back the user can BACKFILL (log a food/activity entry for a past
+// day) — a much tighter window than DATA_RETENTION_DAYS above, which governs
+// how long already-logged data is kept, not how far back new entries may be
+// entered. user yêu cầu 2026-07-17: chỉ bù tối đa 3 ngày.
+export const BACKFILL_MAX_DAYS_BACK = 3;
+
 export const DRAIN_TICK_INTERVAL_MS = 30 * 60 * 1000; // every 30 min
 
 export const BACKGROUND_TASK_NAME = 'BATTERY_DRAIN_TASK';

@@ -7,7 +7,8 @@ import { bbExerciseName } from './BodybuildingSheet';
 import type { BatteryType, IntakeEvent } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
 import type { ActivityLogEntry, WorkoutSession } from '../types/energy';
-import { colors } from '../lib/theme';
+import type { ThemeColors } from '../lib/theme';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import type { Language } from '../i18n/types';
 
@@ -133,6 +134,7 @@ export function BatterySourceSheet({
   level,
 }: Props) {
   const { t, language } = useT();
+  const styles = useThemedStyles(createStyles);
   if (!battery) return null;
 
   const rows = buildRows(battery, foodLog, activityLog, intakeLog, t, language);
@@ -179,7 +181,7 @@ export function BatterySourceSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (c: ThemeColors) => StyleSheet.create({
   content: {
     padding: 24,
     gap: 12,
@@ -187,16 +189,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   caption: {
     fontSize: 12,
-    color: colors.textSubtle,
+    color: c.textSubtle,
     marginTop: -8,
   },
   empty: {
     fontSize: 13,
-    color: colors.textTertiary,
+    color: c.textTertiary,
     lineHeight: 19,
   },
   table: {
@@ -208,18 +210,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    borderBottomColor: c.divider,
     gap: 12,
   },
   rowLabel: {
     flex: 1,
     fontSize: 14,
-    color: colors.textSecondary,
+    color: c.textSecondary,
   },
   rowValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   footer: {
     marginTop: 4,
@@ -228,11 +230,11 @@ const styles = StyleSheet.create({
   totalText: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: c.textPrimary,
   },
   footerNote: {
     fontSize: 12,
-    color: colors.textSubtle,
+    color: c.textSubtle,
     lineHeight: 17,
   },
 });
