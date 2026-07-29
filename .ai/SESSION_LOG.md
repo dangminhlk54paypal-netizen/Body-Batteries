@@ -1111,6 +1111,32 @@ an toàn tối đa) → chặn an toàn (≤20%, ≤750 kcal, không dưới BMR
 
 ---
 
+## Session 18 — 2026-07-29 (Tap-to-see-sources cho 10 pin vi chất)
+
+**Làm gì:** Người dùng hỏi các pin phụ có hiển thị nội dung đồ ăn không → sau khi trả lời (Protein/Carbs/Khoáng chất/Nước một phần trong `BatteryStack` + toàn bộ 10 pin trong `MicroBatteryStack` đều lấy từ `foodLog`), người dùng muốn `MicroBatteryStack` có cùng hành vi "bấm vào pin → xem nguồn" như `BatteryStack` đã có qua `BatterySourceSheet`.
+
+**Kết quả (CODE ĐÃ XONG, VERIFY SẠCH, CHƯA TEST MÁY THẬT):**
+1. `src/domain/nutrition/microBatteryEngine.ts` — hàm mới `microBatterySourceRows()`: tính lại đóng góp của từng món ăn cho 1 `MicronutrientId` bất kỳ (tái dùng `per100gValue`/`round1` nội bộ). Cần tính lại từ per-100g vì `FoodLogEntry` không snapshot vi chất, chỉ macro/khoáng.
+2. `src/hooks/useMicroBatteryHistory.ts` — trả thêm `entries` (foodLog của ngày đang chọn trong date-picker 7 ngày, không chỉ hôm nay).
+3. `src/components/MicroBatterySourceSheet.tsx` (file mới) — bottom sheet mirror `BatterySourceSheet`, liệt kê từng món ăn + lượng đóng góp, dòng caption ngày đang xem, tổng hiện tại/khuyến nghị.
+4. `src/components/MicroBatteryStack.tsx` — `MicroCell` đổi từ `View` sang `Pressable`; state chọn pin + hiển thị sheet giữ nội bộ trong component (không nâng lên `HomeScreen`, vì stack đã tự quản lý date-picker riêng).
+5. `src/screens/HomeScreen.tsx` — truyền `foodLog={microBattery.entries}` xuống `MicroBatteryStack`.
+6. i18n: thêm khối `components.microBatterySourceSheet` (title/dateCaption/emptyText/totalText/footerNote) vào cả `vi.ts`/`en.ts`/`de.ts`.
+7. Test: 4 test mới cho `microBatterySourceRows` trong `microBatteryEngine.test.ts` (có đóng góp, đóng góp 0, foodId không tồn tại, log rỗng).
+
+**Kiểm tra trước commit:**
+- `npm run verify` — ✅ **507 test PASS / 42 suite**, tsc sạch, eslint sạch.
+- `npx expo start --web` bundle thành công (1138 module, không lỗi import/JSX) — nhưng KHÔNG tương tác được bằng browser thật vì app dùng `expo-sqlite` (native-only) và quy ước project là test qua Expo Go trên điện thoại thật, không phải web.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Không có vấn đề kỹ thuật mới. Không cài `chromium-cli`/Playwright để chụp màn hình vì lệch mục đích (app không chạy đúng trên web do phụ thuộc native).
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật bắt buộc:** mở app trên Expo Go → bấm vào bất kỳ pin nào trong 10 pin vi chất (fiber/sắt/canxi/fat/kẽm/omega3/đường/muối/natri/kali/magiê) → xác nhận sheet mở ra đúng danh sách món ăn đã ghi trong ngày đang xem (thử cả đổi ngày trong date-picker 7 ngày) + số liệu đóng góp khớp với tổng hiển thị trên pin.
+2. Nếu ổn → không có việc tồn đọng nào khác từ phiên này.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

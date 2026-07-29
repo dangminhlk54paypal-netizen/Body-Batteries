@@ -112,7 +112,22 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-17 (Session 16, xem `.ai/SESSION_LOG.md`).** **Popup minh bạch công
+**Cập nhật lần cuối: 2026-07-29 (Session 18, xem `.ai/SESSION_LOG.md`).** **Tap-to-see-sources cho
+10 pin vi chất:** bấm vào bất kỳ pin nào trong `MicroBatteryStack` (fiber/sắt/canxi/fat/kẽm/omega3/
+đường/muối/natri/kali/magiê) giờ mở `MicroBatterySourceSheet` — liệt kê đúng những món ăn đã ghi
+trong ngày đang xem (kể cả 6 ngày trước qua date-picker, không chỉ hôm nay) đóng góp bao nhiêu vào
+pin đó, tính lại trực tiếp từ per-100g của từng món (hàm `microBatterySourceRows()` trong
+`microBatteryEngine.ts`) vì `FoodLogEntry` không snapshot vi chất — giống hệt hành vi
+`BatterySourceSheet` đã có cho Protein/Carbs/Khoáng chất/Vận động. i18n đủ VI/EN/DE. `npm run
+verify` PASS (tsc + eslint sạch, **507/507 test**). **CHƯA TEST MÁY THẬT.**
+
+**Trước đó — Session 17 (2026-07-17, xem `.ai/SESSION_LOG.md`).** UI feedback round 3: đổi tên nút
+"⚡ Nạp"/"🔥 Xả" (bỏ modal ăn thêm kcal tay), giao diện Sáng/Tối, sheet khuyến nghị hàng ngày khi bấm
+pin Năng lượng, fix parse dấu phẩy thập phân (`parseDecimal()`), màu biểu đồ Dinh dưỡng/Năng lượng
+phân biệt rõ, ghi vận động cho tối đa 3 ngày quá khứ. `npm run verify` PASS, **503/503 test**.
+**CHƯA TEST MÁY THẬT.**
+
+**Trước đó — Session 16 (2026-07-17, xem `.ai/SESSION_LOG.md`).** **Popup minh bạch công
 thức** ở Cài đặt → Hồ sơ cơ thể: 2 con số kcal ("Nhu cầu năng lượng ước tính" và "Mục tiêu
 calo/ngày") giờ **bấm được** (gạch chân + ⓘ) → mở popup nhỏ giữa màn hình giải thích từng bước
 tính với đúng số liệu đang nhập (BMR Mifflin-St Jeor → × hệ số vận động → + kcal bước chân;
