@@ -1,5 +1,6 @@
 import {
   formatWaterAmount,
+  formatWaterRange,
   toMl,
   nextWaterDisplayUnit,
   formatMovementAmount,
@@ -20,6 +21,16 @@ describe('formatWaterAmount', () => {
   });
 });
 
+describe('formatWaterRange', () => {
+  it('formats ml as a rounded "consumed/capacity" fraction', () => {
+    expect(formatWaterRange(1500, 2500, 'ml')).toBe('1500/2500ml');
+  });
+
+  it('formats L rounded to 1 decimal as a fraction', () => {
+    expect(formatWaterRange(1500, 2500, 'l')).toBe('1.5/2.5L');
+  });
+});
+
 describe('toMl', () => {
   it('passes ml through unchanged', () => {
     expect(toMl(500, 'ml')).toBe(500);
@@ -37,17 +48,18 @@ describe('nextWaterDisplayUnit', () => {
   });
 });
 
-// The kcal figure is caller-computed (HomeScreen passes stepsKcal(...)) —
-// this formatter only rounds and suffixes, keeping lib free of domain imports.
+// The kcal figure is caller-computed (real kcal burned today, summed from
+// activityLog) — this formatter only rounds and suffixes, keeping lib free
+// of domain imports.
 describe('formatMovementAmount', () => {
-  it("renders the kcal estimate with a ≈ prefix in 'kcal' mode", () => {
-    expect(formatMovementAmount(8000, 312, 'kcal')).toBe('≈312 kcal');
-    expect(formatMovementAmount(8000, 311.6, 'kcal')).toBe('≈312 kcal');
+  it("renders the kcal total with a ≈ prefix in 'kcal' mode", () => {
+    expect(formatMovementAmount(6000, 8000, 312, 'kcal')).toBe('≈312 kcal');
+    expect(formatMovementAmount(6000, 8000, 311.6, 'kcal')).toBe('≈312 kcal');
   });
 
-  it("renders the raw rounded step count in 'steps' mode", () => {
-    expect(formatMovementAmount(8000, 312, 'steps')).toBe('8000 bước');
-    expect(formatMovementAmount(7999.5, 312, 'steps')).toBe('8000 bước');
+  it("renders a rounded 'walked today/capacity' fraction in 'steps' mode", () => {
+    expect(formatMovementAmount(6000, 8000, 312, 'steps')).toBe('6000/8000 bước');
+    expect(formatMovementAmount(5999.5, 7999.5, 312, 'steps')).toBe('6000/8000 bước');
   });
 });
 

@@ -11,6 +11,7 @@ import type { ThemeColors } from '../lib/theme';
 import { useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import type { Language } from '../i18n/types';
+import { computeDailyBatteryTotals } from '../domain/battery/dailyBatteryTotals';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -138,6 +139,20 @@ export function BatterySourceSheet({
   if (!battery) return null;
 
   const rows = buildRows(battery, foodLog, activityLog, intakeLog, t, language);
+  // Footer shows what was actually logged today, not `level` (the reading
+  // decays hour-by-hour like the energy battery — see dailyBatteryTotals.ts —
+  // which would make this "Tổng hôm nay" (total today) text read as wrong).
+  const totals = computeDailyBatteryTotals(foodLog, activityLog, intakeLog);
+  const totalToday =
+    battery.id === 'protein'
+      ? totals.protein
+      : battery.id === 'carbs'
+        ? totals.carbs
+        : battery.id === 'minerals'
+          ? totals.minerals
+          : battery.id === 'movement'
+            ? totals.movementSteps
+            : level;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} sheetOffset={450}>
@@ -170,7 +185,7 @@ export function BatterySourceSheet({
         <View style={styles.footer}>
           <Text style={styles.totalText}>
             {t('components.batterySourceSheet.totalText', {
-              value: Math.round(level),
+              value: Math.round(totalToday),
               unit: battery.unit,
             })}
           </Text>

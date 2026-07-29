@@ -31,7 +31,6 @@ import type { BatteryState, BatteryId, BatteryType } from '../types/battery';
 import type { UserProfile } from '../types/energy';
 import type { ModeId } from '../types/modes';
 import { toPercentage } from '../domain/battery/batteryEngine';
-import { stepsKcal } from '../domain/energy/metabolismEngine';
 import { waterRecommendationMl, sleepRecommendationH } from '../domain/rules/dailyRecommendations';
 import { formatDisplayDate, todayString } from '../lib/dateUtils';
 import { nextWaterDisplayUnit, nextMovementDisplayUnit } from '../lib/units';
@@ -241,11 +240,6 @@ export function HomeScreen() {
   const recommendation = buildRecommendation(t, selectedBattery, userProfile, hasWorkoutToday);
   const selectedBatteryLevel =
     readings.find((r) => r.batteryTypeId === selectedBattery?.id)?.level ?? 0;
-  // Kcal estimate of the movement pin's step level (walking rate — the v1
-  // display conversion). Computed here so lib/units.formatMovementAmount can
-  // stay a pure formatter with no domain import.
-  const movementLevel = readings.find((r) => r.batteryTypeId === 'movement')?.level ?? 0;
-  const movementKcalEquivalent = stepsKcal(movementLevel, userProfile.weightKg);
 
   if (!isLoaded) {
     return (
@@ -295,7 +289,9 @@ export function HomeScreen() {
           onToggleWaterUnit={handleToggleWaterUnit}
           movementDisplayUnit={movementDisplayUnit}
           onToggleMovementUnit={handleToggleMovementUnit}
-          movementKcal={movementKcalEquivalent}
+          foodLog={foodLog}
+          activityLog={activityLog}
+          intakeLog={intakeLog}
         />
 
         {/* Apple Health energy balance — secondary info below the battery display */}

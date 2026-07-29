@@ -15,6 +15,18 @@ export function formatWaterAmount(ml: number, unit: WaterDisplayUnit): string {
   return unit === 'l' ? `${round1(ml / 1000)}L` : `${Math.round(ml)}ml`;
 }
 
+// Like formatWaterAmount, but as a "drunk today/capacity" fraction, e.g.
+// formatWaterRange(1500, 2500, 'l') -> "1.5/2.5L".
+export function formatWaterRange(
+  consumedMl: number,
+  capacityMl: number,
+  unit: WaterDisplayUnit
+): string {
+  return unit === 'l'
+    ? `${round1(consumedMl / 1000)}/${round1(capacityMl / 1000)}L`
+    : `${Math.round(consumedMl)}/${Math.round(capacityMl)}ml`;
+}
+
 // Converts a user-typed amount (entered in the given unit) back to ml, the
 // only unit addIntake/logFood ever charge in.
 export function toMl(amount: number, unit: WaterDisplayUnit): number {
@@ -32,21 +44,25 @@ export function nextWaterDisplayUnit(unit: WaterDisplayUnit): WaterDisplayUnit {
 // step count).
 export type MovementDisplayUnit = 'kcal' | 'steps';
 
-// Formats the movement pin's level for display. `kcalEquivalent` is the
-// caller-computed kcal estimate for `steps` (HomeScreen derives it with
-// metabolismEngine.stepsKcal at the walking rate — the documented v1 display
-// conversion, not a precise per-activity estimate); taking it as a plain
-// number keeps this file free of domain imports (lib must not depend on
-// domain — docs/03-architecture.md layering rule).
-// Plain Math.round, no thousands-separator, same style as formatWaterAmount.
+// Formats the movement pin's today-so-far reading for display. In steps mode
+// this is a "walked today/capacity" fraction (both in steps, so no estimate
+// involved); in kcal mode it's a single real kcal total — `kcalToday` is the
+// caller-computed real kcal burned today (steps + workouts, e.g. summed from
+// ActivityLogEntry.energyKcal), taken as a plain number so this file stays
+// free of domain imports (lib must not depend on domain —
+// docs/03-architecture.md layering rule). No kcal-mode fraction: capacity is
+// only ever defined in steps, so a "capacity in kcal" would need the same
+// walking-rate estimate this function used to rely on for the total itself —
+// not worth trading the numerator's new accuracy for a synthetic denominator.
 export function formatMovementAmount(
-  steps: number,
-  kcalEquivalent: number,
+  stepsToday: number,
+  stepsCapacity: number,
+  kcalToday: number,
   unit: MovementDisplayUnit
 ): string {
   return unit === 'kcal'
-    ? `≈${Math.round(kcalEquivalent)} kcal`
-    : `${Math.round(steps)} bước`;
+    ? `≈${Math.round(kcalToday)} kcal`
+    : `${Math.round(stepsToday)}/${Math.round(stepsCapacity)} bước`;
 }
 
 export function nextMovementDisplayUnit(unit: MovementDisplayUnit): MovementDisplayUnit {
