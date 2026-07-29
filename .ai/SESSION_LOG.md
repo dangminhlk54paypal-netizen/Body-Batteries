@@ -1210,6 +1210,56 @@ thời gian" ở History cho sửa entry log nhầm (≤3 ngày gần nhất) + 
 
 ---
 
+## Session 20 — 2026-07-29 (Fix: pin nhỏ hiện tổng đã log hôm nay thay vì mức đã xả)
+
+**Làm gì:** Người dùng thắc mắc vì sao pin Protein hiện "101g (56%)" trong khi mục "Hôm nay đã ăn"
+hiện "139.8g" — điều tra ra đây là do MỌI pin phụ (Protein/Carbs/Nước/Khoáng chất/Ngủ/Vận động) bị
+`tickDrain` xả dần theo giờ giống hệt pin Năng lượng (đúng cho ẩn dụ "pin cạn dần" nhưng SAI khi
+hiển thị dưới nhãn trông giống "đã ăn/uống/vận động hôm nay"). Người dùng xác nhận muốn sửa cho cả
+6 pin, không chỉ Protein.
+
+**Kết quả (CODE ĐÃ XONG, VERIFY SẠCH, CHƯA TEST MÁY THẬT):**
+1. File mới `src/domain/battery/dailyBatteryTotals.ts` — hàm thuần `computeDailyBatteryTotals(
+   foodLog, activityLog, intakeLog)` tính tổng THẬT đã log hôm nay cho cả 6 pin (không đụng tới
+   `battery_readings.level`/drain): protein/carbs/minerals cộng từ `foodLog` + `intakeLog` thủ
+   công cũ; water cộng `foodLog.waterG` + `intakeLog`; sleep chỉ từ `intakeLog`; movement (bước +
+   kcal THẬT, không phải ước lượng) từ `activityLog.energyKcal`/`movementStepsApplied`.
+2. `src/components/BatteryStack.tsx` — mọi pin giờ hiện nhãn `đã log/capacity` (vd `139.8/180g`,
+   `1.5/2.5L`, `6000/8000 bước`) thay vì `${level}${unit}` cũ lấy từ mức đã xả; % KHÔNG đổi (vẫn
+   tính từ `level` như trước — người dùng yêu cầu giữ nguyên).
+3. `src/components/BatterySourceSheet.tsx` — phát hiện CÙNG lỗi ở dòng "Tổng hôm nay" của sheet
+   "xem nguồn" (mở khi bấm pin protein/carbs/minerals/movement), cũng đang lấy từ `level` đã xả —
+   sửa dùng `computeDailyBatteryTotals` giống trên.
+4. `src/lib/units.ts` — thêm `formatWaterRange(consumedMl, capacityMl, unit)`; sửa chữ ký
+   `formatMovementAmount` nhận thêm `stepsCapacity` để trả về phân số `"X/Y bước"` ở chế độ bước
+   (chế độ kcal giữ nguyên 1 số, không ghép phân số vì capacity pin này vốn định nghĩa bằng bước
+   chân — xem comment trong file để hiểu lý do không đổi).
+5. `src/screens/HomeScreen.tsx` — truyền `activityLog`/`intakeLog` xuống `BatteryStack`; bỏ hẳn
+   `stepsKcal`/`movementLevel` (không còn cần vì kcal vận động giờ lấy thật từ `activityLog`, chính
+   xác hơn công thức ước lượng theo tốc độ đi bộ cũ).
+6. Test: cập nhật `src/lib/__tests__/units.test.ts` cho chữ ký `formatMovementAmount` mới + thêm
+   case cho `formatWaterRange`.
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **519/519 test PASS** (43 suite), `tsc --noEmit`
+sạch, `eslint` sạch. Đã `git push` lên `origin/ui-upgrade` (commit `759cdf7`).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Không có bug kỹ thuật khó nào. Điểm cần quyết định (đã tự chọn, có ghi rõ trong comment code để
+  phiên sau/người dùng biết): chế độ hiển thị "kcal" của pin Vận động không ghép thành phân số
+  "đã đốt/mục tiêu" vì capacity chỉ định nghĩa bằng bước chân — muốn có phân số kcal thì phải quy
+  đổi ngược capacity sang kcal bằng đúng công thức ước lượng vừa bỏ đi cho số đã đốt, nên để 1 số
+  duy nhất cho gọn và chính xác.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật bắt buộc** (chưa test lần nào): mở app qua Expo Go, kiểm tra cả 6 pin phụ ở màn
+   Home hiện đúng dạng phân số mới (không còn số lẻ khó hiểu do bị xả dở), bấm vào pin
+   protein/carbs/khoáng chất/vận động mở sheet "xem nguồn" → dòng "Tổng hôm nay" khớp với số trên
+   pin nhỏ; đổi Mode để cập nhật capacity rồi xác nhận mẫu số đổi theo đúng; bấm toggle đơn vị Nước
+   (ml/L) và Vận động (bước/kcal) xem cả 2 chế độ hiển thị đúng.
+2. Nếu ổn → không có việc tồn đọng nào khác từ phiên này.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

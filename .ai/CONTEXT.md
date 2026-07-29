@@ -112,19 +112,18 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-29 (Session 19, xem `.ai/SESSION_LOG.md`).** **Excel: cột năng lượng +
-vi chất — History: sửa cân nặng + sheet chi tiết ngày.** Theo yêu cầu người dùng sau một thời gian
-dùng app: (1) sheet "Daily Totals" thêm 3 cột **Kcal đã đốt / Nhu cầu năng lượng ước tính / Cân
-bằng calo (+/-)** (từ `getActivityLogInRange` + `capacity` pin Năng lượng) + 1 dòng cảnh báo cuối
-sheet (tái dùng `assessment.disclaimer`); (2) sheet "Food Entries" thêm 4 cột vi chất **Đường/Chất
-xơ/Sắt/Muối** tính lại từ per-100g mỗi món (`per100gValue`, nay export từ `microBatteryEngine.ts`);
-(3) mục "Cân nặng theo thời gian" ở History giờ **sửa được** entry trong 3 ngày gần nhất (nút ✎ →
-Modal, dùng cột `id` sẵn có của bảng `health_signals` — không cần migration) + nút "Xem thêm/Ẩn
-bớt" cho lịch sử cũ hơn 7 dòng; (4) thẻ ngày trong History (đã tap được từ trước) mở sheet chi tiết
-giờ hiện thêm **kcal đốt/giờ ngủ/nước/cân nặng** ngày đó, ẩn khi thiếu dữ liệu thay vì hiện "0" giả.
-Tách `weightOnOrBefore` ra file dùng chung `src/domain/health/weightOnDay.ts` (Excel export +
-History cùng dùng). i18n đủ VI/EN/DE. `npm run verify` PASS (tsc + eslint sạch, **517/517 test**).
-**CHƯA TEST MÁY THẬT.**
+**Cập nhật lần cuối: 2026-07-29 (Session 20, xem `.ai/SESSION_LOG.md`).** **Fix: pin nhỏ hiện tổng
+đã log hôm nay, không phải mức đã xả.** Người dùng phát hiện pin Protein hiện "101g (56%)" trong
+khi "Hôm nay đã ăn" hiện "139.8g" — do MỌI pin phụ bị xả dần theo giờ (`tickDrain`) giống pin Năng
+lượng, đúng cho ẩn dụ "cạn dần" nhưng sai khi đọc dưới nhãn tưởng là "đã ăn hôm nay". Sửa cho cả 6
+pin (Protein/Carbs/Nước/Khoáng chất/Ngủ/Vận động): file mới `src/domain/battery/
+dailyBatteryTotals.ts` tính tổng THẬT từ `foodLog`/`activityLog`/`intakeLog` (không đụng
+`battery_readings.level`); `BatteryStack.tsx` hiện nhãn `đã log/capacity` (vd `139.8/180g`,
+`1.5/2.5L`, `6000/8000 bước`) thay level đã xả, **% giữ nguyên như cũ** theo yêu cầu; sheet "xem
+nguồn" (`BatterySourceSheet.tsx`) có cùng lỗi ở dòng "Tổng hôm nay", cũng đã sửa; kcal Vận động giờ
+lấy THẬT từ `activityLog.energyKcal` thay vì ước lượng từ mức đã xả. `npm run verify` PASS (tsc +
+eslint sạch, **519/519 test**). Đã `git push` lên `origin/ui-upgrade` (commit `759cdf7`).
+**CHƯA TEST MÁY THẬT** — việc tiếp theo là mở app qua Expo Go và kiểm tra cả 6 pin.
 
 **Trước đó — Session 18 (2026-07-29, xem `.ai/SESSION_LOG.md`).** **Tap-to-see-sources cho
 10 pin vi chất:** bấm vào bất kỳ pin nào trong `MicroBatteryStack` (fiber/sắt/canxi/fat/kẽm/omega3/
