@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import type { MicroBatteryState } from '../types/nutrition';
+import type { FoodLogEntry } from '../types/food';
 import { PROMINENT_GOAL_IDS, MORE_GOAL_IDS, LIMIT_IDS, ELECTROLYTE_IDS } from '../lib/nutrientTargets';
 import { UPPER_LIMITS } from '../lib/upperLimits';
 import type { DateOption } from '../hooks/useMicroBatteryHistory';
 import { OverdoseNotice } from './OverdoseNotice';
+import { MicroBatterySourceSheet } from './MicroBatterySourceSheet';
 import { useSettingsStore } from '../store/settingsStore';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
@@ -16,6 +18,8 @@ interface Props {
   dates: DateOption[];
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  // The logged foods for `selectedDate` — feeds the tap-to-see-sources sheet.
+  foodLog: FoodLogEntry[];
   // e.g. "Khuyến nghị chung cho nam ~30 tuổi" — derived from the user profile.
   recommendNote?: string;
 }
@@ -46,7 +50,7 @@ function isOverReference(state: MicroBatteryState): boolean {
 // Goal-type "under target" and limit-type "over cap" must both stay neutral
 // (see CONTEXT.md §5 + S-R spec §6), so this cell always renders the
 // nutrient's own fixed color regardless of level.
-function MicroCell({ state }: { state: MicroBatteryState }) {
+function MicroCell({ state, onPress }: { state: MicroBatteryState; onPress: () => void }) {
   const { t } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -67,7 +71,7 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
   const warn = isOverReference(state);
   const name = t(`nutrients.${state.id}.name`);
   return (
-    <View style={styles.cell}>
+    <Pressable style={styles.cell} onPress={onPress} hitSlop={4}>
       <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
         <Rect
           x={0}
@@ -102,7 +106,7 @@ function MicroCell({ state }: { state: MicroBatteryState }) {
         {t('components.microBatteryStack.recommendedPerDay', { target: state.target, unit: state.unit })}
       </Text>
       {caption && <Text style={styles.cellCaption}>{caption}</Text>}
-    </View>
+    </Pressable>
   );
 }
 
@@ -111,9 +115,15 @@ export function MicroBatteryStack({
   dates,
   selectedDate,
   onSelectDate,
+  foodLog,
   recommendNote,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  // Which micronutrient's "where did this come from" sheet is open, if any —
+  // mirrors HomeScreen's selectedBattery/sourceSheetVisible pair for
+  // BatteryStack, but kept local since this stack owns its own date picker.
+  const [selectedId, setSelectedId] = useState<MicroBatteryState['id'] | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const { t } = useT();
   const styles = useThemedStyles(createStyles);
   // Persisted collapse state for this whole section — same read-the-store-
@@ -126,6 +136,13 @@ export function MicroBatteryStack({
   const limits = byIds(states, LIMIT_IDS);
   const electrolytes = byIds(states, ELECTROLYTE_IDS);
   const warnCount = states.filter(isOverReference).length;
+  const selectedState = states.find((s) => s.id === selectedId) ?? null;
+  const dateLabel = dates.find((d) => d.value === selectedDate)?.label ?? selectedDate;
+
+  function handleCellPress(id: MicroBatteryState['id']) {
+    setSelectedId(id);
+    setSheetVisible(true);
+  }
 
   return (
     <View style={styles.container}>
@@ -171,7 +188,7 @@ export function MicroBatteryStack({
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
             {prominent.map((s) => (
-              <MicroCell key={s.id} state={s} />
+              <MicroCell key={s.id} state={s} onPress={() => handleCellPress(s.id)} />
             ))}
           </ScrollView>
 
@@ -189,7 +206,7 @@ export function MicroBatteryStack({
           {expanded && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
               {more.map((s) => (
-                <MicroCell key={s.id} state={s} />
+                <MicroCell key={s.id} state={s} onPress={() => handleCellPress(s.id)} />
               ))}
             </ScrollView>
           )}
@@ -199,7 +216,7 @@ export function MicroBatteryStack({
               <Text style={styles.limitLabel}>{t('components.microBatteryStack.limitSectionLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
                 {limits.map((s) => (
-                  <MicroCell key={s.id} state={s} />
+                  <MicroCell key={s.id} state={s} onPress={() => handleCellPress(s.id)} />
                 ))}
               </ScrollView>
             </View>
@@ -210,7 +227,7 @@ export function MicroBatteryStack({
               <Text style={styles.limitLabel}>{t('components.microBatteryStack.electrolyteSectionLabel')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
                 {electrolytes.map((s) => (
-                  <MicroCell key={s.id} state={s} />
+                  <MicroCell key={s.id} state={s} onPress={() => handleCellPress(s.id)} />
                 ))}
               </ScrollView>
             </View>
@@ -219,6 +236,14 @@ export function MicroBatteryStack({
           <OverdoseNotice states={states} />
         </>
       )}
+
+      <MicroBatterySourceSheet
+        nutrient={selectedState}
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+        foodLog={foodLog}
+        dateLabel={dateLabel}
+      />
     </View>
   );
 }

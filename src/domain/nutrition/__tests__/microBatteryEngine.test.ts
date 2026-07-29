@@ -1,4 +1,4 @@
-import { computeMicroBatteries, type LoggedPortion } from '../microBatteryEngine';
+import { computeMicroBatteries, microBatterySourceRows, type LoggedPortion } from '../microBatteryEngine';
 import { gramsForPortion } from '../../food/foodNutrition';
 import type { FoodItem, Nutrition } from '../../../types/food';
 import type { NutrientTarget } from '../../../types/nutrition';
@@ -219,5 +219,35 @@ describe('computeMicroBatteries', () => {
     const [salt] = computeMicroBatteries(entries, lookup, [SALT_LIMIT]);
     expect(salt.current).toBe(10);
     expect(salt.over).toBe(true);
+  });
+});
+
+describe('microBatterySourceRows', () => {
+  const foodLog = [
+    { id: 'log-1', foodId: 'spinach', foodNameVi: 'Rau bina', grams: 200 }, // 4g fiber
+    { id: 'log-2', foodId: 'bread', foodNameVi: 'Bánh mì', grams: 100 }, // 3g fiber, 400mg sodium
+  ];
+
+  it('returns one row per food that contributed a nonzero amount of the nutrient', () => {
+    const rows = microBatterySourceRows(foodLog, 'fiber', lookup);
+    expect(rows).toEqual([
+      { id: 'log-1', label: 'Rau bina', amount: 4 },
+      { id: 'log-2', label: 'Bánh mì', amount: 3 },
+    ]);
+  });
+
+  it('omits foods that contributed 0 of the nutrient', () => {
+    const rows = microBatterySourceRows(foodLog, 'sodium', lookup);
+    expect(rows).toEqual([{ id: 'log-2', label: 'Bánh mì', amount: 400 }]);
+  });
+
+  it('safely skips an unknown/deleted foodId without breaking the other rows', () => {
+    const withMissing = [...foodLog, { id: 'log-3', foodId: 'does_not_exist', foodNameVi: 'Ghost', grams: 500 }];
+    const rows = microBatterySourceRows(withMissing, 'fiber', lookup);
+    expect(rows).toHaveLength(2);
+  });
+
+  it('returns an empty list when the log is empty', () => {
+    expect(microBatterySourceRows([], 'fiber', lookup)).toEqual([]);
   });
 });

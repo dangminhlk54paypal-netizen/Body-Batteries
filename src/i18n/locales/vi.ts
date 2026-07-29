@@ -543,6 +543,13 @@ export const vi = {
       logDateFieldLabel: 'Ngày ghi',
       backfillNotice: '🕓 Ghi cho ngày {{date}}',
     },
+    microBatterySourceSheet: {
+      title: 'Nguồn nạp {{name}}',
+      dateCaption: 'Ngày: {{date}}',
+      emptyText: 'Chưa có món nào đóng góp {{name}} trong ngày này — hãy ghi món ăn ở trên.',
+      totalText: 'Tổng: {{value}}{{unit}} / KN {{target}}{{unit}}',
+      footerNote: 'Vi chất này được tính tự động từ các món ăn đã ghi — không cần nạp tay.',
+    },
     batterySourceSheet: {
       title: 'Nguồn nạp {{name}} hôm nay',
       mineralsCaption:

@@ -56,6 +56,32 @@ function per100gValue(p: Nutrition, id: MicronutrientId): number {
   }
 }
 
+export interface MicroSourceRow {
+  id: string;
+  label: string;
+  amount: number; // already in the nutrient's own unit (g/mg), 1-decimal rounded
+}
+
+// One row per logged food that contributed a nonzero amount of `nutrientId` —
+// the per-food "where did this micronutrient come from" breakdown for
+// MicroBatterySourceSheet. Recomputed live via per100gValue rather than read
+// off FoodLogEntry, since a logged entry only snapshots macros/minerals (see
+// types/food.ts), never the individual micronutrient breakdown.
+export function microBatterySourceRows(
+  foodLog: { id: string; foodId: string; foodNameVi: string; grams: number }[],
+  nutrientId: MicronutrientId,
+  lookup: (foodId: string) => FoodItem | undefined
+): MicroSourceRow[] {
+  const rows: MicroSourceRow[] = [];
+  for (const entry of foodLog) {
+    const item = lookup(entry.foodId);
+    if (!item) continue; // unknown/deleted foodId — skip safely
+    const amount = round1((per100gValue(item.per100g, nutrientId) * Math.max(0, entry.grams)) / 100);
+    if (amount > 0) rows.push({ id: entry.id, label: entry.foodNameVi, amount });
+  }
+  return rows;
+}
+
 export function computeMicroBatteries(
   entries: LoggedPortion[],
   lookup: (foodId: string) => FoodItem | undefined,

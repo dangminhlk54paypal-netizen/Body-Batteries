@@ -312,6 +312,7 @@ export function HomeScreen() {
           dates={microBattery.dates}
           selectedDate={microBattery.selectedDate}
           onSelectDate={microBattery.setSelectedDate}
+          foodLog={microBattery.entries}
           recommendNote={t(
             userProfile.sex === 'male'
               ? 'screens.home.recommendNoteMale'

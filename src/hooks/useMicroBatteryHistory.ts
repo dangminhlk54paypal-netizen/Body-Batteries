@@ -63,5 +63,5 @@ export function useMicroBatteryHistory(todayFoodLog: FoodLogEntry[], profile: Us
     [entries, targets]
   );
 
-  return { selectedDate, setSelectedDate, dates, states };
+  return { selectedDate, setSelectedDate, dates, states, entries };
 }

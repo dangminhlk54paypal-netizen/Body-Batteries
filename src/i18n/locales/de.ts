@@ -517,6 +517,13 @@ export const de: TranslationSchema = {
       logDateFieldLabel: 'Eintragsdatum',
       backfillNotice: '🕓 Eintrag für {{date}}',
     },
+    microBatterySourceSheet: {
+      title: 'Quellen für {{name}}',
+      dateCaption: 'Datum: {{date}}',
+      emptyText: 'An diesem Tag hat noch kein Lebensmittel zu {{name}} beigetragen — trage oben ein Essen ein.',
+      totalText: 'Gesamt: {{value}}{{unit}} / Empf. {{target}}{{unit}}',
+      footerNote: 'Dieser Nährstoff wird automatisch aus erfassten Lebensmitteln berechnet — kein manuelles Laden nötig.',
+    },
     batterySourceSheet: {
       title: 'Ladequellen für {{name}} heute',
       mineralsCaption:
