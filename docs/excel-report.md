@@ -27,6 +27,35 @@ dữ liệu 7 ngày gần nhất thành **8 sheet** (2 sheet "Daily Totals"/"Foo
 Entries" thêm từ Session 14 — xem `domain/nutrition/excelSheets.ts` — cộng 6
 sheet gốc mô tả bên dưới; tên hiển thị dưới đây là bản tiếng Việt mặc định):
 
+## A. Daily Totals (sheet 1)
+
+Một dòng cho mỗi **ngày có ghi món ăn** trong khoảng xuất, cộng thêm 3 cột
+năng lượng (Session 19, 2026-07-29):
+- **Kcal đã đốt**: tổng `energyKcal` của các bản ghi Vận động (bước chân +
+  bài tập) trong ngày đó, gom theo đúng ngày hiển thị (`startAt` nếu có, rồi
+  mới đến `timestamp` — giống cách `getActivityLogInRange` tự nhóm, để một
+  bản ghi lùi ngày không lẫn sang hôm sau).
+- **Nhu cầu năng lượng ước tính (kcal)**: `capacity` của pin Năng lượng ngày
+  đó (đã gồm cả mức tăng do vận động trong ngày) — để trống nếu ngày đó không
+  có bản ghi pin Năng lượng (dữ liệu cũ).
+- **Cân bằng calo (+/-)**: Kcal đã ăn − Nhu cầu năng lượng ước tính. Dương =
+  ăn dư, âm = thiếu hụt. Để trống khi cột Nhu cầu bên trên trống.
+- **Dòng cuối sheet** (sau 1 dòng trống ngăn cách): dòng cảnh báo tái dùng
+  đúng câu `assessment.disclaimer` — *"Chỉ để tham khảo — không phải tư vấn y
+  tế."* — nhắc người dùng nghiên cứu số liệu cẩn trọng, không tuân theo tuyệt
+  đối.
+
+## B. Food Entries (sheet 2)
+
+Một dòng cho mỗi món ăn đã ghi, cộng thêm 4 cột vi chất (Session 19,
+2026-07-29): **Đường (g), Chất xơ (g), Sắt (mg), Muối (g)**. `FoodLogEntry`
+không snapshot các vi chất này (chỉ macro/kcal) nên được tính lại từ
+`per100g` của món ăn (`getAnyFoodById` + `per100gValue` trong
+`microBatteryEngine.ts`, scale theo đúng số gram đã ăn — Muối suy ra từ Natri
+× 2.5/1000, cùng công thức pin vi chất "Muối" ở Trang chủ). Để trống (không
+phải 0) nếu không tìm được món trong CSDL — 0 sẽ đọc nhầm thành "món này
+không có", còn để trống đúng nghĩa "chưa rõ".
+
 ## 1. Battery Readings
 Lịch sử các lần đọc pin (Năng lượng + các pin phụ): ngày, loại pin, mức hiện
 tại, dung lượng, % đầy.
@@ -103,7 +132,12 @@ Bảng tra cứu đứng sau toàn bộ cột "Đánh giá" ở sheet 4 và 5 �
   `summarizeWeeklyNutrition` (có test).
 - `src/services/export/excelExportService.ts` — lắp 8 sheet, lấy hồ sơ người
   dùng qua `useSettingsStore.getState()` rồi tính `nutrientTargetsForProfile`;
-  nhận `language` để dịch toàn bộ tên sheet/tiêu đề cột (xem mục 0).
+  nhận `language` để dịch toàn bộ tên sheet/tiêu đề cột (xem mục 0). Từ
+  Session 19: thêm `getActivityLogInRange` (Kcal đã đốt) và lọc `readings`
+  sẵn có theo `batteryTypeId === 'energy'` (Nhu cầu năng lượng ước tính).
+- `src/domain/health/weightOnDay.ts` (mới, Session 19) — `weightOnOrBefore`
+  dùng chung giữa Excel export và sheet chi tiết ngày ở màn History (tách ra
+  khỏi `excelSheets.ts` để không viết trùng logic 2 nơi).
 - `src/i18n/` (mới, Session 14/2026-07-17) — `translate.ts` + `locales/{vi,en,de}.ts`
   chứa toàn bộ chuỗi `export.sheets.*`/`export.columns.*` dùng ở đây.
 - Test: `src/domain/nutrition/__tests__/nutritionAssessment.test.ts`,

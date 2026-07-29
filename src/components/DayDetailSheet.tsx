@@ -31,6 +31,15 @@ interface DayDetailSheetProps {
   // for older days, where FoodLogModal's own PastDateField would reject the
   // date anyway. Deleting an entry stays allowed regardless (unchanged).
   canAddFood: boolean;
+  // kcal burned that day via logged activity (steps/workouts) — always shown,
+  // 0 is a real "no activity logged" value, not missing data.
+  burnedKcal: number;
+  // The rest are null/blank when that day has no reading/log for it yet
+  // (e.g. very old data, or a day the user never logged) — hidden, not
+  // shown as 0, so it doesn't misread as "you slept/drank/weighed nothing".
+  sleepHours: number | null;
+  waterDisplay: string | null; // already formatted with the user's ml/L preference
+  weightKg: number | string; // '' when no weight has ever been logged up to this day
   onClose: () => void;
   onAddFood: () => void;
   onDeleteEntry: (entry: FoodLogEntry) => void;
@@ -97,6 +106,10 @@ export function DayDetailSheet({
   entries,
   loading = false,
   canAddFood,
+  burnedKcal,
+  sleepHours,
+  waterDisplay,
+  weightKg,
   onClose,
   onAddFood,
   onDeleteEntry,
@@ -206,6 +219,32 @@ export function DayDetailSheet({
             </View>
           )}
 
+          {/* Extra day-level stats — burned kcal always shown (0 is a real
+              value); sleep/water/weight only when that day actually has one,
+              so a missing reading never misreads as "zero". */}
+          {!loading && (
+            <View style={styles.statsRow}>
+              <Text style={styles.statText}>
+                {t('components.dayDetailSheet.burnedLabel', { kcal: burnedKcal })}
+              </Text>
+              {sleepHours !== null && (
+                <Text style={styles.statText}>
+                  {t('components.dayDetailSheet.sleepLabel', { hours: sleepHours })}
+                </Text>
+              )}
+              {waterDisplay !== null && (
+                <Text style={styles.statText}>
+                  {t('components.dayDetailSheet.waterLabel', { amount: waterDisplay })}
+                </Text>
+              )}
+              {weightKg !== '' && (
+                <Text style={styles.statText}>
+                  {t('components.dayDetailSheet.weightLabel', { weight: weightKg })}
+                </Text>
+              )}
+            </View>
+          )}
+
           {/* Entries list grouped by meal type */}
           {!loading && entries.length > 0 ? (
             <View style={styles.entriesContainer}>
@@ -276,6 +315,21 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: c.textBright,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  statText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: c.textSecondary,
+    backgroundColor: c.bgElevated,
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   entriesContainer: {
     marginBottom: 12,

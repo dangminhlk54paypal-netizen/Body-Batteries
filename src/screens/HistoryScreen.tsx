@@ -12,12 +12,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getReadingsInRange } from '../data/repositories/batteryRepository';
 import { getLogsInRange } from '../data/repositories/dailyLogRepository';
 import { getFoodLogForDate } from '../data/repositories/foodLogRepository';
+import { getActivityLogForDate } from '../data/repositories/activityLogRepository';
+import { getWeightHistory, type WeightEntry } from '../data/repositories/healthSignalsRepository';
+import { weightOnOrBefore } from '../domain/health/weightOnDay';
 import { useEnergyStore } from '../store/energyStore';
+import { useSettingsStore } from '../store/settingsStore';
 import type { BatteryReading, DailyLog, BatteryType } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
 import { todayString, daysAgo, daysBetween, formatDisplayDate } from '../lib/dateUtils';
 import { toPercentage } from '../domain/battery/batteryEngine';
 import { DEFAULT_BATTERIES, batteryTypeName, BACKFILL_MAX_DAYS_BACK } from '../lib/constants';
+import { formatWaterAmount } from '../lib/units';
 import { TrendChart } from '../components/TrendChart';
 import { WeightLogCard } from '../components/WeightLogCard';
 import { DayDetailSheet } from '../components/DayDetailSheet';
@@ -66,7 +71,12 @@ export function HistoryScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetEntries, setSheetEntries] = useState<FoodLogEntry[]>([]);
   const [sheetLoading, setSheetLoading] = useState(false);
+  const [sheetBurnedKcal, setSheetBurnedKcal] = useState(0);
   const [addFoodVisible, setAddFoodVisible] = useState(false);
+  // Carried-forward weight for the day-detail sheet — fetched once here (not
+  // by WeightLogCard, which keeps its own independent copy for its own list).
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const waterDisplayUnit = useSettingsStore((s) => s.waterDisplayUnit);
 
   async function loadHistory() {
     const toDate = todayString();
@@ -79,6 +89,7 @@ export function HistoryScreen() {
         getReadingsInRange(fromDate, toDate),
         getLogsInRange(fromDate, toDate),
       ]);
+      setWeights(await getWeightHistory(1000));
     } catch (e) {
       console.warn('loadHistory failed:', e);
     }
@@ -118,17 +129,22 @@ export function HistoryScreen() {
     setLoading(false);
   }
 
-  // Fetches (or re-fetches) the food log for one calendar day into the
-  // day-detail sheet. Called both when the sheet opens and after any
+  // Fetches (or re-fetches) the food log + activity log for one calendar day
+  // into the day-detail sheet. Called both when the sheet opens and after any
   // add/delete so the sheet's list reflects the store.
   async function fetchDayEntries(date: string) {
     setSheetLoading(true);
     try {
-      const entries = await getFoodLogForDate(date);
+      const [entries, activity] = await Promise.all([
+        getFoodLogForDate(date),
+        getActivityLogForDate(date),
+      ]);
       setSheetEntries(entries);
+      setSheetBurnedKcal(Math.round(activity.reduce((sum, a) => sum + a.energyKcal, 0)));
     } catch (e) {
       console.warn('fetchDayEntries failed:', e);
       setSheetEntries([]);
+      setSheetBurnedKcal(0);
     } finally {
       setSheetLoading(false);
     }
@@ -182,6 +198,15 @@ export function HistoryScreen() {
     );
   }
 
+  // Sleep/water for the open sheet's day are already in `days` (fetched once
+  // for the whole 7-day range in loadHistory) — no extra fetch needed, unlike
+  // burnedKcal above which genuinely requires its own per-day query.
+  const sheetDayReadings = days.find((d) => d.date === sheetDate)?.readings ?? [];
+  const sheetSleepHours = sheetDayReadings.find((r) => r.batteryTypeId === 'sleep')?.level ?? null;
+  const sheetWaterMl = sheetDayReadings.find((r) => r.batteryTypeId === 'water')?.level ?? null;
+  const sheetWaterDisplay = sheetWaterMl !== null ? formatWaterAmount(sheetWaterMl, waterDisplayUnit) : null;
+  const sheetWeightKg = sheetDate ? weightOnOrBefore(sheetDate, weights) : '';
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -189,7 +214,7 @@ export function HistoryScreen() {
 
         <TrendChart data={chronologicalTrend(days)} energyData={chronologicalEnergyTrend(days)} />
 
-        <WeightLogCard />
+        <WeightLogCard onChanged={loadHistory} />
 
         {days.length === 0 && <Text style={styles.empty}>{t('screens.history.empty')}</Text>}
 
@@ -245,6 +270,10 @@ export function HistoryScreen() {
         entries={sheetEntries}
         loading={sheetLoading}
         canAddFood={daysBetween(sheetDate ?? todayString(), todayString()) <= BACKFILL_MAX_DAYS_BACK}
+        burnedKcal={sheetBurnedKcal}
+        sleepHours={sheetSleepHours}
+        waterDisplay={sheetWaterDisplay}
+        weightKg={sheetWeightKg}
         onClose={closeDaySheet}
         onAddFood={handleAddFood}
         onDeleteEntry={handleDeleteEntry}

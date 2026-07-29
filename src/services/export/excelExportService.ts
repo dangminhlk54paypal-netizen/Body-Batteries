@@ -8,6 +8,7 @@ import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { getIntakeEventsInRange } from '../../data/repositories/intakeRepository';
 import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
 import { getWeightHistory } from '../../data/repositories/healthSignalsRepository';
+import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
 import { todayString, daysAgo, formatDisplayDate } from '../../lib/dateUtils';
 import { mealLabel, batteryTypeName } from '../../lib/constants';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -36,19 +37,24 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
   const intakes = await getIntakeEventsInRange(fromDate, toDate);
   const foodLog = await getFoodLogInRange(fromDate, toDate);
   const weights = await getWeightHistory(1000);
+  const activityLog = await getActivityLogInRange(fromDate, toDate);
+  const energyReadings = readings.filter((r) => r.batteryTypeId === 'energy');
 
   // Domain layer stays pure: fetch profile/targets here, pass entries in.
   const { userProfile } = useSettingsStore.getState();
   const targets = nutrientTargetsForProfile(userProfile);
   const { days, weekly } = summarizeWeeklyNutrition(foodLog, targets, getAnyFoodById, language);
 
-  // Sheet 0a: Daily Totals — one row per day with logged food, macro sums +
-  // carried-forward weight (see domain/nutrition/excelSheets.ts).
-  const dailyTotalsRows = buildDailyTotals(foodLog, weights, language);
+  // Sheet 0a: Daily Totals — one row per day with logged food, macro sums,
+  // carried-forward weight, burned kcal (activity log), estimated energy
+  // need (energy battery capacity) + balance, and a trailing disclaimer row
+  // (see domain/nutrition/excelSheets.ts).
+  const dailyTotalsRows = buildDailyTotals(foodLog, weights, activityLog, energyReadings, language);
 
   // Sheet 0b: Food Entries — one row per logged food, blank-row separated by
-  // calendar day (the free `xlsx` build can't style cell fills/borders).
-  const foodEntryRows = buildFoodEntryRows(foodLog, language);
+  // calendar day (the free `xlsx` build can't style cell fills/borders), plus
+  // per-entry micronutrients scaled from the food's per-100g figures.
+  const foodEntryRows = buildFoodEntryRows(foodLog, getAnyFoodById, language);
 
   // Sheet 1: Battery readings
   const readingRows = readings.map((r) => ({
@@ -162,7 +168,17 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
   const wb = utils.book_new();
 
   const dailyTotalsSheet = utils.json_to_sheet(dailyTotalsRows);
-  dailyTotalsSheet['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
+  dailyTotalsSheet['!cols'] = [
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 18 },
+    { wch: 12 },
+  ];
   utils.book_append_sheet(wb, dailyTotalsSheet, t('export.sheets.dailyTotals'));
 
   const foodEntriesSheet = utils.json_to_sheet(foodEntryRows);
@@ -175,6 +191,10 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
     { wch: 10 },
     { wch: 10 },
     { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 10 },
+    { wch: 10 },
   ];
   utils.book_append_sheet(wb, foodEntriesSheet, t('export.sheets.foodEntries'));
 

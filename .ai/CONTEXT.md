@@ -112,7 +112,21 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-29 (Session 18, xem `.ai/SESSION_LOG.md`).** **Tap-to-see-sources cho
+**Cập nhật lần cuối: 2026-07-29 (Session 19, xem `.ai/SESSION_LOG.md`).** **Excel: cột năng lượng +
+vi chất — History: sửa cân nặng + sheet chi tiết ngày.** Theo yêu cầu người dùng sau một thời gian
+dùng app: (1) sheet "Daily Totals" thêm 3 cột **Kcal đã đốt / Nhu cầu năng lượng ước tính / Cân
+bằng calo (+/-)** (từ `getActivityLogInRange` + `capacity` pin Năng lượng) + 1 dòng cảnh báo cuối
+sheet (tái dùng `assessment.disclaimer`); (2) sheet "Food Entries" thêm 4 cột vi chất **Đường/Chất
+xơ/Sắt/Muối** tính lại từ per-100g mỗi món (`per100gValue`, nay export từ `microBatteryEngine.ts`);
+(3) mục "Cân nặng theo thời gian" ở History giờ **sửa được** entry trong 3 ngày gần nhất (nút ✎ →
+Modal, dùng cột `id` sẵn có của bảng `health_signals` — không cần migration) + nút "Xem thêm/Ẩn
+bớt" cho lịch sử cũ hơn 7 dòng; (4) thẻ ngày trong History (đã tap được từ trước) mở sheet chi tiết
+giờ hiện thêm **kcal đốt/giờ ngủ/nước/cân nặng** ngày đó, ẩn khi thiếu dữ liệu thay vì hiện "0" giả.
+Tách `weightOnOrBefore` ra file dùng chung `src/domain/health/weightOnDay.ts` (Excel export +
+History cùng dùng). i18n đủ VI/EN/DE. `npm run verify` PASS (tsc + eslint sạch, **517/517 test**).
+**CHƯA TEST MÁY THẬT.**
+
+**Trước đó — Session 18 (2026-07-29, xem `.ai/SESSION_LOG.md`).** **Tap-to-see-sources cho
 10 pin vi chất:** bấm vào bất kỳ pin nào trong `MicroBatteryStack` (fiber/sắt/canxi/fat/kẽm/omega3/
 đường/muối/natri/kali/magiê) giờ mở `MicroBatterySourceSheet` — liệt kê đúng những món ăn đã ghi
 trong ngày đang xem (kể cả 6 ngày trước qua date-picker, không chỉ hôm nay) đóng góp bao nhiêu vào

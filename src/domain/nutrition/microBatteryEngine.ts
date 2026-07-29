@@ -24,7 +24,7 @@ function pctOf(current: number, target: number): number {
   return Math.max(0, Math.min(999, Math.round((100 * current) / target)));
 }
 
-function per100gValue(p: Nutrition, id: MicronutrientId): number {
+export function per100gValue(p: Nutrition, id: MicronutrientId): number {
   switch (id) {
     case 'fiber':
       return p.fiberG;

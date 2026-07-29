@@ -1137,6 +1137,79 @@ an toàn tối đa) → chặn an toàn (≤20%, ≤750 kcal, không dưới BMR
 
 ---
 
+## Session 19 — 2026-07-29 (Excel: cột năng lượng + vi chất — History: sửa cân nặng + sheet chi tiết ngày)
+
+**Làm gì:** Người dùng dùng app một thời gian và yêu cầu 4 cải tiến trải nghiệm: (1) sheet "Daily
+Totals" thêm cột Kcal đã đốt/Nhu cầu năng lượng ước tính/Cân bằng calo + cảnh báo đọc số liệu cẩn
+trọng; (2) sheet "Food Entries" thêm vi chất (đường/xơ/sắt/muối) mỗi món ăn; (3) mục "Cân nặng theo
+thời gian" ở History cho sửa entry log nhầm (≤3 ngày gần nhất) + xem thêm lịch sử cũ hơn 7 dòng;
+(4) thẻ ngày trong History (đã tap được sẵn) hiện thêm kcal đốt/giờ ngủ/nước/cân nặng khi bấm vào.
+
+**Kết quả (CODE ĐÃ XONG, VERIFY SẠCH, CHƯA TEST MÁY THẬT):**
+1. `src/domain/nutrition/excelSheets.ts` — `buildDailyTotals` nhận thêm `activityLog`/
+   `energyReadings`, tính **Kcal đã đốt** (gom activity theo `startAt ?? timestamp`, đúng quy ước
+   `getActivityLogInRange`), **Nhu cầu năng lượng ước tính** (= `capacity` pin Năng lượng ngày đó,
+   để trống nếu thiếu), **Cân bằng** (= Kcal ăn − Nhu cầu, để trống khi Nhu cầu trống); thêm 1 dòng
+   disclaimer cuối sheet tái dùng `assessment.disclaimer`. `buildFoodEntryRows` nhận thêm tham số
+   `lookup` (food-by-id), tính Đường/Xơ/Sắt/Muối mỗi món bằng `per100gValue` (export mới từ
+   `microBatteryEngine.ts`) scale theo gram đã ăn — Muối suy từ Natri×2.5/1000, cùng công thức pin
+   vi chất "Muối". Để trống (không phải 0) khi không tra được món.
+2. `src/domain/health/weightOnDay.ts` (file mới) — tách `weightOnOrBefore` ra khỏi `excelSheets.ts`
+   để dùng chung với History (tránh viết trùng logic carry-forward cân nặng).
+3. `src/services/export/excelExportService.ts` — fetch thêm `getActivityLogInRange`, lọc
+   `readings` sẵn có theo `batteryTypeId === 'energy'`, truyền vào 2 hàm build ở trên + mở rộng độ
+   rộng cột.
+4. `src/data/repositories/healthSignalsRepository.ts` — `WeightEntry` có thêm `id` (cột `id` đã có
+   sẵn trong schema `health_signals`, KHÔNG cần migration); hàm mới `updateWeight(id, kg)`.
+5. `src/lib/constants.ts` — hằng số mới `WEIGHT_EDIT_MAX_DAYS_BACK = 3`.
+6. `src/components/WeightLogCard.tsx` — fetch 60 dòng gần nhất thay vì 10; hiện 7 dòng mặc định +
+   nút "Xem thêm/Ẩn bớt" (`common.seeMore/seeLess`, đã có sẵn nhưng chưa nơi nào dùng); dòng trong
+   phạm vi `WEIGHT_EDIT_MAX_DAYS_BACK` có nút ✎ mở Modal sửa (mirror đúng pattern Modal của
+   `TodayActivities.tsx`/`TodayMeals.tsx`, tái dùng `parseDecimal`/`PROFILE_LIMITS.weightKg`); thêm
+   prop `onChanged` để `HistoryScreen` refresh cân nặng nó tự fetch riêng cho sheet chi tiết ngày.
+7. `src/screens/HistoryScreen.tsx` — fetch thêm `getWeightHistory` (cho carry-forward cân nặng) và
+   `getActivityLogForDate` (kcal đốt) cho ngày đang mở sheet; giờ ngủ/nước lấy trực tiếp từ
+   `days[].readings` đã fetch sẵn theo range (không fetch thêm); truyền 4 giá trị mới xuống
+   `DayDetailSheet` + `onChanged={loadHistory}` xuống `WeightLogCard`.
+8. `src/components/DayDetailSheet.tsx` — thêm 4 prop (`burnedKcal` luôn hiện vì 0 là giá trị thật;
+   `sleepHours`/`waterDisplay`/`weightKg` chỉ hiện khi có dữ liệu) + 1 hàng "chip" hiển thị dưới
+   dòng tổng kcal/đạm sẵn có.
+9. i18n: thêm khối key mới vào cả `vi.ts`/`en.ts`/`de.ts` — `export.columns.{burnedKcal,
+   estimatedEnergyNeed, energyBalance, sugar, fiber, iron, salt}`, `components.weightLogCard.
+   editModalTitle`, `components.dayDetailSheet.{burnedLabel, sleepLabel, waterLabel, weightLabel}`.
+10. Test: viết lại toàn bộ `excelSheets.test.ts` (fixture `FoodItem`/`ActivityLogEntry`/
+    `BatteryReading` mới, case cho burned/EEN/balance/disclaimer/vi chất/blank-khi-thiếu) + file mới
+    `src/domain/health/__tests__/weightOnDay.test.ts` (4 case chuyển từ excelSheets.test.ts).
+
+**Kiểm tra trước commit:**
+- `npm run verify` — ✅ **517/517 test PASS** (43 suite), `tsc --noEmit` sạch, `eslint` sạch.
+- Kế hoạch được xác minh qua 1 lượt Plan agent đọc trực tiếp code (không đoán) trước khi code —
+  bắt được vài chi tiết quan trọng: `health_signals` **đã có sẵn cột `id`** (không cần rowid hack
+  hay migration như dự tính ban đầu); activity phải gom theo `startAt ?? timestamp` chứ không phải
+  `timestamp` trần; nên dùng pattern Modal có sẵn (`TodayActivities`) thay vì tự nghĩ UI edit mới;
+  và nên dùng toggle "Xem thêm" thay vì ScrollView lồng ScrollView (codebase không có tiền lệ này,
+  dễ kẹt gesture — xem comment trong `DayDetailSheet.tsx` về việc tắt scroll lồng nhau).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Giữa phiên, git status cho thấy vài file (`MicroBatteryStack.tsx`, `useMicroBatteryHistory.ts`,
+  `HomeScreen.tsx`, `MicroBatterySourceSheet.tsx`) không còn hiện là "đã sửa/chưa track" nữa — kiểm
+  tra kỹ bằng `git reflog` thì phát hiện đây là do 2 commit khác (`fdbf959`/`f52134b`, tính năng
+  "tap-to-see-sources" Session 18) đã được tạo bởi một phiên/luồng khác trong lúc phiên này đang
+  chạy — không phải mất dữ liệu, chỉ là công việc dở dang từ trước đã được commit lại. Không có gì
+  cần sửa, chỉ ghi chú lại để không nhầm lẫn ở các phiên sau nếu gặp lại tình huống tương tự.
+- Không có bug kỹ thuật mới nào khác trong quá trình code.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật bắt buộc:** (a) Xuất Excel tuần/tháng → mở file, kiểm tra sheet "Daily Totals"
+   có đủ 3 cột mới + dòng cảnh báo cuối sheet, sheet "Food Entries" có đủ 4 cột vi chất đúng số
+   liệu; (b) vào History → sửa 1 dòng cân nặng trong 3 ngày gần nhất qua nút ✎, xác nhận modal lưu
+   đúng giá trị mới; (c) bấm "Xem thêm" trong mục Cân nặng → thấy các dòng cũ hơn 7 ngày, bấm "Ẩn
+   bớt" thu lại; (d) bấm vào 1 thẻ ngày bất kỳ → sheet chi tiết hiện đủ 4 chỉ số mới (kcal đốt/giờ
+   ngủ/nước/cân nặng), thử cả ngày không có đủ dữ liệu (chỉ hiện những gì có, không hiện "0" giả).
+2. Nếu ổn → không có việc tồn đọng nào khác từ phiên này.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

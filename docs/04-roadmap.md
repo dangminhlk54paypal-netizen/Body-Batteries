@@ -125,6 +125,16 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > file giao diện + toàn bộ 8 sheet Excel (`docs/excel-report.md` mục 0) đã chuyển qua `t()`/
 > `translate()`. Verify: **444/444 test PASS**, `tsc`/`eslint` sạch toàn dự án, `expo export
 > --platform web` bundle sạch 1104 module. Chi tiết: `.ai/SESSION_LOG.md` Session 14 (2026-07-17).
+>
+> **Session 19 (2026-07-29), CODE XONG chưa test máy — theo yêu cầu người dùng sau một thời gian
+> dùng app:** sheet "Daily Totals" thêm 3 cột **Kcal đã đốt / Nhu cầu năng lượng ước tính / Cân
+> bằng calo (+/-)** + dòng cảnh báo cuối sheet; sheet "Food Entries" thêm 4 cột vi chất **Đường/
+> Chất xơ/Sắt/Muối** tính lại từ per-100g mỗi món (xem `docs/excel-report.md` mục A/B). Cùng đợt,
+> màn History: mục "Cân nặng theo thời gian" giờ **sửa được** entry trong 3 ngày gần nhất (nút ✎ →
+> modal, dùng cột `id` sẵn có của `health_signals`) + nút "Xem thêm/Ẩn bớt" cho lịch sử cũ hơn 7
+> dòng; thẻ ngày (đã tap được từ trước) mở sheet chi tiết giờ hiện thêm **kcal đốt/giờ ngủ/nước/cân
+> nặng** ngày đó. Verify: **tsc/eslint sạch, 517/517 test PASS**. Chi tiết: `.ai/SESSION_LOG.md`
+> Session 19.
 
 ---
 

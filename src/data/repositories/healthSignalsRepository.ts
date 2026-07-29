@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 
 export interface WeightEntry {
+  id: number;
   timestamp: number;
   value: number;
 }
@@ -22,14 +23,27 @@ export async function getWeightHistory(
   limit: number = DEFAULT_WEIGHT_HISTORY_LIMIT
 ): Promise<WeightEntry[]> {
   const db = getDb();
-  const rows = await db.getAllAsync<{ timestamp: number; value: number }>(
-    `SELECT timestamp, value FROM health_signals
+  const rows = await db.getAllAsync<{ id: number; timestamp: number; value: number }>(
+    `SELECT id, timestamp, value FROM health_signals
      WHERE source = 'manual' AND type = 'weight_kg'
      ORDER BY timestamp DESC
      LIMIT ?`,
     limit
   );
-  return rows.map((r) => ({ timestamp: r.timestamp, value: r.value }));
+  return rows.map((r) => ({ id: r.id, timestamp: r.timestamp, value: r.value }));
+}
+
+// Corrects a manually-logged weight entry in place (e.g. a mistyped value) —
+// the row's own `timestamp`/day stays untouched, only `value` changes.
+// Callers (WeightLogCard) restrict this to entries within the last few days
+// (WEIGHT_EDIT_MAX_DAYS_BACK) so older history stays an untouched record.
+export async function updateWeight(id: number, kg: number): Promise<void> {
+  const db = getDb();
+  await db.runAsync(
+    `UPDATE health_signals SET value = ? WHERE id = ? AND source = 'manual' AND type = 'weight_kg'`,
+    kg,
+    id
+  );
 }
 
 // --- Apple Health burned-kcal sync (Phases 1-3) ---
