@@ -242,14 +242,17 @@ export async function exportDataInRange(
   }
 }
 
-// Last 7 days (unchanged behaviour / filename).
+// Last 7 days.
 export async function exportWeeklyData(language: Language): Promise<void> {
   const toDate = todayString();
   const fromDate = daysAgo(7);
-  await exportDataInRange(fromDate, toDate, `body_batteries_${fromDate}_${toDate}.xlsx`, language);
+  const stamp = toDate.replace(/-/g, '');
+  await exportDataInRange(fromDate, toDate, `${stamp}_BodyBatteries_Last_7_Days.xlsx`, language);
 }
 
 // Last 30 days — on-demand full-month export.
 export async function exportMonthlyData(language: Language): Promise<void> {
-  await exportDataInRange(daysAgo(30), todayString(), 'body_batteries_last_30_days.xlsx', language);
+  const toDate = todayString();
+  const stamp = toDate.replace(/-/g, '');
+  await exportDataInRange(daysAgo(30), toDate, `${stamp}_BodyBatteries_Last_30_Days.xlsx`, language);
 }
