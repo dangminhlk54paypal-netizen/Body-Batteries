@@ -4,6 +4,7 @@ import { BottomSheet } from './ui/BottomSheet';
 import { activityLabel } from './EnergyActionsBar';
 import { describeLiftingSets } from './PowerliftingSheet';
 import { bbExerciseName } from './BodybuildingSheet';
+import { foodLogEntryDisplayName } from '../data/food/foodLookup';
 import type { BatteryType, IntakeEvent } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
 import type { ActivityLogEntry, WorkoutSession } from '../types/energy';
@@ -80,11 +81,12 @@ function intakeRows(intakeLog: IntakeEvent[], batteryId: string, unit: string, t
 function foodRows(
   foodLog: FoodLogEntry[],
   key: 'proteinG' | 'carbG' | 'mineralsMg',
-  unit: string
+  unit: string,
+  language: Language
 ): SourceRow[] {
   return foodLog
     .filter((f) => f[key] > 0)
-    .map((f) => ({ id: f.id, label: f.foodNameVi, value: `${f[key]} ${unit}` }));
+    .map((f) => ({ id: f.id, label: foodLogEntryDisplayName(f, language), value: `${f[key]} ${unit}` }));
 }
 
 function buildRows(
@@ -97,12 +99,18 @@ function buildRows(
 ): SourceRow[] {
   switch (battery.id) {
     case 'protein':
-      return [...foodRows(foodLog, 'proteinG', 'g'), ...intakeRows(intakeLog, 'protein', 'g', t)];
+      return [
+        ...foodRows(foodLog, 'proteinG', 'g', language),
+        ...intakeRows(intakeLog, 'protein', 'g', t),
+      ];
     case 'carbs':
-      return [...foodRows(foodLog, 'carbG', 'g'), ...intakeRows(intakeLog, 'carbs', 'g', t)];
+      return [
+        ...foodRows(foodLog, 'carbG', 'g', language),
+        ...intakeRows(intakeLog, 'carbs', 'g', t),
+      ];
     case 'minerals':
       return [
-        ...foodRows(foodLog, 'mineralsMg', 'mg'),
+        ...foodRows(foodLog, 'mineralsMg', 'mg', language),
         ...intakeRows(intakeLog, 'minerals', 'mg', t),
       ];
     case 'movement':

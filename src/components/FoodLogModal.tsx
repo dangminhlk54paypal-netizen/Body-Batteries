@@ -4,7 +4,8 @@ import { useEnergyStore } from '../store/energyStore';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { searchAllFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
-import { getAnyFoodById } from '../data/food/foodLookup';
+import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
+import { getAnyFoodById, foodLogEntryDisplayName } from '../data/food/foodLookup';
 import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
@@ -236,6 +237,10 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     setSavingCustomFood(true);
     const item = buildCustomFoodItem(customInput);
     await addCustomFoodAndRegister(item);
+    // Best-effort, opt-in background translation (Settings → Ngôn ngữ) — not
+    // awaited so it never delays logging the food; no-ops when the setting
+    // is off. See foodNameTranslationService.ts.
+    autoTranslateCustomFoodName(item, language);
     setAdding(false);
     // No need to reset savingCustomFood here — the view transitions away via
     // pickFood()/setSelected, unmounting the "Lưu món" button.
@@ -433,7 +438,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                           onPress={() => logSuggestion(s)}
                         >
                           <Text style={styles.suggestChipText} numberOfLines={1}>
-                            {s.foodNameVi}
+                            {foodLogEntryDisplayName(s, language)}
                           </Text>
                         </Pressable>
                       ))}

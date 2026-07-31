@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import { mealLabel } from '../lib/constants';
+import { foodLogEntryDisplayName } from '../data/food/foodLookup';
 import type { FoodLogEntry } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
@@ -121,7 +122,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
                     onPress={() => openDetail(e)}
                   >
                     <Text style={styles.entryName} numberOfLines={1}>
-                      {e.foodNameVi}
+                      {foodLogEntryDisplayName(e, language)}
                     </Text>
                     <Text style={styles.entryMeta}>
                       {timeLabel(e.timestamp)} · {amountLabel(e, t)} · {e.energyKcal} kcal
@@ -156,7 +157,9 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.overlay}>
           <View style={styles.sheet}>
             <Text style={styles.title}>{t('components.todayMeals.editModalTitle')}</Text>
-            {editingEntry && <Text style={styles.editingName}>{editingEntry.foodNameVi}</Text>}
+            {editingEntry && (
+              <Text style={styles.editingName}>{foodLogEntryDisplayName(editingEntry, language)}</Text>
+            )}
             <TextInput
               style={styles.input}
               placeholder={

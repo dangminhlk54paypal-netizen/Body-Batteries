@@ -57,9 +57,9 @@ export interface FoodItem {
   id: string;
   nameVi: string;
   nameEn: string;
-  // German name — search-only (the user shops in German supermarkets).
-  // Display stays Vietnamese-main/English-sub; nameDe never appears in the
-  // UI. Optional: not every catalog row has a translation yet.
+  // German name — used for both search AND display (see foodDisplayName() in
+  // foodLookup.ts) when language === 'de'. Optional: not every catalog row
+  // has a translation yet; foodDisplayName falls back to nameEn then nameVi.
   nameDe?: string;
   category: string;
   defaultServingG: number;

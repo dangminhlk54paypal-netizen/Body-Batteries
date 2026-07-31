@@ -331,6 +331,9 @@ export const de: TranslationSchema = {
     language: {
       sectionTitle: 'SPRACHE',
       sectionDesc: 'Wähle die Anzeigesprache für die gesamte App, einschließlich exportierter Excel-Dateien.',
+      autoTranslateLabel: 'Eigene Lebensmittelnamen automatisch übersetzen',
+      autoTranslateDesc:
+        'Wenn aktiv, werden selbst eingegebene Lebensmittel im Hintergrund über den kostenlosen Dienst MyMemory in die anderen 2 Sprachen übersetzt (benötigt Internet). Bereits gespeicherte Namen im Verlauf ändern sich nicht. Standardmäßig aus.',
     },
     bodyProfile: {
       sectionTitle: 'KÖRPERPROFIL',

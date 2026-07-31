@@ -1,4 +1,5 @@
-import type { FoodItem } from '../../types/food';
+import type { FoodItem, FoodLogEntry } from '../../types/food';
+import type { Language } from '../../i18n/types';
 import { getFoodById } from './foodDatabase';
 import { getUsdaFoodById } from './usdaFoods';
 import { getCustomFoodByIdSync } from './customFoodRegistry';
@@ -63,4 +64,29 @@ export function getAnyFoodById(id: string): FoodItem | undefined {
     portionUnit,
     servingWeightG,
   };
+}
+
+// The display name for a FoodItem in the current UI language. Falls back
+// toward 'vi' (the app's original/default language — see i18n/types.ts)
+// whenever a translation is missing, e.g. a custom food (nameEn: '') or a
+// catalog row not yet covered by database/usda_names_de.csv.
+export function foodDisplayName(item: FoodItem, language: Language): string {
+  if (language === 'de') return item.nameDe || item.nameEn || item.nameVi;
+  if (language === 'en') return item.nameEn || item.nameVi;
+  return item.nameVi;
+}
+
+// The display name for anything carrying a foodId + a frozen foodNameVi
+// snapshot — a logged FoodLogEntry, or a FoodSuggestion (foodSuggestions.ts)
+// built from one. Resolves the live FoodItem via foodId so catalog-backed
+// entries follow a later language switch, and only falls back to the
+// snapshot when the catalog no longer has that id (custom food deleted by
+// the user, or an override removed) — the one case AGENTS.md's "historical
+// snapshot, never retro-translate" rule still applies to.
+export function foodLogEntryDisplayName(
+  entry: Pick<FoodLogEntry, 'foodId' | 'foodNameVi'>,
+  language: Language
+): string {
+  const item = getAnyFoodById(entry.foodId);
+  return item ? foodDisplayName(item, language) : entry.foodNameVi;
 }

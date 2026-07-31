@@ -13,7 +13,7 @@ import { todayString, daysAgo, formatDisplayDate } from '../../lib/dateUtils';
 import { mealLabel, batteryTypeName } from '../../lib/constants';
 import { useSettingsStore } from '../../store/settingsStore';
 import { nutrientTargetsForProfile } from '../../lib/nutrientTargets';
-import { getAnyFoodById } from '../../data/food/foodLookup';
+import { getAnyFoodById, foodLogEntryDisplayName } from '../../data/food/foodLookup';
 import { summarizeWeeklyNutrition } from '../../domain/nutrition/dailyNutritionSummary';
 import { buildDailyTotals, buildFoodEntryRows } from '../../domain/nutrition/excelSheets';
 import { ASSESSMENT_RULES, ASSESSMENT_ORDER } from '../../domain/nutrition/nutritionAssessment';
@@ -75,13 +75,15 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
   }));
 
   // Sheet 3: Food log (rich per-meal rows — food, grams, meal type, kcal, macro).
-  // Food name stays the Vietnamese snapshot taken at log time (foodNameVi) —
-  // see the comment in excelSheets.ts's buildFoodEntryRows for why.
+  // Food name follows the export language via the live catalog lookup (see
+  // foodLogEntryDisplayName in foodLookup.ts); only a custom food deleted by
+  // the user, or a since-removed catalog id, falls back to the frozen
+  // foodNameVi snapshot taken at log time.
   const foodRows = foodLog.map((f) => ({
     [t('export.columns.date')]: new Date(f.timestamp).toLocaleDateString(localeTag),
     [t('export.columns.time')]: new Date(f.timestamp).toLocaleTimeString(localeTag),
     [t('export.columns.meal')]: mealLabel(f.mealType, language),
-    [t('export.columns.foodName')]: f.foodNameVi,
+    [t('export.columns.foodName')]: foodLogEntryDisplayName(f, language),
     [t('export.columns.grams')]: f.grams,
     [t('export.columns.kcal')]: f.energyKcal,
     [t('export.columns.protein')]: f.proteinG,

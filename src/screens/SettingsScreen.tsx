@@ -125,6 +125,8 @@ export function SettingsScreen() {
     setLanguage,
     themeMode,
     setThemeMode,
+    autoTranslateCustomFoodNames,
+    setAutoTranslateCustomFoodNames,
   } = useSettingsStore();
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
   const c = useThemeColors();
@@ -275,6 +277,16 @@ export function SettingsScreen() {
               </Pressable>
             ))}
           </View>
+
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>{t('settings.language.autoTranslateLabel')}</Text>
+            <Switch
+              value={autoTranslateCustomFoodNames}
+              onValueChange={setAutoTranslateCustomFoodNames}
+              trackColor={{ true: c.accent }}
+            />
+          </View>
+          <Text style={styles.sectionDesc}>{t('settings.language.autoTranslateDesc')}</Text>
         </View>
 
         <View style={styles.divider} />

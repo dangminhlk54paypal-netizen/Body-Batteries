@@ -155,16 +155,24 @@ export function buildFoodEntryRows(
     const fiberG = item ? round1(per100gValue(item.per100g, 'fiber') * factor) : '';
     const ironMg = item ? round1(per100gValue(item.per100g, 'iron') * factor) : '';
     const saltG = item ? round1(per100gValue(item.per100g, 'salt') * factor) : '';
+    // Follows the export language via the same item already resolved above
+    // (nameVi/nameEn/nameDe — see FoodItem in types/food.ts); only a food no
+    // longer in the catalog (custom food deleted, override removed) falls
+    // back to the frozen foodNameVi snapshot taken at log time.
+    const foodName = item
+      ? language === 'de'
+        ? item.nameDe || item.nameEn || item.nameVi
+        : language === 'en'
+          ? item.nameEn || item.nameVi
+          : item.nameVi
+      : e.foodNameVi;
 
     rows.push({
       [col.date]: formatDMY(dayKey),
       // The food-log schema has no brand field yet — always blank until one
-      // is added (e.g. for packaged/branded foods). Food name stays the
-      // Vietnamese snapshot taken at log time (see FoodLogEntry.foodNameVi)
-      // regardless of export language — it's a historical record, not a
-      // live lookup, so it can't follow a later language switch.
+      // is added (e.g. for packaged/branded foods).
       [col.brand]: '',
-      [col.food]: e.foodNameVi,
+      [col.food]: foodName,
       [col.qty]: `${e.grams} g`,
       [col.calories]: e.energyKcal,
       [col.fat]: e.fatG,

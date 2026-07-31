@@ -38,6 +38,7 @@ import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import * as haptics from '../lib/haptics';
 import { useT } from '../i18n/useT';
+import { foodLogEntryDisplayName } from '../data/food/foodLookup';
 
 // Matches the TFn convention used across other components (e.g.
 // BatterySourceSheet.tsx) — lets plain helper functions outside the
@@ -177,7 +178,9 @@ export function HomeScreen() {
     const entry = foodLog.find((f) => f.id === id);
     Alert.alert(
       t('screens.home.deleteFoodTitle'),
-      entry ? t('screens.home.deleteFoodMessage', { name: entry.foodNameVi }) : undefined,
+      entry
+        ? t('screens.home.deleteFoodMessage', { name: foodLogEntryDisplayName(entry, language) })
+        : undefined,
       [
         { text: t('common.cancel'), style: 'cancel' },
         { text: t('common.delete'), style: 'destructive', onPress: () => {

@@ -331,6 +331,9 @@ export const en: TranslationSchema = {
     language: {
       sectionTitle: 'LANGUAGE',
       sectionDesc: 'Choose the display language for the whole app, including exported Excel files.',
+      autoTranslateLabel: 'Auto-translate custom food names',
+      autoTranslateDesc:
+        'When on, foods you type in yourself get translated in the background into the other 2 languages via the free MyMemory service (needs internet). Names already saved in your history stay unchanged. Off by default.',
     },
     bodyProfile: {
       sectionTitle: 'BODY PROFILE',

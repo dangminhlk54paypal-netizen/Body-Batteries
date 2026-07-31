@@ -19,6 +19,7 @@ import {
 } from '../domain/food/customFoodInput';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
+import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import type { FoodItem } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
@@ -50,7 +51,7 @@ export function FoodNutritionEditModal({
   onClose,
   onSaved,
 }: Props) {
-  const { t } = useT();
+  const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
   const [input, setInput] = useState<CustomFoodInput>(EMPTY_CUSTOM_FOOD_INPUT);
   const [showMicros, setShowMicros] = useState(false);
@@ -119,6 +120,10 @@ export function FoodNutritionEditModal({
         onSaved?.(edited);
       } else {
         await addCustomFoodAndRegister(built);
+        // Best-effort, opt-in background translation (Settings → Ngôn ngữ) —
+        // not awaited so it never delays the save; no-ops when the setting
+        // is off. See foodNameTranslationService.ts.
+        autoTranslateCustomFoodName(built, language);
         onSaved?.(built);
       }
       onClose();

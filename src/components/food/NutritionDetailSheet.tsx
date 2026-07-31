@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { BottomSheet } from '../ui/BottomSheet';
 import { buildNutritionDetail } from '../../domain/food/nutritionDetail';
-import { getAnyFoodById } from '../../data/food/foodLookup';
+import { getAnyFoodById, foodDisplayName } from '../../data/food/foodLookup';
 import type { FoodLogEntry } from '../../types/food';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemedStyles } from '../../hooks/useThemeColors';
@@ -58,7 +58,7 @@ export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
       {entry && (
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={2}>
-            {entry.foodNameVi}
+            {item ? foodDisplayName(item, language) : entry.foodNameVi}
           </Text>
           <Text style={styles.subtitle}>
             {portionLabel(entry, t)} · {timeLabel(entry.timestamp)}

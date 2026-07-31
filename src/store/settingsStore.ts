@@ -53,6 +53,13 @@ interface SettingsState {
   // Display language — drives every useT()/translate() call and the Excel
   // export's headers/labels. Persisted like everything else in this store.
   language: Language;
+  // Opt-in (off by default — see foodNameTranslationService.ts): when a
+  // custom (user-typed) food is saved, best-effort machine-translate its
+  // name into the app's other 2 languages via a free network API. Never
+  // touches catalog-backed foods (they already carry real translations) or
+  // blocks the save — a failed/offline call just leaves names blank as
+  // before.
+  autoTranslateCustomFoodNames: boolean;
   // Display theme — drives useThemeColors()/getCurrentThemeColors() (see
   // src/hooks/useThemeColors.ts). Defaults to 'dark' so existing users see no
   // visual change until they explicitly opt into the light palette.
@@ -74,6 +81,7 @@ interface SettingsState {
   removeCustomExercise: (id: string) => void;
   setLanguage: (language: Language) => void;
   setThemeMode: (mode: 'dark' | 'light') => void;
+  setAutoTranslateCustomFoodNames: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -95,6 +103,7 @@ export const useSettingsStore = create<SettingsState>()(
       customExercises: [],
       language: 'vi',
       themeMode: 'dark',
+      autoTranslateCustomFoodNames: false,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -122,6 +131,7 @@ export const useSettingsStore = create<SettingsState>()(
         set((s) => ({ customExercises: s.customExercises.filter((e) => e.id !== id) })),
       setLanguage: (language) => set({ language }),
       setThemeMode: (mode) => set({ themeMode: mode }),
+      setAutoTranslateCustomFoodNames: (enabled) => set({ autoTranslateCustomFoodNames: enabled }),
     }),
     {
       name: 'settings-storage',

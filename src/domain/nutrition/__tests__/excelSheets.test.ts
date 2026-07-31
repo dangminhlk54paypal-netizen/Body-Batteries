@@ -1,5 +1,6 @@
 import { buildDailyTotals, buildFoodEntryRows } from '../excelSheets';
 import { vi } from '../../../i18n/locales/vi';
+import { en } from '../../../i18n/locales/en';
 import type { FoodLogEntry, FoodItem } from '../../../types/food';
 import type { ActivityLogEntry } from '../../../types/energy';
 import type { BatteryReading } from '../../../types/battery';
@@ -239,6 +240,10 @@ describe('buildFoodEntryRows', () => {
     const entries: FoodLogEntry[] = [
       entry({
         id: 'later',
+        // Distinct, unresolvable foodId: proves this row falls back to its
+        // OWN foodNameVi snapshot rather than resolving to RICE_ITEM's name
+        // (which the 'earlier' row below shares foodId: 'rice' with).
+        foodId: 'unknown-food',
         timestamp: new Date('2026-07-01T20:00:00').getTime(),
         foodNameVi: 'Phở bò',
         grams: 400,
@@ -318,5 +323,19 @@ describe('buildFoodEntryRows', () => {
 
   it('returns an empty array for no entries', () => {
     expect(buildFoodEntryRows([], lookup, 'vi')).toEqual([]);
+  });
+
+  it('uses the looked-up item\'s translated name for the export language, not the vi snapshot', () => {
+    const entries: FoodLogEntry[] = [entry({ foodNameVi: 'stale snapshot' })];
+    const rows = buildFoodEntryRows(entries, lookup, 'en');
+    expect(rows[0][en.export.columns.food]).toBe('White rice');
+  });
+
+  it('falls back to the frozen foodNameVi snapshot when the food can\'t be looked up, even in a non-vi export', () => {
+    const entries: FoodLogEntry[] = [
+      entry({ foodId: 'unknown-food', foodNameVi: 'Món đã xoá' }),
+    ];
+    const rows = buildFoodEntryRows(entries, lookup, 'en');
+    expect(rows[0][en.export.columns.food]).toBe('Món đã xoá');
   });
 });

@@ -10,14 +10,19 @@
  * touches food_items.csv (the Vietnamese-dish source of truth).
  *
  * Vietnamese names are translated on demand via a build-time "cover" file,
- * database/usda_names_vi.csv (id,name_vi). This script left-joins it onto
- * every generated row: an id present there gets its name_vi filled in,
- * everything else stays blank. Re-running never loses a translation because
- * translations live in the cover file, not in the generated output.
+ * database/usda_names_vi.csv (id,name_vi) — left-joined onto every generated
+ * row: an id present there gets its name_vi filled in, everything else stays
+ * blank. Re-running never loses a translation because translations live in
+ * the cover file, not in the generated output.
  *
- * German names (search-only — the user shops in German supermarkets) work
- * the same way via database/usda_names_de.csv (id,name_de), left-joined
- * into a `name_de` column appended to the output header.
+ * Every OTHER translated language works the same way but is appended as a
+ * trailing column instead of vi's fixed early position — see
+ * TRAILING_LANGUAGES below. Adding a new one (see .ai/skills/add-language.md
+ * "Thêm ngôn ngữ mới cho catalog món ăn"): add one entry to
+ * TRAILING_LANGUAGES + create the matching database/usda_names_<lang>.csv
+ * cover file — no other change needed here. The output CSV/TS is parsed by
+ * column NAME, not position (see headerIndex() in src/data/food/foodCsv.ts),
+ * so a trailing column can be appended in any order.
  *
  * Run by hand: `npm run gen:usda`. Not chained into `npm start` (USDA data
  * rarely changes; see database/README.md to add a newer bulk file).
@@ -31,7 +36,15 @@ const extractDir = path.join(root, 'database', 'extract');
 const csvOutPath = path.join(extractDir, 'usda_foundation_foods.csv');
 const tsOutPath = path.join(root, 'src', 'data', 'food', 'usdaFoods.generated.ts');
 const namesViPath = path.join(root, 'database', 'usda_names_vi.csv');
-const namesDePath = path.join(root, 'database', 'usda_names_de.csv');
+
+// One entry per translated language appended AFTER the fixed nutrient
+// columns (vi is not here — it keeps its own fixed early column, see
+// namesViPath above). `column` is the CSV header name (and the FoodItem
+// field this ultimately feeds, via foodCsv.ts's `name_<x>` convention);
+// `coverPath` is the cover file left-joined onto every row by id.
+const TRAILING_LANGUAGES = [
+  { lang: 'de', column: 'name_de', coverPath: path.join(root, 'database', 'usda_names_de.csv') },
+];
 
 // app CSV column -> USDA nutrient.number candidates, first match wins (all
 // values are already per 100 g; minerals are already in mg — no unit scaling
@@ -144,35 +157,21 @@ function splitCsvLine(line) {
   return fields;
 }
 
-// Load database/usda_names_vi.csv (id,name_vi) into a lookup map. Missing
-// file (translation not started yet) is not an error — just an empty map.
-function loadNamesVi() {
-  if (!fs.existsSync(namesViPath)) return {};
+// Load a `id,name_<lang>` cover file (database/usda_names_vi.csv,
+// usda_names_de.csv, ...) into an { id -> name } lookup map. Missing file
+// (translation not started yet for that language) is not an error — just an
+// empty map, so every id falls back to '' via `names[id] || ''` at the call
+// site.
+function loadNamesCover(coverPath) {
+  if (!fs.existsSync(coverPath)) return {};
   const lines = fs
-    .readFileSync(namesViPath, 'utf8')
+    .readFileSync(coverPath, 'utf8')
     .split(/\r?\n/)
     .filter((l) => l.trim().length > 0);
   const map = {};
   for (let i = 1; i < lines.length; i++) {
-    const [id, nameVi] = splitCsvLine(lines[i]);
-    if (id && id.trim()) map[id.trim()] = (nameVi || '').trim();
-  }
-  return map;
-}
-
-// Load database/usda_names_de.csv (id,name_de) the same way as
-// loadNamesVi() above — a separate cover file for German (search-only)
-// names. Missing file is not an error — just an empty map.
-function loadNamesDe() {
-  if (!fs.existsSync(namesDePath)) return {};
-  const lines = fs
-    .readFileSync(namesDePath, 'utf8')
-    .split(/\r?\n/)
-    .filter((l) => l.trim().length > 0);
-  const map = {};
-  for (let i = 1; i < lines.length; i++) {
-    const [id, nameDe] = splitCsvLine(lines[i]);
-    if (id && id.trim()) map[id.trim()] = (nameDe || '').trim();
+    const [id, name] = splitCsvLine(lines[i]);
+    if (id && id.trim()) map[id.trim()] = (name || '').trim();
   }
   return map;
 }
@@ -187,7 +186,9 @@ function nutrientMapFor(food) {
   return byNumber;
 }
 
-function buildRow(food, namesVi, namesDe) {
+// `trailingNames` holds one { id -> name } map per TRAILING_LANGUAGES entry,
+// same order, produced by main() via loadNamesCover(lang.coverPath).
+function buildRow(food, namesVi, trailingNames) {
   const byNumber = nutrientMapFor(food);
 
   const values = {};
@@ -247,7 +248,7 @@ function buildRow(food, namesVi, namesDe) {
     values.zinc_mg,
     'USDA-FDC',
     note,
-    namesDe[id] || '', // name_de — filled via left-join with database/usda_names_de.csv, else blank
+    ...TRAILING_LANGUAGES.map((_, i) => trailingNames[i][id] || ''),
   ];
 
   return { line: row.map(csvField).join(','), kcalComputed };
@@ -257,22 +258,26 @@ function main() {
   const rawPath = findLatestRawFile();
   const raw = JSON.parse(fs.readFileSync(rawPath, 'utf8'));
   const foods = (raw.FoundationFoods || []).filter(Boolean);
-  const namesVi = loadNamesVi();
-  const namesDe = loadNamesDe();
+  const namesVi = loadNamesCover(namesViPath);
+  const trailingNames = TRAILING_LANGUAGES.map((l) => loadNamesCover(l.coverPath));
 
   const header =
-    'id,name_vi,name_en,category,default_serving_g,serving_presets,energy_kcal,water_g,protein_g,fat_g,carb_g,fiber_g,sugar_g,calcium_mg,iron_mg,sodium_mg,potassium_mg,magnesium_mg,zinc_mg,source,note,name_de';
+    'id,name_vi,name_en,category,default_serving_g,serving_presets,energy_kcal,water_g,protein_g,fat_g,carb_g,fiber_g,sugar_g,calcium_mg,iron_mg,sodium_mg,potassium_mg,magnesium_mg,zinc_mg,source,note' +
+    TRAILING_LANGUAGES.map((l) => `,${l.column}`).join('');
   const lines = [header];
   let kcalComputedCount = 0;
   let translatedCount = 0;
-  let translatedDeCount = 0;
+  const trailingTranslatedCounts = TRAILING_LANGUAGES.map(() => 0);
 
   for (const food of foods) {
-    const { line, kcalComputed } = buildRow(food, namesVi, namesDe);
+    const { line, kcalComputed } = buildRow(food, namesVi, trailingNames);
     lines.push(line);
+    const id = `usda_${food.fdcId}`;
     if (kcalComputed) kcalComputedCount++;
-    if (namesVi[`usda_${food.fdcId}`]) translatedCount++;
-    if (namesDe[`usda_${food.fdcId}`]) translatedDeCount++;
+    if (namesVi[id]) translatedCount++;
+    trailingNames.forEach((names, i) => {
+      if (names[id]) trailingTranslatedCounts[i]++;
+    });
   }
 
   const csv = lines.join('\n') + '\n';
@@ -292,8 +297,11 @@ export const USDA_FOOD_CSV_RAW = \`${escaped}\`;
   fs.mkdirSync(path.dirname(tsOutPath), { recursive: true });
   fs.writeFileSync(tsOutPath, out, 'utf8');
 
+  const trailingSummary = TRAILING_LANGUAGES.map(
+    (l, i) => `${trailingTranslatedCounts[i]} ${l.column} translated`
+  ).join(', ');
   console.log(
-    `gen:usda → ${path.relative(root, csvOutPath)} + ${path.relative(root, tsOutPath)} (${foods.length} food rows, ${kcalComputedCount} kcal computed, ${translatedCount} name_vi translated, ${translatedDeCount} name_de translated)`
+    `gen:usda → ${path.relative(root, csvOutPath)} + ${path.relative(root, tsOutPath)} (${foods.length} food rows, ${kcalComputedCount} kcal computed, ${translatedCount} name_vi translated, ${trailingSummary})`
   );
 }
 

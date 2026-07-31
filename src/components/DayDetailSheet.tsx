@@ -13,6 +13,7 @@ import { BottomSheet } from './ui/BottomSheet';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { mealLabel } from '../lib/constants';
 import { formatDisplayDate } from '../lib/dateUtils';
+import { foodLogEntryDisplayName } from '../data/food/foodLookup';
 import type { FoodLogEntry, MealType } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
@@ -135,7 +136,9 @@ export function DayDetailSheet({
   const handleDelete = (entry: FoodLogEntry) => {
     Alert.alert(
       t('components.dayDetailSheet.deleteConfirmTitle'),
-      t('components.dayDetailSheet.deleteConfirmMessage', { name: entry.foodNameVi }),
+      t('components.dayDetailSheet.deleteConfirmMessage', {
+        name: foodLogEntryDisplayName(entry, language),
+      }),
       [
         { text: t('common.cancel'), onPress: () => {}, style: 'cancel' },
         {
@@ -157,7 +160,7 @@ export function DayDetailSheet({
         }}
       >
         <Text style={styles.foodName} numberOfLines={2}>
-          {entry.foodNameVi}
+          {foodLogEntryDisplayName(entry, language)}
         </Text>
         <Text style={styles.portion}>{formatPortion(entry, t)}</Text>
       </Pressable>

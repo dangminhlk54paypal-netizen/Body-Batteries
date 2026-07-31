@@ -36,8 +36,14 @@ text, you MUST work WITH this system — never around it:
    - Battery/meal/category/mode/activity names: use the lookup helpers
      (`batteryTypeName`, `mealLabel`, `foodCategoryLabel`, `modeName`,
      `activityLabel`) — never display `battery_types.name` from SQLite.
-   - Exception: historical snapshots (e.g. `FoodLogEntry.foodNameVi`) stay
-     as recorded — never retro-translate logged history.
+   - Logged food names: use `foodDisplayName`/`foodLogEntryDisplayName`
+     (`src/data/food/foodLookup.ts`) — they resolve the live `FoodItem` via
+     `foodId` so a catalog-backed entry follows a later language switch
+     (the catalog already carries `nameVi`/`nameEn`/`nameDe`). The frozen
+     `FoodLogEntry.foodNameVi` snapshot is ONLY the fallback for entries the
+     catalog can no longer resolve — a custom (user-typed) food, which has
+     just one name in any language, or a catalog id since deleted/replaced.
+     Never widen this exception back to catalog-backed entries.
 4. **DELEGATION CONTRACT.** Any subagent prompt that touches UI must include
    this rule (hook name, locale-file flow, "no hardcoded strings").
 5. **DOCUMENTATION (auto, no permission needed).** Once the feature works and

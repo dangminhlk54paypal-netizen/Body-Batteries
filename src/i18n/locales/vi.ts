@@ -352,6 +352,9 @@ export const vi = {
     language: {
       sectionTitle: 'NGÔN NGỮ',
       sectionDesc: 'Chọn ngôn ngữ hiển thị cho toàn bộ app, kể cả file Excel xuất ra.',
+      autoTranslateLabel: 'Tự dịch tên món tự chế',
+      autoTranslateDesc:
+        'Khi bật, món ăn bạn tự nhập sẽ được dịch nền sang 2 ngôn ngữ còn lại qua dịch vụ miễn phí MyMemory (cần mạng). Tên món đã ghi lại lịch sử không đổi. Tắt mặc định.',
     },
     bodyProfile: {
       sectionTitle: 'HỒ SƠ CƠ THỂ',
