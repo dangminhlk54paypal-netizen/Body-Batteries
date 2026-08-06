@@ -448,6 +448,11 @@ export const vi = {
       deleteIntakeTitle: 'Hoàn tác lần nạp này?',
       deleteIntakeMessage: 'Sẽ hoàn tác lần nạp {{amount}} và trừ lại pin tương ứng.',
       undoButton: 'Hoàn tác',
+      // Collapsible wrapper grouping the secondary "dig deeper" blocks below
+      // the at-a-glance batteries (energy balance, vi chất, supplements, and
+      // the three today-log lists) — expanded by default, purely a scan-
+      // ability aid, never hides data from existing users.
+      detailsSectionTitle: 'Chi tiết hôm nay',
     },
     history: {
       title: 'Lịch sử 7 ngày',
@@ -505,6 +510,13 @@ export const vi = {
       labelIdle: 'Chưa đồng bộ',
       detailWithSync: 'Apple Health, đồng bộ {{time}}',
       detailNoSync: 'Apple Health',
+    },
+    batteryCell: {
+      // VoiceOver/TalkBack summary for the SVG battery graphic — the drawing
+      // itself carries no semantics, so this is the only thing a screen
+      // reader user hears for each battery.
+      a11yLabel: 'Pin {{name}}: {{percentage}} phần trăm, còn {{amount}}',
+      a11yToggleUnitHint: 'Chạm để đổi đơn vị hiển thị',
     },
     microBatteryStack: {
       title: 'Vi chất đã nạp',
@@ -796,6 +808,7 @@ export const vi = {
       noPrevSession: 'Chưa có buổi {{exercise}} nào trong {{days}} ngày qua.',
       warmupSectionTitle: 'Khởi động (tạ lên dần)',
       workingSectionTitle: 'Bài chính',
+      useTemplateButton: '📋 Dùng làm mẫu',
       suggestWarmupButton: '⚡ Gợi ý từ mức tạ chính',
       emptyWarmup: 'Chưa có set khởi động.',
       emptyWorking: 'Chưa có set chính.',
@@ -851,6 +864,9 @@ export const vi = {
       directionUp: 'tăng lên',
       targetLineWithGoal: 'Cần ~{{target}} kcal/ngày để đạt {{weight}} kg · BMR ~{{bmr}}',
       targetLineMaintain: 'Duy trì cân nặng: ~{{maintenance}} kcal/ngày · BMR ~{{bmr}}',
+      // VoiceOver/TalkBack summary for the SVG graphic only — the Text
+      // elements below it (ledger/goal/disclaimer) are already read normally.
+      a11yLabel: 'Biểu đồ pin năng lượng: {{percentage}} phần trăm',
     },
     bodyRecommendations: {
       title: 'Khuyến nghị hàng ngày',

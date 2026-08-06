@@ -421,6 +421,7 @@ export const en: TranslationSchema = {
       deleteIntakeTitle: 'Undo this quick-log entry?',
       deleteIntakeMessage: 'This will undo the {{amount}} entry and subtract it back from the battery.',
       undoButton: 'Undo',
+      detailsSectionTitle: "Today's details",
     },
     history: {
       title: '7-day history',
@@ -477,6 +478,10 @@ export const en: TranslationSchema = {
       labelIdle: 'Not synced',
       detailWithSync: 'Apple Health, synced {{time}}',
       detailNoSync: 'Apple Health',
+    },
+    batteryCell: {
+      a11yLabel: '{{name}} battery: {{percentage}} percent, {{amount}} remaining',
+      a11yToggleUnitHint: 'Tap to switch display unit',
     },
     microBatteryStack: {
       title: 'Micronutrients logged',
@@ -768,6 +773,7 @@ export const en: TranslationSchema = {
       noPrevSession: 'No {{exercise}} sessions in the last {{days}} days.',
       warmupSectionTitle: 'Warm-up (ramping weight)',
       workingSectionTitle: 'Working sets',
+      useTemplateButton: '📋 Use as template',
       suggestWarmupButton: '⚡ Suggest from working weight',
       emptyWarmup: 'No warm-up sets yet.',
       emptyWorking: 'No working sets yet.',
@@ -823,6 +829,7 @@ export const en: TranslationSchema = {
       directionUp: 'gain up to',
       targetLineWithGoal: 'Need ~{{target}} kcal/day to reach {{weight}} kg · BMR ~{{bmr}}',
       targetLineMaintain: 'Maintain weight: ~{{maintenance}} kcal/day · BMR ~{{bmr}}',
+      a11yLabel: 'Energy battery graphic: {{percentage}} percent',
     },
     bodyRecommendations: {
       title: 'Daily recommendations',

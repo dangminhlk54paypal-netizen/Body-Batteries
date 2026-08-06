@@ -421,6 +421,7 @@ export const de: TranslationSchema = {
       deleteIntakeTitle: 'Diesen Schnelleintrag rückgängig machen?',
       deleteIntakeMessage: 'Der Eintrag {{amount}} wird rückgängig gemacht und vom Akku wieder abgezogen.',
       undoButton: 'Rückgängig',
+      detailsSectionTitle: 'Heutige Details',
     },
     history: {
       title: '7-Tage-Verlauf',
@@ -479,6 +480,10 @@ export const de: TranslationSchema = {
       labelIdle: 'Nicht synchronisiert',
       detailWithSync: 'Apple Health, synchronisiert {{time}}',
       detailNoSync: 'Apple Health',
+    },
+    batteryCell: {
+      a11yLabel: '{{name}}-Akku: {{percentage}} Prozent, {{amount}} übrig',
+      a11yToggleUnitHint: 'Tippen, um die Anzeigeeinheit zu wechseln',
     },
     microBatteryStack: {
       title: 'Erfasste Mikronährstoffe',
@@ -771,6 +776,7 @@ export const de: TranslationSchema = {
       noPrevSession: 'Noch keine {{exercise}}-Einheit in den letzten {{days}} Tagen.',
       warmupSectionTitle: 'Aufwärmen (steigendes Gewicht)',
       workingSectionTitle: 'Arbeitssätze',
+      useTemplateButton: '📋 Als Vorlage übernehmen',
       suggestWarmupButton: '⚡ Vorschlag basierend auf Arbeitsgewicht',
       emptyWarmup: 'Noch keine Aufwärmsätze.',
       emptyWorking: 'Noch keine Arbeitssätze.',
@@ -826,6 +832,7 @@ export const de: TranslationSchema = {
       directionUp: 'zunehmen auf',
       targetLineWithGoal: 'Brauchst ~{{target}} kcal/Tag, um {{weight}} kg zu erreichen · BMR ~{{bmr}}',
       targetLineMaintain: 'Gewicht halten: ~{{maintenance}} kcal/Tag · BMR ~{{bmr}}',
+      a11yLabel: 'Energie-Akku-Grafik: {{percentage}} Prozent',
     },
     bodyRecommendations: {
       title: 'Tägliche Empfehlungen',

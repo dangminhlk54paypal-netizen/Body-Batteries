@@ -123,6 +123,7 @@ interface PrevSessionInfo {
   dateLabel: string;
   summary: string;
   e1rm: number;
+  sets: LiftingSet[];
 }
 
 // Latest logged session of `exercise` (excluding the entry being edited).
@@ -142,6 +143,7 @@ function findPrevSession(
       dateLabel: formatDMY(dateString(new Date(when))),
       summary: describeLiftingSets(workout.sets, language),
       e1rm: bestOneRepMax(workout.sets),
+      sets: workout.sets,
     };
   }
   return null;
@@ -232,6 +234,21 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
       kind,
       current[kind].filter((_, i) => i !== index)
     );
+  }
+
+  // Load the previous session's warm-up + working sets as a starting point
+  // for today — most sessions only need a small weight/rep tweak, not a
+  // full re-entry. Explicit tap, current tab only, so it never pulls in an
+  // exercise the user isn't training today.
+  function applyTemplate() {
+    if (!prev) return;
+    setRows({
+      ...rows,
+      [exercise]: {
+        warmup: prev.sets.filter((s) => s.kind === 'warmup').map(setToRow),
+        working: prev.sets.filter((s) => s.kind === 'working').map(setToRow),
+      },
+    });
   }
 
   // Fill the warm-up section with the standard ramp toward the first working
@@ -360,15 +377,26 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
         {/* Previous session of this exercise — progressive-overload reference */}
         <View style={styles.prevCard}>
           {prev ? (
-            <Text style={styles.prevText}>
-              {t('components.powerliftingSheet.prevSessionLine', {
-                date: prev.dateLabel,
-                summary: prev.summary,
-              })}
-              {prev.e1rm > 0
-                ? t('components.powerliftingSheet.prevSessionE1rmSuffix', { value: prev.e1rm })
-                : ''}
-            </Text>
+            <View style={styles.prevRow}>
+              <Text style={[styles.prevText, styles.prevTextFlex]}>
+                {t('components.powerliftingSheet.prevSessionLine', {
+                  date: prev.dateLabel,
+                  summary: prev.summary,
+                })}
+                {prev.e1rm > 0
+                  ? t('components.powerliftingSheet.prevSessionE1rmSuffix', { value: prev.e1rm })
+                  : ''}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                style={({ pressed }) => [styles.suggestBtn, pressed && styles.pressed]}
+                onPress={applyTemplate}
+              >
+                <Text style={styles.suggestText}>
+                  {t('components.powerliftingSheet.useTemplateButton')}
+                </Text>
+              </Pressable>
+            </View>
           ) : (
             <Text style={styles.prevText}>
               {t('components.powerliftingSheet.noPrevSession', {
@@ -455,6 +483,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     padding: 10,
   },
   prevText: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
+  prevRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  prevTextFlex: { flex: 1 },
   section: { gap: 8 },
   sectionHeader: {
     flexDirection: 'row',
