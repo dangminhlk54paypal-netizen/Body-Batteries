@@ -1260,6 +1260,143 @@ sạch, `eslint` sạch. Đã `git push` lên `origin/ui-upgrade` (commit `759cd
 
 ---
 
+## Session 21 — 2026-08-01 (UI: nâng cấp khả năng tiếp cận + phân cấp thông tin Home)
+
+**Làm gì:** Người dùng muốn nâng cấp đồ hoạ/UI để thân thiện hơn với **đa số người dùng ở mọi lứa
+tuổi, giới tính, nghề nghiệp** — không phải chạy theo trend thẩm mỹ 2026 (Liquid Glass...) mà ưu
+tiên khả năng tiếp cận (accessibility) và giảm tải nhận thức, vì đó là thứ tác động rộng nhất tới
+người dùng lớn tuổi/thị lực kém/dùng VoiceOver. Lên kế hoạch qua Plan mode (`~/.claude/plans/
+humble-whistling-waffle.md`), người dùng duyệt, rồi triển khai trực tiếp (không qua subagent, đã có
+đủ context từ vòng research/đọc code trước đó).
+
+**Kết quả (CODE ĐÃ XONG, VERIFY SẠCH, CHƯA TEST MÁY THẬT):**
+1. **Accessibility**: `BatteryCell.tsx`, `MasterBattery.tsx`, `ModeSelector.tsx`, 2 nút CTA chính
+   trong `EnergyActionsBar.tsx` giờ có `accessibilityRole`/`accessibilityLabel`/`accessibilityState`
+   — trước đó VoiceOver/TalkBack không đọc được gì từ đồ hoạ SVG pin (không có semantics), giờ đọc
+   được tên pin + % + số lượng còn lại thành câu hoàn chỉnh (i18n đủ VI/EN/DE).
+2. **Độ tương phản (WCAG)**: đo thực tế contrast ratio của các tone xám trong `theme.ts` — phát
+   hiện `textCool` (2 theme) và `warning` (theme sáng) chỉ đạt 2.3–3.4:1, dưới ngưỡng AA 4.5:1.
+   Đã tính lại hex mới (giữ nguyên hue/saturation, chỉ đổi độ sáng) để đạt ~4.5–4.6:1, verify lại
+   bằng script Python contrast formula WCAG 2.1. Không đụng `textMuted`/`textFaint` gốc (dùng ở
+   ~20 chỗ khác, chủ yếu `placeholderTextColor` — đổi hex gốc sẽ ảnh hưởng ngoài phạm vi); thay vào
+   đó 3 chỗ hiển thị thông tin thật (nhãn "đã log" của `BatteryCell`, dòng disclaimer của
+   `MasterBattery`, dòng hint của `HomeScreen`) được trỏ sang `textDim` (~5.6–6:1) thay vì
+   `textMuted`/`textFaint`.
+3. **Cỡ chữ**: cỡ 10px (dưới ngưỡng dễ đọc) ở 3 chỗ trên tăng lên 12px; thêm
+   `maxFontSizeMultiplier={1.5}` cho các nhãn dán sát đồ hoạ SVG kích thước cố định (không giới hạn
+   toàn app — chỉ giới hạn đúng chỗ đồ hoạ cố định sẽ vỡ layout nếu chữ phóng quá to).
+4. **Phản hồi chạm (neo-skeuomorphism nhẹ)**: hiệu ứng scale-down khi giữ nút, áp cho mode chip +
+   2 nút CTA chính — dùng đúng pattern `useState` (đổi trong onPressIn/onPressOut) + `useEffect`
+   (mutate shared value) vì ESLint rule `react-hooks/immutability` chặn gán `.value` trực tiếp
+   trong closure sự kiện JSX.
+5. **Phân cấp thông tin Home**: component mới `src/components/ui/CollapsibleSection.tsx` — gom các
+   khối "xem thêm" (energy balance, vi chất, supplement, 3 danh sách log hôm nay) vào 1 khối
+   "Chi tiết hôm nay" có thể thu gọn, **mặc định mở** (không ẩn dữ liệu người dùng cũ). Ban đầu định
+   thêm tiêu đề cho từng khối con nhưng phát hiện mỗi khối ĐÃ có `sectionLabel` riêng — tránh trùng
+   tiêu đề, chỉ gom bằng 1 header chung.
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **540/540 test PASS** (44 suite), `tsc --noEmit`
+sạch, `eslint` sạch. **CHƯA commit/push** (đang chờ người dùng xác nhận).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- **Va chạm giữa 2 session Claude Code cùng lúc**: trong lúc đang sửa, 1 cửa sổ Claude Code khác
+  (người dùng có mở song song) chạy `git stash` + `git reset` trên cùng working tree, xoá sạch các
+  thay đổi CHƯA COMMIT của phiên này (`theme.ts`, `BatteryCell.tsx`, `ModeSelector.tsx`,
+  `MasterBattery.tsx`, 3 file locale) — im lặng, không báo lỗi, vì file bị revert về bản gốc vẫn
+  hợp lệ nên `npm run verify` vẫn PASS bình thường (verify xanh KHÔNG chứng minh thay đổi dự định
+  còn tồn tại). Phát hiện qua `git reflog` (dòng `reset: moving to HEAD`) và `git stash list` (1
+  stash tên `wip-other-session-temp`). Đã dừng lại, báo người dùng, người dùng đóng cửa sổ kia, rồi
+  áp lại toàn bộ thay đổi bị mất và verify lại — không mất dữ liệu vĩnh viễn nhưng tốn 1 vòng làm
+  lại. Đã ghi vào memory (`parallel-subagent-file-conflicts`) để nhận diện nhanh hơn lần sau: nếu
+  file vừa sửa đọc lại ra y hệt bản gốc mà Edit không báo lỗi, kiểm tra `ps aux | grep claude` +
+  `git reflog`/`git stash list` ngay, đừng chỉ giả định do mình sửa sai.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật bắt buộc** (chưa test lần nào): mở Expo Go, bật VoiceOver kiểm tra pin/mode
+   chip/2 nút CTA đọc thành câu hợp lý; bật iOS Settings → Accessibility → cỡ chữ lớn kiểm tra thẻ
+   SVG không bị vỡ layout; đổi theme sáng/tối xem các dòng chữ vừa tăng tương phản đọc rõ hơn; kiểm
+   tra khối "Chi tiết hôm nay" mặc định mở, thu gọn/mở lại mượt.
+2. Nếu ổn → hỏi người dùng có muốn `git commit`/`push` không (session này chưa commit gì).
+3. Các ý tưởng lớn hơn đã gác lại có chủ đích (không phải việc quên làm): Liquid Glass/blur chrome,
+   iOS Home Screen widget, đổi ẩn dụ pin — xem lý do trong plan file hoặc hỏi lại người dùng nếu
+   muốn mở lại hướng nào.
+
+---
+
+## Session 22 — 2026-08-06 (Excel: tự động fit độ rộng cột)
+
+**Làm gì:** Người dùng phản hồi mở file Excel xuất ra thì các cột không fit với nội dung (quá hẹp).
+Viết hàm tự động đo độ rộng cột theo nội dung thật thay vì đoán số cố định.
+
+**Kết quả:** `src/services/export/excelExportService.ts` — hàm mới `autoFitColumns(sheet)`: quét
+toàn bộ giá trị + header của từng cột trong worksheet đã dựng (`utils.decode_range`/`encode_cell`),
+lấy độ dài chuỗi lớn nhất, +2 đệm, set `!cols[i].wch`. Cận dưới 8 ký tự (cột ngắn như "STT" không
+bị bóp quá nhỏ), cận trên **64 ký tự (~12cm ở 96dpi, theo yêu cầu điều chỉnh của người dùng từ mốc
+6cm ban đầu** — quy đổi: `pixel ≈ wch*7+5`, 12cm ≈ 454px → (454-5)/7 ≈ 64). Áp dụng cho **toàn bộ 8
+sheet** (trước đó chỉ 2/8 sheet — Daily Totals, Food Entries — có `!cols` cố định đoán mò bằng tay;
+6 sheet còn lại — Battery Readings, Intake Events, Food Log, Nutrition by Day, Weekly Summary,
+Reference Thresholds — không có width nào, dùng mặc định Excel rất hẹp). Xoá 2 mảng `!cols` hard-code
+cũ, thay bằng gọi `autoFitColumns()` đồng nhất cho cả 8 sheet.
+
+**Vấn đề gặp phải & Cách giải quyết:** Không có vấn đề kỹ thuật — `npm run verify` sạch ngay lần
+đầu (tsc + eslint + **540/540 test**, không có test riêng cho hàm mới vì đây là thay đổi trình bày
+Excel thuần tuý, không có logic nghiệp vụ cần phủ test).
+
+**Session tiếp theo phải làm:**
+1. **Test tay bắt buộc:** xuất Excel (nút xuất 7/30 ngày ở Cài đặt), mở file trên máy tính (Excel/
+   Google Sheets/Numbers) — xác nhận cả 8 sheet có cột fit nội dung, không cột nào bị cắt xén hay
+   quá hẹp; đặc biệt kiểm tra sheet "Food Entries"/"Food Log" (tên món dài) và "Reference
+   Thresholds" (đường link nguồn dài) — chỗ dễ chạm cận trên 64 ký tự nhất.
+2. Việc này **CHƯA commit** — nhánh `ui-upgrade` vẫn còn rất nhiều thay đổi UI khác chưa commit từ
+   Session 21 (xem mục đó) + file này — hỏi người dùng muốn commit gộp hay tách riêng.
+
+---
+
+## Session 23 — 2026-08-06 (Powerlifting: nút "Dùng làm mẫu" từ buổi tập trước)
+
+**Làm gì:** Người dùng phản ánh mỗi buổi ghi powerlifting (squat/bench/deadlift) phải gõ lại toàn
+bộ set khởi động + bài chính từ đầu, dù buổi hôm sau thường chỉ đổi chút tạ/rep so với buổi trước.
+Thêm nút nạp nhanh set của buổi gần nhất vào form đang nhập.
+
+**Kết quả (CODE ĐÃ XONG, VERIFY SẠCH, CHƯA TEST MÁY THẬT):**
+1. `PowerliftingSheet.tsx`: `findPrevSession`/`PrevSessionInfo` giờ trả thêm `sets` (mảng
+   `LiftingSet` thô của buổi trước), không chỉ dòng tóm tắt text như cũ.
+2. Hàm mới `applyTemplate()` + nút "📋 Dùng làm mẫu" đặt cạnh dòng "Buổi trước (...)": nạp khởi
+   động + bài chính của buổi gần nhất **đúng bài đang chọn (tab hiện tại)** vào các ô nhập, ghi đè
+   rows hiện tại — người dùng chỉ cần sửa lại tạ/rep rồi lưu.
+3. Cố ý nạp **thủ công theo từng tab**, KHÔNG tự động nạp cả 3 bài khi mở sheet — nếu tự động,
+   người dùng chỉ tập 1 bài hôm nay có thể vô tình ghi khống 2 bài kia (`confirm()` ghi mọi bài có
+   `sets.length > 0`, kể cả bài không hề đụng tới hôm đó).
+4. Không cần bảng/lưu trữ "template" mới — tái dùng lịch sử `activity_log` sẵn có
+   (`HISTORY_LOOKBACK_DAYS` = 60 ngày), chỉ thêm đường dẫn nạp ngược lại vào form.
+5. i18n: thêm khoá `useTemplateButton` trong `components.powerliftingSheet` ở cả 3 file
+   `vi.ts`/`en.ts`/`de.ts` (vi trước, đúng quy tắc AGENTS.md).
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **540/540 test PASS** (44 suite), `tsc --noEmit`
+sạch, `eslint` sạch. **CHƯA commit** (nhánh `ui-upgrade` đang có nhiều thay đổi CHƯA COMMIT khác từ
+trước — xem mục 3 bên dưới).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Quyết định thiết kế ở mục 3 (nạp thủ công theo tab) là phòng một bug trước khi nó xảy ra, không
+  phải sửa lỗi đã gặp phải.
+- **Va chạm 2 session Claude Code song song, lần thứ 2** (lần 1 xem Session 21): khi vừa viết xong
+  entry Session 22 cho việc này, `Edit` báo file đã đổi — một cửa sổ Claude Code khác (đang chạy
+  song song, xác nhận qua `ps aux`) đã tự thêm entry "Session 22 — Excel: tự động fit độ rộng cột"
+  trước. Không ghi đè — đọc lại state mới nhất, đổi số của phiên này thành **Session 23**, chèn nối
+  tiếp sau. Không mất dữ liệu, chỉ tốn 1 vòng đọc lại.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật bắt buộc:** mở PowerliftingSheet, ở tab đã có buổi tập trong 60 ngày qua → bấm
+   "📋 Dùng làm mẫu" → xác nhận set khởi động + bài chính điền đúng số liệu buổi trước; sửa vài số
+   rồi lưu bình thường; xác nhận tab KHÔNG bấm nút vẫn để trống, không bị ghi khống khi lưu.
+2. Nếu ổn → không có việc tồn đọng nào khác từ riêng phiên này.
+3. **Nhắc lại (đã ghi ở Session 22 và 21):** nhánh `ui-upgrade` đang tồn đọng rất nhiều thay đổi
+   CHƯA COMMIT chồng chất từ nhiều session song song khác nhau (21, 22, 23) — nên rà lại + test tay
+   + commit theo từng cụm việc trước khi tích tụ thêm. Cân nhắc tránh chạy nhiều cửa sổ Claude Code
+   song song trên cùng nhánh nếu chưa cần thiết, để giảm rủi ro va chạm ghi đè.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

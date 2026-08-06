@@ -112,7 +112,42 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-07-29 (Session 20, xem `.ai/SESSION_LOG.md`).** **Fix: pin nhỏ hiện tổng
+**Cập nhật lần cuối: 2026-08-06 (Session 23, xem `.ai/SESSION_LOG.md`).** **Powerlifting: nút
+"Dùng làm mẫu" nạp set buổi tập trước.** Người dùng phản ánh mỗi buổi ghi squat/bench/deadlift phải
+gõ lại toàn bộ set từ đầu, dù hôm sau thường chỉ đổi chút tạ/rep. `PowerliftingSheet.tsx` — mỗi tab
+giờ có nút "📋 Dùng làm mẫu" cạnh dòng "Buổi trước": nạp khởi động + bài chính của buổi gần nhất
+**đúng tab đang chọn** vào form đang nhập, ghi đè rows hiện tại. Cố ý nạp **thủ công theo từng tab**
+(không tự động cả 3 bài khi mở sheet) để tránh ghi khống bài không tập hôm đó khi lưu. Không cần
+bảng lưu trữ mới — tái dùng lịch sử `activity_log` sẵn có (60 ngày). `npm run verify` PASS (tsc +
+eslint sạch, **540/540 test**). **CHƯA commit, CHƯA TEST MÁY THẬT.** Lưu ý: va chạm 2 session Claude
+Code song song **lần thứ 2** khi ghi session log (1 cửa sổ khác vừa thêm Session 22 — Excel
+auto-fit-cột cùng lúc) — đã đọc lại state mới nhất và đổi số phiên này thành Session 23, không mất
+dữ liệu; xem chi tiết Session 23 trong SESSION_LOG.
+
+**Trước đó — Session 22 (2026-08-06, xem `.ai/SESSION_LOG.md`).** **Excel: tự động fit độ
+rộng cột theo nội dung.** Người dùng phản hồi cột Excel xuất ra không fit nội dung. Thêm hàm
+`autoFitColumns()` trong `excelExportService.ts` — đo độ dài thật của header + mọi giá trị mỗi cột,
+set `wch` tương ứng, cận dưới 8 ký tự, cận trên **64 ký tự (~12cm, theo yêu cầu người dùng nâng từ
+mốc 6cm ban đầu)**. Áp dụng cho toàn bộ 8 sheet (trước đó chỉ 2/8 sheet có width cố định đoán tay,
+6 sheet còn lại không có width nào). `npm run verify` PASS (tsc + eslint sạch, **540/540 test**).
+**CHƯA commit, CHƯA test tay** (mở file Excel thật xem cột có fit không).
+
+**Trước đó — Session 21 (2026-08-01, xem `.ai/SESSION_LOG.md`).** **UI: nâng cấp khả năng
+tiếp cận (accessibility) + phân cấp thông tin Home**, theo hướng "thân thiện với đa số người dùng
+mọi lứa tuổi/giới tính/nghề nghiệp" (ưu tiên accessibility hơn chạy theo trend thẩm mỹ 2026).
+`accessibilityRole`/`accessibilityLabel`/`accessibilityState` cho `BatteryCell`/`MasterBattery`/
+`ModeSelector`/2 nút CTA chính (`EnergyActionsBar`) — trước đó VoiceOver không đọc được gì từ SVG
+pin. Đo contrast ratio thật (WCAG) phát hiện `textCool`(2 theme)/`warning`(sáng) dưới ngưỡng AA
+4.5:1 → sửa hex (giữ hue, đổi độ sáng); 3 chỗ hiển thị số liệu thật đổi từ `textMuted`/`textFaint`
+sang `textDim` (không đụng token gốc — dùng ở ~20 chỗ khác ngoài phạm vi). Cỡ chữ 10px→12px ở 3 chỗ
+đó + `maxFontSizeMultiplier={1.5}` cho nhãn dán sát đồ hoạ SVG cố định. Thêm hiệu ứng scale-down khi
+giữ nút (mode chip + 2 CTA). Component mới `src/components/ui/CollapsibleSection.tsx` gom các khối
+"xem thêm" trên Home vào 1 khối "Chi tiết hôm nay" thu gọn được, mặc định mở. `npm run verify` PASS
+(tsc + eslint sạch, **540/540 test**). **CHƯA commit/push, CHƯA TEST MÁY THẬT.** Lưu ý: giữa session
+có va chạm với 1 cửa sổ Claude Code khác chạy song song (xoá mất bản nháp qua `git reset`) — đã xử
+lý, xem chi tiết + cách nhận diện nhanh trong SESSION_LOG Session 21.
+
+**Trước đó — Session 20 (2026-07-29, xem `.ai/SESSION_LOG.md`).** **Fix: pin nhỏ hiện tổng
 đã log hôm nay, không phải mức đã xả.** Người dùng phát hiện pin Protein hiện "101g (56%)" trong
 khi "Hôm nay đã ăn" hiện "139.8g" — do MỌI pin phụ bị xả dần theo giờ (`tickDrain`) giống pin Năng
 lượng, đúng cho ẩn dụ "cạn dần" nhưng sai khi đọc dưới nhãn tưởng là "đã ăn hôm nay". Sửa cho cả 6
@@ -300,7 +335,13 @@ báo pin thấp — phiên dừng giữa đường để bàn tính năng mới,
 
 **⚠️ Cấu trúc thư mục (QUAN TRỌNG):** Chỉ còn **MỘT** bản: `/Users/minh/VSCode_Repo/BodyBatteries`. Bản trùng cũ `Body Batteries/my-body-batteries-app` và symlink `BodyBatteriesApp` đã xoá. App nằm ở gốc repo. Ghi chú/ảnh tham khảo cũ ở `docs/_reference/`.
 
-**Việc phải làm KẾ TIẾP (cập nhật Session 16 mới, 2026-07-17):** Người dùng **test tay trên điện
+**Việc phải làm KẾ TIẾP (cập nhật Session 22 mới, 2026-08-06):** Người dùng **test tay** file Excel
+xuất ra (Session 22 — auto-fit độ rộng cột, xem mục 10 phía trên) → nếu ổn, cùng lúc cân nhắc test
+tay + commit luôn phần UI accessibility còn treo từ Session 21 (2026-08-01, chưa test máy/chưa
+commit). Cả 2 việc đang nằm chung trên `ui-upgrade`, chưa commit gì. Backlog bên dưới (Session 16
+trở về trước) là các mục CŨ HƠN, ưu tiên thấp hơn 2 việc trên:
+
+**Việc phải làm (cập nhật Session 16 mới, 2026-07-17):** Người dùng **test tay trên điện
 thoại** 2 việc mới nhất: (1) 2 popup minh bạch công thức ở Hồ sơ cơ thể (Session 16 mới — bấm
 "X kcal/ngày ⓘ" và "Y kcal ⓘ", đổi số liệu/giới tính/ngôn ngữ xem popup đổi theo) → test ổn thì
 commit; (2) S-BB Bodybuilding (Session 15 mới — checklist 17 bước, đã commit `eaf1de0`). Sau đó
