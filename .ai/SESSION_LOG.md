@@ -1603,6 +1603,74 @@ bấm thử trên điện thoại) — **CHƯA commit.**
 5. **Nhắc lại (từ Session 21–25):** nhánh `ui-upgrade` vẫn tồn đọng rất nhiều thay đổi CHƯA
    COMMIT — nên rà + test tay + commit theo từng cụm (kể cả tính năng này).
 
+## Session 27 — 2026-09-02
+
+**Làm gì:** Sau khi Session 26 được commit/push + EAS Update lên `main`, người dùng test tay trên
+điện thoại thật và phản hồi 8 điểm UX/kiến trúc cho S-PL Block Builder: (1) tính năng bị giấu quá
+sâu trong nút "🔥 Xả", cần một chỗ riêng thực thụ; (2) thiếu ngày tháng cụ thể theo tuần (Thứ 2 →
+Chủ nhật, block neo vào tuần lịch thật); (3) chưa lưu + xuất Excel để in; (4) thiếu dấu phân cách
+giữa các bài trong lịch tuần; (5) nút "+ Add a day" không nổi bật; (6) nên gợi ý sẵn mẫu lịch tập
+của người dùng; (7) nên nhớ cấu hình block trước (1RM/cân nặng/lịch) trừ khi đổi mục tiêu; (8) tuần
+hiện Chủ nhật lên đầu (sai — phải Thứ 2 đầu, Chủ nhật cuối); (9) nội dung popup ⓘ tràn ra ngoài màn
+hình, không đọc được.
+
+**Kết quả:**
+- **(1) Tab riêng:** thêm tab thứ 5 **"🏋️ Tập luyện"** vào `AppNavigator.tsx` — màn hình mới
+  `src/screens/TrainingScreen.tsx` (không phải BottomSheet/Modal nữa, mà là screen thật kiểu
+  `HistoryScreen.tsx`: `SafeAreaView` + `ScrollView` + `useFocusEffect` để tự tải lại block đang
+  active mỗi lần vào tab). Gỡ hoàn toàn chip "📋 Kế hoạch Block" + state/handler liên quan khỏi
+  `EnergyActionsBar.tsx`, xoá file `PlanAppendixSheet.tsx` cũ (nội dung đã chuyển vào
+  `TrainingScreen.tsx`).
+- **(2) Ngày tháng thật:** `TrainingBlockConfig` thêm field `weekStartDate` (Thứ 2, YYYY-MM-DD);
+  `BlockWeekPlan` thêm `startDate`/`endDate` — `blockEngine.ts` tính bằng hàm mới
+  `addDaysToDateString()` (`dateUtils.ts`). Wizard có bước chọn nhanh 5 Thứ 2 sắp tới
+  (`upcomingMondays()`), mặc định tuần sau (đúng thói quen "lên kế hoạch trước 1-2 tuần"). Phụ lục
+  hiện `Tuần N (26/08 - 01/09)`.
+- **(3) Excel:** `src/services/export/trainingBlockExportService.ts` — 2 sheet ("Kế hoạch Block",
+  "Tổng theo tuần"), tái dùng `autoFitColumns`/`workbookToBase64WithFrozenHeaders` đã export thêm
+  từ `excelExportService.ts` (trước đó private) thay vì viết lại. Nút "📄 Xuất Excel" trong
+  `TrainingScreen.tsx`.
+- **(4)+(5) Polish lịch tuần:** thêm `rowDivider` (viền trên) giữa các bài/accessory trong
+  `BlockBuilderWizard.tsx` và `TrainingScreen.tsx`; nút "+ Thêm buổi tập" đổi sang màu `c.accent`
+  riêng biệt (`addDayBtn`/`addDayText`) thay vì dùng chung màu xanh với "+ Thêm bài"/"+ Thêm
+  accessory".
+- **(6) Mẫu gợi ý:** nút "💡 Dùng mẫu gợi ý" nạp đúng lịch SBD người dùng mô tả (T2 paused
+  bench+incline, T4 main squat+paused deadlift, T6 touch-and-go bench+low grip, CN main
+  deadlift+paused squat) — `suggestedTemplateDays()`.
+- **(7) Nhớ cấu hình cũ:** nút "📋 Dùng cấu hình block trước" — fetch block gần nhất qua
+  `listTrainingBlocks()` (cùng pattern promise+cancelled-flag như "Dùng làm mẫu" của
+  `PowerliftingSheet`), copy cân nặng/1RM/lịch tuần nhưng **CỐ Ý KHÔNG** copy `focus`/Deficit Mode
+  — đây là 2 nút hay đổi nhất giữa các block (cắt mỡ, tăng cường độ).
+- **(8) Thứ tự Thứ 2 → Chủ nhật:** hàm mới `mondayFirstRank()` trong `dateUtils.ts` (remap JS
+  Date's `0=Sun` về `0=Mon..6=Sun`) — sửa lỗi gốc trong `blockEngine.ts` (`sortedSchedule` trước
+  đây sort thẳng theo `dayOfWeek` khiến Chủ nhật=0 luôn lên đầu). Áp dụng cả cho thứ tự hiển thị
+  card ngày trong bước lịch tuần của wizard (`displayOrder`, index gốc giữ nguyên cho mọi
+  handler).
+- **(9) Popup ⓘ tràn màn hình:** nguyên nhân — `InfoPopover` là 1 flex-item auto-width trong hàng
+  `flexDirection:'row'` không `flexWrap`, nên panel giải thích (text dài) không có gì giới hạn bề
+  rộng, RN mặc định `overflow: visible` nên phần tràn chỉ đơn giản render ra ngoài rìa màn hình
+  (mất tích, không phải bị cắt). Sửa: `InfoPopover.tsx` panel chỉ nhận `flexBasis: '100%'` khi
+  đang mở (đẩy xuống dòng riêng), kết hợp `flexWrap: 'wrap'` trên hàng chứa nó
+  (`variationHeaderRow` trong `TrainingScreen.tsx`).
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **604/604 test PASS** (+2 test mới: ngày tháng
+tuần, thứ tự Thứ 2-Chủ nhật), `tsc --noEmit` + `eslint` sạch. **Chưa test máy thật lượt sửa này**
+— CHƯA commit/push/EAS update lần này (đợi người dùng xác nhận hoặc yêu cầu).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Bug tràn màn hình (9) là kiểu lỗi RN layout kinh điển ("unbounded flex-row child") — dễ tái diễn
+  ở bất kỳ chỗ nào khác đặt `InfoPopover` cạnh text dài trong hàng không `flexWrap`; nhớ luôn thêm
+  `flexWrap:'wrap'` cho hàng chứa nó khi tái sử dụng component này ở nơi khác.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật (bắt buộc, ưu tiên cao):** mở tab "🏋️ Tập luyện" mới → tạo block dùng nút mẫu
+   gợi ý → xác nhận thứ tự Thứ 2→Chủ nhật đúng, ngày tháng từng tuần đúng, bấm ⓘ đọc được trọn vẹn
+   không tràn, xuất Excel mở được trong app khác (Numbers/Excel).
+2. Tạo block thứ 2 → bấm "Dùng cấu hình block trước" → xác nhận cân nặng/1RM/lịch tuần được nạp
+   lại đúng, còn phong cách/Deficit Mode vẫn về mặc định (không bị copy).
+3. Nếu người dùng ưng ý, commit + push + `eas update --branch main` (theo đúng quy trình Session
+   26 đã làm).
+
 ---
 
 ## 📌 Hướng dẫn viết session log

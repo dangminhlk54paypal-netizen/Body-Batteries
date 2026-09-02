@@ -51,7 +51,7 @@ const AUTO_FIT_PADDING = 2;
 // all cell values), capped at ~6cm (see AUTO_FIT_MAX_WCH above) so long
 // text (food names, advice strings, source URLs) wraps/truncates instead
 // of blowing the sheet out to full-page width.
-function autoFitColumns(sheet: WorkSheet): void {
+export function autoFitColumns(sheet: WorkSheet): void {
   const ref = sheet['!ref'];
   if (!ref) return;
   const range = utils.decode_range(ref);
@@ -82,7 +82,7 @@ function uint8ToBase64(bytes: Uint8Array): string {
 
 // Freeze the header row on every sheet by unzipping the .xlsx, patching each
 // xl/worksheets/sheetN.xml, and re-zipping — see freezeHeaderRow() above.
-function workbookToBase64WithFrozenHeaders(wb: ReturnType<typeof utils.book_new>): string {
+export function workbookToBase64WithFrozenHeaders(wb: ReturnType<typeof utils.book_new>): string {
   const zipBytes = new Uint8Array(write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
   const entries = unzipSync(zipBytes);
   for (const path of Object.keys(entries)) {

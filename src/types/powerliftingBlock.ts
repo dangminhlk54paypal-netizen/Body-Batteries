@@ -84,11 +84,20 @@ export interface BlockWeekPlan {
   // dailyCalorieTarget(profile).appliedDeltaKcal * 7 when Deficit Mode is on,
   // else null — reused from weightGoal.ts, never a second pace formula.
   weeklyDeficitTargetKcal: number | null;
+  // Calendar dates (YYYY-MM-DD) this week actually covers — Monday..Sunday,
+  // derived from TrainingBlockConfig.weekStartDate. Users plan a block 1-2
+  // weeks ahead, so the plan needs a real date reference, not just an
+  // abstract "Week N".
+  startDate: string;
+  endDate: string;
 }
 
 export interface TrainingBlockConfig {
   id: string;
   createdAt: number;
+  // Monday (YYYY-MM-DD) week 1 starts on — a block is anchored to whichever
+  // calendar week the user picks to begin training, not just "week 1/2/3".
+  weekStartDate: string;
   progressiveWeeks: number; // N tuần tịnh tiến, NOT counting the deload week
   hasDeload: boolean;
   focus: TrainingFocus;

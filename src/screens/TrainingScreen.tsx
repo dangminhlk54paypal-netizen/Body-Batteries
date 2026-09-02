@@ -1,36 +1,41 @@
-import React, { useEffect } from 'react';
-import { View, Text, Pressable, ScrollView, Alert, StyleSheet } from 'react-native';
-import { BottomSheet } from './ui/BottomSheet';
-import { CollapsibleSection } from './ui/CollapsibleSection';
-import { InfoPopover } from './ui/InfoPopover';
+import React, { useCallback, useState } from 'react';
+import { View, Text, Pressable, ScrollView, Alert, SafeAreaView, ActivityIndicator, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { CollapsibleSection } from '../components/ui/CollapsibleSection';
+import { InfoPopover } from '../components/ui/InfoPopover';
+import { BlockBuilderWizard } from '../components/BlockBuilderWizard';
 import { useBlockStore } from '../store/blockStore';
-import { weekdayLabel } from '../lib/dateUtils';
+import { exportTrainingBlockToExcel } from '../services/export/trainingBlockExportService';
+import { weekdayLabel, formatDisplayDate } from '../lib/dateUtils';
 import { useT } from '../i18n/useT';
 import type { ThemeColors } from '../lib/theme';
-import { useThemedStyles } from '../hooks/useThemeColors';
+import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import type { ResolvedDayPlan, ResolvedVariationPlan, BlockWeekPlan } from '../types/powerliftingBlock';
 
-interface Props {
-  visible: boolean;
-  onClose: () => void;
-  onCreateNew?: () => void;
-}
-
-export function PlanAppendixSheet({ visible, onClose, onCreateNew }: Props) {
+// S-PL Block Builder's home screen — its own bottom tab rather than a chip
+// tucked inside the energy-discharge action bar, so the feature reads as a
+// real, discoverable part of the app (not a supplement to logging a workout).
+// See docs/08-powerlifting-engine.md for the engine this displays.
+export function TrainingScreen() {
   const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
+  const c = useThemeColors();
   const activeBlock = useBlockStore((s) => s.activeBlock);
   const loadActiveBlock = useBlockStore((s) => s.loadActiveBlock);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
 
-  // Same promise-based load-on-open pattern as PowerliftingSheet's history
-  // fetch — the store's own `set()` inside loadActiveBlock, not a local
-  // setState call, so there's nothing here for the set-state-in-effect rule
-  // to flag.
-  useEffect(() => {
-    if (!visible) return;
-    loadActiveBlock();
-  }, [visible, loadActiveBlock]);
+  const [loading, setLoading] = useState(true);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // Reload every time the tab gains focus (bottom-tab screens stay mounted,
+  // so a one-shot mount effect would miss a block just created in the
+  // wizard) — same pattern as HistoryScreen.
+  useFocusEffect(
+    useCallback(() => {
+      loadActiveBlock().finally(() => setLoading(false));
+    }, [loadActiveBlock])
+  );
 
   function handleDelete() {
     if (!activeBlock) return;
@@ -41,11 +46,21 @@ export function PlanAppendixSheet({ visible, onClose, onCreateNew }: Props) {
     ]);
   }
 
+  async function handleExport() {
+    if (!activeBlock) return;
+    setExporting(true);
+    try {
+      await exportTrainingBlockToExcel(activeBlock, language);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function renderVariation(variation: ResolvedVariationPlan, index: number) {
     const working = variation.sets[0];
     if (!working) return null;
     return (
-      <View key={index} style={styles.variationRow}>
+      <View key={index} style={[styles.variationRow, index > 0 && styles.rowDivider]}>
         <View style={styles.variationHeaderRow}>
           <Text style={styles.variationLabel}>{t(`blockVariations.${variation.variation.variationId}.label`)}</Text>
           <InfoPopover
@@ -87,9 +102,13 @@ export function PlanAppendixSheet({ visible, onClose, onCreateNew }: Props) {
   }
 
   function renderWeek(week: BlockWeekPlan) {
+    const dateRange = t('planAppendix.dateRangeSuffix', {
+      start: formatDisplayDate(week.startDate, language),
+      end: formatDisplayDate(week.endDate, language),
+    });
     const title = week.isDeload
-      ? `${t('planAppendix.weekLabel', { number: week.weekNumber })} · ${t('planAppendix.deloadBadge')}`
-      : t('planAppendix.weekLabel', { number: week.weekNumber });
+      ? `${t('planAppendix.weekLabel', { number: week.weekNumber })} (${dateRange}) · ${t('planAppendix.deloadBadge')}`
+      : `${t('planAppendix.weekLabel', { number: week.weekNumber })} (${dateRange})`;
     return (
       <CollapsibleSection key={week.weekNumber} title={title} defaultExpanded={week.weekNumber === 1}>
         {week.days.map(renderDay)}
@@ -103,24 +122,30 @@ export function PlanAppendixSheet({ visible, onClose, onCreateNew }: Props) {
     );
   }
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator color={c.textPrimary} style={{ marginTop: 40 }} />
+      </SafeAreaView>
+    );
+  }
+
   const config = activeBlock?.config;
   const anyBeginnerEstimated = config
     ? config.isBeginnerEstimated.squat || config.isBeginnerEstimated.bench_press || config.isBeginnerEstimated.deadlift
     : false;
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} sheetOffset={700}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{t('planAppendix.title')}</Text>
 
         {!activeBlock ? (
           <View style={styles.emptyBlock}>
             <Text style={styles.emptyText}>{t('planAppendix.emptyState')}</Text>
-            {onCreateNew && (
-              <Pressable style={({ pressed }) => [styles.createBtn, pressed && styles.pressed]} onPress={onCreateNew}>
-                <Text style={styles.createBtnText}>{t('planAppendix.createBlockButton')}</Text>
-              </Pressable>
-            )}
+            <Pressable style={({ pressed }) => [styles.createBtn, pressed && styles.pressed]} onPress={() => setWizardOpen(true)}>
+              <Text style={styles.createBtnText}>{t('planAppendix.createBlockButton')}</Text>
+            </Pressable>
           </View>
         ) : (
           <>
@@ -129,6 +154,20 @@ export function PlanAppendixSheet({ visible, onClose, onCreateNew }: Props) {
             {config?.deficitModeEnabled && (
               <Text style={styles.epocNote}>{t('planAppendix.proteinRecommendationNote')}</Text>
             )}
+
+            <View style={styles.actionRow}>
+              <Pressable
+                disabled={exporting}
+                style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+                onPress={handleExport}
+              >
+                <Text style={styles.actionBtnText}>{t('planAppendix.exportExcelButton')}</Text>
+              </Pressable>
+              <Pressable style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]} onPress={() => setWizardOpen(true)}>
+                <Text style={styles.actionBtnText}>{t('planAppendix.createBlockButton')}</Text>
+              </Pressable>
+            </View>
+
             {activeBlock.weeks.map(renderWeek)}
             <Pressable style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]} onPress={handleDelete}>
               <Text style={styles.deleteBtnText}>{t('planAppendix.deleteBlockButton')}</Text>
@@ -136,21 +175,38 @@ export function PlanAppendixSheet({ visible, onClose, onCreateNew }: Props) {
           </>
         )}
       </ScrollView>
-    </BottomSheet>
+
+      <BlockBuilderWizard
+        visible={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCreated={() => setWizardOpen(false)}
+      />
+    </SafeAreaView>
   );
 }
 
 const createStyles = (c: ThemeColors) =>
   StyleSheet.create({
-    scroll: { flexShrink: 1 },
-    content: { padding: 24, paddingTop: 12, gap: 14 },
-    title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
-    emptyBlock: { alignItems: 'center', gap: 12, paddingVertical: 24 },
+    container: { flex: 1, backgroundColor: c.bg },
+    scroll: { padding: 24, paddingTop: 12, gap: 14 },
+    title: { fontSize: 22, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
+    emptyBlock: { alignItems: 'center', gap: 12, paddingVertical: 40 },
     emptyText: { color: c.textMuted, fontSize: 14, textAlign: 'center' },
     createBtn: { backgroundColor: c.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
     createBtnText: { color: c.bg, fontSize: 14, fontWeight: '700' },
     badgeText: { color: c.warning, fontSize: 12, fontWeight: '700' },
     epocNote: { color: c.textTertiary, fontSize: 12, lineHeight: 16 },
+    actionRow: { flexDirection: 'row', gap: 10, marginVertical: 4 },
+    actionBtn: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 10,
+      borderRadius: 12,
+      backgroundColor: c.bgElevated,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    actionBtnText: { color: c.accent, fontSize: 12, fontWeight: '700' },
     dayCard: {
       backgroundColor: c.bgHighlight,
       borderRadius: 12,
@@ -161,8 +217,9 @@ const createStyles = (c: ThemeColors) =>
     dayTitle: { color: c.textBright, fontSize: 14, fontWeight: '700' },
     sectionTitle: { color: c.textBright, fontSize: 12, fontWeight: '700', marginTop: 4 },
     variationRow: { gap: 2 },
-    variationHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    variationLabel: { color: c.textSoft, fontSize: 13, fontWeight: '600' },
+    rowDivider: { borderTopWidth: 1, borderTopColor: c.divider, paddingTop: 6, marginTop: 4 },
+    variationHeaderRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+    variationLabel: { color: c.textSoft, fontSize: 13, fontWeight: '600', flexShrink: 1 },
     variationDetail: { color: c.textSecondary, fontSize: 12 },
     variationKcal: { color: c.mint, fontSize: 12, fontWeight: '600' },
     accessoriesBlock: { gap: 2 },
@@ -176,6 +233,7 @@ const createStyles = (c: ThemeColors) =>
       borderRadius: 12,
       backgroundColor: c.dangerBgSoft,
       marginTop: 8,
+      marginBottom: 24,
     },
     deleteBtnText: { color: c.dangerStrong, fontSize: 13, fontWeight: '700' },
     pressed: { opacity: 0.6 },

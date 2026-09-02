@@ -14,6 +14,7 @@ import { findVariation } from '../../lib/powerliftingVariations';
 import { liftingSessionKcal, estimateLiftingMinutes } from './liftingEngine';
 import { dailyCalorieTarget } from './weightGoal';
 import { BARBELL_WEIGHT_KG } from '../../lib/metabolicConstants';
+import { addDaysToDateString, mondayFirstRank } from '../../lib/dateUtils';
 
 // Pure functions for the S-PL Block Builder's programming engine. Every
 // constant here is grounded in docs/08-powerlifting-engine.md — read that
@@ -232,7 +233,11 @@ export function applyDeficitMode(week: BlockWeekPlan, cutPct = 0.825): BlockWeek
 
 export function generateBlockPlan(config: TrainingBlockConfig, profile: UserProfile): GeneratedBlockPlan {
   const oneRepMaxByExercise = resolveOneRepMax(config.oneRepMax, config.bodyWeightKg);
-  const sortedSchedule = [...config.schedule].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  // Monday-first: JS Date's raw dayOfWeek (0=Sun) would otherwise sort
+  // Sunday before Monday — mondayFirstRank remaps 0=Mon..6=Sun.
+  const sortedSchedule = [...config.schedule].sort(
+    (a, b) => mondayFirstRank(a.dayOfWeek) - mondayFirstRank(b.dayOfWeek)
+  );
   const weeklyDeficitTargetKcal = config.deficitModeEnabled
     ? dailyCalorieTarget(profile).appliedDeltaKcal * 7
     : null;
@@ -244,12 +249,15 @@ export function generateBlockPlan(config: TrainingBlockConfig, profile: UserProf
       const curvePoint = focusCurvePoint(config.focus, weekIndex, config.progressiveWeeks, dayIndexInWeek);
       return resolveDayWithPoint(day, curvePoint, oneRepMaxByExercise, config.bodyWeightKg, profile.heightCm);
     });
+    const startDate = addDaysToDateString(config.weekStartDate, weekIndex * 7);
     let week: BlockWeekPlan = {
       weekNumber: weekIndex + 1,
       isDeload: false,
       days,
       totalKcal: days.reduce((sum, d) => sum + d.totalKcal, 0),
       weeklyDeficitTargetKcal,
+      startDate,
+      endDate: addDaysToDateString(startDate, 6),
     };
     if (config.deficitModeEnabled) week = applyDeficitMode(week);
     weeks.push(week);
@@ -266,12 +274,15 @@ export function generateBlockPlan(config: TrainingBlockConfig, profile: UserProf
       const deloadPoint = deloadCurvePoint(basePoint);
       return resolveDayWithPoint(day, deloadPoint, oneRepMaxByExercise, config.bodyWeightKg, profile.heightCm);
     });
+    const startDate = addDaysToDateString(config.weekStartDate, config.progressiveWeeks * 7);
     let deloadWeek: BlockWeekPlan = {
       weekNumber: config.progressiveWeeks + 1,
       isDeload: true,
       days,
       totalKcal: days.reduce((sum, d) => sum + d.totalKcal, 0),
       weeklyDeficitTargetKcal,
+      startDate,
+      endDate: addDaysToDateString(startDate, 6),
     };
     if (config.deficitModeEnabled) deloadWeek = applyDeficitMode(deloadWeek);
     weeks.push(deloadWeek);

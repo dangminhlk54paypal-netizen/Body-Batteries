@@ -30,6 +30,36 @@ export function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(b).getTime() - new Date(a).getTime()) / msPerDay;
 }
 
+export function addDaysToDateString(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return dateString(d);
+}
+
+// Monday-first rank of a JS Date day-of-week (0=Sun..6=Sat) → 0=Mon..6=Sun —
+// used so a training week displays/sorts Monday-first instead of the raw
+// Date convention (Sunday=0 sorting before Monday=1).
+export function mondayFirstRank(dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6): number {
+  return (dayOfWeek + 6) % 7;
+}
+
+// The Monday (YYYY-MM-DD) that starts the week containing `dateStr`.
+export function mondayOfWeek(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const rank = mondayFirstRank(d.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+  d.setDate(d.getDate() - rank);
+  return dateString(d);
+}
+
+// Upcoming Mondays for the S-PL Block Builder's "which week does this block
+// start" quick-picks — index 0 is the CURRENT week's Monday (may already be
+// in the past within this week), index 1 is next week, etc. People
+// typically plan a training block 1-2 weeks ahead.
+export function upcomingMondays(count: number): string[] {
+  const thisMonday = mondayOfWeek(todayString());
+  return Array.from({ length: count }, (_, i) => addDaysToDateString(thisMonday, i * 7));
+}
+
 // 2023-01-01 was a Sunday — used only as an anchor to format a bare
 // day-of-week (0=Sun..6=Sat, JS Date convention) into its localized weekday
 // name via Intl, so the S-PL Block schedule picker needs no 7-entry i18n

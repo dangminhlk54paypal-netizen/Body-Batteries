@@ -243,4 +243,12 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > **602/602 test PASS** (+16 test mới), tsc/lint sạch. **Chưa test máy thật.** Chi tiết:
 > `.ai/SESSION_LOG.md` Session 26.
 
+> 🟡 **(2026-09-02, Session 27, nhánh `ui-upgrade`, CHƯA COMMIT)** Phản hồi test tay cho S-PL Block
+> Builder (Session 26): chuyển sang **tab riêng "🏋️ Tập luyện"** (`TrainingScreen.tsx`, gỡ khỏi
+> `EnergyActionsBar`), block neo vào **ngày tháng thật** (Thứ 2 → Chủ nhật, `weekStartDate` +
+> `startDate`/`endDate` mỗi tuần), **xuất Excel** (`trainingBlockExportService.ts`), nút mẫu gợi ý
+> + nhớ cấu hình block trước, sửa lỗi thứ tự Chủ nhật lên đầu, sửa lỗi popup ⓘ tràn màn hình.
+> Verify: **604/604 test PASS**, tsc/lint sạch. **Chưa test máy thật lượt này.** Chi tiết:
+> `.ai/SESSION_LOG.md` Session 27.
+
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

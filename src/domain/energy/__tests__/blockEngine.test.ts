@@ -93,6 +93,8 @@ describe('applyDeficitMode', () => {
     isDeload: false,
     totalKcal: 100,
     weeklyDeficitTargetKcal: null,
+    startDate: '2026-09-07',
+    endDate: '2026-09-13',
     days: [
       {
         dayOfWeek: 1,
@@ -127,6 +129,7 @@ describe('generateBlockPlan (integration)', () => {
   const config: TrainingBlockConfig = {
     id: 'block-1',
     createdAt: Date.now(),
+    weekStartDate: '2026-09-07', // a Monday
     progressiveWeeks: 3,
     hasDeload: true,
     focus: 'intensity',
@@ -181,5 +184,38 @@ describe('generateBlockPlan (integration)', () => {
     );
     expect(withDeficit.weeks[0].weeklyDeficitTargetKcal).not.toBeNull();
     expect(withDeficit.weeks[0].weeklyDeficitTargetKcal as number).toBeGreaterThan(0);
+  });
+
+  it('each week carries its real Monday-Sunday calendar dates, derived from weekStartDate', () => {
+    const plan = generateBlockPlan(config, profile);
+    expect(plan.weeks[0].startDate).toBe('2026-09-07');
+    expect(plan.weeks[0].endDate).toBe('2026-09-13');
+    expect(plan.weeks[1].startDate).toBe('2026-09-14'); // +7 days
+    expect(plan.weeks[3].startDate).toBe('2026-09-28'); // deload = progressiveWeeks(3) * 7 later
+  });
+});
+
+describe('generateBlockPlan — Monday-first day ordering', () => {
+  it('sorts a Sunday + Monday schedule as Monday first, Sunday last', () => {
+    const schedule: BlockDayPlan[] = [
+      { dayOfWeek: 0, variations: [{ exercise: 'deadlift', variationId: 'deadlift_standard', role: 'main' }], accessories: [] },
+      { dayOfWeek: 1, variations: [{ exercise: 'bench_press', variationId: 'bench_paused', role: 'main' }], accessories: [] },
+    ];
+    const config: TrainingBlockConfig = {
+      id: 'block-2',
+      createdAt: Date.now(),
+      weekStartDate: '2026-09-07',
+      progressiveWeeks: 1,
+      hasDeload: false,
+      focus: 'normal',
+      schedule,
+      oneRepMax: { squat: 100, bench_press: 80, deadlift: 120 },
+      isBeginnerEstimated: { squat: false, bench_press: false, deadlift: false },
+      bodyWeightKg: 80,
+      deficitModeEnabled: false,
+    };
+    const plan = generateBlockPlan(config, profile);
+    expect(plan.weeks[0].days[0].dayOfWeek).toBe(1); // Monday first
+    expect(plan.weeks[0].days[1].dayOfWeek).toBe(0); // Sunday last
   });
 });

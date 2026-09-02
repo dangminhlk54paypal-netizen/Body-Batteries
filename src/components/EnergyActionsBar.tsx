@@ -17,8 +17,6 @@ import { MET_TABLE } from '../lib/metabolicConstants';
 import { FoodLogModal, buildTimestampForDate } from './FoodLogModal';
 import { PowerliftingSheet } from './PowerliftingSheet';
 import { BodybuildingSheet } from './BodybuildingSheet';
-import { PlanAppendixSheet } from './PlanAppendixSheet';
-import { BlockBuilderWizard } from './BlockBuilderWizard';
 import { PastDateField } from './food/PastDateField';
 import { parseTimeHHmmToday, parseTimeHHmmForDate, todayString, isToday, formatDisplayDate } from '../lib/dateUtils';
 import { BACKFILL_MAX_DAYS_BACK } from '../lib/constants';
@@ -112,8 +110,6 @@ export function EnergyActionsBar() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [powerliftingOpen, setPowerliftingOpen] = useState(false);
   const [bodybuildingOpen, setBodybuildingOpen] = useState(false);
-  const [blockAppendixOpen, setBlockAppendixOpen] = useState(false);
-  const [blockWizardOpen, setBlockWizardOpen] = useState(false);
   const activitySheetStyle = useSheetSlide(activityOpen);
 
   // Tactile press feedback (same pattern as ModeSelector's ModeChip) for the
@@ -189,11 +185,6 @@ export function EnergyActionsBar() {
   function openBodybuilding() {
     setActivityOpen(false);
     setBodybuildingOpen(true);
-  }
-
-  function openBlockPlan() {
-    setActivityOpen(false);
-    setBlockAppendixOpen(true);
   }
 
   function selectBuiltIn(t: ActivityType) {
@@ -467,14 +458,6 @@ export function EnergyActionsBar() {
                         {t('components.energyActionsBar.bodybuildingChip')}
                       </Text>
                     </Pressable>
-                    <Pressable
-                      onPress={openBlockPlan}
-                      style={({ pressed }) => [styles.chip, styles.chipLifting, pressed && styles.pressed]}
-                    >
-                      <Text style={styles.chipLiftingText}>
-                        {t('components.energyActionsBar.blockBuilderChip')}
-                      </Text>
-                    </Pressable>
                   </>
                 )}
                 {(ACTIVITY_CATEGORIES.find((c) => c.key === category)?.types ?? []).map((actType) => (
@@ -610,28 +593,6 @@ export function EnergyActionsBar() {
 
       {/* S-BB: set-based bodybuilding logging, browsed by muscle group */}
       <BodybuildingSheet visible={bodybuildingOpen} onClose={() => setBodybuildingOpen(false)} />
-
-      {/* S-PL Block: multi-week training-block planner + its Plan Appendix
-          output — see docs/08-powerlifting-engine.md. Handing off between
-          the two mirrors PowerliftingSheet/BodybuildingSheet's own
-          visible/onClose pattern; neither ever opens as a Modal nested
-          inside the other (both are BottomSheet siblings toggled in turn). */}
-      <PlanAppendixSheet
-        visible={blockAppendixOpen}
-        onClose={() => setBlockAppendixOpen(false)}
-        onCreateNew={() => {
-          setBlockAppendixOpen(false);
-          setBlockWizardOpen(true);
-        }}
-      />
-      <BlockBuilderWizard
-        visible={blockWizardOpen}
-        onClose={() => setBlockWizardOpen(false)}
-        onCreated={() => {
-          setBlockWizardOpen(false);
-          setBlockAppendixOpen(true);
-        }}
-      />
     </View>
   );
 }

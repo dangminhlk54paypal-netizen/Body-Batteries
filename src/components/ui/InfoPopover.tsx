@@ -23,7 +23,15 @@ export function InfoPopover({ title, body }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <View>
+    // `flexBasis: '100%'` ONLY while expanded, combined with `flexWrap:
+    // 'wrap'` on whatever row hosts this (see PlanAppendixSheet/
+    // TrainingScreen) — forces the open panel onto its own full-width line
+    // instead of staying a same-line flex sibling next to the label, which
+    // is what let long explanation text push past the screen edge (RN's
+    // default `overflow: visible` renders that overflow instead of
+    // clipping it, so it just goes invisible off-screen). Collapsed, the
+    // badge alone stays inline and auto-width as before.
+    <View style={expanded ? styles.wrapperExpanded : undefined}>
       <Pressable
         hitSlop={8}
         onPress={() => setExpanded((e) => !e)}
@@ -58,7 +66,9 @@ const createStyles = (c: ThemeColors) =>
     },
     pressed: { opacity: 0.6 },
     badgeText: { color: c.accent, fontSize: 12, fontWeight: '700' },
+    wrapperExpanded: { flexBasis: '100%' },
     panel: {
+      width: '100%',
       marginTop: 6,
       padding: 10,
       borderRadius: 10,
@@ -66,5 +76,5 @@ const createStyles = (c: ThemeColors) =>
       gap: 4,
     },
     title: { color: c.textBright, fontSize: 12, fontWeight: '700' },
-    body: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
+    body: { color: c.textTertiary, fontSize: 12, lineHeight: 17, flexShrink: 1 },
   });

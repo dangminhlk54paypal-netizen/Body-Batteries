@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { HomeScreen } from '../screens/HomeScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
+import { TrainingScreen } from '../screens/TrainingScreen';
 import { DiaryScreen } from '../screens/DiaryScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { useThemeColors } from '../hooks/useThemeColors';
@@ -47,6 +48,14 @@ export function AppNavigator() {
         options={{
           tabBarLabel: t('nav.history'),
           tabBarIcon: () => <TabIcon emoji="📊" />,
+        }}
+      />
+      <Tab.Screen
+        name="Training"
+        component={TrainingScreen}
+        options={{
+          tabBarLabel: t('nav.training'),
+          tabBarIcon: () => <TabIcon emoji="🏋️" />,
         }}
       />
       <Tab.Screen

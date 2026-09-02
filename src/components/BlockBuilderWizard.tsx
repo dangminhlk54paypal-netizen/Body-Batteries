@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
 import { BottomSheet } from './ui/BottomSheet';
 import { useSettingsStore } from '../store/settingsStore';
 import { useBlockStore } from '../store/blockStore';
 import { estimateBeginnerOneRepMax } from '../domain/energy/blockEngine';
 import { variationsForExercise } from '../lib/powerliftingVariations';
-import { weekdayLabel } from '../lib/dateUtils';
+import { weekdayLabel, formatDisplayDate, mondayFirstRank, upcomingMondays } from '../lib/dateUtils';
 import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import * as haptics from '../lib/haptics';
@@ -22,11 +22,17 @@ import type {
   OneRepMaxInput,
   TrainingFocus,
 } from '../types/powerliftingBlock';
+import { listTrainingBlocks } from '../data/repositories/trainingBlockRepository';
 
 const STEPS = ['length', 'profile', 'focus', 'schedule', 'deficit', 'summary'] as const;
 type Step = (typeof STEPS)[number];
 
 const WEEKDAYS: (0 | 1 | 2 | 3 | 4 | 5 | 6)[] = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun, more natural for a training week
+
+// How many upcoming Mondays to offer as quick-picks for "which week does
+// this block start" — people typically plan 1-2 weeks ahead, so a handful
+// of choices past that covers the realistic range without a full calendar.
+const MONDAY_QUICK_PICK_COUNT = 5;
 
 function newDay(): BlockDayPlan {
   return { dayOfWeek: 1, variations: [], accessories: [] };
@@ -39,6 +45,46 @@ function newVariation(exercise: LiftingExercise, isFirst: boolean): BlockDayVari
 
 function newAccessory(): AccessoryLineItem {
   return { customName: '', sets: 3, reps: '8-12' };
+}
+
+// The user's own SBD split (Mon paused bench+incline / Wed main squat+paused
+// deadlift / Fri touch-and-go bench+low grip / Sun main deadlift+paused
+// squat) — offered as a one-tap starting point in the schedule step.
+function suggestedTemplateDays(): BlockDayPlan[] {
+  return [
+    {
+      dayOfWeek: 1,
+      variations: [
+        { exercise: 'bench_press', variationId: 'bench_paused', role: 'main' },
+        { exercise: 'bench_press', variationId: 'bench_incline', role: 'secondary' },
+      ],
+      accessories: [],
+    },
+    {
+      dayOfWeek: 3,
+      variations: [
+        { exercise: 'squat', variationId: 'squat_standard', role: 'main' },
+        { exercise: 'deadlift', variationId: 'deadlift_paused', role: 'secondary' },
+      ],
+      accessories: [],
+    },
+    {
+      dayOfWeek: 5,
+      variations: [
+        { exercise: 'bench_press', variationId: 'bench_touch_and_go', role: 'main' },
+        { exercise: 'bench_press', variationId: 'bench_low_grip', role: 'secondary' },
+      ],
+      accessories: [],
+    },
+    {
+      dayOfWeek: 0,
+      variations: [
+        { exercise: 'deadlift', variationId: 'deadlift_standard', role: 'main' },
+        { exercise: 'squat', variationId: 'squat_paused', role: 'secondary' },
+      ],
+      accessories: [],
+    },
+  ];
 }
 
 interface OneRmInputs {
@@ -60,7 +106,10 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   const profile = useSettingsStore((s) => s.userProfile);
   const createBlock = useBlockStore((s) => s.createBlock);
 
+  const mondayChoices = useState(() => upcomingMondays(MONDAY_QUICK_PICK_COUNT))[0];
+
   const [stepIndex, setStepIndex] = useState(0);
+  const [weekStartDate, setWeekStartDate] = useState(mondayChoices[1] ?? mondayChoices[0]); // default: next Monday
   const [progressiveWeeksInput, setProgressiveWeeksInput] = useState('5');
   const [hasDeload, setHasDeload] = useState(true);
   const [bodyWeightInput, setBodyWeightInput] = useState(String(profile.weightKg));
@@ -72,12 +121,29 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   );
   const [submitting, setSubmitting] = useState(false);
 
+  // Most recent past block, fetched on open — offered as a one-tap "reuse
+  // last setup" so the user doesn't retype 1RM/bodyweight/schedule every
+  // block. Same promise + cancelled-flag pattern as PowerliftingSheet's
+  // "Dùng làm mẫu" history fetch.
+  const [prevBlock, setPrevBlock] = useState<GeneratedBlockPlan | null>(null);
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    listTrainingBlocks().then((blocks) => {
+      if (!cancelled) setPrevBlock(blocks[0] ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
   const step: Step = STEPS[stepIndex];
   const bodyWeightKg = parseDecimal(bodyWeightInput) || 0;
   const progressiveWeeks = Math.max(1, Math.round(parseDecimal(progressiveWeeksInput)) || 1);
 
   function resetAndClose() {
     setStepIndex(0);
+    setWeekStartDate(mondayChoices[1] ?? mondayChoices[0]);
     setProgressiveWeeksInput('5');
     setHasDeload(true);
     setBodyWeightInput(String(profile.weightKg));
@@ -85,6 +151,22 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
     setFocus('normal');
     setDays([]);
     onClose();
+  }
+
+  // Copies the previous block's bodyweight/1RM/schedule as a starting point
+  // — deliberately does NOT copy focus/Deficit Mode, since those are the
+  // knobs a user most often changes block-to-block (cutting, pushing
+  // intensity harder, etc.) rather than the physical numbers.
+  function applyPrevBlockConfig() {
+    if (!prevBlock) return;
+    const prev = prevBlock.config;
+    setBodyWeightInput(String(prev.bodyWeightKg));
+    setOneRm({
+      squat: prev.oneRepMax.squat ? String(prev.oneRepMax.squat) : '',
+      bench_press: prev.oneRepMax.bench_press ? String(prev.oneRepMax.bench_press) : '',
+      deadlift: prev.oneRepMax.deadlift ? String(prev.oneRepMax.deadlift) : '',
+    });
+    setDays(prev.schedule.map((d) => ({ ...d, variations: [...d.variations], accessories: [...d.accessories] })));
   }
 
   function goNext() {
@@ -146,6 +228,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       deadlift: parseDecimal(oneRm.deadlift) || undefined,
     };
     const config: NewTrainingBlockConfig = {
+      weekStartDate,
       progressiveWeeks,
       hasDeload,
       focus,
@@ -181,6 +264,29 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   function renderLengthStep() {
     return (
       <View style={styles.stepBody}>
+        {prevBlock && (
+          <Pressable
+            style={({ pressed }) => [styles.templateBtn, pressed && styles.pressed]}
+            onPress={applyPrevBlockConfig}
+          >
+            <Text style={styles.templateBtnText}>{t('blockBuilder.usePrevBlockButton')}</Text>
+          </Pressable>
+        )}
+
+        <Text style={styles.fieldLabel}>{t('blockBuilder.weekStartDateLabel')}</Text>
+        <View style={styles.chipRow}>
+          {mondayChoices.map((monday, i) =>
+            renderChip(
+              i === 0
+                ? t('blockBuilder.weekStartThisWeek', { date: formatDisplayDate(monday, language) })
+                : formatDisplayDate(monday, language),
+              weekStartDate === monday,
+              () => setWeekStartDate(monday),
+              monday
+            )
+          )}
+        </View>
+
         <Text style={styles.fieldLabel}>{t('blockBuilder.progressiveWeeksLabel')}</Text>
         <TextInput
           style={styles.input}
@@ -276,10 +382,27 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   }
 
   function renderScheduleStep() {
+    // Display Monday-first (Sunday last) — the underlying `days` state array
+    // keeps whatever order the user added cards in; only the render order is
+    // remapped, so every handler below still addresses the ORIGINAL index.
+    const displayOrder = days
+      .map((_, i) => i)
+      .sort((a, b) => mondayFirstRank(days[a].dayOfWeek) - mondayFirstRank(days[b].dayOfWeek));
+
     return (
       <View style={styles.stepBody}>
+        {days.length === 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.templateBtn, pressed && styles.pressed]}
+            onPress={() => setDays(suggestedTemplateDays())}
+          >
+            <Text style={styles.templateBtnText}>{t('blockBuilder.useSuggestedTemplateButton')}</Text>
+          </Pressable>
+        )}
         {days.length === 0 && <Text style={styles.emptyText}>{t('blockBuilder.scheduleEmptyText')}</Text>}
-        {days.map((day, dayIndex) => (
+        {displayOrder.map((dayIndex) => {
+          const day = days[dayIndex];
+          return (
           <View key={dayIndex} style={styles.dayCard}>
             <View style={styles.dayHeaderRow}>
               <Text style={styles.fieldLabel}>{t('blockBuilder.scheduleDayLabel')}</Text>
@@ -300,7 +423,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
 
             <Text style={styles.sectionTitle}>{t('blockBuilder.scheduleVariationSectionTitle')}</Text>
             {day.variations.map((variation, varIndex) => (
-              <View key={varIndex} style={styles.variationRow}>
+              <View key={varIndex} style={[styles.variationRow, varIndex > 0 && styles.rowDivider]}>
                 <View style={styles.chipRow}>
                   {LIFTING_EXERCISES.map((ex) =>
                     renderChip(
@@ -350,7 +473,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
 
             <Text style={styles.sectionTitle}>{t('blockBuilder.scheduleAccessorySectionTitle')}</Text>
             {day.accessories.map((acc, accIndex) => (
-              <View key={accIndex} style={styles.accessoryRow}>
+              <View key={accIndex} style={[styles.accessoryRow, accIndex > 0 && styles.rowDivider]}>
                 <TextInput
                   style={[styles.input, styles.accessoryNameInput]}
                   placeholder={t('blockBuilder.accessoryNamePlaceholder')}
@@ -385,9 +508,10 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
               <Text style={styles.addText}>{t('blockBuilder.scheduleAddAccessoryButton')}</Text>
             </Pressable>
           </View>
-        ))}
-        <Pressable style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]} onPress={addDay}>
-          <Text style={styles.addText}>{t('blockBuilder.scheduleAddDayButton')}</Text>
+          );
+        })}
+        <Pressable style={({ pressed }) => [styles.addDayBtn, pressed && styles.pressed]} onPress={addDay}>
+          <Text style={styles.addDayText}>{t('blockBuilder.scheduleAddDayButton')}</Text>
         </Pressable>
         {(days.length === 0 || days.some((d) => d.variations.length === 0)) && (
           <Text style={styles.validationText}>
@@ -424,6 +548,9 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   function renderSummaryStep() {
     return (
       <View style={styles.stepBody}>
+        <Text style={styles.summaryLine}>
+          {t('blockBuilder.summaryStartDateLine', { date: formatDisplayDate(weekStartDate, language) })}
+        </Text>
         <Text style={styles.summaryLine}>
           {t('blockBuilder.summaryWeeksLine', {
             weeks: progressiveWeeks,
@@ -586,6 +713,28 @@ const createStyles = (c: ThemeColors) =>
       backgroundColor: c.bgElevated,
     },
     addText: { color: c.infoAlt, fontSize: 12, fontWeight: '700' },
+    // "+ Thêm buổi tập" is the primary action to start the week — a
+    // distinct accent color (vs the neutral blue "+ Thêm bài"/"+ Thêm
+    // accessory") so it doesn't blend in.
+    addDayBtn: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 12,
+      backgroundColor: c.accent,
+    },
+    addDayText: { color: c.bg, fontSize: 13, fontWeight: '700' },
+    templateBtn: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      backgroundColor: c.accentAltBg,
+      borderWidth: 1,
+      borderColor: c.accentAlt,
+    },
+    templateBtnText: { color: c.accentAltLight, fontSize: 12, fontWeight: '700' },
+    rowDivider: { borderTopWidth: 1, borderTopColor: c.divider, paddingTop: 8, marginTop: 4 },
     accessoryRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     accessoryNameInput: { flex: 2 },
     accessorySmallInput: { flex: 1, textAlign: 'center' },

@@ -112,7 +112,21 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-09-02 (Session 26, xem `.ai/SESSION_LOG.md`).** **Tính năng lớn mới:
+**Cập nhật lần cuối: 2026-09-02 (Session 27, xem `.ai/SESSION_LOG.md`).** **S-PL Block Builder —
+sửa theo phản hồi test tay thật.** Chuyển hẳn sang tab riêng **"🏋️ Tập luyện"** (màn hình mới
+`TrainingScreen.tsx`, gỡ khỏi nút "🔥 Xả" vì khó tìm và sai chỗ về mặt khái niệm). Block giờ neo vào
+**ngày tháng lịch thật** (tuần Thứ 2 → Chủ nhật, chọn nhanh 5 Thứ 2 sắp tới, mỗi tuần trong Phụ lục
+hiện đúng khoảng ngày). Thêm **xuất Excel** để in (`trainingBlockExportService.ts`, tái dùng
+`autoFitColumns`/`workbookToBase64WithFrozenHeaders` đã export từ `excelExportService.ts`). Wizard
+có nút "💡 Dùng mẫu gợi ý" (nạp đúng lịch SBD người dùng mô tả) và "📋 Dùng cấu hình block trước"
+(nhớ cân nặng/1RM/lịch tuần, KHÔNG nhớ phong cách/Deficit Mode — 2 thứ hay đổi nhất). Sửa 2 bug
+thật từ test tay: **(a)** tuần hiện Chủ nhật lên đầu do sort thẳng theo `dayOfWeek` JS (0=CN) — thêm
+`mondayFirstRank()` remap Thứ 2 đầu; **(b)** nội dung popup ⓘ tràn ra ngoài màn hình mất tích (RN
+`overflow:visible` mặc định + flex-row không `flexWrap`) — sửa bằng `flexBasis:'100%'` có điều kiện
++ `flexWrap:'wrap'` trên hàng chứa. `npm run verify` PASS (tsc + eslint sạch, **604/604 test**).
+**CHƯA commit, CHƯA test máy thật lượt sửa này** — việc ưu tiên số 1 của session tiếp theo.
+
+**Trước đó — Session 26 (2026-09-02, xem `.ai/SESSION_LOG.md`).** **Tính năng lớn mới:
 S-PL Block Builder** — tự lập kế hoạch block powerlifting (SBD) nhiều tuần tịnh tiến + 1 tuần
 deload, chọn 1 trong 4 "phong cách tính toán" (Volume/Intensity/Normal/Peaking), khai báo lịch
 tuần (ngày × bài × biến thể kỹ thuật + bài phụ trợ), 1RM (hoặc ước lượng an toàn cho người mới),
