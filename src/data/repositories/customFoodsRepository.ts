@@ -16,8 +16,9 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
        (id, name_vi, name_en, category, default_serving_g,
         energy_kcal, water_g, protein_g, fat_g, carb_g, fiber_g, sugar_g,
         calcium_mg, iron_mg, sodium_mg, potassium_mg, magnesium_mg, zinc_mg,
-        epa_mg, dha_mg, portion_unit, serving_weight_g, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        epa_mg, dha_mg, portion_unit, serving_weight_g, serving_label,
+        measure_unit, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     item.id,
     item.nameVi,
     item.nameEn,
@@ -40,6 +41,8 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
     n.dhaMg ?? null,
     item.portionUnit ?? null,
     item.servingWeightG ?? null,
+    item.servingLabel ?? null,
+    item.measureUnit ?? null,
     Date.now()
   );
 }
@@ -59,4 +62,15 @@ export async function getCustomFoodById(id: string): Promise<FoodItem | undefine
     id
   );
   return row ? rowToCustomFoodItem(row) : undefined;
+}
+
+// Permanently removes one user-saved food. Callers go through
+// `deleteCustomFoodAndUnregister` in customFoodRegistry.ts, which also drops
+// it from the in-memory search index. Food-log rows that referenced it are
+// NOT touched: they keep their own snapshotted nutrition and fall back to the
+// frozen `foodNameVi` for display (see foodLogEntryDisplayName), so deleting a
+// food never rewrites history.
+export async function deleteCustomFood(id: string): Promise<void> {
+  const db = getDb();
+  await db.runAsync('DELETE FROM custom_foods WHERE id = ?', id);
 }

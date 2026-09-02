@@ -21,6 +21,7 @@ import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
 import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
 import { CustomFoodFields } from './food/CustomFoodFields';
+import { nutritionBasisLabel } from '../domain/food/portionUnits';
 import type { FoodItem } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
 import { useThemedStyles } from '../hooks/useThemeColors';
@@ -81,12 +82,12 @@ export function FoodNutritionEditModal({
 
   // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
   // its field suffixes, so the intro subtitle always says the same thing.
-  const nutritionBasisLabel =
-    input.portionUnit === 'pack'
-      ? t('components.foodNutritionEditModal.basisPack')
-      : input.portionUnit === 'capsule'
-        ? t('components.foodNutritionEditModal.basisCapsule')
-        : t('components.foodNutritionEditModal.basisGram');
+  const basisLabel = nutritionBasisLabel(
+    input.portionUnit,
+    input.servingLabel,
+    input.measureUnit,
+    language
+  );
 
   function set<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
     if (key === 'portionUnit') {
@@ -115,6 +116,8 @@ export function FoodNutritionEditModal({
           per100g: built.per100g,
           portionUnit: built.portionUnit,
           servingWeightG: built.servingWeightG,
+          servingLabel: built.servingLabel,
+          measureUnit: built.measureUnit,
         };
         await upsertOverrideAndRegister(edited);
         onSaved?.(edited);
@@ -157,7 +160,7 @@ export function FoodNutritionEditModal({
           <Text style={styles.subtitle}>
             {mode === 'edit'
               ? t('components.foodNutritionEditModal.subtitleEdit')
-              : t('components.foodNutritionEditModal.subtitleAdd', { basis: nutritionBasisLabel })}
+              : t('components.foodNutritionEditModal.subtitleAdd', { basis: basisLabel })}
           </Text>
 
           <ScrollView

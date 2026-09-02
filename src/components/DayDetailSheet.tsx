@@ -13,14 +13,14 @@ import { BottomSheet } from './ui/BottomSheet';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { mealLabel } from '../lib/constants';
 import { formatDisplayDate } from '../lib/dateUtils';
-import { foodLogEntryDisplayName } from '../data/food/foodLookup';
+import { foodLogEntryDisplayName, getAnyFoodById } from '../data/food/foodLookup';
+import { formatLoggedPortion } from '../domain/food/portionUnits';
 import type { FoodLogEntry, MealType } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useT } from '../i18n/useT';
 import type { Language } from '../i18n/types';
 
-type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface DayDetailSheetProps {
   visible: boolean;
@@ -62,14 +62,10 @@ function groupEntriesByMeal(entries: FoodLogEntry[]): Record<MealType, FoodLogEn
   return grouped;
 }
 
-// Format portion display: "X viên" or "Yg g"
-function formatPortion(entry: FoodLogEntry, t: TFn): string {
-  if (entry.portionUnit && entry.count !== undefined) {
-    return entry.portionUnit === 'pack'
-      ? t('components.dayDetailSheet.packCount', { count: entry.count })
-      : t('components.dayDetailSheet.capsuleCount', { count: entry.count });
-  }
-  return `${entry.grams}g`;
+// Format portion display: "2 hộp (130ml)" or "150g" — the shared formatter, so
+// every list that shows a logged food words its amount identically.
+function formatPortion(entry: FoodLogEntry, language: Language): string {
+  return formatLoggedPortion(entry, getAnyFoodById(entry.foodId), language);
 }
 
 // One SectionList section: a meal's label + its entries.
@@ -162,7 +158,7 @@ export function DayDetailSheet({
         <Text style={styles.foodName} numberOfLines={2}>
           {foodLogEntryDisplayName(entry, language)}
         </Text>
-        <Text style={styles.portion}>{formatPortion(entry, t)}</Text>
+        <Text style={styles.portion}>{formatPortion(entry, language)}</Text>
       </Pressable>
       <View style={styles.entryRight}>
         <Text style={styles.energyLabel}>{entry.energyKcal} kcal</Text>

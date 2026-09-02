@@ -1397,6 +1397,143 @@ trước — xem mục 3 bên dưới).
 
 ---
 
+## Session 24 — 2026-09-01
+
+**Làm gì:** Xử lý 4 điểm người dùng phản ánh sau khi dùng app thật: (1) đơn vị đo ml + nhãn khẩu
+phần tự do khi thêm món mới, (2) quyền kiểm soát danh sách món riêng trên máy, (3) minh bạch công
+thức tính, (4) bug pin vi chất đường/canxi đếm sai + tổng lệch. Kế hoạch chi tiết:
+`.ai/plans/2026-09-01-food-units-transparency-microbug.md`.
+
+**Kết quả:**
+
+**W1 — Bug pin vi chất (nguyên nhân gốc + 4 lỗi phụ)**
+- **Trùng ID nhật ký món.** `logFood` đặt `id = food_<ts>_<foodId>` trong khi
+  `FoodLogModal.timestampForToday()` cắt giây+ms → ghi cùng món 2 lần trong 1 phút = trùng ID
+  tuyệt đối trên PRIMARY KEY của `food_log`. `addFoodLogEntry` dùng `INSERT INTO` nên ném UNIQUE
+  constraint, bị `console.warn` nuốt → **pin đã cộng và đã lưu, còn nhật ký thì không có dòng đó**.
+  Vá: thêm hậu tố ngẫu nhiên (`foodLogEntryId`, giống `activity_log` vốn đã làm vậy) + đổi sang
+  `INSERT OR REPLACE`.
+- **Đảo thứ tự trong `logFood`:** ghi dòng nhật ký TRƯỚC, chỉ cộng pin khi ghi thành công. Trước
+  đây pin cộng trước rồi mới ghi → hai bên có thể lệch nhau vĩnh viễn. Việc cộng pin cũng chuyển
+  vào trong `set(s => …)` để không đè lên tick xả chạy chen ngang.
+- **`updateFood` bỏ sót đơn vị mới:** `isPortionBased` viết tay `=== 'pack' || === 'capsule'` →
+  thay bằng `isPortionCounted()` dùng chung.
+- **Chip TPCN (`SupplementQuickLog`):** thiếu khoá chống bấm kép (FoodLogModal có, chip thì không)
+  → 1 lần bấm hơi lâu ghi 2 liều; `countToday` đếm số DÒNG log thay vì số LIỀU (`count`);
+  `item.nameVi` hardcode → `foodDisplayName(item, language)`.
+- **Bảng nguồn vi chất:** `microBatterySourceRows` → `microBatterySourceBreakdown`, gộp theo món
+  ("Whey protein ×3" thay vì 3 dòng giống hệt nhau), mỗi dòng hiện rõ khẩu phần, và chia phần dư
+  theo largest-remainder để **tổng các dòng luôn khớp đúng con số trên ô pin**.
+
+**W2 — Đơn vị đo (g/ml) + nhãn khẩu phần tự do**
+- `PortionUnit` thêm `'serving'`; `FoodItem` thêm `measureUnit` ('g'|'ml') và `servingLabel`
+  (hộp/chai/lon/ly/khẩu phần — người dùng tự gõ). Quy ước 1 ml ≈ 1 g, nói rõ trong UI; engine vẫn
+  tính hoàn toàn bằng gram nên không đụng gì tới phần tính toán.
+- Module domain mới `src/domain/food/portionUnits.ts` — nguồn duy nhất sinh mọi nhãn khẩu phần
+  ("2 hộp (130ml)"), thay cho 4 chỗ trước đây tự viết `portionUnit === 'pack' ? … : 'capsule' ?…`.
+- Vá đủ **cả 3 điểm nối bắt buộc** của `FoodItem` (merge trong `getAnyFoodById`, nhánh
+  `mode === 'edit'` của `FoodNutritionEditModal`, mappers + schema + migration ALTER cho
+  `custom_foods` và `food_overrides`).
+- Gộp 9 khoá i18n rời (`suffixPack/Capsule/Gram` × 1 + `basisPack/Capsule/Gram` × 2 chỗ) thành 1
+  helper `nutritionBasisLabel()` dùng chung.
+
+**W3 — "Món của tôi"**
+- Bổ sung `deleteCustomFood` (trước đây **không hề có** đường xoá món tự thêm) +
+  `deleteOverrideAndUnregister`.
+- Sheet mới `MyFoodsSheet` (vào từ Cài đặt → Dữ liệu): xem/sửa/xoá món tự thêm và món đã sửa
+  thành phần. Xoá KHÔNG đụng lịch sử — bữa đã ghi giữ nguyên số liệu snapshot của nó.
+- Xuất/nhập file JSON danh sách món (`myFoodsBackup.ts` thuần + `myFoodsBackupService.ts`).
+  **Không thêm dependency nào**: xuất ghi vào documentDirectory + share sheet; nhập liệt kê file
+  `.json` trong chính thư mục đó (người dùng chép file vào qua app Files) — thay cho việc phải
+  thêm `expo-document-picker`.
+- Huy hiệu nguồn món trong tìm kiếm: "Của tôi" / "Catalog VN" / "USDA" (+ "đã sửa").
+
+**W4 — Minh bạch công thức (nút ⓘ tại pin)**
+- Ô pin vi chất thêm glyph ⓘ + `accessibilityLabel`; sheet nguồn có mục gập "🧮 Xem cách tính":
+  từng dòng `6g/100g × 60g ÷ 100 = 3.6g`, dòng cộng dồn, so với khuyến nghị, cộng các ghi chú
+  riêng (muối suy ra từ natri × 2.5 ÷ 1000; omega-3 = EPA + DHA; đường nằm TRONG carbs).
+- `BatterySourceSheet` (pin chính) có mục tương tự, nêu rõ điểm dễ tưởng là bug: số của pin chính
+  được **chốt lúc ghi món**, còn pin vi chất **tính lại mỗi lần mở app** — nên sửa thành phần một
+  món sẽ đổi pin vi chất mà không đổi bữa đã ghi.
+- Nêu rõ mốc ngày: pin vi chất theo NGÀY LỊCH, pin Năng lượng reset 6h sáng.
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **586/586 test PASS** (47 suite, +46 test mới),
+`tsc --noEmit` sạch, `eslint` sạch. `npx expo export --platform ios` bundle thành công (1594
+modules). **CHƯA commit.**
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Triệu chứng người dùng mô tả ("nhập 2 whey nhưng hiện 3") không tái hiện được trực tiếp, nên
+  thay vì đoán đã truy theo đường dữ liệu: pin vi chất tính LIVE từ `foodLog` mỗi lần render nên
+  không thể tự lệch → suy ra `foodLog` thật sự có mục thừa → tìm ra 2 đường sinh mục thừa (trùng
+  ID + chip thiếu khoá chống bấm kép). Cả hai đều đã vá kèm test hồi quy.
+- Không thêm `expo-document-picker` cho luồng nhập file (xem W3) — giữ đúng luật "không thêm thư
+  viện mới khi chưa xin phép".
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật (ưu tiên cao):** thêm món "Yakult" — đơn vị đo `ml`, cách ghi "Khẩu phần…",
+   tên đơn vị "hộp", kích cỡ 65, nhập dinh dưỡng cho đúng 1 hộp → ghi 2 hộp → kiểm tra danh sách
+   hiện "2 hộp (130ml)" và pin đường/canxi cộng đúng.
+2. Ghi cùng 1 món 2 lần trong CÙNG 1 PHÚT → xác nhận nhật ký có đủ 2 dòng, xoá 1 dòng chỉ trừ pin
+   1 lần, và số liệu không đổi sau khi khởi động lại app.
+3. Mở bảng nguồn pin Đường/Canxi → bấm "🧮 Xem cách tính" → xác nhận các dòng cộng lại đúng bằng
+   tổng ở dưới.
+4. Cài đặt → Dữ liệu → "Món của tôi": sửa/xoá một món, xuất file, kiểm tra file trong app Files,
+   rồi nhập lại.
+5. **Nhắc lại (từ Session 21–23):** nhánh `ui-upgrade` vẫn tồn đọng rất nhiều thay đổi CHƯA
+   COMMIT — nên rà + test tay + commit theo từng cụm.
+
+## Session 25 — 2026-09-02
+
+**Làm gì:** Thêm chức năng chia sẻ nhật ký ăn uống hôm nay dưới dạng ảnh (cho mạng xã hội) —
+yêu cầu: dù ăn nhiều món phải cuộn mới thấy hết, ảnh chia sẻ vẫn phải gồm ĐẦY ĐỦ, không bị cắt.
+
+**Kết quả:**
+- Nút ⤴ mới cạnh tổng kcal trong `TodayMeals.tsx` ("Hôm nay đã ăn").
+- **Không chụp lại đúng giao diện đang cuộn** — vì `captureScreen` (chụp màn hình thường) chỉ lấy
+  đúng phần pixel đang hiển thị, y hệt hạn chế mà người dùng phản ánh. Giải pháp: dựng
+  `src/components/food/ShareDayFoodCard.tsx` — một bản layout RIÊNG (thiết kế lại gọn đẹp cho
+  MXH, không phải bản sao UI trong app), cao tự do không giới hạn, đặt ở toạ độ âm ngoài canvas
+  (`position: 'absolute', top: -100000`) nên không ai nhìn thấy trong app nhưng vẫn layout đầy
+  đủ. `captureRef` (thư viện mới) chụp NGUYÊN view đó bất kể có đang cuộn tới hay không.
+- Thêm thư viện **`react-native-view-shot@4.0.3`** — đã kiểm tra kỹ trước khi thêm: đây đúng là
+  bản được đóng gói SẴN trong chính Expo Go của SDK 54 (`expo/packages/expo/bundledNativeModules.json`
+  nhánh `sdk-54`), nên chạy được ngay trên điện thoại test qua Expo Go, không cần build lại
+  app/dev-client. `npx expo install react-native-view-shot` tự chọn đúng bản này.
+- Service `src/services/share/dayFoodShareService.ts` — `shareTodayFoodCard(ref, language)`:
+  `captureRef` → PNG tmpfile → `Sharing.shareAsync` (dùng lại đúng pattern
+  `exportDataInRange` trong `excelExportService.ts`).
+- `collapsable={false}` trên view bị chụp — bắt buộc trên Android, thiếu là RN có thể tối ưu bỏ
+  hẳn node khỏi cây view gốc khiến không còn gì để chụp.
+- Ảnh dùng màu **cố định** `darkColors` (không theo theme sáng/tối người dùng đang chọn) — ảnh
+  chia sẻ ra ngoài nên luôn giữ đúng nhận diện thương hiệu Body Batteries.
+- Tài liệu: `docs/07-food-log.md` mục "3b-2".
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **586/586 test PASS** (không thêm test mới —
+tính năng chỉ ghép lại logic thuần đã có test sẵn: `summarizeFoodLog`, `foodLogEntryDisplayName`,
+`formatLoggedPortion`, `mealLabel`; phần mới là component trình bày + service I/O, đúng quy ước
+codebase hiện có — không file `.test.tsx` nào tồn tại, các service I/O khác như
+`excelExportService.ts`/`myFoodsBackupService.ts` cũng không có test riêng). `tsc --noEmit` +
+`eslint` sạch. `npx expo export --platform ios` bundle thành công (1603 modules, +9 so với
+trước do thư viện mới). **CHƯA commit.**
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Trước khi thêm thư viện, tra cứu kỹ xem `react-native-view-shot` có chạy được trong Expo Go
+  hay bắt buộc phải có dev-client riêng (theo luật dự án: không thêm thư viện mới mà chưa hỏi) —
+  tìm đúng file `bundledNativeModules.json` của Expo ở nhánh `sdk-54` xác nhận bản 4.0.3 đã được
+  đóng gói sẵn, nên an toàn để thêm mà không phá luồng test bằng Expo Go hiện tại của người dùng.
+- `expo-screen-capture` (đã có sẵn trong app) tưởng liên quan nhưng thực ra dùng để CHẶN/phát
+  hiện chụp màn hình, không hề có khả năng render 1 view ra ảnh — không dùng được cho việc này.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật (bắt buộc):** ghi 8-10 món trong nhiều bữa khác nhau (đủ dài để phải cuộn
+   trong app) → bấm ⤴ ở "Hôm nay đã ăn" → xác nhận ảnh xuất ra có ĐỦ mọi món, không bị cắt, và
+   share sheet của hệ điều hành mở lên bình thường.
+2. Kiểm tra khi ngày chưa ăn gì (foodLog rỗng) → nút chia sẻ tự ẩn, không crash.
+3. **Nhắc lại (từ Session 21–24):** nhánh `ui-upgrade` vẫn tồn đọng rất nhiều thay đổi CHƯA
+   COMMIT — nên rà + test tay + commit theo từng cụm.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

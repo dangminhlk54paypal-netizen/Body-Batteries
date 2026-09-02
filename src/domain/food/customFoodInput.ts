@@ -1,5 +1,6 @@
-import type { FoodItem, Nutrition, PortionUnit } from '../../types/food';
+import type { FoodItem, MeasureUnit, Nutrition, PortionUnit } from '../../types/food';
 import { parseDecimal } from '../../lib/units';
+import { isPortionCounted } from './portionUnits';
 
 // Pure form-state → domain-object logic for the "add a custom food" flow in
 // FoodLogModal. No I/O, no state — unit-tested. The modal only calls
@@ -13,13 +14,22 @@ export interface CustomFoodInput {
   name: string;
   category: string;
   defaultServingG: string;
-  // How the user counts this food: 'gram' (default, weighed) or 'pack'/
-  // 'capsule' (supplements, counted). When not 'gram', servingWeightG must
-  // be set and every macro/micro field below is entered PER SERVING (per
-  // pack/capsule) rather than per 100 g — buildCustomFoodItem converts.
+  // How the user counts this food: 'gram' (default, weighed) or one of the
+  // counted units — 'pack'/'capsule' (supplements) and 'serving' (anything
+  // sold by the box/bottle/glass, named freely in servingLabel). When not
+  // 'gram', servingWeightG must be set and every macro/micro field below is
+  // entered PER PORTION rather than per 100 g — buildCustomFoodItem converts.
   portionUnit: PortionUnit;
-  // Real gram weight of ONE pack/capsule. Only meaningful when portionUnit
-  // is 'pack'/'capsule'; ignored (may be blank) for 'gram'.
+  // The user's own noun for one portion — 'hộp', 'chai', 'ly', 'khẩu phần'.
+  // Only read when portionUnit is 'serving'; blank falls back to the
+  // translated generic "portion" noun (see portionUnitNoun).
+  servingLabel: string;
+  // Whether this food's amounts are measured in grams or millilitres. Only
+  // changes what the numbers are LABELLED as — the engine keeps computing in
+  // grams via the 1 ml ≈ 1 g equivalence (see types/food.ts MeasureUnit).
+  measureUnit: MeasureUnit;
+  // Size of ONE portion, in `measureUnit` (65 for a 65ml carton). Only
+  // meaningful when portionUnit is not 'gram'; ignored (may be blank) for it.
   servingWeightG: string;
   // Per-100g macros (always visible in the form) — or per-serving when
   // portionUnit is pack/capsule (see portionUnit doc above).
@@ -46,6 +56,8 @@ export const EMPTY_CUSTOM_FOOD_INPUT: CustomFoodInput = {
   category: 'custom',
   defaultServingG: '100',
   portionUnit: 'gram',
+  servingLabel: '',
+  measureUnit: 'g',
   servingWeightG: '',
   energyKcal: '',
   proteinG: '',
@@ -77,6 +89,9 @@ export function resetNutritionForUnitChange(
   return {
     ...input,
     portionUnit: newUnit,
+    // The label only means something for 'serving'; clearing it on every
+    // other switch stops a stale 'hộp' from riding along on a capsule food.
+    servingLabel: newUnit === 'serving' ? input.servingLabel : '',
     servingWeightG: '',
     energyKcal: '',
     waterG: '',
@@ -168,7 +183,7 @@ export function isValidCustomFoodInput(input: CustomFoodInput): boolean {
   if (input.name.trim().length === 0) return false;
   const kcal = parseDecimal(input.energyKcal);
   if (isNaN(kcal) || kcal < 0) return false;
-  if (input.portionUnit === 'pack' || input.portionUnit === 'capsule') {
+  if (isPortionCounted(input.portionUnit)) {
     const servingWeightG = parseNum(input.servingWeightG);
     if (servingWeightG <= 0) return false;
   }
@@ -196,6 +211,8 @@ export function inputFromFoodItem(item: FoodItem): CustomFoodInput {
     category: item.category,
     defaultServingG: s(item.defaultServingG),
     portionUnit,
+    servingLabel: item.servingLabel ?? '',
+    measureUnit: item.measureUnit ?? 'g',
     servingWeightG: item.servingWeightG != null ? s(item.servingWeightG) : '',
     energyKcal: s(p.energyKcal),
     proteinG: s(p.proteinG),
@@ -283,5 +300,12 @@ export function buildCustomFoodItem(input: CustomFoodInput): FoodItem {
     note: '',
     portionUnit: useServingConversion ? input.portionUnit : 'gram',
     servingWeightG: useServingConversion ? servingWeightG : undefined,
+    // Only a 'serving' carries a user-typed noun; 'pack'/'capsule' keep their
+    // translated ones, and a gram food has no portion noun at all.
+    servingLabel:
+      useServingConversion && input.portionUnit === 'serving' && input.servingLabel.trim()
+        ? input.servingLabel.trim()
+        : undefined,
+    measureUnit: input.measureUnit,
   };
 }

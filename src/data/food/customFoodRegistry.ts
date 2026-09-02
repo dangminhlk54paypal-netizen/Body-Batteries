@@ -43,6 +43,15 @@ export async function addCustomFoodAndRegister(item: FoodItem): Promise<void> {
   customFoods = [...customFoods.filter((f) => f.id !== item.id), item];
 }
 
+// Removes a custom food from SQLite and from the in-memory registry, so it
+// disappears from search immediately. The single public entry point for
+// deleting a user-saved food — the UI must never call the repository directly.
+export async function deleteCustomFoodAndUnregister(id: string): Promise<void> {
+  const { deleteCustomFood } = await import('../repositories/customFoodsRepository');
+  await deleteCustomFood(id);
+  customFoods = customFoods.filter((f) => f.id !== id);
+}
+
 // Hydrates the registry from the DB. Call once at app startup, right after
 // initDatabase(). Defensive: custom foods are an enhancement, not core data —
 // a failure here must not block startup, so it just leaves the registry

@@ -20,7 +20,27 @@ export interface ServingPreset {
 // supplements (TPCN) are usually taken as whole packs/capsules, so forcing a
 // 100g conversion on the user is unnatural. Absent/undefined means 'gram'
 // (the pre-existing behaviour — every food before this field existed).
-export type PortionUnit = 'gram' | 'pack' | 'capsule';
+//
+// 'serving' is the open-ended member: the portion is counted in whatever the
+// label on the product says — hộp, chai, lon, ly, muỗng, khẩu phần — and the
+// noun itself lives in FoodItem.servingLabel. 'pack'/'capsule' are kept as
+// their own members (not folded into 'serving' with a label) so every food
+// saved before servingLabel existed keeps its translated noun in all three
+// languages instead of freezing whichever one was on screen at save time.
+export type PortionUnit = 'gram' | 'pack' | 'capsule' | 'serving';
+
+// The unit a food's amount is naturally MEASURED in — distinct from how its
+// portions are COUNTED (PortionUnit). A carton of yoghurt drink is sold as
+// "1 hộp 65ml", not "1 hộp 65g", and its label prints the nutrition for that
+// 65ml. Absent/undefined means 'g' (every food before this field existed).
+//
+// The engine stores and computes in grams throughout, using the standard
+// 1 ml ≈ 1 g equivalence for the drinkable foods this covers (water, juice,
+// milk, yoghurt drinks — all within a few percent of 1 g/ml). So this field
+// changes what the user reads and types, never what is computed: a food with
+// measureUnit 'ml' still keeps per-100 g nutrition in `per100g` and a real
+// gram figure in `servingWeightG`, they are just labelled in ml.
+export type MeasureUnit = 'g' | 'ml';
 
 // Nutrition figures. In the CSV these are per 100 g; on a FoodLogEntry they are
 // the computed totals for the eaten portion. `mineralsMg` is a crude rollup of
@@ -67,14 +87,24 @@ export interface FoodItem {
   per100g: Nutrition; // every value is per 100 g — always the canonical storage unit
   source: string;
   note: string;
-  // Optional "natural" counting unit for supplements (TPCN): when set to
-  // 'pack'/'capsule', the food is logged/edited by count (e.g. "2 viên")
-  // instead of grams, and servingWeightG is the real gram weight of ONE
-  // pack/capsule (used to convert count <-> grams and to convert the user's
-  // per-serving nutrition entry <-> the canonical per100g storage above).
-  // Undefined/'gram' preserves the original gram-based behaviour untouched.
+  // Optional "natural" counting unit for supplements (TPCN) and packaged
+  // products: when set to anything but 'gram', the food is logged/edited by
+  // count (e.g. "2 viên", "1 hộp") instead of grams, and servingWeightG is
+  // the size of ONE portion (used to convert count <-> grams and to convert
+  // the user's per-portion nutrition entry <-> the canonical per100g storage
+  // above). Undefined/'gram' preserves the original gram-based behaviour.
   portionUnit?: PortionUnit;
+  // Size of one portion, always as a gram figure so the engine needs no
+  // special case — but READ IN `measureUnit`: with measureUnit 'ml' a value
+  // of 65 means "65 ml" (≈ 65 g). See MeasureUnit for why that is safe.
   servingWeightG?: number;
+  // The portion noun for portionUnit === 'serving' — 'hộp', 'chai', 'lon',
+  // 'ly', 'muỗng', 'khẩu phần'… Typed by the user, so it has one spelling in
+  // whatever language they typed it in; portionUnitNoun() falls back to the
+  // translated generic "portion" noun when it is absent.
+  servingLabel?: string;
+  // How the food's amounts are measured/displayed. Undefined means 'g'.
+  measureUnit?: MeasureUnit;
 }
 
 // One logged meal/snack: a food eaten at a time, with the portion's computed

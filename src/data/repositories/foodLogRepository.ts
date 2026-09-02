@@ -41,10 +41,16 @@ function rowToEntry(r: FoodLogRow): FoodLogEntry {
   };
 }
 
+// INSERT OR REPLACE (not a bare INSERT): `id` is the PRIMARY KEY, so a bare
+// INSERT throws a UNIQUE-constraint error on a duplicate id — and every caller
+// wraps this in a try/catch that only console.warn's, which used to leave the
+// batteries charged for a meal that never reached the log. Ids are unique by
+// construction now (see energyStore.logFood), so this is belt-and-braces: a
+// re-write of the same id overwrites rather than throwing.
 export async function addFoodLogEntry(entry: FoodLogEntry): Promise<void> {
   const db = getDb();
   await db.runAsync(
-    `INSERT INTO food_log
+    `INSERT OR REPLACE INTO food_log
        (id, timestamp, meal_type, food_id, food_name_vi, grams,
         energy_kcal, protein_g, fat_g, carb_g, water_g, minerals_mg,
         portion_unit, count, energy_day_applied)

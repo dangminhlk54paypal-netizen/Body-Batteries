@@ -27,6 +27,8 @@ describe('rowToOverrideItem', () => {
       dha_mg: 8,
       portion_unit: null,
       serving_weight_g: null,
+      serving_label: null,
+      measure_unit: null,
       updated_at: 1700000000000,
     };
 
@@ -84,6 +86,8 @@ describe('rowToOverrideItem', () => {
       dha_mg: null,
       portion_unit: null,
       serving_weight_g: null,
+      serving_label: null,
+      measure_unit: null,
       updated_at: 1700000000000,
     };
 
@@ -117,6 +121,8 @@ describe('rowToOverrideItem', () => {
       dha_mg: null,
       portion_unit: 'pack',
       serving_weight_g: 5,
+      serving_label: null,
+      measure_unit: null,
       updated_at: 1700000000000,
     };
 

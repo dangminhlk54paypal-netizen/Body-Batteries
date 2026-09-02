@@ -5,13 +5,23 @@ import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { searchAllFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
-import { getAnyFoodById, foodLogEntryDisplayName } from '../data/food/foodLookup';
+import { getAnyFoodById, foodDisplayName, foodLogEntryDisplayName } from '../data/food/foodLookup';
+import { getOverrideByIdSync } from '../data/food/foodOverrideRegistry';
+import { foodSourceKind } from '../domain/food/foodSource';
 import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import { PastDateField } from './food/PastDateField';
 import { BottomSheet } from './ui/BottomSheet';
 import { nutritionForGrams, mealTypeForHour, gramsForPortion } from '../domain/food/foodNutrition';
+import {
+  formatMeasure,
+  formatServingDefinition,
+  isPortionCounted,
+  measureUnitOf,
+  nutritionBasisLabel,
+  portionUnitNoun,
+} from '../domain/food/portionUnits';
 import { suggestFoods, type FoodSuggestion } from '../domain/food/foodSuggestions';
 import {
   buildCustomFoodItem,
@@ -23,6 +33,7 @@ import {
 import { foodCategoryLabel, mealLabel, BACKFILL_MAX_DAYS_BACK } from '../lib/constants';
 import { daysAgo, todayString, formatDisplayDate, isToday } from '../lib/dateUtils';
 import type { FoodItem, FoodLogEntry } from '../types/food';
+import type { Language } from '../i18n/types';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
@@ -38,12 +49,31 @@ interface Props {
   initialDate?: string;
 }
 
-// Vietnamese name is the main line, English name the small second line.
-// Falls back to the English name as the main line for the rare item still
-// missing a Vietnamese translation (sub is then omitted — nothing to add).
-function displayNames(item: FoodItem): { main: string; sub: string | null } {
-  if (item.nameVi) return { main: item.nameVi, sub: item.nameEn || null };
-  return { main: item.nameEn, sub: null };
+// The current language's name is the main line (foodDisplayName owns the
+// fallback chain), with the English name underneath as the small second line
+// whenever it adds something the main line doesn't already say — for an
+// English UI, or a food with only one name, there is nothing to add.
+function displayNames(item: FoodItem, language: Language): { main: string; sub: string | null } {
+  const main = foodDisplayName(item, language);
+  const sub = item.nameEn && item.nameEn !== main ? item.nameEn : null;
+  return { main, sub };
+}
+
+// "Của tôi" / "Catalog VN" / "USDA", plus an "đã sửa" marker when the user has
+// corrected this food. The list mixes three very different provenances and the
+// user's own entries are the ones they trust most — worth saying out loud.
+function sourceBadge(
+  item: FoodItem,
+  t: (key: string, vars?: Record<string, string | number>) => string
+): { label: string; mine: boolean; edited: boolean } {
+  const kind = foodSourceKind(item);
+  const label =
+    kind === 'mine'
+      ? t('components.foodLogModal.sourceBadgeMine')
+      : kind === 'usda'
+        ? t('components.foodLogModal.sourceBadgeUsda')
+        : t('components.foodLogModal.sourceBadgeCatalog');
+  return { label, mine: kind === 'mine', edited: getOverrideByIdSync(item.id) != null };
 }
 
 function pad2(n: number): string {
@@ -222,12 +252,12 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   const customValid = isValidCustomFoodInput(customInput);
   // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
   // its field suffixes (see that component for the source of truth).
-  const customNutritionBasisLabel =
-    customInput.portionUnit === 'pack'
-      ? t('components.foodLogModal.basisPack')
-      : customInput.portionUnit === 'capsule'
-        ? t('components.foodLogModal.basisCapsule')
-        : t('components.foodLogModal.basisGram');
+  const customNutritionBasisLabel = nutritionBasisLabel(
+    customInput.portionUnit,
+    customInput.servingLabel,
+    customInput.measureUnit,
+    language
+  );
 
   // Builds the FoodItem, persists it via the registry (SQLite + searchable
   // immediately), then hands off into the existing selected-entry view so
@@ -249,7 +279,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
 
   // Supplements (TPCN) counted by pack/capsule are entered as a count, not a
   // gram weight — see gramsForPortion (the shared count→grams conversion).
-  const isServingBased = selected?.portionUnit != null && selected.portionUnit !== 'gram';
+  const isServingBased = isPortionCounted(selected?.portionUnit);
+  // g or ml — labels only; every amount below is still handled in grams.
+  const selectedMeasureUnit = measureUnitOf(selected);
 
   const gramsNum = parseDecimal(grams);
   const validGrams = !isNaN(gramsNum) && gramsNum > 0;
@@ -467,17 +499,32 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   </View>
                 }
                 renderItem={({ item }) => {
-                  const { main, sub } = displayNames(item);
+                  const { main, sub } = displayNames(item, language);
+                  const badge = sourceBadge(item, t);
                   return (
                     <Pressable
                       style={({ pressed }) => [styles.foodRow, pressed && styles.pressed]}
                       onPress={() => pickFood(item)}
                     >
                       <View style={styles.foodRowMain}>
-                        <Text style={styles.foodName}>{main}</Text>
+                        <View style={styles.foodNameRow}>
+                          <Text style={styles.foodName} numberOfLines={1}>
+                            {main}
+                          </Text>
+                          <Text style={[styles.sourceBadge, badge.mine && styles.sourceBadgeMine]}>
+                            {badge.label}
+                            {badge.edited
+                              ? ` · ${t('components.foodLogModal.sourceBadgeEdited')}`
+                              : ''}
+                          </Text>
+                        </View>
                         {sub ? <Text style={styles.foodNameEn}>{sub}</Text> : null}
                         <Text style={styles.foodMeta}>
-                          {foodCategoryLabel(item.category, language)} · {item.per100g.energyKcal} kcal/100g
+                          {foodCategoryLabel(item.category, language)} ·{' '}
+                          {t('components.foodLogModal.resultEnergyMeta', {
+                            kcal: item.per100g.energyKcal,
+                            measure: measureUnitOf(item),
+                          })}
                         </Text>
                       </View>
                       <Text style={styles.foodChevron}>›</Text>
@@ -510,7 +557,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 </Pressable>
               </View>
               {(() => {
-                const { main, sub } = displayNames(selected);
+                const { main, sub } = displayNames(selected, language);
                 return (
                   <>
                     <Text style={styles.title}>{main}</Text>
@@ -537,10 +584,11 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   <>
                     <Text style={styles.fieldLabel}>
                       {t('components.foodLogModal.portionCountLabel', {
-                        unit:
-                          selected.portionUnit === 'pack'
-                            ? t('components.foodLogModal.unitPack')
-                            : t('components.foodLogModal.unitCapsule'),
+                        unit: portionUnitNoun(
+                          selected.portionUnit,
+                          selected.servingLabel,
+                          language
+                        ),
                       })}
                     </Text>
                     <TextInput
@@ -551,10 +599,29 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                       value={portionCount}
                       onChangeText={setPortionCount}
                     />
+                    {/* Spell out what one portion IS ("1 hộp = 65ml") — the
+                        count on its own says nothing about the amount. */}
+                    {selected.servingWeightG != null && selected.servingWeightG > 0 && (
+                      <Text style={styles.portionNote}>
+                        {t('components.foodLogModal.portionDefinitionNote', {
+                          definition: formatServingDefinition(
+                            selected.servingWeightG,
+                            selected.portionUnit,
+                            selected.servingLabel,
+                            language,
+                            selectedMeasureUnit
+                          ),
+                        })}
+                      </Text>
+                    )}
                   </>
                 ) : (
                   <>
-                    <Text style={styles.fieldLabel}>{t('components.foodLogModal.gramsFieldLabel')}</Text>
+                    <Text style={styles.fieldLabel}>
+                      {t('components.foodLogModal.gramsFieldLabel', {
+                        measure: selectedMeasureUnit,
+                      })}
+                    </Text>
                     <TextInput
                       style={styles.input}
                       placeholder={t('components.foodLogModal.gramsPlaceholder')}
@@ -570,7 +637,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                       >
                         <Text style={styles.chipText}>
                           {t('components.foodLogModal.defaultChipLabel', {
-                            grams: selected.defaultServingG,
+                            amount: formatMeasure(selected.defaultServingG, selectedMeasureUnit),
                           })}
                         </Text>
                       </Pressable>
@@ -776,6 +843,19 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeInput: { width: 70, textAlign: 'center' },
   timeColon: { color: c.textPrimary, fontSize: 20, fontWeight: '700' },
+  portionNote: { color: c.textSubtle, fontSize: 11, lineHeight: 16, marginTop: -4 },
+  foodNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sourceBadge: {
+    fontSize: 9,
+    color: c.textSubtle,
+    borderWidth: 1,
+    borderColor: c.borderSubtle,
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
+  sourceBadgeMine: { color: c.accent, borderColor: c.accent },
   preview: {
     backgroundColor: c.bgHighlight,
     borderRadius: 12,

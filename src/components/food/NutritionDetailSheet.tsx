@@ -3,12 +3,13 @@ import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { BottomSheet } from '../ui/BottomSheet';
 import { buildNutritionDetail } from '../../domain/food/nutritionDetail';
 import { getAnyFoodById, foodDisplayName } from '../../data/food/foodLookup';
-import type { FoodLogEntry } from '../../types/food';
+import { formatLoggedPortion } from '../../domain/food/portionUnits';
+import type { FoodItem, FoodLogEntry } from '../../types/food';
+import type { Language } from '../../i18n/types';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
 
-type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface Props {
   // The logged entry to show the breakdown for. null/undefined means "closed"
@@ -26,16 +27,14 @@ function timeLabel(timestamp: number): string {
   return `${h}:${m}`;
 }
 
-// Mirrors TodayMeals.amountLabel: packs/capsules (TPCN) are shown by count
-// ("2 viên"), everything else by gram weight.
-function portionLabel(entry: FoodLogEntry, t: TFn): string {
-  if (entry.portionUnit === 'pack' && entry.count != null) {
-    return t('components.nutritionDetailSheet.packCount', { count: entry.count });
-  }
-  if (entry.portionUnit === 'capsule' && entry.count != null) {
-    return t('components.nutritionDetailSheet.capsuleCount', { count: entry.count });
-  }
-  return `${entry.grams}g`;
+// Mirrors TodayMeals.amountLabel via the same shared formatter: counted
+// portions are shown by count ("2 hộp (130ml)"), everything else by amount.
+function portionLabel(
+  entry: FoodLogEntry,
+  item: FoodItem | null,
+  language: Language
+): string {
+  return formatLoggedPortion(entry, item, language);
 }
 
 const MAX_TABLE_HEIGHT = Dimensions.get('window').height * 0.6;
@@ -45,7 +44,7 @@ const MAX_TABLE_HEIGHT = Dimensions.get('window').height * 0.6;
 // logged foods, merging any user override) and hands it to the pure domain
 // helper buildNutritionDetail for the actual row derivation.
 export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
-  const { t, language } = useT();
+  const { language } = useT();
   const styles = useThemedStyles(createStyles);
   // Both calls below are plain, synchronous, deterministic lookups/derivations
   // (in-memory map/registry reads + pure math) — safe to run directly during
@@ -61,7 +60,7 @@ export function NutritionDetailSheet({ entry, visible, onClose }: Props) {
             {item ? foodDisplayName(item, language) : entry.foodNameVi}
           </Text>
           <Text style={styles.subtitle}>
-            {portionLabel(entry, t)} · {timeLabel(entry.timestamp)}
+            {portionLabel(entry, item, language)} · {timeLabel(entry.timestamp)}
           </Text>
 
           <ScrollView

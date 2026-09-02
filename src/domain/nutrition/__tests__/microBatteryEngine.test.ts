@@ -1,4 +1,8 @@
-import { computeMicroBatteries, microBatterySourceRows, type LoggedPortion } from '../microBatteryEngine';
+import {
+  computeMicroBatteries,
+  microBatterySourceBreakdown,
+  type LoggedPortion,
+} from '../microBatteryEngine';
 import { gramsForPortion } from '../../food/foodNutrition';
 import type { FoodItem, Nutrition } from '../../../types/food';
 import type { NutrientTarget } from '../../../types/nutrition';
@@ -222,32 +226,126 @@ describe('computeMicroBatteries', () => {
   });
 });
 
-describe('microBatterySourceRows', () => {
+describe('microBatterySourceBreakdown', () => {
   const foodLog = [
-    { id: 'log-1', foodId: 'spinach', foodNameVi: 'Rau bina', grams: 200 }, // 4g fiber
-    { id: 'log-2', foodId: 'bread', foodNameVi: 'Bánh mì', grams: 100 }, // 3g fiber, 400mg sodium
+    { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 200 }, // 4g fiber
+    { foodId: 'bread', foodNameVi: 'Bánh mì', grams: 100 }, // 3g fiber, 400mg sodium
   ];
 
   it('returns one row per food that contributed a nonzero amount of the nutrient', () => {
-    const rows = microBatterySourceRows(foodLog, 'fiber', lookup);
+    const { rows, total } = microBatterySourceBreakdown(foodLog, 'fiber', lookup);
     expect(rows).toEqual([
-      { id: 'log-1', label: 'Rau bina', amount: 4 },
-      { id: 'log-2', label: 'Bánh mì', amount: 3 },
+      {
+        id: 'spinach',
+        foodId: 'spinach',
+        foodNameVi: 'Rau bina',
+        amount: 4,
+        grams: 200,
+        entryCount: 1,
+        portionUnit: undefined,
+        count: undefined,
+        per100g: 2,
+      },
+      {
+        id: 'bread',
+        foodId: 'bread',
+        foodNameVi: 'Bánh mì',
+        amount: 3,
+        grams: 100,
+        entryCount: 1,
+        portionUnit: undefined,
+        count: undefined,
+        per100g: 3,
+      },
     ]);
+    expect(total).toBe(7);
   });
 
   it('omits foods that contributed 0 of the nutrient', () => {
-    const rows = microBatterySourceRows(foodLog, 'sodium', lookup);
-    expect(rows).toEqual([{ id: 'log-2', label: 'Bánh mì', amount: 400 }]);
+    const { rows } = microBatterySourceBreakdown(foodLog, 'sodium', lookup);
+    expect(rows.map((r) => [r.foodId, r.amount])).toEqual([['bread', 400]]);
   });
 
   it('safely skips an unknown/deleted foodId without breaking the other rows', () => {
-    const withMissing = [...foodLog, { id: 'log-3', foodId: 'does_not_exist', foodNameVi: 'Ghost', grams: 500 }];
-    const rows = microBatterySourceRows(withMissing, 'fiber', lookup);
+    const withMissing = [...foodLog, { foodId: 'does_not_exist', foodNameVi: 'Ghost', grams: 500 }];
+    const { rows } = microBatterySourceBreakdown(withMissing, 'fiber', lookup);
     expect(rows).toHaveLength(2);
   });
 
   it('returns an empty list when the log is empty', () => {
-    expect(microBatterySourceRows([], 'fiber', lookup)).toEqual([]);
+    expect(microBatterySourceBreakdown([], 'fiber', lookup)).toEqual({ rows: [], total: 0 });
+  });
+
+  // The reported bug: the same food logged several times used to render as
+  // several identical rows, which reads as several different foods.
+  it('groups repeat logs of the same food into ONE row carrying the totals', () => {
+    const repeated = [
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 100 },
+      { foodId: 'bread', foodNameVi: 'Bánh mì', grams: 100 },
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 50 },
+    ];
+    const { rows } = microBatterySourceBreakdown(repeated, 'fiber', lookup);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ foodId: 'spinach', grams: 150, entryCount: 2, amount: 3 });
+    expect(rows[1]).toMatchObject({ foodId: 'bread', grams: 100, entryCount: 1, amount: 3 });
+  });
+
+  // The formula lines in the breakdown sheet multiply this figure by the
+  // grams — it has to be the food's real per-100 value, not a derived one.
+  it("carries each food's own per-100 figure for the nutrient", () => {
+    const { rows } = microBatterySourceBreakdown(foodLog, 'fiber', lookup);
+    expect(rows.map((r) => [r.foodId, r.per100g])).toEqual([
+      ['spinach', 2],
+      ['bread', 3],
+    ]);
+  });
+
+  it('sums the counts of repeat logs that share one portion unit', () => {
+    const repeated = [
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 100, portionUnit: 'pack' as const, count: 2 },
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 50, portionUnit: 'pack' as const, count: 1 },
+    ];
+    const { rows } = microBatterySourceBreakdown(repeated, 'fiber', lookup);
+    expect(rows[0]).toMatchObject({ portionUnit: 'pack', count: 3, entryCount: 2 });
+  });
+
+  it('drops the count label when grouped logs disagree on the portion unit', () => {
+    const mixed = [
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 100, portionUnit: 'pack' as const, count: 2 },
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 50 },
+    ];
+    const { rows } = microBatterySourceBreakdown(mixed, 'fiber', lookup);
+    expect(rows[0].portionUnit).toBeUndefined();
+    expect(rows[0].count).toBeUndefined();
+  });
+
+  // The other half of the reported bug: the rows have to add up to the footer.
+  it('makes the displayed row amounts sum EXACTLY to the displayed total', () => {
+    // 87.5g spinach = 1.75g fiber each; naive per-row rounding gives
+    // 1.8 + 1.8 = 3.6 against a real total of 3.5.
+    const halves = [
+      { foodId: 'spinach', foodNameVi: 'Rau bina', grams: 87.5 },
+      { foodId: 'bread', foodNameVi: 'Bánh mì', grams: 58.33 },
+    ];
+    const { rows, total } = microBatterySourceBreakdown(halves, 'fiber', lookup);
+    const summed = rows.reduce((sum, r) => sum + r.amount, 0);
+    expect(Math.round(summed * 10) / 10).toBe(total);
+  });
+
+  it('reports a total identical to the matching computeMicroBatteries figure', () => {
+    const target: NutrientTarget[] = [
+      { id: 'fiber', kind: 'goal', nameVi: 'Chất xơ', unit: 'g', color: '#000', value: 25 },
+    ];
+    const portions: LoggedPortion[] = [
+      { foodId: 'spinach', grams: 87.5 },
+      { foodId: 'bread', grams: 58.33 },
+    ];
+    const [state] = computeMicroBatteries(portions, lookup, target);
+    const { total } = microBatterySourceBreakdown(
+      portions.map((p) => ({ ...p, foodNameVi: p.foodId })),
+      'fiber',
+      lookup
+    );
+    expect(total).toBe(state.current);
   });
 });

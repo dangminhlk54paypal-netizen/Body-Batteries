@@ -4,7 +4,7 @@ import { useEnergyStore } from '../store/energyStore';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { FOOD_ITEMS } from '../data/food/foodDatabase';
 import { getCustomFoods } from '../data/food/customFoodRegistry';
-import { getAnyFoodById } from '../data/food/foodLookup';
+import { getAnyFoodById, foodDisplayName } from '../data/food/foodLookup';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { gramsForPortion } from '../domain/food/foodNutrition';
 import type { FoodItem, FoodLogEntry } from '../types/food';
@@ -31,7 +31,7 @@ interface Props {
 const BUILT_IN_SUPPLEMENTS = FOOD_ITEMS.filter((f) => f.category === 'supplement');
 
 export function SupplementQuickLog({ todayLog }: Props) {
-  const { t } = useT();
+  const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
   const logFood = useEnergyStore((s) => s.logFood);
 
@@ -39,6 +39,12 @@ export function SupplementQuickLog({ todayLog }: Props) {
   const [refreshTick, setRefreshTick] = useState(0);
   const [adding, setAdding] = useState(false);
   const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
+  // Guards a fast double-tap on a chip from logging the same dose twice —
+  // the sibling of FoodLogModal's `savingFood`, which this component was
+  // missing. Without it one long press could land two food_log rows, which
+  // then read as two separate doses everywhere (micro-battery sources
+  // included, since those are recomputed live from the log).
+  const [logging, setLogging] = useState(false);
 
   const supplements = useMemo(() => {
     const custom = getCustomFoods().filter((f) => f.category === 'supplement');
@@ -49,8 +55,36 @@ export function SupplementQuickLog({ todayLog }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
-  function countToday(foodId: string): number {
-    return todayLog.filter((e) => e.foodId === foodId).length;
+  // Doses, not log rows: an entry logged as "2 viên" carries count: 2, so
+  // counting rows would report it as a single dose. Entries with no count
+  // (a gram-based supplement, or one chip tap) are one dose each.
+  function dosesToday(foodId: string): number {
+    return todayLog
+      .filter((e) => e.foodId === foodId)
+      .reduce((sum, e) => sum + (e.count ?? 1), 0);
+  }
+
+  async function logOneDose(item: FoodItem) {
+    if (logging) return;
+    setLogging(true);
+    try {
+      // Log the override-aware item so edited nutrition applies.
+      const resolved = getAnyFoodById(item.id) ?? item;
+      if (resolved.portionUnit != null && resolved.portionUnit !== 'gram') {
+        // One tap = one pack/capsule — convert to grams for the nutrition
+        // engine, but keep the count for display ("1 viên").
+        await logFood(resolved, gramsForPortion(resolved, 1), Date.now(), {
+          portionUnit: resolved.portionUnit,
+          count: 1,
+        });
+      } else {
+        await logFood(resolved, resolved.defaultServingG, Date.now());
+      }
+      useChargeEffectStore.getState().triggerChargePulse();
+      haptics.tapLight();
+    } finally {
+      setLogging(false);
+    }
   }
 
   return (
@@ -62,26 +96,12 @@ export function SupplementQuickLog({ todayLog }: Props) {
         contentContainerStyle={styles.row}
       >
         {supplements.map((item) => {
-          const count = countToday(item.id);
+          const count = dosesToday(item.id);
           return (
             <Pressable
               key={item.id}
-              onPress={() => {
-                // Log the override-aware item so edited nutrition applies.
-                const resolved = getAnyFoodById(item.id) ?? item;
-                if (resolved.portionUnit != null && resolved.portionUnit !== 'gram') {
-                  // One tap = one pack/capsule — convert to grams for the
-                  // nutrition engine, but keep the count for display ("1 viên").
-                  logFood(resolved, gramsForPortion(resolved, 1), Date.now(), {
-                    portionUnit: resolved.portionUnit,
-                    count: 1,
-                  });
-                } else {
-                  logFood(resolved, resolved.defaultServingG, Date.now());
-                }
-                useChargeEffectStore.getState().triggerChargePulse();
-                haptics.tapLight();
-              }}
+              disabled={logging}
+              onPress={() => logOneDose(item)}
               style={({ pressed }) => [
                 styles.chip,
                 count > 0 && styles.chipLogged,
@@ -90,7 +110,7 @@ export function SupplementQuickLog({ todayLog }: Props) {
             >
               <View style={styles.chipHeader}>
                 <Text style={styles.chipName} numberOfLines={1}>
-                  {item.nameVi}
+                  {foodDisplayName(item, language)}
                 </Text>
                 <Pressable
                   onPress={() => setEditingFood(item)}

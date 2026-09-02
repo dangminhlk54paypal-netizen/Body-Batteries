@@ -27,6 +27,8 @@ describe('rowToCustomFoodItem', () => {
       dha_mg: 20,
       portion_unit: null,
       serving_weight_g: null,
+      serving_label: null,
+      measure_unit: null,
       created_at: 1700000000000,
     };
 
@@ -84,6 +86,8 @@ describe('rowToCustomFoodItem', () => {
       dha_mg: null,
       portion_unit: null,
       serving_weight_g: null,
+      serving_label: null,
+      measure_unit: null,
       created_at: 1700000000000,
     };
 
@@ -117,6 +121,8 @@ describe('rowToCustomFoodItem', () => {
       dha_mg: 24590.16,
       portion_unit: 'capsule',
       serving_weight_g: 1.22,
+      serving_label: null,
+      measure_unit: null,
       created_at: 1700000000000,
     };
 

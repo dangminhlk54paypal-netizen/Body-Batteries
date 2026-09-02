@@ -51,6 +51,25 @@ export const en: TranslationSchema = {
     snack: 'Snack',
   },
 
+  // Portion & measure units for foods. `portion.*` names ONE portion of a
+  // counted food; `measure.*` labels the g/ml the amounts are expressed in.
+  units: {
+    portion: {
+      pack: 'pack',
+      capsule: 'capsule',
+      serving: 'serving',
+      countFormat: '{{count}} {{unit}}',
+      countWithMeasure: '{{portion}} ({{measure}})',
+      servingDefinition: '1 {{unit}} = {{measure}}',
+    },
+    measure: {
+      gram: 'gram (g)',
+      milliliter: 'millilitre (ml)',
+      gramShort: 'g',
+      milliliterShort: 'ml',
+    },
+  },
+
   foodCategories: {
     grain: 'Grains',
     meat: 'Meat',
@@ -64,6 +83,47 @@ export const en: TranslationSchema = {
     drink: 'Drinks',
     supplement: 'Supplements',
     snack: 'Snacks',
+  },
+
+  // "My foods" — the foods this user added/corrected, stored on their device.
+  myFoods: {
+    title: '🍽️ My foods',
+    subtitle:
+      "This list lives on your device and syncs nowhere. The app only provides the calculation engine — the eating framework is yours.",
+    openButton: 'My foods',
+    customSectionTitle: 'Foods I added ({{count}})',
+    overrideSectionTitle: 'Catalog foods I corrected ({{count}})',
+    emptyCustom: 'Nothing yet. Add a food right from the “Log a food” screen.',
+    emptyOverride: 'You have not corrected any catalog food yet.',
+    rowBasis: 'Nutrition entered per {{basis}}',
+    deleteTitle: 'Delete this food?',
+    deleteCustomMessage:
+      'Removes “{{name}}” from your list. Meals you already logged are NOT changed — they keep the figures saved with them.',
+    deleteOverrideMessage:
+      'Drops your correction for “{{name}}”. The food goes back to the catalog’s original figures.',
+    deleteConfirm: 'Delete',
+    revertConfirm: 'Drop correction',
+    export: {
+      button: '📤 Export my food list',
+      shareDialogTitle: 'Save my food list',
+      doneTitle: 'Exported',
+      doneMessage: 'Exported {{custom}} added foods and {{override}} corrections.',
+      errorMessage: 'Could not export the food list.',
+    },
+    import: {
+      button: '📥 Import from a file',
+      pickTitle: 'Pick a file to import',
+      pickHint:
+        "The app looks for .json files in its documents folder (open Files → On My iPhone → BodyBatteries to copy one in).",
+      noFiles: 'No .json file found in the app’s documents folder.',
+      doneTitle: 'Imported',
+      doneMessage: 'Imported {{custom}} added foods and {{override}} corrections. Matching ids were overwritten.',
+      errorTitle: 'Import failed',
+      notJson: 'That file is not valid JSON.',
+      wrongVersion: 'That file is from a different version the app cannot read yet.',
+      empty: 'The file is valid but contains no foods.',
+      unreadable: 'The file could not be read.',
+    },
   },
 
   modes: {
@@ -484,6 +544,7 @@ export const en: TranslationSchema = {
       a11yToggleUnitHint: 'Tap to switch display unit',
     },
     microBatteryStack: {
+      cellA11y: 'See {{name}} sources and how it is calculated — currently {{percentage}}%',
       title: 'Micronutrients logged',
       disclaimer: 'For reference only.',
       collapsedLine: '▸ Collapsed — tap to see {{count}} nutrients',
@@ -536,8 +597,40 @@ export const en: TranslationSchema = {
       emptyText: 'No food has contributed {{name}} on this day yet — log a food above.',
       totalText: 'Total: {{value}}{{unit}} / Rec. {{target}}{{unit}}',
       footerNote: 'This nutrient is calculated automatically from logged foods — no manual charging needed.',
+      rowEntryCountSuffix: ' · logged {{count}}×',
+      explainToggleShow: '🧮 Show how this number is calculated',
+      explainToggleHide: '🧮 Hide the calculation',
+      formulaIntro:
+        'Nothing here is typed in by hand. Each food contributes (the label figure per 100 units) × (how much you ate) ÷ 100:',
+      formulaRow: '{{per100}}{{unit}}/100{{measure}} × {{amount}}{{measure}} ÷ 100 = {{result}}{{unit}}',
+      formulaSum: 'Added up for the day: {{parts}} = {{total}}{{unit}}',
+      formulaSingle: 'Only one food contributed today → total = {{total}}{{unit}}',
+      formulaTargetGoal: 'Against the {{target}}{{unit}}/day recommendation → {{percentage}}%',
+      formulaTargetLimit: 'Against the {{target}}{{unit}}/day ceiling → {{percentage}}%',
+      derivationSalt:
+        'Salt is not a field you fill in — it is derived from sodium: sodium (mg) × 2.5 ÷ 1000 = salt (g). Entering sodium is enough to drive the Salt pin.',
+      derivationOmega3: 'Omega-3 is EPA + DHA combined. A food that declares neither contributes nothing.',
+      derivationSugar:
+        'Sugar sits INSIDE total carbs, it is not added on top of them. Entering sugar only tracks the sugar share separately.',
+      dayScopeNote:
+        'Micronutrient pins run on the CALENDAR day (00:00–24:00). The Energy pin differs: it resets at 6am, so a 2am snack still counts toward the previous day.',
+      liveNote:
+        'This figure is recomputed from the food log every time the app opens — edit or delete a food and the total follows immediately. There is no separate stored copy to drift.',
+      sumNote: 'The rows above add up exactly to the total below.',
     },
     batterySourceSheet: {
+      explainToggleShow: '🧮 Show how this number is calculated',
+      explainToggleHide: '🧮 Hide the calculation',
+      explainFood:
+        'Each food was worked out when you logged it: (the food’s figure per 100 units) × (how much you ate) ÷ 100. This pin is the sum of every row above.',
+      explainSnapshot:
+        'Each row’s figure is FROZEN at log time. If you later correct that food’s nutrition, meals already logged keep their original numbers — history is never rewritten. The micronutrient pins differ: they recompute from the log on every app open, so a correction shows up there immediately.',
+      explainMinerals:
+        'The Minerals pin is a COARSE rollup of six minerals: calcium + iron + sodium + potassium + magnesium + zinc. For each one on its own, use the micronutrient pins below.',
+      explainMovement:
+        'The Movement pin = steps walked + the step-equivalent of your workouts (each session converts to “roughly how many steps” based on its intensity).',
+      explainDecayNote:
+        '“Total today” above is everything you logged during the day. The pin level on the home screen can read lower, because pins drain hour by hour.',
       title: '{{name}} charge sources today',
       mineralsCaption:
         'Estimated total minerals (calcium + iron + sodium + potassium + magnesium + zinc) from logged foods.',
@@ -566,9 +659,6 @@ export const en: TranslationSchema = {
       backToSearch: '‹ Back',
       addCustomTitle: 'Add a new food',
       addCustomSubtitle: 'Enter the nutrition per {{basis}}',
-      basisPack: '1 pack',
-      basisCapsule: '1 capsule',
-      basisGram: '100g',
       saveCustomFoodButton: 'Save food',
       title: 'Log a food',
       searchSubtitle: 'Search the list and pick one',
@@ -578,13 +668,17 @@ export const en: TranslationSchema = {
       addNewFoodButton: "➕ Add new food: '{{query}}'",
       backToOtherFood: '‹ Pick another food',
       editNutritionLink: '✎ Edit nutrition',
+      sourceBadgeMine: 'Mine',
+      sourceBadgeCatalog: 'VN catalog',
+      sourceBadgeUsda: 'USDA',
+      sourceBadgeEdited: 'edited',
+      resultEnergyMeta: '{{kcal}} kcal/100{{measure}}',
       portionCountLabel: 'Number of {{unit}}',
-      unitPack: 'packs',
-      unitCapsule: 'capsules',
+      portionDefinitionNote: '{{definition}} — the nutrition below is for the amount you pick.',
       portionCountPlaceholder: 'e.g. 1',
-      gramsFieldLabel: 'Amount (grams)',
+      gramsFieldLabel: 'Amount ({{measure}})',
       gramsPlaceholder: 'e.g. 150',
-      defaultChipLabel: 'default={{grams}}g',
+      defaultChipLabel: 'default={{amount}}',
       mealTimeFieldLabel: 'Time eaten → {{meal}}',
       logDateFieldLabel: 'Log date',
       previewKcalLabel: '⚡ {{kcal}} kcal',
@@ -597,23 +691,27 @@ export const en: TranslationSchema = {
       namePlaceholder: 'e.g. Sour fish soup',
       categoryLabel: 'Category',
       categoryPlaceholder: 'dish, snack, supplement...',
-      portionUnitLabel: 'Unit',
-      unitOptionGram: 'Gram',
+      measureUnitLabel: 'Measured in',
+      measureNoteMl:
+        'Pick ml for liquids. The engine still computes in grams, using 1 ml ≈ 1 g.',
+      portionUnitLabel: 'Log this food by',
+      unitOptionGram: 'By {{measure}}',
       unitOptionPack: 'Pack',
       unitOptionCapsule: 'Capsule',
-      servingWeightLabel: 'Weight of 1 {{unit}} (g)',
-      unitPackNoun: 'pack',
-      unitCapsuleNoun: 'capsule',
-      servingWeightPlaceholder: 'e.g. 5',
-      defaultServingLabel: 'Default serving (grams)',
+      unitOptionServing: 'Portion…',
+      servingLabelLabel: 'What is one portion called?',
+      servingLabelPlaceholder: 'bottle, box, can, glass, serving...',
+      servingLabelHint:
+        'A 65ml Yakult: type “bottle”, pick ml as the measure, enter 65 as the size, then enter the nutrition for exactly one bottle.',
+      servingSizeLabel: 'Size of 1 {{unit}} ({{measure}})',
+      servingWeightPlaceholder: 'e.g. 65',
+      defaultServingLabel: 'Default serving ({{measure}})',
       defaultServingPlaceholder: '100',
       macroKcal: 'Kcal',
       macroProtein: 'Protein (g)',
       macroFat: 'Fat (g)',
       carbsLabel: 'Carbs (Carbohydrate) {{suffix}}',
-      suffixPack: '/ pack',
-      suffixCapsule: '/ capsule',
-      suffixGram: '/ 100g',
+      nutritionSuffix: '/ {{basis}}',
       carbBreakdownNote:
         "Sugar and fiber are already INCLUDED in Carbs — enter them for detail tracking, they're not added on top.",
       sugarLabel: 'Sugar (g) {{suffix}}',
@@ -638,23 +736,16 @@ export const en: TranslationSchema = {
       errorTooOld: 'You can only backdate up to {{max}} days',
     },
     nutritionDetailSheet: {
-      packCount: '{{count}} packs',
-      capsuleCount: '{{count}} capsules',
     },
     foodNutritionEditModal: {
       titleEdit: 'Edit nutrition',
       titleAdd: 'Add a new food',
       subtitleEdit: 'For reference only — your edited values take priority in the display.',
       subtitleAdd: 'Enter the nutrition per {{basis}}.',
-      basisPack: '1 pack',
-      basisCapsule: '1 capsule',
-      basisGram: '100g',
       saveEditButton: 'Save changes',
       saveAddButton: 'Save food',
     },
     dayDetailSheet: {
-      packCount: '{{count}} packs',
-      capsuleCount: '{{count}} capsules',
       deleteConfirmTitle: 'Delete food',
       deleteConfirmMessage: 'Are you sure you want to delete "{{name}}"?',
       summaryLabel: 'Total: {{kcal}} kcal · Protein {{protein}}g',
@@ -665,16 +756,19 @@ export const en: TranslationSchema = {
       emptyText: 'No food logged for this day yet',
       addButtonLabel: '＋ Add a food for this day',
     },
+    shareDayFoodCard: {
+      tagline: 'Track your energy & nutrition every day',
+    },
     todayMeals: {
-      packCount: '{{count}} packs',
-      capsuleCount: '{{count}} capsules',
-      countFieldLabelPack: 'Number of packs',
-      countFieldLabelCapsule: 'Number of capsules',
+      countFieldLabel: 'Number of {{unit}}',
       sectionLabel: 'Eaten today',
       emptyText: 'No food logged today yet. Tap "⚡ Charge" to get started.',
       macroLine: 'Protein {{protein}}g · Carbs {{carb}}g · Fat {{fat}}g',
       editModalTitle: 'Edit food',
-      gramsFieldLabel: 'Amount (g)',
+      gramsFieldLabel: 'Amount ({{measure}})',
+      shareButtonA11y: "Share today's food diary as an image",
+      shareDialogTitle: 'Share food diary',
+      shareErrorMessage: 'Could not create the share image. Please try again.',
     },
     todayIntakes: {
       sectionLabel: 'Quick charges today',

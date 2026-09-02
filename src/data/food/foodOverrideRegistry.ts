@@ -40,6 +40,15 @@ export async function upsertOverrideAndRegister(item: FoodItem): Promise<void> {
   overrides.set(item.id, item);
 }
 
+// Drops a user's nutrition correction, so the food reverts to whatever the
+// built-in catalog says. Mirrors upsertOverrideAndRegister: persist, then
+// update the in-memory registry so getAnyFoodById stops merging it right away.
+export async function deleteOverrideAndUnregister(id: string): Promise<void> {
+  const { deleteOverride } = await import('../repositories/foodOverridesRepository');
+  await deleteOverride(id);
+  overrides.delete(id);
+}
+
 // Hydrates the registry from the DB. Call once at app startup, right after
 // loadCustomFoodsIntoRegistry(). Defensive: overrides are an enhancement, not
 // core data — a failure here must not block startup, so it just leaves the

@@ -60,6 +60,25 @@ export const vi = {
     snack: 'Bữa phụ',
   },
 
+  // Portion & measure units for foods. `portion.*` names ONE portion of a
+  // counted food; `measure.*` labels the g/ml the amounts are expressed in.
+  units: {
+    portion: {
+      pack: 'gói',
+      capsule: 'viên',
+      serving: 'khẩu phần',
+      countFormat: '{{count}} {{unit}}',
+      countWithMeasure: '{{portion}} ({{measure}})',
+      servingDefinition: '1 {{unit}} = {{measure}}',
+    },
+    measure: {
+      gram: 'gram (g)',
+      milliliter: 'mililít (ml)',
+      gramShort: 'g',
+      milliliterShort: 'ml',
+    },
+  },
+
   foodCategories: {
     grain: 'Tinh bột',
     meat: 'Thịt',
@@ -73,6 +92,47 @@ export const vi = {
     drink: 'Đồ uống',
     supplement: 'Thực phẩm chức năng',
     snack: 'Bánh & ăn vặt',
+  },
+
+  // "Món của tôi" — danh sách món người dùng tự thêm/tự sửa, lưu trên máy.
+  myFoods: {
+    title: '🍽️ Món của tôi',
+    subtitle:
+      'Danh sách này nằm trên máy bạn, không đồng bộ đi đâu. App chỉ cung cấp engine tính toán — khung ăn uống là của bạn.',
+    openButton: 'Món của tôi',
+    customSectionTitle: 'Món tôi tự thêm ({{count}})',
+    overrideSectionTitle: 'Món catalog tôi đã sửa ({{count}})',
+    emptyCustom: 'Chưa có món nào. Thêm món mới ngay trong màn hình “Ghi món ăn”.',
+    emptyOverride: 'Chưa sửa thành phần món nào của catalog.',
+    rowBasis: 'Dinh dưỡng ghi cho {{basis}}',
+    deleteTitle: 'Xoá món này?',
+    deleteCustomMessage:
+      'Xoá “{{name}}” khỏi danh sách của bạn. Các bữa đã ghi trước đây KHÔNG bị đổi — chúng giữ nguyên số liệu đã lưu.',
+    deleteOverrideMessage:
+      'Bỏ phần bạn đã sửa cho “{{name}}”. Món này sẽ quay về đúng số liệu gốc của catalog.',
+    deleteConfirm: 'Xoá',
+    revertConfirm: 'Bỏ sửa',
+    export: {
+      button: '📤 Xuất danh sách món',
+      shareDialogTitle: 'Lưu danh sách món của tôi',
+      doneTitle: 'Đã xuất',
+      doneMessage: 'Đã xuất {{custom}} món tự thêm và {{override}} món đã sửa.',
+      errorMessage: 'Không xuất được danh sách món.',
+    },
+    import: {
+      button: '📥 Nhập từ file',
+      pickTitle: 'Chọn file để nhập',
+      pickHint:
+        'App tìm file .json trong thư mục tài liệu của app (mở app Files → On My iPhone → BodyBatteries để chép file vào).',
+      noFiles: 'Không tìm thấy file .json nào trong thư mục tài liệu của app.',
+      doneTitle: 'Đã nhập',
+      doneMessage: 'Đã nhập {{custom}} món tự thêm và {{override}} món đã sửa. Món trùng ID được ghi đè.',
+      errorTitle: 'Không nhập được',
+      notJson: 'File này không phải JSON hợp lệ.',
+      wrongVersion: 'File này thuộc phiên bản khác, app chưa đọc được.',
+      empty: 'File hợp lệ nhưng không chứa món nào.',
+      unreadable: 'Không đọc được file.',
+    },
   },
 
   modes: {
@@ -519,6 +579,7 @@ export const vi = {
       a11yToggleUnitHint: 'Chạm để đổi đơn vị hiển thị',
     },
     microBatteryStack: {
+      cellA11y: 'Xem nguồn nạp và cách tính {{name}} — hiện {{percentage}}%',
       title: 'Vi chất đã nạp',
       disclaimer: 'Chỉ để tham khảo.',
       collapsedLine: '▸ Đang thu gọn — bấm để xem {{count}} vi chất',
@@ -571,8 +632,40 @@ export const vi = {
       emptyText: 'Chưa có món nào đóng góp {{name}} trong ngày này — hãy ghi món ăn ở trên.',
       totalText: 'Tổng: {{value}}{{unit}} / KN {{target}}{{unit}}',
       footerNote: 'Vi chất này được tính tự động từ các món ăn đã ghi — không cần nạp tay.',
+      rowEntryCountSuffix: ' · ghi {{count}} lần',
+      explainToggleShow: '🧮 Xem cách tính con số này',
+      explainToggleHide: '🧮 Ẩn cách tính',
+      formulaIntro:
+        'Không có con số nào nhập tay. Mỗi món đóng góp = (giá trị ghi trên nhãn cho 100 đơn vị) × (lượng bạn đã ăn) ÷ 100:',
+      formulaRow: '{{per100}}{{unit}}/100{{measure}} × {{amount}}{{measure}} ÷ 100 = {{result}}{{unit}}',
+      formulaSum: 'Cộng dồn cả ngày: {{parts}} = {{total}}{{unit}}',
+      formulaSingle: 'Cả ngày chỉ có 1 món đóng góp → tổng = {{total}}{{unit}}',
+      formulaTargetGoal: 'So với khuyến nghị {{target}}{{unit}}/ngày → {{percentage}}%',
+      formulaTargetLimit: 'So với ngưỡng nên ở dưới {{target}}{{unit}}/ngày → {{percentage}}%',
+      derivationSalt:
+        'Muối không phải một ô nhập riêng — app suy ra từ natri: natri (mg) × 2.5 ÷ 1000 = muối (g). Nên chỉ cần nhập natri là pin Muối tự chạy.',
+      derivationOmega3: 'Omega-3 = EPA + DHA cộng lại. Món nào không khai báo EPA/DHA thì không đóng góp.',
+      derivationSugar:
+        'Đường nằm TRONG tổng Carbs, không cộng thêm vào Carbs. Nhập đường chỉ để theo dõi riêng phần đường.',
+      dayScopeNote:
+        'Pin vi chất tính theo NGÀY LỊCH (0h–24h). Khác pin Năng lượng: pin đó reset lúc 6h sáng, nên bữa ăn lúc 2h đêm vẫn tính cho ngày hôm trước.',
+      liveNote:
+        'Số này được tính lại từ nhật ký món ăn mỗi lần mở app — sửa hoặc xoá một món là tổng đổi theo ngay, không có bản lưu riêng nào để lệch.',
+      sumNote: 'Cộng các dòng trên ra đúng tổng bên dưới.',
     },
     batterySourceSheet: {
+      explainToggleShow: '🧮 Xem cách tính con số này',
+      explainToggleHide: '🧮 Ẩn cách tính',
+      explainFood:
+        'Mỗi món lúc ghi đã được tính sẵn: (giá trị trên 100 đơn vị của món) × (lượng bạn đã ăn) ÷ 100. Pin này = cộng tất cả các dòng ở trên.',
+      explainSnapshot:
+        'Số của từng dòng được CHỐT tại thời điểm ghi món. Nếu sau này bạn sửa thành phần của món đó, các bữa đã ghi vẫn giữ số cũ — lịch sử không bị viết lại. Khác với pin vi chất: pin vi chất tính lại từ nhật ký mỗi lần mở app, nên sửa món là đổi ngay.',
+      explainMinerals:
+        'Pin Khoáng chất là tổng gộp THÔ của 6 khoáng: canxi + sắt + natri + kali + magiê + kẽm. Muốn xem từng khoáng riêng thì dùng các pin vi chất bên dưới.',
+      explainMovement:
+        'Pin Vận động = số bước đi + phần bước quy đổi từ buổi tập (mỗi buổi tập được quy ra “tương đương bao nhiêu bước” dựa trên cường độ).',
+      explainDecayNote:
+        '“Tổng hôm nay” ở trên là toàn bộ những gì bạn đã ghi trong ngày. Mức pin ngoài màn hình chính có thể thấp hơn vì pin xả dần theo giờ.',
       title: 'Nguồn nạp {{name}} hôm nay',
       mineralsCaption:
         'Tổng khoáng ước tính (canxi + sắt + natri + kali + magiê + kẽm) từ món đã ghi.',
@@ -601,9 +694,6 @@ export const vi = {
       backToSearch: '‹ Quay lại',
       addCustomTitle: 'Thêm món mới',
       addCustomSubtitle: 'Nhập dinh dưỡng tính cho mỗi {{basis}}',
-      basisPack: '1 gói',
-      basisCapsule: '1 viên',
-      basisGram: '100g',
       saveCustomFoodButton: 'Lưu món',
       title: 'Ghi món ăn',
       searchSubtitle: 'Tìm món trong danh sách rồi chọn',
@@ -613,13 +703,17 @@ export const vi = {
       addNewFoodButton: "➕ Thêm món mới: '{{query}}'",
       backToOtherFood: '‹ Chọn món khác',
       editNutritionLink: '✎ Sửa thành phần',
+      sourceBadgeMine: 'Của tôi',
+      sourceBadgeCatalog: 'Catalog VN',
+      sourceBadgeUsda: 'USDA',
+      sourceBadgeEdited: 'đã sửa',
+      resultEnergyMeta: '{{kcal}} kcal/100{{measure}}',
       portionCountLabel: 'Số {{unit}}',
-      unitPack: 'gói',
-      unitCapsule: 'viên',
+      portionDefinitionNote: '{{definition}} — dinh dưỡng bên dưới tính cho lượng bạn chọn.',
       portionCountPlaceholder: 'Ví dụ: 1',
-      gramsFieldLabel: 'Khối lượng (gram)',
+      gramsFieldLabel: 'Lượng nạp ({{measure}})',
       gramsPlaceholder: 'Ví dụ: 150',
-      defaultChipLabel: 'mặc định={{grams}}g',
+      defaultChipLabel: 'mặc định={{amount}}',
       mealTimeFieldLabel: 'Giờ ăn → {{meal}}',
       logDateFieldLabel: 'Ngày ghi',
       previewKcalLabel: '⚡ {{kcal}} kcal',
@@ -632,23 +726,27 @@ export const vi = {
       namePlaceholder: 'Ví dụ: Canh chua cá lóc',
       categoryLabel: 'Nhóm',
       categoryPlaceholder: 'dish, snack, supplement...',
-      portionUnitLabel: 'Đơn vị tính',
-      unitOptionGram: 'Gram',
+      measureUnitLabel: 'Đơn vị đo',
+      measureNoteMl:
+        'Chọn ml cho món dạng lỏng. App vẫn tính theo gram bên trong, quy đổi 1 ml ≈ 1 g.',
+      portionUnitLabel: 'Ghi món này theo',
+      unitOptionGram: 'Theo {{measure}}',
       unitOptionPack: 'Gói',
       unitOptionCapsule: 'Viên',
-      servingWeightLabel: 'Khối lượng 1 {{unit}} (g)',
-      unitPackNoun: 'gói',
-      unitCapsuleNoun: 'viên',
-      servingWeightPlaceholder: 'Ví dụ: 5',
-      defaultServingLabel: 'Khẩu phần mặc định (gram)',
+      unitOptionServing: 'Khẩu phần…',
+      servingLabelLabel: 'Gọi 1 khẩu phần là gì?',
+      servingLabelPlaceholder: 'hộp, chai, lon, ly, khẩu phần...',
+      servingLabelHint:
+        'Ví dụ hộp Yakult 65ml: gõ “hộp”, chọn đơn vị đo ml, rồi nhập kích cỡ 65 và nhập dinh dưỡng cho đúng 1 hộp.',
+      servingSizeLabel: 'Kích cỡ 1 {{unit}} ({{measure}})',
+      servingWeightPlaceholder: 'Ví dụ: 65',
+      defaultServingLabel: 'Khẩu phần mặc định ({{measure}})',
       defaultServingPlaceholder: '100',
       macroKcal: 'Kcal',
       macroProtein: 'Đạm (g)',
       macroFat: 'Béo (g)',
       carbsLabel: 'Carbs (Carbohydrate) {{suffix}}',
-      suffixPack: '/ gói',
-      suffixCapsule: '/ viên',
-      suffixGram: '/ 100g',
+      nutritionSuffix: '/ {{basis}}',
       carbBreakdownNote:
         'Đường và chất xơ đã nằm TRONG Carbs — nhập để theo dõi chi tiết, không cộng thêm.',
       sugarLabel: 'Đường (g) {{suffix}}',
@@ -673,23 +771,16 @@ export const vi = {
       errorTooOld: 'Chỉ có thể ghi lùi tối đa {{max}} ngày',
     },
     nutritionDetailSheet: {
-      packCount: '{{count}} gói',
-      capsuleCount: '{{count}} viên',
     },
     foodNutritionEditModal: {
       titleEdit: 'Sửa thành phần',
       titleAdd: 'Thêm món mới',
       subtitleEdit: 'Chỉ để tham khảo — giá trị bạn sửa sẽ được ưu tiên hiển thị.',
       subtitleAdd: 'Nhập dinh dưỡng tính cho mỗi {{basis}}.',
-      basisPack: '1 gói',
-      basisCapsule: '1 viên',
-      basisGram: '100g',
       saveEditButton: 'Lưu sửa',
       saveAddButton: 'Lưu món',
     },
     dayDetailSheet: {
-      packCount: '{{count}} gói',
-      capsuleCount: '{{count}} viên',
       deleteConfirmTitle: 'Xoá món ăn',
       deleteConfirmMessage: 'Bạn chắc chắn muốn xoá "{{name}}"?',
       summaryLabel: 'Tổng: {{kcal}} kcal · Đạm {{protein}}g',
@@ -700,16 +791,19 @@ export const vi = {
       emptyText: 'Chưa ghi món nào cho ngày này',
       addButtonLabel: '＋ Thêm món cho ngày này',
     },
+    shareDayFoodCard: {
+      tagline: 'Theo dõi năng lượng & dinh dưỡng mỗi ngày',
+    },
     todayMeals: {
-      packCount: '{{count}} gói',
-      capsuleCount: '{{count}} viên',
-      countFieldLabelPack: 'Số gói',
-      countFieldLabelCapsule: 'Số viên',
+      countFieldLabel: 'Số {{unit}}',
       sectionLabel: 'Hôm nay đã ăn',
       emptyText: 'Chưa có món nào được ghi hôm nay. Bấm “⚡ Nạp” để bắt đầu.',
       macroLine: 'Đạm {{protein}}g · Carbs {{carb}}g · Béo {{fat}}g',
       editModalTitle: 'Sửa món ăn',
-      gramsFieldLabel: 'Khối lượng (g)',
+      gramsFieldLabel: 'Lượng nạp ({{measure}})',
+      shareButtonA11y: 'Chia sẻ nhật ký ăn uống hôm nay dưới dạng ảnh',
+      shareDialogTitle: 'Chia sẻ nhật ký ăn uống',
+      shareErrorMessage: 'Không tạo được ảnh chia sẻ. Thử lại nhé.',
     },
     todayIntakes: {
       sectionLabel: 'Nạp nhanh hôm nay',

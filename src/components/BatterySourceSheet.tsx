@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Pressable } from 'react-native';
 import { BottomSheet } from './ui/BottomSheet';
 import { activityLabel } from './EnergyActionsBar';
 import { describeLiftingSets } from './PowerliftingSheet';
@@ -127,6 +127,20 @@ function buildRows(
   }
 }
 
+// Which "how is this worked out" paragraphs apply to a given pin, as
+// translation keys. Food-fed pins share the per-100 formula + the frozen
+// snapshot caveat (the one thing most likely to look like a bug later:
+// correcting a food does NOT retro-change meals already logged, while it DOES
+// change the micronutrient pins, which recompute live).
+function explainKeys(batteryId: string): string[] {
+  const prefix = 'components.batterySourceSheet.';
+  if (batteryId === 'movement') return [`${prefix}explainMovement`, `${prefix}explainDecayNote`];
+  const keys = [`${prefix}explainFood`, `${prefix}explainSnapshot`];
+  if (batteryId === 'minerals') keys.splice(1, 0, `${prefix}explainMinerals`);
+  keys.push(`${prefix}explainDecayNote`);
+  return keys;
+}
+
 const MAX_ROWS_HEIGHT = Dimensions.get('window').height * 0.45;
 
 // Read-only "where did this pin's charge come from today" breakdown — shown
@@ -144,6 +158,9 @@ export function BatterySourceSheet({
 }: Props) {
   const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
+  // Collapsed by default — the sheet stays a quick glance, and opens up for
+  // anyone who wants to check where the number came from.
+  const [explaining, setExplaining] = useState(false);
   if (!battery) return null;
 
   const rows = buildRows(battery, foodLog, activityLog, intakeLog, t, language);
@@ -198,6 +215,28 @@ export function BatterySourceSheet({
             })}
           </Text>
           <Text style={styles.footerNote}>{t('components.batterySourceSheet.footerNote')}</Text>
+
+          <Pressable
+            onPress={() => setExplaining((e) => !e)}
+            hitSlop={6}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <Text style={styles.explainToggle}>
+              {explaining
+                ? t('components.batterySourceSheet.explainToggleHide')
+                : t('components.batterySourceSheet.explainToggleShow')}
+            </Text>
+          </Pressable>
+
+          {explaining && (
+            <View style={styles.explainBox}>
+              {explainKeys(battery.id).map((key) => (
+                <Text key={key} style={styles.explainNote}>
+                  {t(key)}
+                </Text>
+              ))}
+            </View>
+          )}
         </View>
       </View>
     </BottomSheet>
@@ -209,6 +248,21 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     padding: 24,
     gap: 12,
   },
+  explainToggle: {
+    fontSize: 12,
+    color: c.accentAlt,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  explainBox: {
+    gap: 8,
+    marginTop: 4,
+    paddingLeft: 10,
+    borderLeftWidth: 2,
+    borderLeftColor: c.divider,
+  },
+  explainNote: { fontSize: 11, color: c.textSubtle, lineHeight: 16 },
+  pressed: { opacity: 0.6 },
   title: {
     fontSize: 20,
     fontWeight: '700',

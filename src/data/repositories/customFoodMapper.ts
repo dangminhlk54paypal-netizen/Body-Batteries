@@ -1,4 +1,4 @@
-import type { FoodItem, Nutrition, PortionUnit } from '../../types/food';
+import type { FoodItem, MeasureUnit, Nutrition, PortionUnit } from '../../types/food';
 
 // Row shape of the `custom_foods` table (see src/data/db/schema.ts).
 export interface CustomFoodRow {
@@ -24,6 +24,8 @@ export interface CustomFoodRow {
   dha_mg: number | null;
   portion_unit: string | null;
   serving_weight_g: number | null;
+  serving_label: string | null;
+  measure_unit: string | null;
   created_at: number;
 }
 
@@ -63,5 +65,9 @@ export function rowToCustomFoodItem(r: CustomFoodRow): FoodItem {
     note: '',
     portionUnit: (r.portion_unit as PortionUnit | null) ?? undefined,
     servingWeightG: r.serving_weight_g ?? undefined,
+    // NULL on rows written before these columns existed → undefined, which
+    // every reader treats as "no custom noun" / "grams" (the original behaviour).
+    servingLabel: r.serving_label ?? undefined,
+    measureUnit: (r.measure_unit as MeasureUnit | null) ?? undefined,
   };
 }

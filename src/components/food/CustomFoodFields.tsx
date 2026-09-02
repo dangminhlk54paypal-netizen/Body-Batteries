@@ -1,7 +1,13 @@
 import React from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import type { CustomFoodInput } from '../../domain/food/customFoodInput';
-import type { PortionUnit } from '../../types/food';
+import {
+  isPortionCounted,
+  nutritionBasisLabel,
+  portionUnitNoun,
+} from '../../domain/food/portionUnits';
+import type { MeasureUnit, PortionUnit } from '../../types/food';
+import type { Language } from '../../i18n/types';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { parseDecimal } from '../../lib/units';
@@ -23,18 +29,29 @@ interface Props {
 }
 
 // Short unit label used in the nutrition field suffixes below — matches how
-// buildCustomFoodItem interprets the entered numbers (per 100g vs per serving).
-function unitSuffix(portionUnit: PortionUnit, t: TFn): string {
-  if (portionUnit === 'pack') return t('components.customFoodFields.suffixPack');
-  if (portionUnit === 'capsule') return t('components.customFoodFields.suffixCapsule');
-  return t('components.customFoodFields.suffixGram');
+// buildCustomFoodItem interprets the entered numbers (per 100g/100ml vs per
+// portion), via the same helper both modals use for their intro subtitles.
+function unitSuffix(input: CustomFoodInput, language: Language, t: TFn): string {
+  return t('components.customFoodFields.nutritionSuffix', {
+    basis: nutritionBasisLabel(input.portionUnit, input.servingLabel, input.measureUnit, language),
+  });
 }
 
-function portionUnitOptions(t: TFn): { key: PortionUnit; label: string }[] {
+const MEASURE_UNITS: MeasureUnit[] = ['g', 'ml'];
+
+function measureUnitLabel(unit: MeasureUnit, t: TFn): string {
+  return unit === 'ml' ? t('units.measure.milliliter') : t('units.measure.gram');
+}
+
+// "Theo g" / "Theo ml" for the weighed option, then the counted ones. The
+// gram option's label follows the chosen measure unit so a liquid food reads
+// "Theo ml" rather than the misleading "Gram".
+function portionUnitOptions(measureUnit: MeasureUnit, t: TFn): { key: PortionUnit; label: string }[] {
   return [
-    { key: 'gram', label: t('components.customFoodFields.unitOptionGram') },
+    { key: 'gram', label: t('components.customFoodFields.unitOptionGram', { measure: measureUnit }) },
     { key: 'pack', label: t('components.customFoodFields.unitOptionPack') },
     { key: 'capsule', label: t('components.customFoodFields.unitOptionCapsule') },
+    { key: 'serving', label: t('components.customFoodFields.unitOptionServing') },
   ];
 }
 
@@ -82,19 +99,16 @@ export function CustomFoodFields({
   onToggleMicros,
   autoFocusName,
 }: Props) {
-  const { t } = useT();
+  const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
-  const suffix = unitSuffix(input.portionUnit, t);
-  const isServingBased = input.portionUnit !== 'gram';
+  const suffix = unitSuffix(input, language, t);
+  const isServingBased = isPortionCounted(input.portionUnit);
 
   const sodiumValue = parseDecimal(input.sodiumMg);
   const hasValidSodium = input.sodiumMg.trim() !== '' && !isNaN(sodiumValue);
 
-  const servingUnitNoun =
-    input.portionUnit === 'pack'
-      ? t('components.customFoodFields.unitPackNoun')
-      : t('components.customFoodFields.unitCapsuleNoun');
+  const servingUnitNoun = portionUnitNoun(input.portionUnit, input.servingLabel, language);
 
   return (
     <>
@@ -117,13 +131,41 @@ export function CustomFoodFields({
         onChangeText={(v) => onChange('category', v)}
       />
 
-      <Text style={styles.fieldLabel}>{t('components.customFoodFields.portionUnitLabel')}</Text>
+      {/* How the food is MEASURED (g/ml) is a separate question from how its
+          portions are COUNTED (below) — a 65ml carton is measured in ml and
+          counted in boxes. */}
+      <Text style={styles.fieldLabel}>{t('components.customFoodFields.measureUnitLabel')}</Text>
       <View style={styles.unitRow}>
-        {portionUnitOptions(t).map((opt) => (
+        {MEASURE_UNITS.map((unit) => (
+          <Pressable
+            key={unit}
+            style={({ pressed }) => [
+              styles.unitChip,
+              input.measureUnit === unit && styles.unitChipActive,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => onChange('measureUnit', unit)}
+          >
+            <Text
+              style={[styles.unitChipText, input.measureUnit === unit && styles.unitChipTextActive]}
+            >
+              {measureUnitLabel(unit, t)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      {input.measureUnit === 'ml' && (
+        <Text style={styles.unitNote}>{t('components.customFoodFields.measureNoteMl')}</Text>
+      )}
+
+      <Text style={styles.fieldLabel}>{t('components.customFoodFields.portionUnitLabel')}</Text>
+      <View style={styles.unitRowWrap}>
+        {portionUnitOptions(input.measureUnit, t).map((opt) => (
           <Pressable
             key={opt.key}
             style={({ pressed }) => [
               styles.unitChip,
+              styles.unitChipFlexible,
               input.portionUnit === opt.key && styles.unitChipActive,
               pressed && styles.pressed,
             ]}
@@ -141,10 +183,29 @@ export function CustomFoodFields({
         ))}
       </View>
 
+      {input.portionUnit === 'serving' && (
+        <>
+          <Text style={styles.fieldLabel}>
+            {t('components.customFoodFields.servingLabelLabel')}
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder={t('components.customFoodFields.servingLabelPlaceholder')}
+            placeholderTextColor={c.textMuted}
+            value={input.servingLabel}
+            onChangeText={(v) => onChange('servingLabel', v)}
+          />
+          <Text style={styles.unitNote}>{t('components.customFoodFields.servingLabelHint')}</Text>
+        </>
+      )}
+
       {isServingBased ? (
         <>
           <Text style={styles.fieldLabel}>
-            {t('components.customFoodFields.servingWeightLabel', { unit: servingUnitNoun })}
+            {t('components.customFoodFields.servingSizeLabel', {
+              unit: servingUnitNoun,
+              measure: input.measureUnit,
+            })}
           </Text>
           <TextInput
             style={styles.input}
@@ -157,7 +218,9 @@ export function CustomFoodFields({
         </>
       ) : (
         <>
-          <Text style={styles.fieldLabel}>{t('components.customFoodFields.defaultServingLabel')}</Text>
+          <Text style={styles.fieldLabel}>
+            {t('components.customFoodFields.defaultServingLabel', { measure: input.measureUnit })}
+          </Text>
           <TextInput
             style={styles.input}
             placeholder={t('components.customFoodFields.defaultServingPlaceholder')}
@@ -307,6 +370,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   fieldLabel: { fontSize: 13, color: c.textSecondary, marginTop: 4 },
   fieldLabelNested: { fontSize: 12, color: c.textDim, marginTop: 4 },
   unitRow: { flexDirection: 'row', gap: 8 },
+  unitRowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  unitNote: { fontSize: 11, color: c.textSubtle, lineHeight: 16, marginTop: -2 },
   unitChip: {
     flex: 1,
     paddingVertical: 10,
@@ -316,6 +381,9 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     borderColor: c.border,
     alignItems: 'center',
   },
+  // Inside the wrapping row the chips size to their own label instead of
+  // splitting the row evenly — four chips at flex:1 are too narrow to read.
+  unitChipFlexible: { flex: 0, flexGrow: 1, flexBasis: '46%', paddingHorizontal: 10 },
   unitChipActive: {
     backgroundColor: c.bgHighlight,
     borderColor: c.accent,

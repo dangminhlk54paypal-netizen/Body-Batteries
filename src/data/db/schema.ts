@@ -44,11 +44,19 @@ export const BATTERY_READINGS_MIGRATION_COLUMNS = [
 export const CUSTOM_FOODS_MIGRATION_COLUMNS = [
   { name: 'portion_unit', ddl: "ALTER TABLE custom_foods ADD COLUMN portion_unit TEXT" },
   { name: 'serving_weight_g', ddl: 'ALTER TABLE custom_foods ADD COLUMN serving_weight_g REAL' },
+  // Free-text portion noun ('hộp', 'chai'…) + the g/ml the amounts are read
+  // in — see types/food.ts PortionUnit 'serving' and MeasureUnit. NULL on
+  // every row written before these existed, which maps back to
+  // undefined/'g' (the original gram-only behaviour).
+  { name: 'serving_label', ddl: 'ALTER TABLE custom_foods ADD COLUMN serving_label TEXT' },
+  { name: 'measure_unit', ddl: 'ALTER TABLE custom_foods ADD COLUMN measure_unit TEXT' },
 ];
 
 export const FOOD_OVERRIDES_MIGRATION_COLUMNS = [
   { name: 'portion_unit', ddl: "ALTER TABLE food_overrides ADD COLUMN portion_unit TEXT" },
   { name: 'serving_weight_g', ddl: 'ALTER TABLE food_overrides ADD COLUMN serving_weight_g REAL' },
+  { name: 'serving_label', ddl: 'ALTER TABLE food_overrides ADD COLUMN serving_label TEXT' },
+  { name: 'measure_unit', ddl: 'ALTER TABLE food_overrides ADD COLUMN measure_unit TEXT' },
 ];
 
 export const FOOD_LOG_MIGRATION_COLUMNS = [
@@ -139,6 +147,8 @@ export const CREATE_CUSTOM_FOODS = `
     dha_mg REAL,
     portion_unit TEXT,
     serving_weight_g REAL,
+    serving_label TEXT,
+    measure_unit TEXT,
     created_at INTEGER
   );
 `;
@@ -175,6 +185,8 @@ export const CREATE_FOOD_OVERRIDES = `
     dha_mg REAL,
     portion_unit TEXT,
     serving_weight_g REAL,
+    serving_label TEXT,
+    measure_unit TEXT,
     updated_at INTEGER
   );
 `;

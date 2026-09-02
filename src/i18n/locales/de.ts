@@ -51,6 +51,25 @@ export const de: TranslationSchema = {
     snack: 'Snack',
   },
 
+  // Portion & measure units for foods. `portion.*` names ONE portion of a
+  // counted food; `measure.*` labels the g/ml the amounts are expressed in.
+  units: {
+    portion: {
+      pack: 'Beutel',
+      capsule: 'Kapsel',
+      serving: 'Portion',
+      countFormat: '{{count}} {{unit}}',
+      countWithMeasure: '{{portion}} ({{measure}})',
+      servingDefinition: '1 {{unit}} = {{measure}}',
+    },
+    measure: {
+      gram: 'Gramm (g)',
+      milliliter: 'Milliliter (ml)',
+      gramShort: 'g',
+      milliliterShort: 'ml',
+    },
+  },
+
   foodCategories: {
     grain: 'Getreide',
     meat: 'Fleisch',
@@ -64,6 +83,47 @@ export const de: TranslationSchema = {
     drink: 'Getränke',
     supplement: 'Nahrungsergänzungsmittel',
     snack: 'Snacks',
+  },
+
+  // "Meine Lebensmittel" — selbst angelegte/korrigierte Einträge, lokal.
+  myFoods: {
+    title: '🍽️ Meine Lebensmittel',
+    subtitle:
+      'Diese Liste liegt auf deinem Gerät und wird nirgendwohin synchronisiert. Die App liefert nur die Rechen-Engine — dein Ernährungsrahmen gehört dir.',
+    openButton: 'Meine Lebensmittel',
+    customSectionTitle: 'Selbst angelegt ({{count}})',
+    overrideSectionTitle: 'Katalog-Einträge korrigiert ({{count}})',
+    emptyCustom: 'Noch nichts. Neue Lebensmittel legst du direkt im Erfassungs-Dialog an.',
+    emptyOverride: 'Du hast noch keinen Katalog-Eintrag korrigiert.',
+    rowBasis: 'Nährwerte erfasst pro {{basis}}',
+    deleteTitle: 'Diesen Eintrag löschen?',
+    deleteCustomMessage:
+      'Entfernt „{{name}}“ aus deiner Liste. Bereits erfasste Mahlzeiten bleiben UNVERÄNDERT — sie behalten ihre gespeicherten Werte.',
+    deleteOverrideMessage:
+      'Verwirft deine Korrektur für „{{name}}“. Der Eintrag fällt auf die Originalwerte des Katalogs zurück.',
+    deleteConfirm: 'Löschen',
+    revertConfirm: 'Korrektur verwerfen',
+    export: {
+      button: '📤 Liste exportieren',
+      shareDialogTitle: 'Meine Lebensmittelliste sichern',
+      doneTitle: 'Exportiert',
+      doneMessage: '{{custom}} eigene Einträge und {{override}} Korrekturen exportiert.',
+      errorMessage: 'Die Liste konnte nicht exportiert werden.',
+    },
+    import: {
+      button: '📥 Aus Datei importieren',
+      pickTitle: 'Datei zum Importieren wählen',
+      pickHint:
+        'Die App sucht .json-Dateien in ihrem Dokumentenordner (Dateien → Auf meinem iPhone → BodyBatteries, um eine hineinzukopieren).',
+      noFiles: 'Keine .json-Datei im Dokumentenordner der App gefunden.',
+      doneTitle: 'Importiert',
+      doneMessage: '{{custom}} eigene Einträge und {{override}} Korrekturen importiert. Gleiche IDs wurden überschrieben.',
+      errorTitle: 'Import fehlgeschlagen',
+      notJson: 'Diese Datei ist kein gültiges JSON.',
+      wrongVersion: 'Diese Datei stammt aus einer anderen Version und kann noch nicht gelesen werden.',
+      empty: 'Die Datei ist gültig, enthält aber keine Einträge.',
+      unreadable: 'Die Datei konnte nicht gelesen werden.',
+    },
   },
 
   modes: {
@@ -486,6 +546,7 @@ export const de: TranslationSchema = {
       a11yToggleUnitHint: 'Tippen, um die Anzeigeeinheit zu wechseln',
     },
     microBatteryStack: {
+      cellA11y: 'Quellen und Berechnung für {{name}} ansehen — aktuell {{percentage}}%',
       title: 'Erfasste Mikronährstoffe',
       disclaimer: 'Nur zur Orientierung.',
       collapsedLine: '▸ Eingeklappt — tippen, um {{count}} Nährstoffe zu sehen',
@@ -538,8 +599,40 @@ export const de: TranslationSchema = {
       emptyText: 'An diesem Tag hat noch kein Lebensmittel zu {{name}} beigetragen — trage oben ein Essen ein.',
       totalText: 'Gesamt: {{value}}{{unit}} / Empf. {{target}}{{unit}}',
       footerNote: 'Dieser Nährstoff wird automatisch aus erfassten Lebensmitteln berechnet — kein manuelles Laden nötig.',
+      rowEntryCountSuffix: ' · {{count}}× erfasst',
+      explainToggleShow: '🧮 Berechnung anzeigen',
+      explainToggleHide: '🧮 Berechnung ausblenden',
+      formulaIntro:
+        'Nichts davon wird von Hand eingetippt. Jedes Lebensmittel steuert bei: (Wert laut Etikett pro 100 Einheiten) × (verzehrte Menge) ÷ 100:',
+      formulaRow: '{{per100}}{{unit}}/100{{measure}} × {{amount}}{{measure}} ÷ 100 = {{result}}{{unit}}',
+      formulaSum: 'Summe für den Tag: {{parts}} = {{total}}{{unit}}',
+      formulaSingle: 'Heute hat nur ein Lebensmittel beigetragen → Summe = {{total}}{{unit}}',
+      formulaTargetGoal: 'Gegenüber der Empfehlung {{target}}{{unit}}/Tag → {{percentage}}%',
+      formulaTargetLimit: 'Gegenüber der Obergrenze {{target}}{{unit}}/Tag → {{percentage}}%',
+      derivationSalt:
+        'Salz ist kein Eingabefeld — es wird aus Natrium abgeleitet: Natrium (mg) × 2,5 ÷ 1000 = Salz (g). Natrium einzutragen genügt für den Salz-Akku.',
+      derivationOmega3: 'Omega-3 ist EPA + DHA zusammen. Lebensmittel ohne beide Angaben tragen nichts bei.',
+      derivationSugar:
+        'Zucker steckt INNERHALB der Gesamt-Kohlenhydrate, er wird nicht obendrauf addiert. Die Eingabe verfolgt nur den Zuckeranteil separat.',
+      dayScopeNote:
+        'Mikronährstoff-Akkus laufen auf dem KALENDERTAG (0–24 Uhr). Der Energie-Akku nicht: der setzt um 6 Uhr zurück, ein Snack um 2 Uhr zählt also noch zum Vortag.',
+      liveNote:
+        'Dieser Wert wird bei jedem App-Start neu aus dem Ernährungstagebuch berechnet — änderst oder löschst du ein Lebensmittel, ändert sich die Summe sofort mit. Es gibt keine separate gespeicherte Kopie, die abdriften könnte.',
+      sumNote: 'Die Zeilen oben ergeben zusammen genau die Summe unten.',
     },
     batterySourceSheet: {
+      explainToggleShow: '🧮 Berechnung anzeigen',
+      explainToggleHide: '🧮 Berechnung ausblenden',
+      explainFood:
+        'Jedes Lebensmittel wurde beim Erfassen ausgerechnet: (Wert pro 100 Einheiten) × (verzehrte Menge) ÷ 100. Dieser Akku ist die Summe aller Zeilen oben.',
+      explainSnapshot:
+        'Der Wert jeder Zeile wird beim Erfassen EINGEFROREN. Korrigierst du die Nährwerte später, behalten bereits erfasste Mahlzeiten ihre ursprünglichen Zahlen — die Historie wird nie umgeschrieben. Die Mikronährstoff-Akkus sind anders: sie rechnen bei jedem App-Start neu, dort wirkt eine Korrektur sofort.',
+      explainMinerals:
+        'Der Mineralstoff-Akku ist eine GROBE Summe aus sechs Mineralien: Kalzium + Eisen + Natrium + Kalium + Magnesium + Zink. Einzeln siehst du sie in den Mikronährstoff-Akkus unten.',
+      explainMovement:
+        'Der Bewegungs-Akku = gegangene Schritte + das Schritt-Äquivalent deiner Workouts (jede Einheit wird je nach Intensität in „etwa so viele Schritte“ umgerechnet).',
+      explainDecayNote:
+        '„Heute gesamt“ oben ist alles, was du am Tag erfasst hast. Der Akkustand auf dem Startbildschirm kann niedriger sein, weil die Akkus stündlich entladen.',
       title: 'Ladequellen für {{name}} heute',
       mineralsCaption:
         'Geschätzte Gesamtmineralstoffe (Kalzium + Eisen + Natrium + Kalium + Magnesium + Zink) aus erfassten Lebensmitteln.',
@@ -568,9 +661,6 @@ export const de: TranslationSchema = {
       backToSearch: '‹ Zurück',
       addCustomTitle: 'Neues Lebensmittel hinzufügen',
       addCustomSubtitle: 'Nährwerte pro {{basis}} eingeben',
-      basisPack: '1 Packung',
-      basisCapsule: '1 Kapsel',
-      basisGram: '100g',
       saveCustomFoodButton: 'Lebensmittel speichern',
       title: 'Essen loggen',
       searchSubtitle: 'In der Liste suchen und auswählen',
@@ -580,13 +670,17 @@ export const de: TranslationSchema = {
       addNewFoodButton: "➕ Neues Lebensmittel hinzufügen: '{{query}}'",
       backToOtherFood: '‹ Anderes Lebensmittel wählen',
       editNutritionLink: '✎ Nährwerte bearbeiten',
+      sourceBadgeMine: 'Meine',
+      sourceBadgeCatalog: 'VN-Katalog',
+      sourceBadgeUsda: 'USDA',
+      sourceBadgeEdited: 'bearbeitet',
+      resultEnergyMeta: '{{kcal}} kcal/100{{measure}}',
       portionCountLabel: 'Anzahl {{unit}}',
-      unitPack: 'Packungen',
-      unitCapsule: 'Kapseln',
+      portionDefinitionNote: '{{definition}} — die Nährwerte unten gelten für die gewählte Menge.',
       portionCountPlaceholder: 'z. B. 1',
-      gramsFieldLabel: 'Menge (Gramm)',
+      gramsFieldLabel: 'Menge ({{measure}})',
       gramsPlaceholder: 'z. B. 150',
-      defaultChipLabel: 'Standard={{grams}}g',
+      defaultChipLabel: 'Standard={{amount}}',
       mealTimeFieldLabel: 'Uhrzeit → {{meal}}',
       logDateFieldLabel: 'Datum',
       previewKcalLabel: '⚡ {{kcal}} kcal',
@@ -599,23 +693,27 @@ export const de: TranslationSchema = {
       namePlaceholder: 'z. B. Saure Fischsuppe',
       categoryLabel: 'Kategorie',
       categoryPlaceholder: 'dish, snack, supplement...',
-      portionUnitLabel: 'Einheit',
-      unitOptionGram: 'Gramm',
+      measureUnitLabel: 'Gemessen in',
+      measureNoteMl:
+        'Wähle ml für Flüssiges. Intern wird weiter in Gramm gerechnet, mit 1 ml ≈ 1 g.',
+      portionUnitLabel: 'Dieses Lebensmittel erfassen nach',
+      unitOptionGram: 'Nach {{measure}}',
       unitOptionPack: 'Packung',
       unitOptionCapsule: 'Kapsel',
-      servingWeightLabel: 'Gewicht 1 {{unit}} (g)',
-      unitPackNoun: 'Packung',
-      unitCapsuleNoun: 'Kapsel',
-      servingWeightPlaceholder: 'z. B. 5',
-      defaultServingLabel: 'Standardportion (Gramm)',
+      unitOptionServing: 'Portion…',
+      servingLabelLabel: 'Wie heißt eine Portion?',
+      servingLabelPlaceholder: 'Fläschchen, Schachtel, Dose, Glas, Portion...',
+      servingLabelHint:
+        'Ein 65-ml-Yakult: „Fläschchen“ eintippen, ml als Maß wählen, 65 als Größe eingeben und die Nährwerte für genau ein Fläschchen erfassen.',
+      servingSizeLabel: 'Größe von 1 {{unit}} ({{measure}})',
+      servingWeightPlaceholder: 'z. B. 65',
+      defaultServingLabel: 'Standardportion ({{measure}})',
       defaultServingPlaceholder: '100',
       macroKcal: 'Kcal',
       macroProtein: 'Eiweiß (g)',
       macroFat: 'Fett (g)',
       carbsLabel: 'Kohlenhydrate (Carbs) {{suffix}}',
-      suffixPack: '/ Packung',
-      suffixCapsule: '/ Kapsel',
-      suffixGram: '/ 100g',
+      nutritionSuffix: '/ {{basis}}',
       carbBreakdownNote:
         'Zucker und Ballaststoffe sind bereits IN den Kohlenhydraten enthalten — nur zur genaueren Erfassung, nicht zusätzlich.',
       sugarLabel: 'Zucker (g) {{suffix}}',
@@ -641,23 +739,16 @@ export const de: TranslationSchema = {
       errorTooOld: 'Du kannst höchstens {{max}} Tage zurückdatieren',
     },
     nutritionDetailSheet: {
-      packCount: '{{count}} Packungen',
-      capsuleCount: '{{count}} Kapseln',
     },
     foodNutritionEditModal: {
       titleEdit: 'Nährwerte bearbeiten',
       titleAdd: 'Neues Lebensmittel hinzufügen',
       subtitleEdit: 'Nur zur Orientierung — deine bearbeiteten Werte werden bevorzugt angezeigt.',
       subtitleAdd: 'Nährwerte pro {{basis}} eingeben.',
-      basisPack: '1 Packung',
-      basisCapsule: '1 Kapsel',
-      basisGram: '100g',
       saveEditButton: 'Änderungen speichern',
       saveAddButton: 'Lebensmittel speichern',
     },
     dayDetailSheet: {
-      packCount: '{{count}} Packungen',
-      capsuleCount: '{{count}} Kapseln',
       deleteConfirmTitle: 'Essen löschen',
       deleteConfirmMessage: 'Möchtest du „{{name}}" wirklich löschen?',
       summaryLabel: 'Gesamt: {{kcal}} kcal · Eiweiß {{protein}}g',
@@ -668,16 +759,19 @@ export const de: TranslationSchema = {
       emptyText: 'Für diesen Tag ist noch nichts erfasst',
       addButtonLabel: '＋ Essen für diesen Tag hinzufügen',
     },
+    shareDayFoodCard: {
+      tagline: 'Verfolge Energie & Ernährung jeden Tag',
+    },
     todayMeals: {
-      packCount: '{{count}} Packungen',
-      capsuleCount: '{{count}} Kapseln',
-      countFieldLabelPack: 'Anzahl Packungen',
-      countFieldLabelCapsule: 'Anzahl Kapseln',
+      countFieldLabel: 'Anzahl {{unit}}',
       sectionLabel: 'Heute gegessen',
       emptyText: 'Heute noch nichts erfasst. Tippe auf „⚡ Aufladen", um zu starten.',
       macroLine: 'Eiweiß {{protein}}g · Kohlenhydrate {{carb}}g · Fett {{fat}}g',
       editModalTitle: 'Essen bearbeiten',
-      gramsFieldLabel: 'Menge (g)',
+      gramsFieldLabel: 'Menge ({{measure}})',
+      shareButtonA11y: 'Heutiges Ernährungstagebuch als Bild teilen',
+      shareDialogTitle: 'Ernährungstagebuch teilen',
+      shareErrorMessage: 'Das Bild zum Teilen konnte nicht erstellt werden. Bitte erneut versuchen.',
     },
     todayIntakes: {
       sectionLabel: 'Schnellladungen heute',

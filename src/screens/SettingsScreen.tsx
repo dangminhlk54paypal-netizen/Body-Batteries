@@ -26,6 +26,7 @@ import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { useT } from '../i18n/useT';
+import { MyFoodsSheet } from '../components/food/MyFoodsSheet';
 import { LANGUAGES, LANGUAGE_NAMES } from '../i18n/types';
 import type { Language } from '../i18n/types';
 
@@ -133,6 +134,10 @@ export function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
 
   const [exporting, setExporting] = useState(false);
+
+  // "Món của tôi" — the manage/export/import sheet for the user's own food list.
+
+  const [myFoodsVisible, setMyFoodsVisible] = useState(false);
   // Lazy initializer (not a bare Date.now() call during render) — same
   // purity-safe pattern as EnergyBalanceCard/useLiveEnergyReading.ts.
   const [nowMs] = useState(() => Date.now());
@@ -437,6 +442,13 @@ export function SettingsScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
+            onPress={() => setMyFoodsVisible(true)}
+          >
+            <Text style={styles.actionBtnText}>{t('myFoods.openButton')}</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
             onPress={handleExport}
             disabled={exporting}
           >
@@ -512,6 +524,8 @@ export function SettingsScreen() {
 
         <Text style={styles.disclaimer}>{t('settings.disclaimer')}</Text>
       </ScrollView>
+
+      <MyFoodsSheet visible={myFoodsVisible} onClose={() => setMyFoodsVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -597,7 +611,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   mealDivider: { height: 1, backgroundColor: c.bgAlt },
   mealLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   mealDot: { width: 8, height: 8, borderRadius: 4 },
-  mealLabel: { fontSize: 14, color: c.textSoft, fontWeight: '600', width: 76 },
+  mealLabel: { fontSize: 14, color: c.textSoft, fontWeight: '600' },
   mealSteppers: {
     flexDirection: 'row',
     alignItems: 'center',

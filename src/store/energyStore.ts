@@ -3,6 +3,7 @@ import type { BatteryReading, IntakeEvent, BatteryId } from '../types/battery';
 import type { WorkoutSession, ActivityLogEntry, StepActivityType } from '../types/energy';
 import type { FoodItem, FoodLogEntry, PortionUnit } from '../types/food';
 import { nutritionForGrams, mealTypeForTimestamp, gramsForPortion } from '../domain/food/foodNutrition';
+import { isPortionCounted } from '../domain/food/portionUnits';
 import { getAnyFoodById } from '../data/food/foodLookup';
 import {
   addFoodLogEntry,
@@ -298,6 +299,19 @@ function reverseActivityOnEnergyReading(
     // 0 in the opposite direction.
     satietyReserveKcal: eatIntoReserve(r.satietyReserveKcal ?? 0, entry.satietyDrainKcal),
   };
+}
+
+// Unique id for one logged-food row. The timestamp alone is NOT unique: the
+// food-log modal builds it with `setHours(h, m, 0, 0)`, which zeroes seconds
+// and milliseconds, so logging the same food twice inside the same minute used
+// to produce the exact same `food_<ts>_<foodId>` id. That collided on
+// food_log's PRIMARY KEY: the batteries were charged twice while the second
+// INSERT threw a UNIQUE-constraint error that logFood only console.warn'd, so
+// the micronutrient sheet (recomputed live from the log) and the persisted
+// macro pins disagreed — and the numbers changed again after a restart. The
+// random suffix mirrors the activity log's `activity_<ts>_<rand>` ids.
+function foodLogEntryId(timestamp: number, foodId: string): string {
+  return `food_${timestamp}_${foodId}_${Math.round(Math.random() * 1e6)}`;
 }
 
 // Reverse a logged food's charge on an energy reading — the exact mirror of
@@ -660,7 +674,6 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   // from macros here (that would double-count) — we use the CSV's energy_kcal,
   // which also accounts for fat (9 kcal/g).
   logFood: async (item, grams, timestamp, portion) => {
-    const { readings } = get();
     if (grams <= 0) return;
 
     const n = nutritionForGrams(item, grams);
@@ -675,20 +688,24 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       minerals: n.mineralsMg,
     };
 
-    const updated = readings.map((r) => {
-      if (r.batteryTypeId === 'energy') {
-        const charged = chargeEnergy(r, n.energyKcal);
-        return {
-          ...charged,
-          satietyReserveKcal: eatIntoReserve(charged.satietyReserveKcal ?? 0, n.energyKcal),
-        };
-      }
-      const charge = nutrientCharges[r.batteryTypeId];
-      return charge && charge > 0 ? applyIntake(r, charge) : r;
-    });
+    // Applied inside set() below (against the freshest readings) rather than
+    // against a copy captured before the await, so a drain tick landing while
+    // the log row is being written can't be clobbered.
+    const chargeReadings = (rs: BatteryReading[]): BatteryReading[] =>
+      rs.map((r) => {
+        if (r.batteryTypeId === 'energy') {
+          const charged = chargeEnergy(r, n.energyKcal);
+          return {
+            ...charged,
+            satietyReserveKcal: eatIntoReserve(charged.satietyReserveKcal ?? 0, n.energyKcal),
+          };
+        }
+        const charge = nutrientCharges[r.batteryTypeId];
+        return charge && charge > 0 ? applyIntake(r, charge) : r;
+      });
 
     const entry: FoodLogEntry = {
-      id: `food_${timestamp}_${item.id}`,
+      id: foodLogEntryId(timestamp, item.id),
       timestamp,
       mealType,
       foodId: item.id,
@@ -708,17 +725,32 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       energyDayApplied: energyDayString(new Date(timestamp)),
     };
 
-    set((s) => ({
-      readings: updated,
-      masterPercentage: energyPercentage(updated),
-      foodLog: [...s.foodLog, entry],
-    }));
-
+    // Write the log row BEFORE charging anything. The pins and the food log
+    // must never disagree: the micronutrient batteries are recomputed live
+    // from `foodLog` on every render, so a meal that charged the macro pins
+    // but never reached the table shows up as a phantom dose that changes
+    // value the next time the app restarts. If the row can't be written, the
+    // meal simply wasn't logged — charge nothing and let the user retry.
     try {
-      await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
       await addFoodLogEntry(entry);
     } catch (e) {
-      console.warn('logFood persistence failed:', e);
+      console.warn('logFood persistence failed — nothing charged:', e);
+      return;
+    }
+
+    set((s) => {
+      const charged = chargeReadings(s.readings);
+      return {
+        readings: charged,
+        masterPercentage: energyPercentage(charged),
+        foodLog: [...s.foodLog, entry],
+      };
+    });
+
+    try {
+      await upsertReadings(get().readings.filter((r) => r.batteryTypeId !== 'master'));
+    } catch (e) {
+      console.warn('logFood reading persistence failed:', e);
     }
   },
 
@@ -798,10 +830,12 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const originalTimestamp = entry.timestamp;
 
-    // Portion-based foods (TPCN packs/capsules) are edited by count; everything
-    // else by grams. Fall back to the entry's current value for the field the
-    // patch didn't touch.
-    const isPortionBased = item.portionUnit === 'pack' || item.portionUnit === 'capsule';
+    // Counted foods (TPCN packs/capsules, boxes/bottles) are edited by count;
+    // everything else by grams. Fall back to the entry's current value for the
+    // field the patch didn't touch. Uses the shared predicate so a unit added
+    // to PortionUnit later can't silently fall through to the grams branch —
+    // which is what the open-coded pack/capsule check did to 'serving'.
+    const isPortionBased = isPortionCounted(item.portionUnit);
     const newGrams =
       isPortionBased && patch.count !== undefined
         ? gramsForPortion(item, patch.count)
@@ -838,7 +872,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const n = nutritionForGrams(item, grams);
     const entry: FoodLogEntry = {
-      id: `food_${timestamp}_${item.id}`,
+      id: foodLogEntryId(timestamp, item.id),
       timestamp,
       mealType: mealTypeForTimestamp(timestamp, useSettingsStore.getState().mealWindows),
       foodId: item.id,

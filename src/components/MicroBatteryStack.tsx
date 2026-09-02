@@ -71,7 +71,16 @@ function MicroCell({ state, onPress }: { state: MicroBatteryState; onPress: () =
   const warn = isOverReference(state);
   const name = t(`nutrients.${state.id}.name`);
   return (
-    <Pressable style={styles.cell} onPress={onPress} hitSlop={4}>
+    <Pressable
+      style={styles.cell}
+      onPress={onPress}
+      hitSlop={4}
+      accessibilityRole="button"
+      accessibilityLabel={t('components.microBatteryStack.cellA11y', {
+        name,
+        percentage: state.percentage,
+      })}
+    >
       <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
         <Rect
           x={0}
@@ -98,9 +107,11 @@ function MicroCell({ state, onPress }: { state: MicroBatteryState; onPress: () =
         {state.percentage}%{warn ? ' ⚠️' : ''}
       </Text>
       <Text style={styles.cellName}>{name}</Text>
+      {/* The ⓘ says the number is explainable, not just displayed — tapping
+          the cell opens the source + formula breakdown. */}
       <Text style={styles.cellAmount}>
         {state.current}
-        {state.unit}
+        {state.unit} ⓘ
       </Text>
       <Text style={styles.cellTarget}>
         {t('components.microBatteryStack.recommendedPerDay', { target: state.target, unit: state.unit })}

@@ -430,3 +430,93 @@ describe('isValidCustomFoodInput', () => {
     ).toBe(true);
   });
 });
+
+// The reported case: a 65ml carton of yoghurt drink whose label prints the
+// nutrition for exactly one 65ml carton, not per 100g/100ml.
+describe("buildCustomFoodItem — 'serving' portions measured in ml", () => {
+  const yakult: CustomFoodInput = {
+    ...EMPTY_CUSTOM_FOOD_INPUT,
+    name: 'Yakult',
+    category: 'drink',
+    portionUnit: 'serving',
+    servingLabel: '  hộp  ',
+    measureUnit: 'ml',
+    servingWeightG: '65', // 65 ml ≈ 65 g
+    // Values printed on ONE 65ml carton.
+    energyKcal: '50',
+    carbG: '12',
+    sugarG: '11',
+    proteinG: '0.8',
+    fatG: '0',
+    waterG: '52',
+    calciumMg: '30',
+  };
+
+  it('stores the entered per-carton figures as per-100g and keeps the unit metadata', () => {
+    const item = buildCustomFoodItem(yakult);
+    expect(item.portionUnit).toBe('serving');
+    expect(item.servingLabel).toBe('hộp'); // trimmed
+    expect(item.measureUnit).toBe('ml');
+    expect(item.servingWeightG).toBe(65);
+    // 50 kcal per 65 ml -> 50 / 65 * 100 per 100 ml.
+    expect(item.per100g.energyKcal).toBeCloseTo((50 / 65) * 100, 6);
+    expect(item.per100g.sugarG).toBeCloseTo((11 / 65) * 100, 6);
+    expect(item.per100g.calciumMg).toBeCloseTo((30 / 65) * 100, 6);
+  });
+
+  it('round-trips back through inputFromFoodItem to the numbers the user typed', () => {
+    const restored = inputFromFoodItem(buildCustomFoodItem(yakult));
+    expect(restored.portionUnit).toBe('serving');
+    expect(restored.servingLabel).toBe('hộp');
+    expect(restored.measureUnit).toBe('ml');
+    expect(restored.servingWeightG).toBe('65');
+    expect(Number(restored.energyKcal)).toBeCloseTo(50, 6);
+    expect(Number(restored.sugarG)).toBeCloseTo(11, 6);
+    expect(Number(restored.calciumMg)).toBeCloseTo(30, 6);
+  });
+
+  it('requires a positive serving size before it can be saved', () => {
+    expect(isValidCustomFoodInput(yakult)).toBe(true);
+    expect(isValidCustomFoodInput({ ...yakult, servingWeightG: '' })).toBe(false);
+    expect(isValidCustomFoodInput({ ...yakult, servingWeightG: '0' })).toBe(false);
+  });
+
+  it('drops the label when the unit is not a free-named serving', () => {
+    const asCapsule = buildCustomFoodItem({ ...yakult, portionUnit: 'capsule' });
+    expect(asCapsule.portionUnit).toBe('capsule');
+    expect(asCapsule.servingLabel).toBeUndefined();
+  });
+
+  it('keeps the measure unit but drops label/serving weight for a weighed food', () => {
+    const weighed = buildCustomFoodItem({
+      ...yakult,
+      portionUnit: 'gram',
+      servingWeightG: '',
+    });
+    expect(weighed.portionUnit).toBe('gram');
+    expect(weighed.servingLabel).toBeUndefined();
+    expect(weighed.servingWeightG).toBeUndefined();
+    // A liquid weighed by volume is still read in ml.
+    expect(weighed.measureUnit).toBe('ml');
+    // No per-serving conversion happened — the numbers are already per 100ml.
+    expect(weighed.per100g.energyKcal).toBe(50);
+  });
+});
+
+describe("resetNutritionForUnitChange — servingLabel handling", () => {
+  const withLabel: CustomFoodInput = {
+    ...EMPTY_CUSTOM_FOOD_INPUT,
+    portionUnit: 'serving',
+    servingLabel: 'hộp',
+    energyKcal: '50',
+  };
+
+  it("keeps the typed noun while staying on 'serving'", () => {
+    expect(resetNutritionForUnitChange(withLabel, 'serving').servingLabel).toBe('hộp');
+  });
+
+  it('clears it when switching to a unit that has its own noun', () => {
+    expect(resetNutritionForUnitChange(withLabel, 'capsule').servingLabel).toBe('');
+    expect(resetNutritionForUnitChange(withLabel, 'gram').servingLabel).toBe('');
+  });
+});

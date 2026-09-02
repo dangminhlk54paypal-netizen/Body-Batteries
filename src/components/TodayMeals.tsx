@@ -1,9 +1,28 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Modal,
+  TextInput,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+} from 'react-native';
 import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import { mealLabel } from '../lib/constants';
-import { foodLogEntryDisplayName } from '../data/food/foodLookup';
+import { foodLogEntryDisplayName, getAnyFoodById } from '../data/food/foodLookup';
+import {
+  formatLoggedPortion,
+  isPortionCounted,
+  measureUnitOf,
+  portionUnitNoun,
+} from '../domain/food/portionUnits';
+import { ShareDayFoodCard } from './food/ShareDayFoodCard';
+import { shareTodayFoodCard } from '../services/share/dayFoodShareService';
 import type { FoodLogEntry } from '../types/food';
+import type { Language } from '../i18n/types';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
@@ -25,28 +44,25 @@ function timeLabel(timestamp: number): string {
   return `${h}:${m}`;
 }
 
-// Packs/capsules (TPCN) are displayed by count ("2 viên") rather than the
-// converted gram weight — matches how the user actually thinks about a dose.
-function amountLabel(entry: FoodLogEntry, t: TFn): string {
-  if (entry.portionUnit === 'pack' && entry.count != null) {
-    return t('components.todayMeals.packCount', { count: entry.count });
-  }
-  if (entry.portionUnit === 'capsule' && entry.count != null) {
-    return t('components.todayMeals.capsuleCount', { count: entry.count });
-  }
-  return `${entry.grams}g`;
+// Counted portions (TPCN packs/capsules, boxes, bottles) are displayed by
+// count — "2 hộp (130ml)" — rather than only the converted gram weight, which
+// is how the user actually thinks about a dose. Shared formatter, so this
+// wording matches DayDetailSheet / NutritionDetailSheet / the micro sources.
+function amountLabel(entry: FoodLogEntry, language: Language): string {
+  return formatLoggedPortion(entry, getAnyFoodById(entry.foodId), language);
 }
 
-// Portion-based entries (TPCN) are edited by count with a unit-matching label;
-// everything else is edited by gram weight (the common "fix a typo" case).
+// Portion-based entries are edited by count with a unit-matching label;
+// everything else is edited by weight/volume (the common "fix a typo" case).
 function isPortionEntry(entry: FoodLogEntry): boolean {
-  return entry.portionUnit === 'pack' || entry.portionUnit === 'capsule';
+  return isPortionCounted(entry.portionUnit);
 }
 
-function countFieldLabel(entry: FoodLogEntry, t: TFn): string {
-  return entry.portionUnit === 'capsule'
-    ? t('components.todayMeals.countFieldLabelCapsule')
-    : t('components.todayMeals.countFieldLabelPack');
+function countFieldLabel(entry: FoodLogEntry, language: Language, t: TFn): string {
+  const food = getAnyFoodById(entry.foodId);
+  return t('components.todayMeals.countFieldLabel', {
+    unit: portionUnitNoun(entry.portionUnit, food?.servingLabel, language),
+  });
 }
 
 export function TodayMeals({ entries, onDelete, onEdit }: Props) {
@@ -61,6 +77,13 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
   // read-only detail sheet (tap the row's main text area to open it).
   const [detailEntry, setDetailEntry] = useState<FoodLogEntry | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
+
+  // "Share as image" (Session 25): a full, never-clipped copy of today's food
+  // list rendered off-screen (see the hidden <ShareDayFoodCard> mount below)
+  // purely so shareTodayFoodCard has a real native view to snapshot — this
+  // component never shows it to the user directly.
+  const shareCardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
 
   const editingIsPortion = editingEntry != null && isPortionEntry(editingEntry);
 
@@ -78,6 +101,19 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
     setDetailVisible(false);
   }
 
+  async function handleShare() {
+    if (sharing) return; // guard against a fast double-tap firing two captures
+    setSharing(true);
+    try {
+      await shareTodayFoodCard(shareCardRef, language);
+    } catch (e) {
+      console.warn('shareTodayFoodCard failed:', e);
+      Alert.alert(t('common.error'), t('components.todayMeals.shareErrorMessage'));
+    } finally {
+      setSharing(false);
+    }
+  }
+
   function confirmEdit() {
     if (!editingEntry) return;
     const value = parseDecimal(editAmount);
@@ -93,7 +129,24 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.sectionLabel}>{t('components.todayMeals.sectionLabel')}</Text>
-        <Text style={styles.totalKcal}>⚡ {summary.totalKcal} kcal</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.totalKcal}>⚡ {summary.totalKcal} kcal</Text>
+          {entries.length > 0 && (
+            <Pressable
+              onPress={handleShare}
+              disabled={sharing}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t('components.todayMeals.shareButtonA11y')}
+              style={({ pressed }) => [
+                styles.shareBtn,
+                (pressed || sharing) && styles.pressed,
+              ]}
+            >
+              <Text style={styles.shareIcon}>⤴</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {summary.groups.length === 0 ? (
@@ -125,7 +178,7 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
                       {foodLogEntryDisplayName(e, language)}
                     </Text>
                     <Text style={styles.entryMeta}>
-                      {timeLabel(e.timestamp)} · {amountLabel(e, t)} · {e.energyKcal} kcal
+                      {timeLabel(e.timestamp)} · {amountLabel(e, language)} · {e.energyKcal} kcal
                     </Text>
                   </Pressable>
                   <Pressable
@@ -164,8 +217,12 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
               style={styles.input}
               placeholder={
                 editingIsPortion && editingEntry
-                  ? countFieldLabel(editingEntry, t)
-                  : t('components.todayMeals.gramsFieldLabel')
+                  ? countFieldLabel(editingEntry, language, t)
+                  : t('components.todayMeals.gramsFieldLabel', {
+                      measure: measureUnitOf(
+                        editingEntry ? getAnyFoodById(editingEntry.foodId) : undefined
+                      ),
+                    })
               }
               placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
@@ -192,6 +249,16 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
 
       {/* Read-only nutrition breakdown for the tapped entry */}
       <NutritionDetailSheet entry={detailEntry} visible={detailVisible} onClose={closeDetail} />
+
+      {/* Never rendered on screen — positioned far off-canvas so it still
+          lays out (and can be captured) without ever being visible or
+          intercepting touches. Mounted only when there's something to
+          share, matching the share button's own visibility above. */}
+      {entries.length > 0 && (
+        <View style={styles.offscreen} pointerEvents="none">
+          <ShareDayFoodCard ref={shareCardRef} entries={entries} />
+        </View>
+      )}
     </View>
   );
 }
@@ -204,7 +271,19 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     alignItems: 'baseline',
   },
   sectionLabel: { fontSize: 13, color: c.textTertiary },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   totalKcal: { fontSize: 15, fontWeight: '800', color: c.accent },
+  shareBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: c.bgElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareIcon: { color: c.infoAlt, fontSize: 13, fontWeight: '700' },
+  // Far enough off-canvas that it can never intrude, at any screen size.
+  offscreen: { position: 'absolute', top: -100000, left: 0 },
   macroLine: { fontSize: 12, color: c.textSubtle, marginTop: -4 },
   card: {
     backgroundColor: c.bgHighlight,

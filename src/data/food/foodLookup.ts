@@ -53,6 +53,15 @@ export function getAnyFoodById(id: string): FoodItem | undefined {
   // switches the unit back to pack/capsule.
   const servingWeightG =
     portionUnit === 'gram' ? undefined : override.servingWeightG ?? base.servingWeightG;
+  // Same reasoning as Fix #7 one line up: the portion noun only means anything
+  // for a 'serving', so switching the unit to gram/pack/capsule must not leave
+  // a stale 'hộp' behind that would resurface on a later switch back.
+  const servingLabel =
+    portionUnit === 'serving' ? override.servingLabel ?? base.servingLabel : undefined;
+  // measureUnit is independent of how portions are counted (a food weighed in
+  // grams can still be a liquid read in ml), so it simply follows the override
+  // when set and falls back to the base otherwise.
+  const measureUnit = override.measureUnit ?? base.measureUnit;
 
   return {
     ...base,
@@ -63,6 +72,8 @@ export function getAnyFoodById(id: string): FoodItem | undefined {
     per100g: { ...base.per100g, ...override.per100g },
     portionUnit,
     servingWeightG,
+    servingLabel,
+    measureUnit,
   };
 }
 

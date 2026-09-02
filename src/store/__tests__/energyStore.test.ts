@@ -748,6 +748,49 @@ describe('energyStore — removeFood reverses the correct energy-day reading (FI
   });
 });
 
+describe('energyStore — logFood entry ids are unique per log, not per minute', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    seedReadings();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // The food-log modal builds its timestamp with setHours(h, m, 0, 0), so two
+  // logs of the same food inside one minute arrive with an IDENTICAL
+  // timestamp. Ids used to be `food_<ts>_<foodId>`, which then collided on
+  // food_log's PRIMARY KEY: both doses charged the pins, only one row reached
+  // the table, and the live-computed micronutrient totals disagreed with the
+  // list (and changed again after a restart).
+  it('gives two same-timestamp logs of the same food distinct ids', async () => {
+    const item = makeFoodItem();
+    const timestamp = Date.now();
+
+    await useEnergyStore.getState().logFood(item, 100, timestamp);
+    await useEnergyStore.getState().logFood(item, 100, timestamp);
+
+    const log = useEnergyStore.getState().foodLog;
+    expect(log).toHaveLength(2);
+    expect(log[0].timestamp).toBe(log[1].timestamp);
+    expect(log[0].id).not.toBe(log[1].id);
+  });
+
+  it('removing one of two same-timestamp logs leaves the other intact', async () => {
+    const item = makeFoodItem(); // 200 kcal / 100 g
+    const timestamp = Date.now();
+
+    await useEnergyStore.getState().logFood(item, 100, timestamp);
+    await useEnergyStore.getState().logFood(item, 100, timestamp);
+    expect(findReading('energy').level).toBe(900); // 500 base + 200 + 200
+
+    await useEnergyStore.getState().removeFood(useEnergyStore.getState().foodLog[0].id);
+
+    expect(useEnergyStore.getState().foodLog).toHaveLength(1);
+    expect(findReading('energy').level).toBe(700); // exactly one dose reversed
+  });
+});
+
 describe('energyStore — updateFood (FIX #2, reverse-then-relog)', () => {
   beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -787,6 +830,25 @@ describe('energyStore — updateFood (FIX #2, reverse-then-relog)', () => {
     // No-op: entry and readings unchanged.
     expect(useEnergyStore.getState().foodLog).toHaveLength(1);
     expect(useEnergyStore.getState().readings).toEqual(before);
+  });
+
+  // 'serving' is the open-ended portion unit (hộp/chai/ly) — an open-coded
+  // pack/capsule check here used to send it down the grams branch, so editing
+  // "2 hộp" to "3" silently became 3 GRAMS.
+  it('a freely-named (serving) portion food also edits by count', async () => {
+    const item = makeFoodItem({ portionUnit: 'serving', servingLabel: 'hộp', servingWeightG: 65 });
+    (getAnyFoodById as jest.Mock).mockReturnValue(item);
+
+    await useEnergyStore
+      .getState()
+      .logFood(item, 65, Date.now(), { portionUnit: 'serving', count: 1 });
+
+    const id = useEnergyStore.getState().foodLog[0].id;
+    await useEnergyStore.getState().updateFood(id, { count: 2 });
+
+    const entry = useEnergyStore.getState().foodLog[0];
+    expect(entry.count).toBe(2);
+    expect(entry.grams).toBe(130); // 2 x 65 ml, not 2 grams
   });
 
   it('a portion-based (capsule) food edits by count', async () => {
