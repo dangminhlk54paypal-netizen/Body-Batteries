@@ -40,6 +40,12 @@ const H = 200;
 const TERMINAL_H = 10;
 const R = 10;
 
+// Cap for iOS/Android "larger text" accessibility settings on the pct/label
+// captions glued to the fixed W×H SVG graphic above — same reasoning as
+// BatteryCell's identical constant: lets low-vision users get meaningfully
+// bigger text without the graphic's fixed width clipping it.
+const CARD_LABEL_FONT_SCALE_CAP = 1.5;
+
 // Animating SVG rect props (not RN styles) via Reanimated keeps the fill
 // transition on the UI thread — no extra dependency, no per-frame JS cost.
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
@@ -239,7 +245,14 @@ export function MasterBattery({
 
   return (
     <View style={styles.container}>
-      <View style={styles.batteryWrap}>
+      <View
+        style={styles.batteryWrap}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={t('components.masterBattery.a11yLabel', {
+          percentage: Math.round(fillPercentage),
+        })}
+      >
         {/* Charging glow (P4): amber backdrop that fades in/out on a food
             log — real backgroundColor opacity so it also reads on Android,
             plus an iOS shadow for extra softness. */}
@@ -287,8 +300,12 @@ export function MasterBattery({
         )}
       </View>
 
-      <Text style={styles.pct}>{Math.round(fillPercentage)}%</Text>
-      <Text style={styles.label}>{t('components.masterBattery.label')}</Text>
+      <Text style={styles.pct} maxFontSizeMultiplier={CARD_LABEL_FONT_SCALE_CAP}>
+        {Math.round(fillPercentage)}%
+      </Text>
+      <Text style={styles.label} maxFontSizeMultiplier={CARD_LABEL_FONT_SCALE_CAP}>
+        {t('components.masterBattery.label')}
+      </Text>
 
       <View style={styles.ledgerSection}>
         <View style={styles.divider} />
@@ -392,8 +409,10 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     color: c.textSecondary,
   },
   disclaimer: {
-    fontSize: 10,
-    color: c.textMuted,
+    fontSize: 12,
+    // textDim, not textMuted: textMuted only clears ~2.9:1 against bgCard
+    // (below WCAG AA 4.5:1) — textDim clears ~5.6-6:1 in both themes.
+    color: c.textDim,
     fontStyle: 'italic',
   },
 });

@@ -45,7 +45,11 @@ export const darkColors = {
   textSubtle: '#777',
   textMuted: '#666',
   textFaint: '#555',
-  textCool: '#5a5a7a', // MicroBatteryStack target caption — cooler-toned faint gray
+  textCool: '#8282A2', // MicroBatteryStack target caption — cooler-toned faint gray.
+  // Brightened from #5a5a7a (was 2.58:1 against bgCard, below WCAG AA) to
+  // clear 4.5:1 — same hue/saturation, just lighter, since this token isn't
+  // chained into the textPrimary…textFaint ladder below (used in exactly one
+  // place) so there's no neighboring tier to collide with.
   textPale: '#E0E0FF', // OnboardingScreen card header — near-white lavender tint
 
   // ── Accent / brand ───────────────────────────────────────────────────────
@@ -112,7 +116,9 @@ export const lightColors: ThemeColors = {
   textSubtle: '#858599',
   textMuted: '#9595A8',
   textFaint: '#A5A5B5',
-  textCool: '#8888A5', // MicroBatteryStack target caption — cooler-toned faint gray
+  textCool: '#737395', // MicroBatteryStack target caption — cooler-toned faint gray.
+  // Darkened from #8888A5 (was 3.44:1 against white bgCard) to clear 4.5:1 —
+  // same hue/saturation, just darker; standalone token, no ladder collision.
   textPale: '#3A3A6E', // OnboardingScreen card header — deep lavender on white
 
   // ── Accent / brand ───────────────────────────────────────────────────────
@@ -130,7 +136,9 @@ export const lightColors: ThemeColors = {
   // ── Semantic status ──────────────────────────────────────────────────────
   danger: '#FF6B6B',
   dangerStrong: '#FF4757',
-  warning: '#C7900A', // original #FFD93D is unreadable on white — darkened
+  warning: '#986E08', // original #FFD93D unreadable on white — darkened once
+  // already to #C7900A (2.83:1, still below WCAG AA), darkened again here to
+  // clear 4.5:1 against white bgCard
   info: '#54A0FF',
   infoAlt: '#0984e3',
 

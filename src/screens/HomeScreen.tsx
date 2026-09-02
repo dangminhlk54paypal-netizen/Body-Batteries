@@ -23,6 +23,7 @@ import { TodayIntakes } from '../components/TodayIntakes';
 import { EnergyBalanceCard } from '../components/EnergyBalanceCard';
 import { MicroBatteryStack } from '../components/MicroBatteryStack';
 import { SupplementQuickLog } from '../components/SupplementQuickLog';
+import { CollapsibleSection } from '../components/ui/CollapsibleSection';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
@@ -297,44 +298,50 @@ export function HomeScreen() {
           intakeLog={intakeLog}
         />
 
-        {/* Apple Health energy balance — secondary info below the battery display */}
-        <EnergyBalanceCard
-          foodLog={foodLog}
-          burnedKcal={appleHealthBurnedKcal}
-          status={appleHealthStatus}
-          lastSyncAt={lastAppleHealthSync}
-        />
+        {/* Secondary "dig deeper" blocks, grouped under one umbrella so the
+            page reads as glance-zone (above) + expandable details-zone
+            (below) instead of one flat, equally-weighted stack. Expanded by
+            default — nothing is hidden from existing users. */}
+        <CollapsibleSection title={t('screens.home.detailsSectionTitle')}>
+          {/* Apple Health energy balance — secondary info below the battery display */}
+          <EnergyBalanceCard
+            foodLog={foodLog}
+            burnedKcal={appleHealthBurnedKcal}
+            status={appleHealthStatus}
+            lastSyncAt={lastAppleHealthSync}
+          />
 
-        {/* Micronutrient batteries derived from today's (or a past 7-day) food log */}
-        <MicroBatteryStack
-          states={microBattery.states}
-          dates={microBattery.dates}
-          selectedDate={microBattery.selectedDate}
-          onSelectDate={microBattery.setSelectedDate}
-          foodLog={microBattery.entries}
-          recommendNote={t(
-            userProfile.sex === 'male'
-              ? 'screens.home.recommendNoteMale'
-              : 'screens.home.recommendNoteFemale',
-            { age: userProfile.age }
-          )}
-        />
+          {/* Micronutrient batteries derived from today's (or a past 7-day) food log */}
+          <MicroBatteryStack
+            states={microBattery.states}
+            dates={microBattery.dates}
+            selectedDate={microBattery.selectedDate}
+            onSelectDate={microBattery.setSelectedDate}
+            foodLog={microBattery.entries}
+            recommendNote={t(
+              userProfile.sex === 'male'
+                ? 'screens.home.recommendNoteMale'
+                : 'screens.home.recommendNoteFemale',
+              { age: userProfile.age }
+            )}
+          />
 
-        {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
-        <SupplementQuickLog todayLog={foodLog} />
+          {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
+          <SupplementQuickLog todayLog={foodLog} />
 
-        {/* Quick-tap intake history with one-tap undo */}
-        <TodayIntakes entries={intakeLog} onDelete={handleDeleteIntake} />
+          {/* Quick-tap intake history with one-tap undo */}
+          <TodayIntakes entries={intakeLog} onDelete={handleDeleteIntake} />
 
-        {/* Today's logged meals (grouped by meal + daily kcal total) */}
-        <TodayMeals entries={foodLog} onDelete={handleDeleteFood} onEdit={handleEditFood} />
+          {/* Today's logged meals (grouped by meal + daily kcal total) */}
+          <TodayMeals entries={foodLog} onDelete={handleDeleteFood} onEdit={handleEditFood} />
 
-        {/* Today's logged activity (steps/workouts) with Sửa/Xoá */}
-        <TodayActivities
-          entries={activityLog}
-          onDelete={handleDeleteActivity}
-          onEdit={(id, patch) => updateActivity(id, patch)}
-        />
+          {/* Today's logged activity (steps/workouts) with Sửa/Xoá */}
+          <TodayActivities
+            entries={activityLog}
+            onDelete={handleDeleteActivity}
+            onEdit={(id, patch) => updateActivity(id, patch)}
+          />
+        </CollapsibleSection>
 
         {/* Hint */}
         <Text style={styles.hint}>{t('screens.home.hint')}</Text>
@@ -406,8 +413,10 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     marginBottom: -12,
   },
   hint: {
-    fontSize: 11,
-    color: c.textFaint,
+    fontSize: 12,
+    // textDim, not textFaint: textFaint only clears ~2.3-2.4:1 against bgCard
+    // (well below WCAG AA 4.5:1) — textDim clears ~5.6-6:1 in both themes.
+    color: c.textDim,
     textAlign: 'center',
     paddingHorizontal: 20,
   },

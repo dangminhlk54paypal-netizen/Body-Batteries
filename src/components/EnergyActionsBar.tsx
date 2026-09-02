@@ -112,6 +112,35 @@ export function EnergyActionsBar() {
   const [bodybuildingOpen, setBodybuildingOpen] = useState(false);
   const activitySheetStyle = useSheetSlide(activityOpen);
 
+  // Tactile press feedback (same pattern as ModeSelector's ModeChip) for the
+  // two primary entry-point buttons — onPressIn/onPressOut only flip React
+  // state; the actual shared-value mutation happens in the effects below,
+  // since react-hooks/immutability rejects assigning `.value` directly
+  // inside an inline JSX event-handler closure.
+  const [foodBtnPressed, setFoodBtnPressed] = useState(false);
+  const [activityBtnPressed, setActivityBtnPressed] = useState(false);
+  const foodBtnScale = useSharedValue(1);
+  const activityBtnScale = useSharedValue(1);
+
+  useEffect(() => {
+    foodBtnScale.value = withTiming(foodBtnPressed ? 0.96 : 1, {
+      duration: foodBtnPressed ? 100 : 150,
+    });
+  }, [foodBtnPressed, foodBtnScale]);
+
+  useEffect(() => {
+    activityBtnScale.value = withTiming(activityBtnPressed ? 0.96 : 1, {
+      duration: activityBtnPressed ? 100 : 150,
+    });
+  }, [activityBtnPressed, activityBtnScale]);
+
+  const foodBtnAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: foodBtnScale.value }],
+  }));
+  const activityBtnAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: activityBtnScale.value }],
+  }));
+
   const [category, setCategory] = useState('cardio');
   const [activity, setActivity] = useState<ActivityType>('running');
   // A user-defined activity (types/energy.ts CustomActivity), selected via
@@ -270,18 +299,30 @@ export function EnergyActionsBar() {
           UI as of this change) so historical entries it already wrote to
           intake_events keep reading back correctly. */}
       <View style={styles.bar}>
-        <Pressable
-          style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
-          onPress={() => setFoodOpen(true)}
-        >
-          <Text style={styles.btnText}>{t('components.energyActionsBar.logFoodButton')}</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.btn, styles.move, pressed && styles.pressed]}
-          onPress={() => setActivityOpen(true)}
-        >
-          <Text style={styles.btnText}>{t('components.energyActionsBar.activityButton')}</Text>
-        </Pressable>
+        <Animated.View style={[styles.btnWrap, foodBtnAnimatedStyle]}>
+          <Pressable
+            style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
+            onPress={() => setFoodOpen(true)}
+            onPressIn={() => setFoodBtnPressed(true)}
+            onPressOut={() => setFoodBtnPressed(false)}
+            accessibilityRole="button"
+            accessibilityLabel={t('components.energyActionsBar.logFoodButton')}
+          >
+            <Text style={styles.btnText}>{t('components.energyActionsBar.logFoodButton')}</Text>
+          </Pressable>
+        </Animated.View>
+        <Animated.View style={[styles.btnWrap, activityBtnAnimatedStyle]}>
+          <Pressable
+            style={({ pressed }) => [styles.btn, styles.move, pressed && styles.pressed]}
+            onPress={() => setActivityOpen(true)}
+            onPressIn={() => setActivityBtnPressed(true)}
+            onPressOut={() => setActivityBtnPressed(false)}
+            accessibilityRole="button"
+            accessibilityLabel={t('components.energyActionsBar.activityButton')}
+          >
+            <Text style={styles.btnText}>{t('components.energyActionsBar.activityButton')}</Text>
+          </Pressable>
+        </Animated.View>
       </View>
 
       <FoodLogModal visible={foodOpen} onClose={() => setFoodOpen(false)} />
@@ -559,6 +600,7 @@ export function EnergyActionsBar() {
 const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: { paddingHorizontal: 20, gap: 10 },
   bar: { flexDirection: 'row', gap: 10 },
+  btnWrap: { flex: 1 },
   btn: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   food: { backgroundColor: c.infoAlt },
   move: { backgroundColor: c.danger },
