@@ -135,6 +135,12 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > dòng; thẻ ngày (đã tap được từ trước) mở sheet chi tiết giờ hiện thêm **kcal đốt/giờ ngủ/nước/cân
 > nặng** ngày đó. Verify: **tsc/eslint sạch, 517/517 test PASS**. Chi tiết: `.ai/SESSION_LOG.md`
 > Session 19.
+>
+> **Session 22 (2026-08-06), CODE XONG chưa test máy — polish theo feedback người dùng:** cột
+> Excel giờ **tự fit độ rộng theo nội dung thật** (header + toàn bộ giá trị mỗi cột), thay vì width
+> cố định đoán tay chỉ có ở 2/8 sheet trước đây. Cận trên **12cm (~64 ký tự)** cho cột quá dài (tên
+> món, link nguồn...). Verify: **tsc/eslint sạch, 540/540 test PASS**. Chi tiết:
+> `.ai/SESSION_LOG.md` Session 22.
 
 ---
 

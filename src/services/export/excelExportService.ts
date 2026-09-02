@@ -4,6 +4,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { utils, write } from 'xlsx';
+import type { WorkSheet } from 'xlsx';
+import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { getIntakeEventsInRange } from '../../data/repositories/intakeRepository';
 import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
@@ -23,6 +25,72 @@ import type { Language } from '../../i18n/types';
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
+}
+
+// The free `xlsx` package always writes an empty `<sheetView/>` and has no
+// public API for freeze panes (that's a paid-tier feature upstream). So we
+// patch the raw sheet XML inside the already-built .xlsx zip: turn the empty
+// self-closing tag into one that freezes row 1, on every worksheet.
+function freezeHeaderRow(sheetXml: string): string {
+  return sheetXml.replace(
+    /<sheetView([^/>]*)\/>/,
+    '<sheetView$1><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
+      '<selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView>'
+  );
+}
+
+// Excel's `wch` column-width unit is roughly chars-in-Calibri-11: pixel
+// width ≈ wch * 7 + 5, and at 96dpi 12cm ≈ 454px, so 12cm caps out around
+// (454 - 5) / 7 ≈ 64.1 → 64 chars. MIN keeps narrow columns (e.g. "STT")
+// from collapsing to unreadable widths.
+const AUTO_FIT_MAX_WCH = 64;
+const AUTO_FIT_MIN_WCH = 8;
+const AUTO_FIT_PADDING = 2;
+
+// Auto-fit every column of a worksheet to its actual content (header +
+// all cell values), capped at ~6cm (see AUTO_FIT_MAX_WCH above) so long
+// text (food names, advice strings, source URLs) wraps/truncates instead
+// of blowing the sheet out to full-page width.
+function autoFitColumns(sheet: WorkSheet): void {
+  const ref = sheet['!ref'];
+  if (!ref) return;
+  const range = utils.decode_range(ref);
+  const widths: { wch: number }[] = [];
+  for (let c = range.s.c; c <= range.e.c; c++) {
+    let maxLen = AUTO_FIT_MIN_WCH;
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      const cell = sheet[utils.encode_cell({ r, c })];
+      if (cell == null || cell.v == null) continue;
+      maxLen = Math.max(maxLen, String(cell.v).length);
+    }
+    widths.push({ wch: Math.min(maxLen + AUTO_FIT_PADDING, AUTO_FIT_MAX_WCH) });
+  }
+  sheet['!cols'] = widths;
+}
+
+// btoa() needs a Latin1 "binary string" (one char per byte); chunk the
+// conversion so String.fromCharCode's arg spread never blows the call stack
+// on multi-hundred-KB workbooks.
+function uint8ToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+// Freeze the header row on every sheet by unzipping the .xlsx, patching each
+// xl/worksheets/sheetN.xml, and re-zipping — see freezeHeaderRow() above.
+function workbookToBase64WithFrozenHeaders(wb: ReturnType<typeof utils.book_new>): string {
+  const zipBytes = new Uint8Array(write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
+  const entries = unzipSync(zipBytes);
+  for (const path of Object.keys(entries)) {
+    if (/^xl\/worksheets\/sheet\d+\.xml$/.test(path)) {
+      entries[path] = strToU8(freezeHeaderRow(strFromU8(entries[path])));
+    }
+  }
+  return uint8ToBase64(zipSync(entries));
 }
 
 // Build the .xlsx (all 8 sheets) for an arbitrary date range and return it as a
@@ -170,44 +238,38 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
   const wb = utils.book_new();
 
   const dailyTotalsSheet = utils.json_to_sheet(dailyTotalsRows);
-  dailyTotalsSheet['!cols'] = [
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 14 },
-    { wch: 18 },
-    { wch: 12 },
-  ];
+  autoFitColumns(dailyTotalsSheet);
   utils.book_append_sheet(wb, dailyTotalsSheet, t('export.sheets.dailyTotals'));
 
   const foodEntriesSheet = utils.json_to_sheet(foodEntryRows);
-  foodEntriesSheet['!cols'] = [
-    { wch: 14 },
-    { wch: 10 },
-    { wch: 24 },
-    { wch: 10 },
-    { wch: 14 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 12 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 10 },
-    { wch: 10 },
-  ];
+  autoFitColumns(foodEntriesSheet);
   utils.book_append_sheet(wb, foodEntriesSheet, t('export.sheets.foodEntries'));
 
-  utils.book_append_sheet(wb, utils.json_to_sheet(readingRows), t('export.sheets.batteryReadings'));
-  utils.book_append_sheet(wb, utils.json_to_sheet(intakeRows), t('export.sheets.intakeEvents'));
-  utils.book_append_sheet(wb, utils.json_to_sheet(foodRows), t('export.sheets.foodLog'));
-  utils.book_append_sheet(wb, utils.json_to_sheet(nutritionDayRows), t('export.sheets.nutritionByDay'));
-  utils.book_append_sheet(wb, utils.json_to_sheet(weeklySummaryRows), t('export.sheets.weeklySummary'));
-  utils.book_append_sheet(wb, utils.json_to_sheet(referenceRows), t('export.sheets.referenceThresholds'));
+  const readingsSheet = utils.json_to_sheet(readingRows);
+  autoFitColumns(readingsSheet);
+  utils.book_append_sheet(wb, readingsSheet, t('export.sheets.batteryReadings'));
 
-  return write(wb, { type: 'base64', bookType: 'xlsx' });
+  const intakeSheet = utils.json_to_sheet(intakeRows);
+  autoFitColumns(intakeSheet);
+  utils.book_append_sheet(wb, intakeSheet, t('export.sheets.intakeEvents'));
+
+  const foodLogSheet = utils.json_to_sheet(foodRows);
+  autoFitColumns(foodLogSheet);
+  utils.book_append_sheet(wb, foodLogSheet, t('export.sheets.foodLog'));
+
+  const nutritionDaySheet = utils.json_to_sheet(nutritionDayRows);
+  autoFitColumns(nutritionDaySheet);
+  utils.book_append_sheet(wb, nutritionDaySheet, t('export.sheets.nutritionByDay'));
+
+  const weeklySummarySheet = utils.json_to_sheet(weeklySummaryRows);
+  autoFitColumns(weeklySummarySheet);
+  utils.book_append_sheet(wb, weeklySummarySheet, t('export.sheets.weeklySummary'));
+
+  const referenceSheet = utils.json_to_sheet(referenceRows);
+  autoFitColumns(referenceSheet);
+  utils.book_append_sheet(wb, referenceSheet, t('export.sheets.referenceThresholds'));
+
+  return workbookToBase64WithFrozenHeaders(wb);
 }
 
 // Build + write the workbook for a date range into the app document directory
