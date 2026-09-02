@@ -30,6 +30,22 @@ export function daysBetween(a: string, b: string): number {
   return Math.abs(new Date(b).getTime() - new Date(a).getTime()) / msPerDay;
 }
 
+// 2023-01-01 was a Sunday — used only as an anchor to format a bare
+// day-of-week (0=Sun..6=Sat, JS Date convention) into its localized weekday
+// name via Intl, so the S-PL Block schedule picker needs no 7-entry i18n
+// dictionary — matches this file's LOCALE_TAGS convention.
+const REFERENCE_SUNDAY = new Date(2023, 0, 1);
+
+export function weekdayLabel(
+  dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+  language: Language,
+  format: 'long' | 'short' = 'long'
+): string {
+  const d = new Date(REFERENCE_SUNDAY);
+  d.setDate(d.getDate() + dayOfWeek);
+  return d.toLocaleDateString(LOCALE_TAGS[language], { weekday: format });
+}
+
 export function formatDisplayDate(dateStr: string, language: Language): string {
   // Parse as local midnight ('YYYY-MM-DD' alone is parsed as UTC, which can
   // render the previous day's weekday in negative-offset displays).

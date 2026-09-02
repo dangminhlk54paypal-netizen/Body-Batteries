@@ -614,6 +614,7 @@ export const vi = {
       saveActivityButton: 'Lưu môn',
       powerliftingChip: '🏋️ Powerlifting (set × rep × tạ)',
       bodybuildingChip: '💪 Bodybuilding (theo nhóm cơ)',
+      blockBuilderChip: '📋 Kế hoạch Block (SBD)',
       addActivityChip: '＋ Thêm môn',
       minutesPlaceholder: 'Số phút tập (ví dụ: 45)',
       stepsPlaceholder: 'Số bước chân (tuỳ chọn)',
@@ -1024,5 +1025,147 @@ export const vi = {
       emptyText: 'Chưa đủ dữ liệu để vẽ biểu đồ',
       nutrientLegend: 'Dinh dưỡng',
     },
+  },
+
+  // S-PL Block Builder wizard (BlockBuilderWizard.tsx) — see
+  // docs/08-powerlifting-engine.md for the science behind every step.
+  blockBuilder: {
+    title: 'Xây dựng Block Powerlifting',
+    stepLength: 'Độ dài Block',
+    stepProfile: 'Cân nặng & 1RM',
+    stepFocus: 'Phong cách tính toán',
+    stepSchedule: 'Lịch tuần',
+    stepDeficit: 'Mục tiêu giảm cân',
+    stepSummary: 'Xác nhận',
+    progressiveWeeksLabel: 'Số tuần tịnh tiến',
+    hasDeloadLabel: 'Có tuần deload sau cùng',
+    bodyWeightLabel: 'Cân nặng hiện tại (kg)',
+    oneRmSectionTitle: '1RM gần nhất (bỏ trống nếu chưa rõ)',
+    oneRmSquatLabel: 'Squat (kg)',
+    oneRmBenchLabel: 'Bench Press (kg)',
+    oneRmDeadliftLabel: 'Deadlift (kg)',
+    beginnerEstimateNote: 'Chưa có số — dùng tạm ước lượng an toàn: {{value}}kg',
+    focusVolumeLabel: 'Volume',
+    focusVolumeDescription: 'Tích luỹ khối lượng, tạ vừa, nhiều rep',
+    focusIntensityLabel: 'Intensity',
+    focusIntensityDescription: 'Sức mạnh, tạ nặng dần, ít rep',
+    focusNormalLabel: 'Normal',
+    focusNormalDescription: 'Cân bằng, luân phiên nặng/vừa/nhẹ trong tuần',
+    focusPeakingLabel: 'Peaking',
+    focusPeakingDescription: 'Chuẩn bị thi đấu, tạ rất nặng, volume rất thấp',
+    scheduleEmptyText: 'Chưa có buổi tập nào — bấm "+ Thêm buổi tập" để bắt đầu.',
+    scheduleAddDayButton: '+ Thêm buổi tập',
+    scheduleDayLabel: 'Ngày trong tuần',
+    scheduleRemoveDayButton: 'Xoá buổi',
+    scheduleVariationSectionTitle: 'Bài chính/phụ (tự tính tải theo %1RM)',
+    scheduleAddVariationButton: '+ Thêm bài',
+    scheduleExerciseLabel: 'Bài tập',
+    scheduleVariationLabel: 'Kiểu kỹ thuật',
+    scheduleRoleLabel: 'Vai trò',
+    scheduleRoleMain: 'Bài chính',
+    scheduleRoleSecondary: 'Bài phụ',
+    scheduleRemoveVariationButton: 'Xoá bài',
+    scheduleAccessorySectionTitle: 'Bài phụ trợ (không tự tính tải)',
+    scheduleAddAccessoryButton: '+ Thêm accessory',
+    accessoryNamePlaceholder: 'Tên bài (VD: Kéo xô)',
+    accessorySetsPlaceholder: 'Số set',
+    accessoryRepsPlaceholder: 'Số rep',
+    scheduleRemoveAccessoryButton: 'Xoá',
+    deficitAutoOnNote: 'Bạn đang đặt mục tiêu giảm cân trong hồ sơ — Deficit Mode sẽ tự bật.',
+    deficitToggleLabel: 'Bật Deficit Mode',
+    deficitExplanation:
+      'Giữ nguyên %1RM bài chính, giảm 15-20% set accessories, khuyến nghị đạm 1.6-2.4g/kg thể trọng.',
+    deficitNoGoalNote:
+      'Chưa đặt mục tiêu giảm cân trong hồ sơ — vào Cài đặt để đặt cân nặng mục tiêu nếu muốn dùng Deficit Mode.',
+    summaryWeeksLine: '{{weeks}} tuần tịnh tiến{{deload}}',
+    summaryDeloadSuffix: ' + 1 tuần deload',
+    summaryFocusLine: 'Phong cách: {{focus}}',
+    summaryDayCountLine: '{{count}} buổi tập/tuần',
+    summaryDeficitOnLine: 'Deficit Mode: BẬT',
+    summaryDeficitOffLine: 'Deficit Mode: TẮT',
+    createButton: 'Tạo Block',
+    nextButton: 'Tiếp theo',
+    backButton: 'Quay lại',
+    validationNeedDay: 'Cần ít nhất 1 buổi tập trong lịch tuần.',
+    validationNeedVariation: 'Mỗi buổi tập cần ít nhất 1 bài chính/phụ.',
+  },
+
+  // S-PL Block technique-variation library display copy — keyed by
+  // PowerliftingVariation['id'] (src/lib/powerliftingVariations.ts). Each
+  // entry's `rationale` is what the Plan Appendix's "ⓘ" info affordance
+  // shows — see docs/08-powerlifting-engine.md §7.
+  blockVariations: {
+    squat_standard: {
+      label: 'Squat tiêu chuẩn',
+      rationale:
+        'Kỹ thuật squat thi đấu bình thường — dùng làm mốc 1RM gốc cho các biến thể khác.',
+    },
+    squat_paused: {
+      label: 'Squat có dừng (Paused Squat)',
+      rationale:
+        'Dừng 1-2s ở đáy trước khi đứng lên, loại bỏ phản xạ giãn-co (stretch reflex) để luyện phát lực từ điểm chết — thường nhẹ hơn squat thường khoảng 10%.',
+    },
+    bench_touch_and_go: {
+      label: 'Bench chạm ngực-đẩy liên tục (Touch-and-go)',
+      rationale:
+        'Chạm ngực rồi đẩy lên ngay, tận dụng hiệu ứng giãn-co cơ (stretch-shortening cycle) — đây là kỹ thuật thi đấu chuẩn, dùng làm mốc 1RM gốc cho bench.',
+    },
+    bench_paused: {
+      label: 'Bench có dừng 1s trên ngực (Paused Bench)',
+      rationale:
+        'Dừng tạ hẳn trên ngực khoảng 1s trước khi đẩy, loại bỏ hoàn toàn hiệu ứng giãn-co — luyện phát lực từ điểm chết đúng luật thi đấu, thường nhẹ hơn touch-and-go khoảng 10%.',
+    },
+    bench_low_grip: {
+      label: 'Bench tay hẹp (Low/Close Grip)',
+      rationale:
+        'Grip hẹp hơn vai chuyển tải sang tay sau (triceps) nhiều hơn ngực/lưng, làm giảm mức tạ nâng được so với grip thi đấu.',
+    },
+    bench_incline: {
+      label: 'Bench trên ghế dốc (Incline Bench)',
+      rationale:
+        'Góc ghế dốc giảm sự tham gia của cơ ngực lớn so với bench phẳng, làm giảm mức tạ nâng được.',
+    },
+    deadlift_standard: {
+      label: 'Deadlift tiêu chuẩn',
+      rationale:
+        'Kỹ thuật deadlift thi đấu bình thường — dùng làm mốc 1RM gốc cho các biến thể khác.',
+    },
+    deadlift_paused: {
+      label: 'Deadlift có dừng (Paused Deadlift)',
+      rationale:
+        'Dừng 1-2s ngang gối trước khi kéo tiếp, loại bỏ phản xạ giãn-co khi rời sàn — thường nhẹ hơn deadlift thường khoảng 10%.',
+    },
+    deadlift_deficit: {
+      label: 'Deadlift đứng bục (Deficit Deadlift)',
+      rationale:
+        'Đứng trên bục thấp làm tăng quãng đường kéo tạ từ sàn, khiến mức tạ nâng được giảm so với deadlift thường.',
+    },
+  },
+
+  // Plan Appendix output screen (PlanAppendixSheet.tsx) — week/day/set
+  // breakdown + transparent kcal math, see docs/08-powerlifting-engine.md §7.
+  planAppendix: {
+    title: 'Phụ lục Kế hoạch',
+    weekLabel: 'Tuần {{number}}',
+    deloadBadge: 'Deload',
+    variationSetsLine: '{{sets}} set × {{reps}} rep @ {{weight}}kg (~{{pct}}% 1RM)',
+    kcalLine: '~{{kcal}} kcal',
+    epocNote:
+      'Kcal hiển thị là trong-buổi (mô hình vật lý set×rep×tạ). Cơ thể tiếp tục đốt thêm ước tính 6-15% trong 24-48h sau đó (EPOC).',
+    dayTotalLabel: 'Tổng buổi: ~{{kcal}} kcal',
+    weekTotalLabel: 'Tổng tuần: ~{{kcal}} kcal',
+    weeklyDeficitTargetLabel: 'Mục tiêu thâm hụt tuần: ~{{kcal}} kcal',
+    beginnerEstimateBadge: '1RM ước lượng',
+    accessoriesSectionTitle: 'Bài phụ trợ',
+    accessoryLine: '{{name}}: {{sets}} set × {{reps}}',
+    noAccessories: 'Không có bài phụ trợ hôm nay.',
+    proteinRecommendationNote: 'Khuyến nghị đạm khi Deficit Mode bật: 1.6-2.4g/kg thể trọng/ngày.',
+    infoToggleShow: 'Xem giải thích khoa học',
+    infoToggleHide: 'Ẩn giải thích',
+    emptyState: 'Chưa có block nào — hãy tạo một block mới.',
+    createBlockButton: 'Tạo Block mới',
+    deleteBlockButton: 'Xoá block này',
+    deleteConfirmTitle: 'Xoá block này?',
+    deleteConfirmMessage: 'Kế hoạch sẽ bị xoá vĩnh viễn, không ảnh hưởng tới nhật ký đã ghi.',
   },
 };

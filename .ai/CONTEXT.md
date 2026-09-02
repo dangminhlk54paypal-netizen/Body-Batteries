@@ -112,7 +112,29 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-08-06 (Session 23, xem `.ai/SESSION_LOG.md`).** **Powerlifting: nút
+**Cập nhật lần cuối: 2026-09-02 (Session 26, xem `.ai/SESSION_LOG.md`).** **Tính năng lớn mới:
+S-PL Block Builder** — tự lập kế hoạch block powerlifting (SBD) nhiều tuần tịnh tiến + 1 tuần
+deload, chọn 1 trong 4 "phong cách tính toán" (Volume/Intensity/Normal/Peaking), khai báo lịch
+tuần (ngày × bài × biến thể kỹ thuật + bài phụ trợ), 1RM (hoặc ước lượng an toàn cho người mới),
+tự bật "Deficit Mode" khi có mục tiêu giảm cân, xuất "Phụ lục Kế hoạch" minh bạch kcal từng
+buổi/tuần với icon ⓘ giải thích khoa học mỗi biến thể. Yêu cầu tường minh của người dùng: phải có
+cơ sở nghiên cứu khoa học thật trước khi viết code. **`docs/08-powerlifting-engine.md` viết lại
+hoàn toàn** — 24 nguồn thật tra qua WebSearch (Zourdos 2016, Helms 2014/2018, Longland 2016 AJCN,
+Murphy & Koehler 2022, Garthe 2011, Schoenfeld 2021, NSCA...), thay thế bản nháp không trích dẫn
+của 1 session Gemini/Antigravity chạy song song (va chạm ghi file thật, đã dừng hỏi người dùng
+trước khi ghi đè — xem SESSION_LOG). Code mới: `src/types/powerliftingBlock.ts`,
+`src/lib/powerliftingVariations.ts` (9 biến thể), `src/domain/energy/blockEngine.ts` (engine
+thuần, **tái dùng nguyên** `liftingSessionKcal`/`dailyCalorieTarget` có sẵn — không phát minh công
+thức thứ hai, 16 test mới), bảng SQLite `training_blocks` + `trainingBlockRepository.ts` +
+`blockStore.ts`, UI `BlockBuilderWizard.tsx` (6 bước) + `PlanAppendixSheet.tsx` +
+`src/components/ui/InfoPopover.tsx` (icon ⓘ mở rộng TẠI CHỖ, không phải `<Modal>` thứ hai — tránh
+đúng bug Modal-chồng-Modal Session 18), gắn vào `EnergyActionsBar.tsx` qua chip "📋 Kế hoạch Block
+(SBD)". i18n đủ VI/EN/DE (~110 key mới). `npm run verify` PASS (tsc + eslint sạch, **602/602
+test**). **CHƯA commit, CHƯA TEST MÁY THẬT** (wizard/appendix chưa bấm thử trên điện thoại — việc
+ưu tiên số 1 của session tiếp theo). Tuỳ chọn chưa làm: prefill `PowerliftingSheet` từ buổi tập
+hôm nay trong block đang active.
+
+**Trước đó — Session 23 (2026-08-06, xem `.ai/SESSION_LOG.md`).** **Powerlifting: nút
 "Dùng làm mẫu" nạp set buổi tập trước.** Người dùng phản ánh mỗi buổi ghi squat/bench/deadlift phải
 gõ lại toàn bộ set từ đầu, dù hôm sau thường chỉ đổi chút tạ/rep. `PowerliftingSheet.tsx` — mỗi tab
 giờ có nút "📋 Dùng làm mẫu" cạnh dòng "Buổi trước": nạp khởi động + bài chính của buổi gần nhất

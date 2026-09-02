@@ -581,6 +581,7 @@ export const de: TranslationSchema = {
       saveActivityButton: 'Aktivität speichern',
       powerliftingChip: '🏋️ Powerlifting (Sätze × Wdh. × Gewicht)',
       bodybuildingChip: '💪 Bodybuilding (nach Muskelgruppe)',
+      blockBuilderChip: '📋 Block-Plan (SBD)',
       addActivityChip: '＋ Aktivität hinzufügen',
       minutesPlaceholder: 'Minuten (z. B. 45)',
       stepsPlaceholder: 'Schritte (optional)',
@@ -990,5 +991,141 @@ export const de: TranslationSchema = {
       emptyText: 'Noch nicht genug Daten für ein Diagramm',
       nutrientLegend: 'Nährstoffe',
     },
+  },
+
+  blockBuilder: {
+    title: 'Powerlifting-Block erstellen',
+    stepLength: 'Blocklänge',
+    stepProfile: 'Körpergewicht & 1RM',
+    stepFocus: 'Trainingsschwerpunkt',
+    stepSchedule: 'Wochenplan',
+    stepDeficit: 'Abnehmziel',
+    stepSummary: 'Bestätigen',
+    progressiveWeeksLabel: 'Aufbauwochen',
+    hasDeloadLabel: 'Abschließende Deload-Woche einplanen',
+    bodyWeightLabel: 'Aktuelles Körpergewicht (kg)',
+    oneRmSectionTitle: 'Letztes 1RM (leer lassen, wenn unbekannt)',
+    oneRmSquatLabel: 'Kniebeuge (kg)',
+    oneRmBenchLabel: 'Bankdrücken (kg)',
+    oneRmDeadliftLabel: 'Kreuzheben (kg)',
+    beginnerEstimateNote: 'Noch kein Wert — vorläufig sichere Schätzung: {{value}}kg',
+    focusVolumeLabel: 'Volume',
+    focusVolumeDescription: 'Volumenaufbau, moderates Gewicht, mehr Wiederholungen',
+    focusIntensityLabel: 'Intensity',
+    focusIntensityDescription: 'Kraftfokus, steigende Last, weniger Wiederholungen',
+    focusNormalLabel: 'Normal',
+    focusNormalDescription: 'Ausgewogen — wechselt innerhalb der Woche zwischen schwer/mittel/leicht',
+    focusPeakingLabel: 'Peaking',
+    focusPeakingDescription: 'Wettkampfvorbereitung — sehr schwer, sehr geringes Volumen',
+    scheduleEmptyText: 'Noch keine Trainingstage — tippe auf "+ Tag hinzufügen", um zu starten.',
+    scheduleAddDayButton: '+ Tag hinzufügen',
+    scheduleDayLabel: 'Wochentag',
+    scheduleRemoveDayButton: 'Tag entfernen',
+    scheduleVariationSectionTitle: 'Haupt-/Nebenübungen (automatisch nach %1RM berechnet)',
+    scheduleAddVariationButton: '+ Übung hinzufügen',
+    scheduleExerciseLabel: 'Übung',
+    scheduleVariationLabel: 'Technikvariante',
+    scheduleRoleLabel: 'Rolle',
+    scheduleRoleMain: 'Hauptübung',
+    scheduleRoleSecondary: 'Nebenübung',
+    scheduleRemoveVariationButton: 'Entfernen',
+    scheduleAccessorySectionTitle: 'Zusatzübungen (nicht automatisch berechnet)',
+    scheduleAddAccessoryButton: '+ Zusatzübung hinzufügen',
+    accessoryNamePlaceholder: 'Übungsname (z. B. Latzug)',
+    accessorySetsPlaceholder: 'Sätze',
+    accessoryRepsPlaceholder: 'Wiederholungen',
+    scheduleRemoveAccessoryButton: 'Entfernen',
+    deficitAutoOnNote:
+      'In deinem Profil ist ein niedrigeres Zielgewicht hinterlegt — der Deficit-Modus wird automatisch aktiviert.',
+    deficitToggleLabel: 'Deficit-Modus aktivieren',
+    deficitExplanation:
+      'Hält das %1RM der Hauptübungen konstant, kürzt die Sätze der Zusatzübungen um 15-20% und empfiehlt 1,6-2,4g Protein pro kg Körpergewicht.',
+    deficitNoGoalNote:
+      'In deinem Profil ist noch kein Abnehmziel hinterlegt — lege in den Einstellungen ein Zielgewicht fest, um den Deficit-Modus zu nutzen.',
+    summaryWeeksLine: '{{weeks}} Aufbauwochen{{deload}}',
+    summaryDeloadSuffix: ' + 1 Deload-Woche',
+    summaryFocusLine: 'Schwerpunkt: {{focus}}',
+    summaryDayCountLine: '{{count}} Trainingstag(e)/Woche',
+    summaryDeficitOnLine: 'Deficit-Modus: AN',
+    summaryDeficitOffLine: 'Deficit-Modus: AUS',
+    createButton: 'Block erstellen',
+    nextButton: 'Weiter',
+    backButton: 'Zurück',
+    validationNeedDay: 'Füge mindestens einen Trainingstag zum Wochenplan hinzu.',
+    validationNeedVariation: 'Jeder Trainingstag braucht mindestens eine Haupt-/Nebenübung.',
+  },
+
+  blockVariations: {
+    squat_standard: {
+      label: 'Standard-Kniebeuge',
+      rationale:
+        'Die normale Wettkampf-Kniebeugentechnik — die Basis-1RM für ihre Varianten.',
+    },
+    squat_paused: {
+      label: 'Kniebeuge mit Pause (Paused Squat)',
+      rationale:
+        'Eine 1-2s Pause am tiefsten Punkt entfernt den Dehnungsreflex und trainiert Kraftentfaltung aus dem Stillstand — meist ~10% leichter als die Standard-Kniebeuge.',
+    },
+    bench_touch_and_go: {
+      label: 'Bankdrücken mit Brustkontakt (Touch-and-go)',
+      rationale:
+        'Berührt die Brust und drückt sofort zurück, nutzt den Dehnungs-Verkürzungs-Zyklus — die Standard-Wettkampftechnik und die Basis-1RM dieser Übung.',
+    },
+    bench_paused: {
+      label: 'Bankdrücken mit 1s Pause auf der Brust',
+      rationale:
+        'Ein vollständiger Stillstand auf der Brust (~1s) entfernt den Dehnungs-Verkürzungs-Effekt komplett und trainiert Kraft aus echtem Stillstand (Wettkampf-Wertungsstandard) — meist ~10% leichter als Touch-and-go.',
+    },
+    bench_low_grip: {
+      label: 'Bankdrücken enger Griff (Low/Close Grip)',
+      rationale:
+        'Ein Griff enger als schulterbreit verlagert die Last mehr auf den Trizeps statt Brust/Rücken und senkt die erreichbare Last gegenüber dem Wettkampfgriff.',
+    },
+    bench_incline: {
+      label: 'Schrägbankdrücken (Incline Bench)',
+      rationale:
+        'Der Schrägbankwinkel reduziert die Beteiligung des großen Brustmuskels gegenüber der Flachbank und senkt die erreichbare Last.',
+    },
+    deadlift_standard: {
+      label: 'Standard-Kreuzheben',
+      rationale:
+        'Die normale Wettkampf-Kreuzhebentechnik — die Basis-1RM für ihre Varianten.',
+    },
+    deadlift_paused: {
+      label: 'Kreuzheben mit Pause (Paused Deadlift)',
+      rationale:
+        'Eine 1-2s Pause auf Kniehöhe entfernt den Dehnungsreflex beim Abheben vom Boden — meist ~10% leichter als Standard-Kreuzheben.',
+    },
+    deadlift_deficit: {
+      label: 'Kreuzheben vom Defizit (Deficit Deadlift)',
+      rationale:
+        'Das Stehen auf einer niedrigen Plattform vergrößert den Bewegungsradius ab Boden und senkt die erreichbare Last gegenüber Standard-Kreuzheben.',
+    },
+  },
+
+  planAppendix: {
+    title: 'Plananhang',
+    weekLabel: 'Woche {{number}}',
+    deloadBadge: 'Deload',
+    variationSetsLine: '{{sets}} Sätze × {{reps}} Wdh. @ {{weight}}kg (~{{pct}}% 1RM)',
+    kcalLine: '~{{kcal}} kcal',
+    epocNote:
+      'Die angezeigten kcal sind der Wert während der Einheit (physikalisches Satz×Wdh.×Gewicht-Modell). Der Körper verbrennt danach schätzungsweise weitere 6-15% über 24-48h (EPOC).',
+    dayTotalLabel: 'Einheit gesamt: ~{{kcal}} kcal',
+    weekTotalLabel: 'Woche gesamt: ~{{kcal}} kcal',
+    weeklyDeficitTargetLabel: 'Wöchentliches Defizitziel: ~{{kcal}} kcal',
+    beginnerEstimateBadge: 'Geschätztes 1RM',
+    accessoriesSectionTitle: 'Zusatzübungen',
+    accessoryLine: '{{name}}: {{sets}} Sätze × {{reps}}',
+    noAccessories: 'Heute keine Zusatzübungen.',
+    proteinRecommendationNote: 'Proteinziel bei aktivem Deficit-Modus: 1,6-2,4g pro kg Körpergewicht/Tag.',
+    infoToggleShow: 'Wissenschaft anzeigen',
+    infoToggleHide: 'Erklärung ausblenden',
+    emptyState: 'Noch kein Block vorhanden — erstelle einen neuen.',
+    createBlockButton: 'Neuen Block erstellen',
+    deleteBlockButton: 'Diesen Block löschen',
+    deleteConfirmTitle: 'Diesen Block löschen?',
+    deleteConfirmMessage:
+      'Dieser Plan wird dauerhaft gelöscht — bereits erfasste Einträge sind davon nicht betroffen.',
   },
 };

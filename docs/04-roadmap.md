@@ -233,4 +233,14 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > là hành vi runtime RN Modal — không có test tự động, bắt buộc test tay trên điện thoại để xác
 > nhận trước khi commit.** Chi tiết: `.ai/SESSION_LOG.md` Session 18, `.ai/parallel-reports/S-A.md`.
 
+> 🟡 **(2026-09-02, Session 26, nhánh `ui-upgrade`, CHƯA COMMIT)** Tính năng lớn mới **S-PL Block
+> Builder**: tự lập kế hoạch block powerlifting (SBD) nhiều tuần — 4 phong cách tính toán
+> (Volume/Intensity/Normal/Peaking), ước lượng 1RM an toàn cho người mới, Deficit Mode khi giảm
+> cân, Phụ lục Kế hoạch minh bạch kcal kèm icon ⓘ giải thích khoa học. Cơ sở khoa học viết lại
+> hoàn toàn ở `docs/08-powerlifting-engine.md` (24 nguồn thật, thay bản nháp không trích dẫn của
+> một session Gemini/Antigravity chạy song song). Engine mới (`blockEngine.ts`) tái dùng nguyên
+> `liftingSessionKcal`/`dailyCalorieTarget` sẵn có, không phát minh công thức thứ hai. Verify:
+> **602/602 test PASS** (+16 test mới), tsc/lint sạch. **Chưa test máy thật.** Chi tiết:
+> `.ai/SESSION_LOG.md` Session 26.
+
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

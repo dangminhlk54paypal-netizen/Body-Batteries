@@ -1532,6 +1532,77 @@ trước do thư viện mới). **CHƯA commit.**
 3. **Nhắc lại (từ Session 21–24):** nhánh `ui-upgrade` vẫn tồn đọng rất nhiều thay đổi CHƯA
    COMMIT — nên rà + test tay + commit theo từng cụm.
 
+## Session 26 — 2026-09-02
+
+**Làm gì:** Tính năng mới lớn — **S-PL Block Builder**: tự lập kế hoạch một block luyện tập
+powerlifting (SBD) N tuần tịnh tiến + 1 tuần deload, chọn 1 trong 4 "phong cách tính toán"
+(Volume/Intensity/Normal/Peaking), khai báo lịch tuần (ngày × bài × biến thể kỹ thuật + bài phụ
+trợ), 1RM (hoặc ước lượng an toàn cho người mới), tự bật "Deficit Mode" khi có mục tiêu giảm cân,
+và xuất "Phụ lục Kế hoạch" minh bạch kcal từng buổi/tuần với icon ⓘ giải thích khoa học mỗi biến
+thể. Yêu cầu tường minh của người dùng: PHẢI có cơ sở nghiên cứu khoa học thật (trích nguồn) trước
+khi viết code — không được đoán số.
+
+**Kết quả:**
+- **`docs/08-powerlifting-engine.md`** viết lại HOÀN TOÀN (không phải bản nháp trước đó của
+  Gemini/Antigravity chạy song song trong cùng thư mục — bản đó thiếu trích dẫn, dùng model kcal
+  MET×phút mâu thuẫn với quyết định kiến trúc sẵn có). 24 nguồn thật tra qua WebSearch (Zourdos
+  2016 RPE-RIR, Helms 2014/2018, Longland 2016 AJCN, Murphy & Koehler 2022 meta-analysis, Garthe
+  2011, Schoenfeld 2021, NSCA, Prilepin/Pritchard 2016...), bảng %1RM×set×rep cụ thể cho 4 phong
+  cách, quy tắc Deficit Mode bám bằng chứng khoa học (giữ %1RM bài chính, cắt 15-20% accessories).
+  **Va chạm hi hữu:** phát hiện file đang bị 1 session Gemini khác ghi đè real-time giữa lúc viết
+  — đã dừng lại hỏi người dùng trước khi ghi đè tiếp (xem transcript), không tự ý xử lý xung đột.
+- **Data model mới, tách biệt hoàn toàn khỏi `energy.ts`** (giống S-BB có
+  `bodybuildingExercises.ts` riêng): `src/types/powerliftingBlock.ts` (TrainingBlockConfig,
+  BlockWeekPlan, GeneratedBlockPlan...), `src/lib/powerliftingVariations.ts` (9 biến thể kỹ thuật:
+  paused/touch-and-go/low-grip/incline/deficit, mỗi cái có `loadFactor` — heuristic huấn luyện,
+  không phải hằng số đo được, đã ghi rõ trong comment).
+- **`src/domain/energy/blockEngine.ts`** (hàm thuần, 16 unit test PASS): ước lượng 1RM an toàn
+  cho người mới (%cân nặng × hệ số an toàn 0.85), đường cong %1RM×set×rep theo tuần cho 4 phong
+  cách (nội suy tuyến tính giữa 3 mốc đầu/giữa/cuối; riêng "Normal" luân phiên theo THỨ TỰ NGÀY
+  trong tuần kiểu DUP thay vì theo tuần), `deloadCurvePoint` tách riêng để test độc lập, Deficit
+  Mode chỉ cắt set accessories (không đụng %1RM bài chính) — **TÁI SỬ DỤNG NGUYÊN `liftingSessionKcal`
+  và `dailyCalorieTarget` đã có sẵn, không viết công thức kcal/thâm hụt thứ hai.**
+- SQLite: bảng `training_blocks` mới (1 row = 1 block, JSON blob cho `config`/`weeks`, giống quy
+  ước `activity_log.workouts`) + `trainingBlockRepository.ts` + `blockStore.ts` (Zustand mỏng,
+  CRUD only — id/createdAt được sinh TRONG store action, không phải trong component, để không
+  phạm luật lint `react-hooks/purity` khi gọi `Date.now()`).
+- UI: `BlockBuilderWizard.tsx` (6 bước: độ dài → cân nặng/1RM → phong cách → lịch tuần → giảm cân
+  → xác nhận), `PlanAppendixSheet.tsx` (accordion theo tuần, dùng lại `CollapsibleSection` có
+  sẵn), `src/components/ui/InfoPopover.tsx` (icon ⓘ — component mới, MỞ RỘNG TẠI CHỖ chứ không
+  phải `<Modal>` thứ hai, để tránh đúng bug Modal-chồng-Modal đã ghi nhận ở Session 18). Cả hai
+  sheet gắn vào `EnergyActionsBar.tsx` qua chip mới "📋 Kế hoạch Block (SBD)" trong nhóm Gym,
+  cạnh Powerlifting/Bodybuilding.
+- `weekdayLabel()` mới trong `dateUtils.ts` — format tên thứ trong tuần bằng `Intl` theo
+  `LOCALE_TAGS`, không cần thêm 7 key i18n riêng.
+- i18n: ~110 key mới × 3 ngôn ngữ (`blockBuilder`, `blockVariations` — label+rationale cho 9 biến
+  thể, `planAppendix`), cả 3 file `vi.ts`/`en.ts`/`de.ts` đồng bộ.
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **602/602 test PASS** (thêm 16 test mới cho
+`blockEngine.ts`), `tsc --noEmit` + `eslint` sạch. **Chưa test máy thật** (wizard/appendix chưa
+bấm thử trên điện thoại) — **CHƯA commit.**
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Bản nháp `docs/08-powerlifting-engine.md` ban đầu tưởng là do phiên này viết (dựa vào ngày
+  tháng khớp) nhưng thực ra là của Gemini/Antigravity — người dùng chỉnh lại, phải viết lại từ
+  đầu với nghiên cứu thật thay vì chỉ "vá thêm trích dẫn" vào bản cũ.
+- ESLint `react-hooks/purity` chặn `Date.now()` gọi trực tiếp trong `handleCreate` của
+  `BlockBuilderWizard` (component) — chuyển việc sinh `id`/`createdAt` sang `blockStore.createBlock`
+  (store action, không phải component) qua kiểu `NewTrainingBlockConfig = Omit<..., 'id'|'createdAt'>`.
+
+**Session tiếp theo phải làm:**
+1. **Test máy thật (bắt buộc, ưu tiên cao):** mở chip "📋 Kế hoạch Block" → tạo thử 1 block
+   5+1 tuần với lịch mẫu (T2 bench paused+low-grip, T4 squat+paused deadlift, T6 touch-and-go
+   bench+incline, CN deadlift+paused squat) → xác nhận Phụ lục hiện đúng tuần/ngày/set, bấm ⓘ mở
+   giải thích không bị lỗi Modal-chồng-Modal, chuyển VI/EN/DE không vỡ chữ, xoá block hoạt động.
+2. Thử để trống 1RM (người mới) → xác nhận dòng ước lượng hiện đúng và block sinh ra dùng đúng số
+   ước lượng đó.
+3. Thử bật mục tiêu giảm cân trong hồ sơ trước khi mở wizard → xác nhận Deficit Mode tự bật và
+   Phụ lục hiện đúng mục tiêu thâm hụt tuần.
+4. Cân nhắc phần tuỳ chọn (stretch) chưa làm: prefill `PowerliftingSheet` từ buổi tập hôm nay
+   trong block đang active.
+5. **Nhắc lại (từ Session 21–25):** nhánh `ui-upgrade` vẫn tồn đọng rất nhiều thay đổi CHƯA
+   COMMIT — nên rà + test tay + commit theo từng cụm (kể cả tính năng này).
+
 ---
 
 ## 📌 Hướng dẫn viết session log

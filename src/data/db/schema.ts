@@ -225,6 +225,28 @@ export const ACTIVITY_LOG_MIGRATION_COLUMNS = [
   { name: 'movement_steps_applied', ddl: 'ALTER TABLE activity_log ADD COLUMN movement_steps_applied REAL' },
 ];
 
+// S-PL Block Builder (docs/08-powerlifting-engine.md): one row per training
+// block. `config`/`weeks` are JSON blobs (TrainingBlockConfig /
+// BlockWeekPlan[], src/types/powerliftingBlock.ts) — same "whole-object JSON
+// column" convention as activity_log.workouts, chosen because a block is
+// always read/written as a whole for the Plan Appendix screen, never queried
+// per-day at the SQL level. The handful of top-level columns exist only so a
+// block list screen can query/sort without parsing every blob.
+export const CREATE_TRAINING_BLOCKS = `
+  CREATE TABLE IF NOT EXISTS training_blocks (
+    id TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    progressive_weeks INTEGER NOT NULL,
+    has_deload INTEGER NOT NULL DEFAULT 1,
+    focus TEXT NOT NULL,
+    body_weight_kg REAL NOT NULL,
+    deficit_mode_enabled INTEGER NOT NULL DEFAULT 0,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    config TEXT NOT NULL,
+    weeks TEXT NOT NULL
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -236,4 +258,5 @@ export const ALL_SCHEMAS = [
   CREATE_CUSTOM_FOODS,
   CREATE_FOOD_OVERRIDES,
   CREATE_ACTIVITY_LOG,
+  CREATE_TRAINING_BLOCKS,
 ];
