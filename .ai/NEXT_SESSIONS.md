@@ -57,7 +57,7 @@
 | **S-D** | Tự xả pin theo thời gian + reset hàng ngày (Phase 2) | ✅ XONG (code, chưa test máy) | logic-backend | ✅ | không |
 | **S-E** | Unit test cho domain logic | ✅ XONG | qa-reviewer | ✅ | không |
 | **S-F** | Bước chân: v1 đặt mức trung bình/ngày (placeholder) | ✅ XONG (code ~2026-06-19, commit 2026-07-03 — xem `.ai/parallel-reports/S-F.md`) | logic-backend | — | không |
-| **S-G** | Lớp thông minh dự báo (Phase 5) | ⏸ làm sau cùng | data-ml | ⏸ làm SAU CÙNG | cần ~1 tháng dữ liệu |
+| **S-G** | Lớp thông minh dự báo (Phase 5) | 🆕 Luồng "xu hướng dinh dưỡng" đã có spec chi tiết, sẵn sàng làm — xem `S-G-nutrition-trend-intelligence-spec.md` + mục S-G bên dưới (gói con S-G1/S-G2/S-G3a-e). Luồng "hiệu chỉnh MET" vẫn chờ như cũ. | data-ml | ✅ S-G1/S-G2/S-G3a-d có thể chạy song song (file riêng); S-G3e sau S-G1 | S-L (đã xong 2026-06-18) |
 | **S-H** | "Năng lượng tự xả" (metabolism) vào pin — Hướng B | ✅ v1 xong; Session 5 mở rộng thêm Food Log + pin xả mượt/giây | logic-backend + mobile-frontend | — | `docs/06-`, `docs/07-` |
 | **S-I** | Khung giờ bữa ăn sửa được trong Cài đặt | 🔁 Đã gộp vào **U6** (2026-06-18) — đừng chạy riêng, xem mục U6 | mobile-frontend | — | xem U6 |
 | **S-J** | Dọn dẹp tài liệu / gộp báo cáo Session 4+5 | ✅ XONG (2026-06-18, qua tư vấn Opus) | (không cần agent riêng) | ✅ luôn được, không đụng code | không |
@@ -729,15 +729,32 @@ Chạy `npm run verify` trước khi báo xong. Ghi báo cáo vào .ai/parallel-
 
 ---
 
-## S-G · Lớp thông minh dự báo (Phase 5) — ⏸ làm SAU CÙNG
+## S-G · Lớp thông minh dự báo (Phase 5)
 
-Cần ~1 tháng dữ liệu thật. Bắt đầu bằng rule-based, kèm disclaimer y tế (CONTEXT mục 5). Giao agent `data-ml`.
+Cần ~1 tháng dữ liệu thật trước khi **hiển thị** xu hướng cho người dùng (vẫn giữ nguyên tắc
+này). Bắt đầu bằng rule-based, kèm disclaimer y tế (CONTEXT mục 5). Giao agent `data-ml`.
+`S-L` (điều kiện chờ dữ liệu cân nặng) **đã xong từ 2026-06-18** — không còn chặn việc bắt đầu
+xây engine/hạ tầng.
 
-**Bổ sung (quyết định 2026-06-18):** khi tới lúc làm, S-G cũng là nơi triển khai "hiệu chỉnh cá
-nhân hoá thật" cho `OCCUPATION_FACTORS`/MET — so sánh xu hướng cân nặng thật (đọc từ
-`healthSignalsRepository`, gói **S-L**) với mức tiêu hao công thức dự đoán trong cùng giai đoạn,
-rồi đề xuất (không tự áp đặt) một hệ số điều chỉnh cá nhân. Cần đủ dữ liệu cân nặng từ S-L trước
-khi bắt đầu — nếu S-L chưa chạy hoặc chưa có đủ tuần dữ liệu, làm bước đó sau.
+Gồm 2 luồng việc độc lập dưới cùng mã `S-G`:
+
+**Luồng A — "Xu hướng dinh dưỡng ăn uống"** (🆕 2026-07-31, đã có spec chi tiết):
+xem `.ai/parallel-reports/S-G-nutrition-trend-intelligence-spec.md`. Chia 3 lớp tăng dần, mỗi lớp
+tự đứng được:
+- **S-G1** — Rolling rule-based (trung bình động 7/30 ngày + streak), mở rộng
+  `nutritionAssessment.ts`/`microBatteryEngine.ts`, thêm bảng `daily_nutrition_summary` bền vững
+  (không bị `DATA_RETENTION_DAYS=35` xoá). Làm được ngay, không cần ML. `logic-backend`.
+- **S-G2** — Thang điểm y văn công khai (HEI-2020/DASH), phụ thuộc S-G1. `logic-backend`.
+- **S-G3a…S-G3e** — Model nhỏ pretrain trên NHANES (dữ liệu quần thể, KHÔNG train trên dữ liệu
+  cá nhân), suy luận on-device bằng forward-pass JS thuần (không thêm dependency ONNX/TF.js).
+  Subfolder mới `ml-nutrition-risk/` (mirror `database/`). S-G3a-d độc lập app, S-G3e cần S-G1.
+  `data-ml`.
+
+**Luồng B — "Hiệu chỉnh MET cá nhân hoá"** (quyết định 2026-06-18, chưa có spec riêng): so sánh
+xu hướng cân nặng thật (đọc từ `healthSignalsRepository`, gói **S-L**) với mức tiêu hao công
+thức dự đoán trong cùng giai đoạn, rồi đề xuất (không tự áp đặt) một hệ số điều chỉnh cá nhân cho
+`OCCUPATION_FACTORS`/MET. Dữ liệu cân nặng từ S-L đã sẵn sàng — làm khi có phiên rảnh, độc lập
+với Luồng A.
 
 ---
 
