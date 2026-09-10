@@ -108,7 +108,7 @@ describe('buildDailyTotals', () => {
       }),
     ];
 
-    const rows = buildDailyTotals(entries, [], [], [], 'vi');
+    const rows = buildDailyTotals(entries, [], [], [], new Map(), 'vi');
 
     // 2 day rows + blank separator + disclaimer row.
     expect(rows).toHaveLength(4);
@@ -128,20 +128,20 @@ describe('buildDailyTotals', () => {
 
   it('only includes days that actually have logged food (plus the trailing disclaimer)', () => {
     const entries: FoodLogEntry[] = [entry({ timestamp: new Date('2026-07-05T12:00:00').getTime() })];
-    const rows = buildDailyTotals(entries, [], [], [], 'vi');
+    const rows = buildDailyTotals(entries, [], [], [], new Map(), 'vi');
     expect(rows).toHaveLength(3); // 1 day row + blank separator + disclaimer
     expect(rows[0][col.date]).toBe('5-Jul-2026');
   });
 
   it('appends a blank separator then a disclaimer row as the last 2 rows', () => {
     const entries: FoodLogEntry[] = [entry({ timestamp: new Date('2026-07-05T12:00:00').getTime() })];
-    const rows = buildDailyTotals(entries, [], [], [], 'vi');
+    const rows = buildDailyTotals(entries, [], [], [], new Map(), 'vi');
     expect(rows[rows.length - 2]).toEqual({});
     expect(rows[rows.length - 1]).toEqual({ [col.date]: vi.assessment.disclaimer });
   });
 
   it('returns no rows (not even a disclaimer) when there are no food entries', () => {
-    expect(buildDailyTotals([], [], [], [], 'vi')).toEqual([]);
+    expect(buildDailyTotals([], [], [], [], new Map(), 'vi')).toEqual([]);
   });
 
   it('carries forward the most recent weight logged on or before the day', () => {
@@ -153,7 +153,7 @@ describe('buildDailyTotals', () => {
       { timestamp: new Date('2026-06-25T09:00:00').getTime(), value: 68 },
     ];
 
-    const rows = buildDailyTotals(entries, weights, [], [], 'vi');
+    const rows = buildDailyTotals(entries, weights, [], [], new Map(), 'vi');
     expect(rows[0][col.weight]).toBe(70);
   });
 
@@ -166,7 +166,7 @@ describe('buildDailyTotals', () => {
       { timestamp: new Date('2026-07-03T20:00:00').getTime(), value: 71 },
     ];
 
-    const rows = buildDailyTotals(entries, weights, [], [], 'vi');
+    const rows = buildDailyTotals(entries, weights, [], [], new Map(), 'vi');
     expect(rows[0][col.weight]).toBe(71);
   });
 
@@ -176,7 +176,7 @@ describe('buildDailyTotals', () => {
     ];
     const weights = [{ timestamp: new Date('2026-07-05T09:00:00').getTime(), value: 70 }];
 
-    const rows = buildDailyTotals(entries, weights, [], [], 'vi');
+    const rows = buildDailyTotals(entries, weights, [], [], new Map(), 'vi');
     expect(rows[0][col.weight]).toBe('');
   });
 
@@ -200,7 +200,7 @@ describe('buildDailyTotals', () => {
       }),
     ];
 
-    const rows = buildDailyTotals(entries, [], activityLog, [], 'vi');
+    const rows = buildDailyTotals(entries, [], activityLog, [], new Map(), 'vi');
     expect(rows[0][col.burnedKcal]).toBe(120);
   });
 
@@ -217,7 +217,7 @@ describe('buildDailyTotals', () => {
       energyReading({ date: '2026-07-01', capacity: 2000 }),
     ];
 
-    const rows = buildDailyTotals(entries, [], [], energyReadings, 'vi');
+    const rows = buildDailyTotals(entries, [], [], energyReadings, new Map(), 'vi');
     expect(rows[0][col.estimatedEnergyNeed]).toBe(2000);
     expect(rows[0][col.energyBalance]).toBe(-1500); // 500 eaten - 2000 need
     expect(rows[1][col.estimatedEnergyNeed]).toBe('');
@@ -230,8 +230,35 @@ describe('buildDailyTotals', () => {
     ];
     const energyReadings: BatteryReading[] = [energyReading({ date: '2026-07-01', capacity: 2000 })];
 
-    const rows = buildDailyTotals(entries, [], [], energyReadings, 'vi');
+    const rows = buildDailyTotals(entries, [], [], energyReadings, new Map(), 'vi');
     expect(rows[0][col.energyBalance]).toBe(500);
+  });
+
+  it('prefers the Apple Health synced burned kcal over battery capacity for Estimated Energy Need + balance', () => {
+    // Regression for the bug where Excel ignored the real Apple Health burn
+    // and used the stale battery-capacity estimate instead, understating true
+    // expenditure and showing a surplus where the real day was a deficit.
+    const entries: FoodLogEntry[] = [
+      entry({ timestamp: new Date('2026-07-01T08:00:00').getTime(), energyKcal: 2200 }),
+    ];
+    const energyReadings: BatteryReading[] = [energyReading({ date: '2026-07-01', capacity: 2000 })];
+    const appleHealthBurned = new Map([['2026-07-01', 2800]]);
+
+    const rows = buildDailyTotals(entries, [], [], energyReadings, appleHealthBurned, 'vi');
+    expect(rows[0][col.estimatedEnergyNeed]).toBe(2800);
+    expect(rows[0][col.energyBalance]).toBe(-600); // 2200 eaten - 2800 real burn = deficit
+  });
+
+  it('falls back to battery capacity when a day has no Apple Health sync', () => {
+    const entries: FoodLogEntry[] = [
+      entry({ timestamp: new Date('2026-07-01T08:00:00').getTime(), energyKcal: 2200 }),
+    ];
+    const energyReadings: BatteryReading[] = [energyReading({ date: '2026-07-01', capacity: 2000 })];
+    const appleHealthBurned = new Map([['2026-07-02', 2800]]); // a different day only
+
+    const rows = buildDailyTotals(entries, [], [], energyReadings, appleHealthBurned, 'vi');
+    expect(rows[0][col.estimatedEnergyNeed]).toBe(2000);
+    expect(rows[0][col.energyBalance]).toBe(200);
   });
 });
 

@@ -51,6 +51,8 @@ export function TrainingScreen() {
     setExporting(true);
     try {
       await exportTrainingBlockToExcel(activeBlock, language);
+    } catch {
+      Alert.alert(t('common.error'), t('planAppendix.exportError'));
     } finally {
       setExporting(false);
     }

@@ -1673,6 +1673,168 @@ tuần, thứ tự Thứ 2-Chủ nhật), `tsc --noEmit` + `eslint` sạch. **Ch
 
 ---
 
+## Session 28 — 2026-09-09
+
+**Làm gì:** Điện thoại tự cập nhật Expo Go lên SDK 57, project đang ghim SDK 54 nên báo
+"Project is incompatible with this version of Expo Go" — không mở được app nữa. Nâng cấp project
+theo đúng khuyến nghị của Expo. Ngay sau đó người dùng phát hiện thêm 1 bug thật khi xem file Excel
+xuất ra: cột "Cân bằng năng lượng" tính sai, hiện dương (thặng dư) thay vì đúng ra phải âm
+(deficit). Cuối session: thiết lập EAS Update để người dùng tự test qua Apple/iPhone từ xa mà
+không cần Mac bật dev server.
+
+**Kết quả:**
+- **Nâng cấp Expo SDK 54 → 57** (đã hỏi và được người dùng đồng ý trước khi làm, đúng luật ghim SDK
+  trong `AGENTS.md`): `expo` ^57, `react` 19.2.3, `react-native` 0.86.3, toàn bộ package `expo-*`
+  khác đồng bộ theo `npx expo install --fix`.
+  - `expo-file-system/legacy` bị SDK 57 xoá hẳn → migrate 3 file sang API mới `File`/`Directory`/
+    `Paths`: `myFoodsBackupService.ts`, `excelExportService.ts`, `trainingBlockExportService.ts`
+    (pattern: `new File(Paths.document, name)` → `file.create({ overwrite: true })` →
+    `file.write(...)`/`file.text()`).
+  - `app.json`: key `splash` cũ bị loại khỏi schema SDK 57 → chuyển sang plugin `expo-splash-screen`
+    (cài thêm package), giữ nguyên màu nền + icon splash sẵn có trong `assets/`.
+  - `tsconfig.json`: TypeScript nhảy lên 6.0 theo SDK 57 → bỏ `baseUrl` deprecated (path alias
+    `@/*` chuyển dạng tương đối `./src/*`), phải khai báo tường minh `types: ["jest", "node"]` (tự
+    động include của `tsc` bị vỡ theo — không thấy được `describe`/`it`/`expect`/`global` nữa cho
+    tới khi khai báo rõ).
+  - Cân nhắc rồi **KHÔNG cần** build dev-client ngay: `react-native-health` đã tự runtime-detect
+    và no-op an toàn khi chạy Expo Go từ trước (xem guard trong `appleHealthSync.ts`) — việc build
+    dev-client (đã cài sẵn `expo-dev-client` + CocoaPods qua Homebrew đầu session) để dành cho lúc
+    nào cần test HealthKit thật trên máy.
+  - `npx expo-doctor` còn 2 cảnh báo không chặn, cả 2 đều riêng của `react-native-health` (chưa
+    test chính thức trên New Architecture bắt buộc từ SDK 55 + version `@expo/fingerprint` lồng
+    bên trong nó bị trùng bản) — không ảnh hưởng gì tới việc chạy qua Expo Go.
+- **Fix bug "Cân bằng năng lượng" trong Excel** (viết test trước theo TDD, xác nhận fail đúng lỗi
+  rồi mới sửa): nguyên nhân gốc — cột này tính `kcal ăn - capacity`, với `capacity` là số ước tính
+  CŨ (BMR + hoạt động tự nhập tay trong app). Nhưng từ đợt tích hợp Apple Health (S-F2, Session 19),
+  màn hình chính `EnergyBalanceCard.tsx` đã chuyển hẳn sang dùng số calo xả THẬT đo từ Apple Health
+  (lưu riêng ở bảng `health_signals` qua `logAppleHealthBurned`) — 2 nguồn này chưa bao giờ được
+  đồng bộ với nhau, nên ngày nào tập luyện thật (Apple Health đo cao hơn ước tính cũ) là Excel tính
+  thiếu số cal xả, cân bằng lệch dương.
+  - `healthSignalsRepository.ts`: thêm `getAppleHealthBurnedInRange()` — lấy số Apple Health đã
+    sync theo từng ngày trong cả khoảng xuất file (1 query, không lặp theo từng ngày).
+  - `excelSheets.ts`: `buildDailyTotals` giờ ưu tiên số Apple Health thật cho mỗi ngày, chỉ fallback
+    về `capacity` cũ khi ngày đó chưa từng sync Apple Health.
+  - `excelExportService.ts`: nối dữ liệu mới vào — áp dụng cho cả export tuần lẫn tháng vì dùng
+    chung 1 hàm `buildWorkbookBase64`.
+  - 2 test mới trong `excelSheets.test.ts` tái hiện đúng kịch bản người dùng báo (2200 kcal ăn /
+    capacity cũ 2000 / Apple Health thật 2800 → trước đây báo sai +200 thặng dư, giờ đúng -600
+    deficit) + 1 test xác nhận fallback về capacity khi ngày đó không có Apple Health.
+- **EAS Update cloud (lần đầu dùng cho project này):** publish 2 lần lên nhánh `preview`
+  (`eas update --branch preview --environment preview --non-interactive`) — lần 1 sau khi nâng SDK,
+  lần 2 sau khi sửa bug Excel. Từ nay người dùng mở thẳng link `https://u.expo.dev/update/<id>`
+  (hoặc dashboard `expo.dev/accounts/bodybuilder007/...`) ngay trên Safari iPhone để test qua
+  Expo Go — KHÔNG cần Mac bật `npm start`/cùng WiFi nữa, chỉ cần báo lại để publish bản mới + gửi
+  link mới mỗi khi có thay đổi.
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **606/606 test PASS** (+2 test mới), `tsc --noEmit`
++ `eslint` sạch. **CHƯA commit** (đợi người dùng xác nhận qua EAS Update trước khi commit).
+**CHƯA có xác nhận test máy thật** cho cả 2 việc (nâng SDK 57 + fix Excel) — người dùng vừa yêu cầu
+publish cloud để tự kiểm tra, đang chờ phản hồi.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Sau khi đổi SDK, `npm install` để lại `node_modules` không nhất quán: `npm ls` báo
+  `expo-modules-core` có mặt nhưng thực tế thư mục không tồn tại trên đĩa, khiến toàn bộ 48 test
+  suite chết ngay từ bước setup (`Cannot find module 'expo-modules-core'`). `rm -rf node_modules &&
+  npm install` KHÔNG tự sửa được — phải chạy `npm install expo-modules-core@<version>` trực tiếp
+  mới buộc npm re-resolve đúng. Ghi nhớ: gặp lại "Cannot find module" dù `npm ls` báo có, nghi ngờ
+  đầu tiên là bug hoisting/dedupe của npm, không phải thiếu file thật.
+- Lệnh `eas update` bắt buộc thêm flag `--environment` từ SDK 55 trở lên (khác tài liệu cũ) —
+  thiếu flag này lệnh báo lỗi ngay lập tức.
+- `expo-doctor` phát hiện `expo-modules-core` lỡ bị thêm trực tiếp vào `package.json` (do bước gỡ
+  lỗi ở trên) — đã gỡ, nó vốn chỉ nên là dependency ngầm của gói `expo`.
+
+**Session tiếp theo phải làm:**
+1. **Bắt buộc, ưu tiên cao nhất:** người dùng mở link EAS Update mới nhất trên iPhone qua Expo Go,
+   xác nhận (a) app mở được bình thường sau nâng SDK 57 — không còn báo lỗi "incompatible"; (b)
+   xuất thử 1 file Excel, kiểm tra cột "Cân bằng năng lượng" đúng chiều âm/dương với dữ liệu Apple
+   Health thật trên máy.
+2. Nếu cả 2 việc test ổn → commit (hiện toàn bộ đang nằm trên `ui-upgrade`, chưa commit), rồi hỏi
+   người dùng có muốn `eas update` lên nhánh `main`/`production` không (khác nhánh `preview` đang
+   dùng để test tạm).
+3. Khi nào người dùng cần test tính năng Apple Health sync thật (HealthKit) trên thiết bị thật
+   (Expo Go không chạy được native module) — dùng lại phần đã chuẩn bị sẵn: `expo-dev-client` +
+   CocoaPods đã cài qua Homebrew, chỉ còn thiếu cài Xcode đầy đủ (miễn phí qua App Store) rồi chạy
+   `npx expo run:ios --device`.
+
+---
+
+## Session 29 — 2026-09-10
+
+**Làm gì:** Tiếp nối Session 28 (chưa xác nhận test máy thật): người dùng báo nút "Xuất Excel (để
+in)" trong Phụ lục Kế hoạch (S-PL) bấm không thấy gì xảy ra. Sau khi sửa xong lại được người dùng
+gửi 1 file Excel mẫu thật (`docs/Accumulation-Strength Block Sep-Oct.xlsx`) yêu cầu thiết kế lại
+layout xuất file giống hệt file mẫu khi in ra.
+
+**Kết quả:**
+- **Sửa bug "xuất Excel im lặng":** `TrainingScreen.tsx handleExport` thiếu `try/catch` — lỗi bị
+  nuốt âm thầm (unhandled promise rejection), người dùng bấm nút không thấy phản hồi gì. Thêm
+  `catch` + `Alert` (key `planAppendix.exportError`, đủ 3 ngôn ngữ). Debug tạm thời hiện chi tiết
+  lỗi thật trong Alert (đã gỡ sau khi tìm ra nguyên nhân) lộ ra lỗi thật: `TypeError: Can not read
+  property 'replace' of undefined` tại `plan.config.weekStartDate.replace(...)`.
+- **Sửa tận gốc:** block đang active của người dùng được tạo TRƯỚC khi tính năng "neo ngày tháng
+  lịch thật" ra đời (Session 27, 2026-09-02) nên JSON `config` lưu trong SQLite thiếu hẳn field
+  `weekStartDate`. Tách `rowToPlan` khỏi `trainingBlockRepository.ts` ra file mapper riêng
+  `trainingBlockMapper.ts` (theo đúng convention `customFoodMapper.ts`/`foodOverrideMapper.ts` —
+  test được độc lập, không cần DB thật), backfill `weekStartDate` từ `weeks[0].startDate` (hoặc
+  hôm nay nếu cả hai đều thiếu) ngay khi đọc block từ DB — áp dụng cho MỌI nơi dùng block cũ, không
+  chỉ lúc xuất Excel. +3 test mới (`trainingBlockMapper.test.ts`).
+- **Thiết kế lại Sheet 1 xuất Excel Block Builder** theo đúng file mẫu người dùng gửi (phân tích
+  bằng `openpyxl` qua venv Python tạm — không có `libreoffice`/`soffice` trên máy để render trực
+  tiếp): bảng dạng **ma trận** (bài chính = hàng, tuần = cột) thay vì liệt kê phẳng từng dòng/set.
+  Mỗi bài chiếm 2 hàng: "Kế hoạch: ..." (có số liệu `{{sets}}x{{reps}} @ {{weight}}kg (~{{pct}}%)`,
+  in đậm nhãn) + "Thực tế: ..." để trống ngay dưới — dùng viết tay khi tập, đúng tinh thần file mẫu
+  (in ra mang theo phòng gym). Tiêu đề lớn (merge cả hàng) + hàng tuần (W1...Wn + cột "Deload"
+  riêng) đều in đậm/cỡ chữ lớn hơn. Bài phụ trợ (accessories) — file mẫu không có mục này — người
+  dùng chọn giữ lại dạng khối nhỏ liệt kê bên dưới bảng chính thay vì bỏ hẳn.
+  - Phát hiện qua thực nghiệm: thư viện `xlsx` (bản miễn phí) **âm thầm bỏ qua mọi `cell.s`** khi
+    ghi file — không có API công khai để ghi font đậm/cỡ chữ (giống lý do `freezeHeaderRow` đã
+    phải vá XML thô cho tính năng đóng băng dòng tiêu đề). Mở rộng đúng kỹ thuật đó: vá thêm 3 cặp
+    font/`cellXfs` (tiêu đề 20pt / hàng tuần 14pt / nhãn bài 12pt) trực tiếp vào `styles.xml` sau
+    khi `write()`, rồi gắn `s="N"` vào từng ô cần đậm trong sheet XML.
+  - **Tách file để test được:** phát hiện `excelExportService.ts` không thể import thẳng trong
+    Jest (kéo theo `useSettingsStore` → `@react-native-async-storage/async-storage` → crash
+    "NativeModule: AsyncStorage is null" ngoài môi trường RN thật) — tách các hàm xlsx/zip thuần
+    (`autoFitColumns`, `workbookToBase64WithFrozenHeaders`, vá style) sang `xlsxWriteUtils.ts`
+    (không import DB/store nào), và logic dựng bảng ma trận thuần sang `trainingBlockPrintSheet.ts`
+    (`buildPlanCrosstab`) — cả hai giờ test được trực tiếp không cần mock native module.
+  - +10 test mới (`trainingBlockPrintSheet.test.ts` 7 test dựng bảng qua `generateBlockPlan` thật,
+    `xlsxWriteUtils.test.ts` 3 test vá style qua unzip/đọc lại buffer thật).
+  - **Xác minh thủ công đầu-cuối:** dựng 1 file `.xlsx` thật từ đúng code production (không phải
+    prototype), mở lại bằng `openpyxl` — xác nhận đúng: tiêu đề 20pt đậm, hàng tuần 14pt đậm, nhãn
+    bài 12pt đậm, merge tiêu đề đúng, tuần Deload hiện tải nhẹ hơn tuần cuối tịnh tiến.
+- **EAS Update:** publish 3 lần trong session này (1 bản debug lộ lỗi thật, 1 bản sửa
+  `weekStartDate`, 1 bản thiết kế lại Excel) — cùng nhánh `preview`, cùng quy trình Session 28.
+
+**Kiểm tra trước commit:** `npm run verify` — ✅ **619/619 test PASS** (+13 so với Session 28),
+`tsc --noEmit` + `eslint` sạch.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Không có `libreoffice`/`soffice` để render `.xlsx` mẫu thành ảnh xem trực tiếp — cài `openpyxl`
+  qua venv Python tạm trong scratchpad, đọc giá trị/style/merge/cỡ cột trực tiếp từ file thay vì
+  nhìn ảnh. Cách này đủ chính xác (đọc đúng OOXML) nhưng tốn thêm bước dịch ngược sang mô tả bằng
+  lời để xác nhận với người dùng trước khi implement.
+- Thư viện `xlsx` miễn phí không ghi được style — đã tốn 1 vòng thực nghiệm (`node -e`) để xác nhận
+  chắc chắn trước khi quyết định vá XML thô, tránh implement nhầm hướng (set `cell.s` tưởng chạy
+  nhưng bị lờ đi âm thầm, không báo lỗi).
+- `excelExportService.ts` không import được trong Jest do kéo theo AsyncStorage — nhắc nhớ: bất kỳ
+  file `services/` nào cần test thuần phải tách khỏi mọi file có `import ... from '../../store/...'`
+  hoặc repository — xem thêm [[fooditem-field-join-points]] cho một dạng bẫy tương tự (thay đổi 1
+  chỗ kéo theo nhiều điểm nối ẩn).
+
+**Session tiếp theo phải làm:**
+1. **Bắt buộc, ưu tiên cao nhất:** người dùng mở link EAS Update mới nhất trên iPhone, xuất thử
+   Excel từ Phụ lục Kế hoạch, xác nhận layout ma trận đúng như file mẫu khi mở/in ra thật (đậm/cỡ
+   chữ, hàng Thực tế để trống, bài phụ trợ vẫn còn).
+2. Vẫn CHƯA có xác nhận test máy thật cho phần còn lại của Session 28 (nâng SDK 57 mở app bình
+   thường, cột "Cân bằng năng lượng" đúng chiều âm/dương) — xác nhận luôn trong cùng lượt test này.
+3. Nếu người dùng ưng ý toàn bộ → hỏi có muốn `eas update` lên nhánh `production`/`main` không
+   (khác `preview` đang dùng để test tạm), sau khi đã commit + push (đã làm trong session này theo
+   yêu cầu trực tiếp của người dùng, dù chưa có xác nhận test máy thật cho phần Excel Block Builder
+   — ngoại lệ so với quy tắc thường lệ "chờ xác nhận rồi mới commit", vì người dùng chủ động yêu
+   cầu).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

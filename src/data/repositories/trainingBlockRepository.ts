@@ -1,25 +1,7 @@
 import { getDb } from '../db/database';
-import type { GeneratedBlockPlan, TrainingBlockConfig, BlockWeekPlan } from '../../types/powerliftingBlock';
-
-interface TrainingBlockRow {
-  id: string;
-  created_at: number;
-  progressive_weeks: number;
-  has_deload: number;
-  focus: string;
-  body_weight_kg: number;
-  deficit_mode_enabled: number;
-  is_active: number;
-  config: string;
-  weeks: string;
-}
-
-function rowToPlan(r: TrainingBlockRow): GeneratedBlockPlan {
-  return {
-    config: JSON.parse(r.config) as TrainingBlockConfig,
-    weeks: JSON.parse(r.weeks) as BlockWeekPlan[],
-  };
-}
+import { rowToPlan } from './trainingBlockMapper';
+import type { TrainingBlockRow } from './trainingBlockMapper';
+import type { GeneratedBlockPlan } from '../../types/powerliftingBlock';
 
 // A new block replaces whichever one was active — "today's planned session"
 // lookups (see PowerliftingSheet prefill, Phase 4) only ever want ONE

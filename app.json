@@ -6,10 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#0d0d1a"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.bellybuilder.bodybatteries",
@@ -52,6 +48,16 @@
         "react-native-health",
         {
           "healthSharePermission": "BodyBatteries reads your daily burned calories from Apple Health to show your energy balance."
+        }
+      ],
+      "expo-sharing",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0d0d1a",
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain"
         }
       ]
     ],

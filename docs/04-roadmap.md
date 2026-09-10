@@ -21,6 +21,13 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > 🟢 **Trạng thái (2026-06-18, gói S-A):** Đã quét QR thật, app chạy được trên iPhone qua Expo Go
 > (kể cả qua wifi trường có client isolation). Còn thiếu: xác nhận Home hiện đúng 1 pin tổng + 6
 > pin nhỏ (việc này dừng giữa đường để bàn tính năng mới — xem `.ai/NEXT_SESSIONS.md` gói S-A).
+>
+> 🟡 **Cập nhật (2026-09-09, Session 28):** Expo Go trên điện thoại tự cập nhật lên **SDK 57**,
+> Apple không cho cài lại bản Expo Go cũ → project buộc phải nâng từ SDK 54 lên **SDK 57** để mở
+> lại được (xem `AGENTS.md` mục "Expo SDK version" + `.ai/SESSION_LOG.md` Session 28). Cùng lúc
+> thiết lập **EAS Update** (`eas update --branch preview`) — test trên iPhone từ nay chỉ cần mở
+> link cloud qua Safari, không cần Mac bật server/cùng WiFi. **Chưa có xác nhận mở lại được trên
+> máy thật.**
 
 ---
 
@@ -141,6 +148,12 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > cố định đoán tay chỉ có ở 2/8 sheet trước đây. Cận trên **12cm (~64 ký tự)** cho cột quá dài (tên
 > món, link nguồn...). Verify: **tsc/eslint sạch, 540/540 test PASS**. Chi tiết:
 > `.ai/SESSION_LOG.md` Session 22.
+>
+> **Session 28 (2026-09-09), CODE XONG chưa test máy — fix bug người dùng báo:** cột "Cân bằng
+> năng lượng" trong Excel tính sai (hiện thặng dư thay vì deficit) vì dùng `capacity` ước tính cũ
+> thay vì số Apple Health thật mà Home screen đã dùng từ lâu — sửa `excelSheets.ts` ưu tiên số
+> Apple Health thật, fallback `capacity` khi ngày đó chưa sync. Verify: **tsc/eslint sạch, 606/606
+> test PASS**. Chi tiết: `.ai/SESSION_LOG.md` Session 28.
 
 ---
 
@@ -250,5 +263,23 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > + nhớ cấu hình block trước, sửa lỗi thứ tự Chủ nhật lên đầu, sửa lỗi popup ⓘ tràn màn hình.
 > Verify: **604/604 test PASS**, tsc/lint sạch. **Chưa test máy thật lượt này.** Chi tiết:
 > `.ai/SESSION_LOG.md` Session 27.
+
+> 🟡 **(2026-09-09, Session 28, nhánh `ui-upgrade`, CHƯA COMMIT)** Nâng cấp bắt buộc **Expo SDK
+> 54 → 57** (Expo Go trên điện thoại tự cập nhật, không cho cài lại bản cũ) + fix bug người dùng
+> báo: cột "Cân bằng năng lượng" trong Excel dùng số ước tính `capacity` cũ thay vì số Apple Health
+> thật, khiến deficit thật hiện thành thặng dư sai. Thiết lập **EAS Update** lần đầu — test iPhone
+> từ nay qua link cloud, không cần Mac. Verify: **606/606 test PASS**, tsc/lint sạch. **Chưa có xác
+> nhận test máy thật** cho cả 2 việc. Chi tiết: `.ai/SESSION_LOG.md` Session 28.
+
+> 🟡 **(2026-09-10, Session 29, nhánh `ui-upgrade`, ĐÃ COMMIT + PUSH)** Sửa bug "Xuất Excel (để
+> in)" trong Phụ lục Kế hoạch bấm không phản hồi gì — nguyên nhân: thiếu `try/catch` (lỗi nuốt âm
+> thầm) + lỗi thật là `config.weekStartDate` thiếu ở block cũ tạo trước Session 27 (backfill trong
+> `trainingBlockMapper.ts` mới). Thiết kế lại Sheet 1 xuất Excel Block Builder thành **bảng ma
+> trận** (bài = hàng, tuần = cột, hàng "Thực tế" để trống viết tay) theo file mẫu người dùng gửi
+> (`docs/Accumulation-Strength Block Sep-Oct.xlsx`) — vá `styles.xml` thô để có đậm/cỡ chữ thật
+> (thư viện `xlsx` miễn phí không ghi style qua API thường). Tách `xlsxWriteUtils.ts` +
+> `trainingBlockPrintSheet.ts` để test được thuần không cần mock native module. Verify:
+> **619/619 test PASS** (+13 test mới), tsc/lint sạch. **Chưa có xác nhận test máy thật.** Chi
+> tiết: `.ai/SESSION_LOG.md` Session 29.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

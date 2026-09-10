@@ -1,7 +1,4 @@
-// SDK 54 note: the classic FileSystem API lives at `expo-file-system/legacy`
-// (the main entry exports the new File/Directory API) — same import the Excel
-// export service uses.
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { getCustomFoods, addCustomFoodAndRegister } from '../../data/food/customFoodRegistry';
 import {
@@ -50,8 +47,10 @@ export async function exportMyFoods(language: Language): Promise<ExportResult> {
   const timestamp = nowTimestamp();
   const json = serializeMyFoodsBackup(customFoods, overrides, timestamp);
 
-  const uri = `${FileSystem.documentDirectory}${FILE_PREFIX}${stampFor(timestamp)}${FILE_SUFFIX}`;
-  await FileSystem.writeAsStringAsync(uri, json, { encoding: FileSystem.EncodingType.UTF8 });
+  const file = new File(Paths.document, `${FILE_PREFIX}${stampFor(timestamp)}${FILE_SUFFIX}`);
+  file.create({ overwrite: true });
+  file.write(json);
+  const uri = file.uri;
 
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, {
@@ -74,13 +73,12 @@ export interface BackupFile {
 // here. Any .json is offered, not just ours, since a user may well rename
 // their backup; parseMyFoodsBackup is what actually validates it.
 export async function listBackupFiles(): Promise<BackupFile[]> {
-  const dir = FileSystem.documentDirectory;
-  if (!dir) return [];
-  const names = await FileSystem.readDirectoryAsync(dir);
-  return names
-    .filter((name) => name.toLowerCase().endsWith(FILE_SUFFIX))
-    .sort((a, b) => b.localeCompare(a))
-    .map((name) => ({ name, uri: dir + name }));
+  const entries = Paths.document.list();
+  return entries
+    .filter((entry): entry is File => entry instanceof File)
+    .filter((file) => file.name.toLowerCase().endsWith(FILE_SUFFIX))
+    .sort((a, b) => b.name.localeCompare(a.name))
+    .map((file) => ({ name: file.name, uri: file.uri }));
 }
 
 export interface ImportResult {
@@ -96,7 +94,7 @@ export interface ImportResult {
 export async function importMyFoods(uri: string): Promise<ImportResult | RejectedBackup> {
   let text: string;
   try {
-    text = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+    text = await new File(uri).text();
   } catch {
     return { ok: false, reasonKey: 'unreadable' };
   }

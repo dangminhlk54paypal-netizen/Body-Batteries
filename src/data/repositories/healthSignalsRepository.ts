@@ -88,6 +88,30 @@ export async function getAppleHealthBurnedForDate(date: string): Promise<number 
   return row.length > 0 ? row[0].value : null;
 }
 
+// Most recent synced total-burned kcal per calendar day within [fromDate,
+// toDate], keyed by date. Fetches every matching row ordered oldest-first and
+// lets a later timestamp overwrite an earlier one for the same date in the
+// Map, so a day re-synced multiple times resolves to its latest value —
+// same "most recent wins" rule as getAppleHealthBurnedForDate's single-day
+// query, just batched for a whole export range instead of one query per day.
+export async function getAppleHealthBurnedInRange(
+  fromDate: string,
+  toDate: string
+): Promise<Map<string, number>> {
+  const db = getDb();
+  const rows = await db.getAllAsync<{ date: string; value: number }>(
+    `SELECT SUBSTR(type, 14) AS date, value FROM health_signals
+     WHERE source = 'apple_health' AND type LIKE 'total_burned:%'
+       AND SUBSTR(type, 14) >= ? AND SUBSTR(type, 14) <= ?
+     ORDER BY timestamp ASC`,
+    fromDate,
+    toDate
+  );
+  const map = new Map<string, number>();
+  for (const r of rows) map.set(r.date, r.value);
+  return map;
+}
+
 // When did the last sync attempt of a given outcome ('synced' = real
 // HealthKit data, 'estimated' = fell back to the BMR estimate) happen — used
 // by the store's 2-hour cache check. Stored as its own 'sync_event' row

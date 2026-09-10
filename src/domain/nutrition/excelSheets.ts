@@ -82,6 +82,7 @@ export function buildDailyTotals(
   weights: WeightEntryLike[],
   activityLog: ActivityLogEntry[],
   energyReadings: BatteryReading[],
+  appleHealthBurned: Map<string, number>,
   language: Language
 ): DailyTotalsRow[] {
   const grouped = groupByLocalDay(entries);
@@ -99,9 +100,15 @@ export function buildDailyTotals(
     const dayActivity = groupedActivity.get(dayKey) ?? [];
     const burnedKcal = round1(dayActivity.reduce((sum, a) => sum + a.energyKcal, 0));
 
+    // Prefer the real Apple Health synced burn over the battery-capacity
+    // estimate (BMR + manually-logged activity) — capacity predates the
+    // Apple Health integration and doesn't include HealthKit-measured
+    // exercise, which understated true burn and skewed the balance toward
+    // surplus. Fall back to capacity only for days with no Health sync.
     const energyReading = energyReadings.find((r) => r.date === dayKey);
-    const estimatedEnergyNeed = energyReading ? round1(energyReading.capacity) : '';
-    const energyBalance = energyReading ? round1(kcal - energyReading.capacity) : '';
+    const trueBurnedKcal = appleHealthBurned.get(dayKey) ?? energyReading?.capacity;
+    const estimatedEnergyNeed = trueBurnedKcal !== undefined ? round1(trueBurnedKcal) : '';
+    const energyBalance = trueBurnedKcal !== undefined ? round1(kcal - trueBurnedKcal) : '';
 
     return {
       [col.date]: formatDMY(dayKey),

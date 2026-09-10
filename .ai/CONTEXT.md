@@ -112,7 +112,43 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-09-02 (Session 27, xem `.ai/SESSION_LOG.md`).** **S-PL Block Builder —
+**Cập nhật lần cuối: 2026-09-10 (Session 29, xem `.ai/SESSION_LOG.md`).** **Sửa bug "xuất Excel
+Block Builder im lặng không ra gì" + thiết kế lại layout xuất Excel dạng bảng ma trận theo file mẫu
+người dùng gửi.** Nguyên nhân gốc bug im lặng: `TrainingScreen.tsx` thiếu `try/catch` (lỗi bị nuốt
+âm thầm) + lỗi thật bên dưới là `config.weekStartDate` thiếu ở block tạo trước Session 27 (JSON cũ
+trong SQLite) — sửa tận gốc bằng cách backfill ngay khi đọc block (`trainingBlockMapper.ts` mới,
+tách khỏi `trainingBlockRepository.ts` theo convention mapper sẵn có). Thiết kế lại Sheet 1 xuất
+Excel Block Builder thành bảng ma trận (bài = hàng, tuần = cột, mỗi bài có hàng "Thực tế" để trống
+viết tay) khớp file mẫu `docs/Accumulation-Strength Block Sep-Oct.xlsx` — phát hiện thư viện `xlsx`
+miễn phí không ghi được style, phải vá `styles.xml` thô (mở rộng đúng kỹ thuật `freezeHeaderRow`
+sẵn có) để có đậm/cỡ chữ thật. Tách `xlsxWriteUtils.ts` + `trainingBlockPrintSheet.ts` khỏi
+`excelExportService.ts` (file gốc không import được trong Jest vì kéo theo AsyncStorage) để test
+được thuần. +13 test mới (619/619 PASS), tsc/eslint sạch. Publish EAS Update 3 lần trong session.
+**Đã commit + push theo yêu cầu trực tiếp của người dùng, dù CHƯA có xác nhận test máy thật** cho
+thiết kế Excel mới lẫn phần còn lại của Session 28 (SDK 57 + Cân bằng năng lượng) — việc tiếp theo:
+xem "Session tiếp theo phải làm" cuối Session 29 trong `.ai/SESSION_LOG.md`.
+
+**Trước đó — Session 28 (2026-09-09, xem `.ai/SESSION_LOG.md`).** **Sửa lỗi Expo Go SDK 57
+không mở được app + fix bug Cân bằng năng lượng Excel + thiết lập EAS Update từ xa.** Điện thoại tự
+cập nhật Expo Go lên SDK 57 khiến project (đang ghim SDK 54) báo "incompatible", không mở được —
+nâng cấp project lên **SDK 57** theo đúng khuyến nghị của Expo (`react` 19.2.3, `react-native`
+0.86.3), migrate 3 file khỏi `expo-file-system/legacy` đã bị SDK 57 xoá hẳn
+(`myFoodsBackupService.ts`, `excelExportService.ts`, `trainingBlockExportService.ts`), chuyển
+`app.json` `splash` sang plugin `expo-splash-screen`, sửa `tsconfig.json` cho TypeScript 6.0.
+Ngay sau đó người dùng phát hiện thêm bug thật: cột "Cân bằng năng lượng" trong Excel dùng
+`capacity` cũ (BMR + hoạt động tự nhập tay) thay vì số Apple Health THẬT (`health_signals`) mà
+Home screen (`EnergyBalanceCard.tsx`) đã dùng từ đợt S-F2 — 2 nguồn chưa từng đồng bộ, khiến ngày
+tập luyện thật bị tính thiếu cal xả, cân bằng lệch dương thay vì deficit đúng. Sửa theo TDD:
+`excelSheets.ts` (`buildDailyTotals` ưu tiên Apple Health, fallback `capacity`), thêm
+`getAppleHealthBurnedInRange()` trong `healthSignalsRepository.ts`, nối vào `excelExportService.ts`.
+Thiết lập **EAS Update** lần đầu cho project (`eas update --branch preview --environment preview`,
+publish 2 lần) — từ nay test trên iPhone chỉ cần mở link `u.expo.dev/update/<id>` qua Safari, không
+cần Mac bật `npm start`/cùng WiFi. `npm run verify` PASS (tsc + eslint sạch, **606/606 test**, +2
+test mới). **CHƯA commit, CHƯA có xác nhận test máy thật** cho cả 2 việc — người dùng vừa yêu cầu
+publish cloud để tự kiểm tra, đang chờ phản hồi. Việc tiếp theo: xem "Session tiếp theo phải làm"
+cuối Session 28 trong `.ai/SESSION_LOG.md`.
+
+**Trước đó — Session 27 (2026-09-02, xem `.ai/SESSION_LOG.md`).** **S-PL Block Builder —
 sửa theo phản hồi test tay thật.** Chuyển hẳn sang tab riêng **"🏋️ Tập luyện"** (màn hình mới
 `TrainingScreen.tsx`, gỡ khỏi nút "🔥 Xả" vì khó tìm và sai chỗ về mặt khái niệm). Block giờ neo vào
 **ngày tháng lịch thật** (tuần Thứ 2 → Chủ nhật, chọn nhanh 5 Thứ 2 sắp tới, mỗi tuần trong Phụ lục

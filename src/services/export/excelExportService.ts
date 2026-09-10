@@ -1,15 +1,11 @@
-// Expo SDK 54 moved the classic file API behind `/legacy`. The main entry now
-// exports the new File/Directory API, where `documentDirectory` /
-// `writeAsStringAsync` / `EncodingType` are missing or throw at runtime.
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { utils, write } from 'xlsx';
-import type { WorkSheet } from 'xlsx';
-import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
+import { utils } from 'xlsx';
+import { autoFitColumns, workbookToBase64WithFrozenHeaders } from './xlsxWriteUtils';
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { getIntakeEventsInRange } from '../../data/repositories/intakeRepository';
 import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
-import { getWeightHistory } from '../../data/repositories/healthSignalsRepository';
+import { getWeightHistory, getAppleHealthBurnedInRange } from '../../data/repositories/healthSignalsRepository';
 import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
 import { todayString, daysAgo, formatDisplayDate } from '../../lib/dateUtils';
 import { mealLabel, batteryTypeName } from '../../lib/constants';
@@ -27,72 +23,6 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-// The free `xlsx` package always writes an empty `<sheetView/>` and has no
-// public API for freeze panes (that's a paid-tier feature upstream). So we
-// patch the raw sheet XML inside the already-built .xlsx zip: turn the empty
-// self-closing tag into one that freezes row 1, on every worksheet.
-function freezeHeaderRow(sheetXml: string): string {
-  return sheetXml.replace(
-    /<sheetView([^/>]*)\/>/,
-    '<sheetView$1><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
-      '<selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView>'
-  );
-}
-
-// Excel's `wch` column-width unit is roughly chars-in-Calibri-11: pixel
-// width ≈ wch * 7 + 5, and at 96dpi 12cm ≈ 454px, so 12cm caps out around
-// (454 - 5) / 7 ≈ 64.1 → 64 chars. MIN keeps narrow columns (e.g. "STT")
-// from collapsing to unreadable widths.
-const AUTO_FIT_MAX_WCH = 64;
-const AUTO_FIT_MIN_WCH = 8;
-const AUTO_FIT_PADDING = 2;
-
-// Auto-fit every column of a worksheet to its actual content (header +
-// all cell values), capped at ~6cm (see AUTO_FIT_MAX_WCH above) so long
-// text (food names, advice strings, source URLs) wraps/truncates instead
-// of blowing the sheet out to full-page width.
-export function autoFitColumns(sheet: WorkSheet): void {
-  const ref = sheet['!ref'];
-  if (!ref) return;
-  const range = utils.decode_range(ref);
-  const widths: { wch: number }[] = [];
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    let maxLen = AUTO_FIT_MIN_WCH;
-    for (let r = range.s.r; r <= range.e.r; r++) {
-      const cell = sheet[utils.encode_cell({ r, c })];
-      if (cell == null || cell.v == null) continue;
-      maxLen = Math.max(maxLen, String(cell.v).length);
-    }
-    widths.push({ wch: Math.min(maxLen + AUTO_FIT_PADDING, AUTO_FIT_MAX_WCH) });
-  }
-  sheet['!cols'] = widths;
-}
-
-// btoa() needs a Latin1 "binary string" (one char per byte); chunk the
-// conversion so String.fromCharCode's arg spread never blows the call stack
-// on multi-hundred-KB workbooks.
-function uint8ToBase64(bytes: Uint8Array): string {
-  const CHUNK = 0x8000;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
-
-// Freeze the header row on every sheet by unzipping the .xlsx, patching each
-// xl/worksheets/sheetN.xml, and re-zipping — see freezeHeaderRow() above.
-export function workbookToBase64WithFrozenHeaders(wb: ReturnType<typeof utils.book_new>): string {
-  const zipBytes = new Uint8Array(write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer);
-  const entries = unzipSync(zipBytes);
-  for (const path of Object.keys(entries)) {
-    if (/^xl\/worksheets\/sheet\d+\.xml$/.test(path)) {
-      entries[path] = strToU8(freezeHeaderRow(strFromU8(entries[path])));
-    }
-  }
-  return uint8ToBase64(zipSync(entries));
-}
-
 // Build the .xlsx (all 8 sheets) for an arbitrary date range and return it as a
 // base64 string. Does the DB reads but no file I/O — shared by every export.
 // Every header/label in the workbook follows `language` — see
@@ -107,6 +37,7 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
   const weights = await getWeightHistory(1000);
   const activityLog = await getActivityLogInRange(fromDate, toDate);
   const energyReadings = readings.filter((r) => r.batteryTypeId === 'energy');
+  const appleHealthBurned = await getAppleHealthBurnedInRange(fromDate, toDate);
 
   // Domain layer stays pure: fetch profile/targets here, pass entries in.
   const { userProfile } = useSettingsStore.getState();
@@ -115,9 +46,16 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
 
   // Sheet 0a: Daily Totals — one row per day with logged food, macro sums,
   // carried-forward weight, burned kcal (activity log), estimated energy
-  // need (energy battery capacity) + balance, and a trailing disclaimer row
-  // (see domain/nutrition/excelSheets.ts).
-  const dailyTotalsRows = buildDailyTotals(foodLog, weights, activityLog, energyReadings, language);
+  // need + balance (Apple Health synced burn when available, else the energy
+  // battery capacity estimate — see domain/nutrition/excelSheets.ts).
+  const dailyTotalsRows = buildDailyTotals(
+    foodLog,
+    weights,
+    activityLog,
+    energyReadings,
+    appleHealthBurned,
+    language
+  );
 
   // Sheet 0b: Food Entries — one row per logged food, blank-row separated by
   // calendar day (the free `xlsx` build can't style cell fills/borders), plus
@@ -282,11 +220,10 @@ export async function exportDataInRangeToFile(
   language: Language
 ): Promise<string> {
   const base64 = await buildWorkbookBase64(fromDate, toDate, language);
-  const uri = FileSystem.documentDirectory + filename;
-  await FileSystem.writeAsStringAsync(uri, base64, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  return uri;
+  const file = new File(Paths.document, filename);
+  file.create({ overwrite: true });
+  file.write(base64, { encoding: 'base64' });
+  return file.uri;
 }
 
 // Build, write, and open the OS share sheet so the user can save/send the file.

@@ -56,14 +56,32 @@ steps, no library needed).
 
 # Expo SDK version
 
-This project is pinned to **Expo SDK 54** (see `package.json`: `expo` ^54,
-`react-native` 0.81.5, `react` 19.1.0). It matches the Expo Go build installed
-on the test phone.
+This project is pinned to **Expo SDK 57** (see `package.json`: `expo` ^57,
+`react-native` 0.86.3, `react` 19.2.3). It matches the Expo Go build installed
+on the test phone. (Upgraded 2026-09-09 from SDK 54 — Expo Go on the phone had
+auto-updated to require SDK 57 and Apple does not allow installing older Expo
+Go builds, so staying on Expo Go left no choice but to move the project.)
 
-- Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/
+- Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/
   before writing any code.
-- Do NOT upgrade the SDK (or jump to 55/56) without a clear reason and the
-  user's approval — an upgrade can break the working environment and must be
+- Do NOT upgrade the SDK further without a clear reason and the user's
+  approval — an upgrade can break the working environment and must be
   re-matched against the Expo Go version on the phone.
-- Note: in SDK 54 the classic `expo-file-system` API lives at
-  `expo-file-system/legacy`; the main entry is the new File/Directory API.
+- New Architecture is mandatory from SDK 55 onward (no `newArchEnabled` /
+  legacy architecture escape hatch anymore).
+- `expo-file-system/legacy` was removed in this jump. All file I/O now uses
+  the `File`/`Directory`/`Paths` API from `expo-file-system` (see
+  `src/services/food/myFoodsBackupService.ts`,
+  `src/services/export/excelExportService.ts`,
+  `src/services/export/trainingBlockExportService.ts` for the pattern:
+  `new File(Paths.document, name)`, `file.create({ overwrite: true })`,
+  `file.write(...)`, `file.text()`).
+- Splash screen config moved from the top-level `app.json` `"splash"` key to
+  the `expo-splash-screen` config plugin (see `app.json` `plugins`).
+- `react-native-health` is flagged by `expo-doctor` as untested on the New
+  Architecture (mandatory since SDK 55). It already runtime-detects and
+  no-ops when its native module isn't linked (see the guard in
+  `appleHealthSync.ts`), which is why it hasn't blocked plain Expo Go usage —
+  but this is the thing to verify first if/when a development-client build
+  (`expo-dev-client`, already installed) is made to test real HealthKit sync
+  on-device.
