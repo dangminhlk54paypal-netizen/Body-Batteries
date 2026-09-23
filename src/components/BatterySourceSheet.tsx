@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions, Pressable } from 'react-native';
 import { BottomSheet } from './ui/BottomSheet';
-import { activityLabel } from './EnergyActionsBar';
 import { describeLiftingSets } from './PowerliftingSheet';
-import { bbExerciseName } from './BodybuildingSheet';
+import { workoutLabel as plainWorkoutLabel } from '../lib/activityLabels';
 import { foodLogEntryDisplayName } from '../data/food/foodLookup';
 import type { BatteryType, IntakeEvent } from '../types/battery';
 import type { FoodLogEntry } from '../types/food';
@@ -35,18 +34,12 @@ interface SourceRow {
 }
 
 // One workout's display label — mirrors TodayActivities.summaryLabel's
-// per-workout piece: an S-BB session shows its specific exercise name
-// (checked FIRST — it also has `sets`, so it must not fall into the generic
-// set-based branch below), set-based powerlifting shows what was lifted
-// (describeLiftingSets), a free-text custom activity shows its own name,
-// everything else shows the fixed MET label.
+// per-workout piece: set-based sessions (S-PL and S-BB) show what was lifted
+// (describeLiftingSets) after the movement name, everything else shows just
+// the label (custom name / fixed MET label).
 function workoutLabel(w: WorkoutSession, language: Language): string {
-  if (w.bbMet != null && w.sets?.length) {
-    return `${bbExerciseName(w, language)} ${describeLiftingSets(w.sets, language)}`;
-  }
-  if (w.sets?.length) return `${activityLabel(w.type, language)} ${describeLiftingSets(w.sets, language)}`;
-  if (w.type === 'custom') return w.customName || activityLabel('custom', language);
-  return activityLabel(w.type, language);
+  const name = plainWorkoutLabel(w, language);
+  return w.sets?.length ? `${name} ${describeLiftingSets(w.sets, language)}` : name;
 }
 
 function movementEntryLabel(entry: ActivityLogEntry, t: TFn, language: Language): string {

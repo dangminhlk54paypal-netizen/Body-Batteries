@@ -10,7 +10,22 @@ import {
   bestOneRepMax,
   warmupRamp,
 } from '../domain/energy/liftingEngine';
+import {
+  emptyMovement,
+  findPrevSessionForMovement,
+  movementSets,
+  movementsFromEntry,
+  movementsToWorkouts,
+  nextMovementKey,
+  parseSetRows,
+  selectableVariationIds,
+  setToRow,
+  suggestNextVariationId,
+  variationIdentity,
+} from '../domain/energy/liftingMovements';
+import type { MovementDraft, SetRowInput } from '../domain/energy/liftingMovements';
 import { getActivityLogInRange } from '../data/repositories/activityLogRepository';
+import { liftingMovementLabel } from '../lib/activityLabels';
 import { todayString, daysAgo, formatDMY, dateString } from '../lib/dateUtils';
 import type {
   ActivityLogEntry,
@@ -21,7 +36,6 @@ import type {
 import { LIFTING_EXERCISES } from '../types/energy';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
-import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import { translate } from '../i18n/translate';
 import type { Language } from '../i18n/types';
@@ -35,65 +49,10 @@ function liftingLabel(exercise: LiftingExercise, t: TFn): string {
 }
 
 // How far back to look for the "buổi trước" (previous session) reference
-// shown under each exercise tab.
+// shown under each movement.
 const HISTORY_LOOKBACK_DAYS = 60;
 
-// One editable set row. Kept as raw strings while typing (same convention as
-// the other numeric forms in this app) and parsed only on preview/confirm.
-interface SetRowInput {
-  weight: string;
-  reps: string;
-}
-
-type ExerciseRows = { warmup: SetRowInput[]; working: SetRowInput[] };
-type AllRows = Record<LiftingExercise, ExerciseRows>;
-
-function emptyRows(): AllRows {
-  return {
-    squat: { warmup: [], working: [{ weight: '', reps: '' }] },
-    bench_press: { warmup: [], working: [{ weight: '', reps: '' }] },
-    deadlift: { warmup: [], working: [{ weight: '', reps: '' }] },
-  };
-}
-
-function setToRow(s: LiftingSet): SetRowInput {
-  return { weight: String(s.weightKg), reps: String(s.reps) };
-}
-
-// Prefill for edit mode — parents remount the sheet via `key` when the
-// edited entry changes, so a plain useState initializer is enough (no
-// setState-in-effect needed).
-function rowsFromEntry(entry: ActivityLogEntry | null | undefined): AllRows {
-  const rows = emptyRows();
-  if (!entry) return rows;
-  for (const w of entry.workouts) {
-    if (!w.sets?.length) continue;
-    const exercise = w.type as LiftingExercise;
-    if (!LIFTING_EXERCISES.includes(exercise)) continue;
-    rows[exercise] = {
-      warmup: w.sets.filter((s) => s.kind === 'warmup').map(setToRow),
-      working: w.sets.filter((s) => s.kind === 'working').map(setToRow),
-    };
-  }
-  return rows;
-}
-
-// Parse one section's rows into real sets, silently skipping incomplete rows
-// (empty weight OR reps). Weight 0 is a valid bodyweight/empty-bar set.
-function parseRows(rows: SetRowInput[], kind: LiftingSet['kind']): LiftingSet[] {
-  const sets: LiftingSet[] = [];
-  for (const r of rows) {
-    const weightKg = parseDecimal(r.weight);
-    const reps = parseDecimal(r.reps);
-    if (isNaN(weightKg) || weightKg < 0 || isNaN(reps) || reps <= 0) continue;
-    sets.push({ kind, weightKg, reps: Math.round(reps) });
-  }
-  return sets;
-}
-
-function parseExercise(rows: ExerciseRows): LiftingSet[] {
-  return [...parseRows(rows.warmup, 'warmup'), ...parseRows(rows.working, 'working')];
-}
+type SectionKind = 'warmup' | 'working';
 
 // "5×5@100kg" when the working sets are uniform, otherwise "8 sets · 3450kg".
 // `language` defaults to 'vi' so existing call sites that don't pass it
@@ -126,27 +85,24 @@ interface PrevSessionInfo {
   sets: LiftingSet[];
 }
 
-// Latest logged session of `exercise` (excluding the entry being edited).
-function findPrevSession(
+// Latest logged session of this movement (same lift + same variation, else
+// the plain lift — see findPrevSessionForMovement), excluding the entry being
+// edited.
+function prevInfoFor(
   history: ActivityLogEntry[],
-  exercise: LiftingExercise,
+  movement: MovementDraft,
   language: Language,
   excludeId?: string
 ): PrevSessionInfo | null {
-  for (let i = history.length - 1; i >= 0; i--) {
-    const entry = history[i];
-    if (entry.id === excludeId) continue;
-    const workout = entry.workouts.find((w) => w.type === exercise && w.sets?.length);
-    if (!workout?.sets) continue;
-    const when = entry.startAt ?? entry.timestamp;
-    return {
-      dateLabel: formatDMY(dateString(new Date(when))),
-      summary: describeLiftingSets(workout.sets, language),
-      e1rm: bestOneRepMax(workout.sets),
-      sets: workout.sets,
-    };
-  }
-  return null;
+  const match = findPrevSessionForMovement(history, movement, excludeId);
+  if (!match?.workout.sets) return null;
+  const when = match.entry.startAt ?? match.entry.timestamp;
+  return {
+    dateLabel: formatDMY(dateString(new Date(when))),
+    summary: describeLiftingSets(match.workout.sets, language),
+    e1rm: bestOneRepMax(match.workout.sets),
+    sets: match.workout.sets,
+  };
 }
 
 interface Props {
@@ -166,8 +122,12 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
   const logActivity = useEnergyStore((s) => s.logActivity);
   const profile = useSettingsStore((s) => s.userProfile);
 
-  const [exercise, setExercise] = useState<LiftingExercise>('squat');
-  const [rows, setRows] = useState<AllRows>(() => rowsFromEntry(editingEntry));
+  // Lazy initializers: the prefill runs once per mount (parents remount via
+  // `key` when the edited entry changes). Starts on the first movement's lift
+  // so editing a bench-only entry doesn't open on an empty squat tab.
+  const [initial] = useState(() => movementsFromEntry(editingEntry));
+  const [exercise, setExercise] = useState<LiftingExercise>(initial[0].exercise);
+  const [movements, setMovements] = useState<MovementDraft[]>(initial);
   const [history, setHistory] = useState<ActivityLogEntry[]>([]);
 
   // Previous-session reference, read-only from the repository (same
@@ -183,101 +143,179 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
     };
   }, [visible]);
 
-  const parsedByExercise = useMemo(() => {
-    const out = {} as Record<LiftingExercise, LiftingSet[]>;
-    for (const ex of LIFTING_EXERCISES) out[ex] = parseExercise(rows[ex]);
+  const setsByKey = useMemo(() => {
+    const out: Record<string, LiftingSet[]> = {};
+    for (const m of movements) out[m.key] = movementSets(m);
     return out;
-  }, [rows]);
+  }, [movements]);
+
+  // Tab badge: total sets of the lift across all its movements.
+  const countByExercise = useMemo(() => {
+    const out: Record<LiftingExercise, number> = { squat: 0, bench_press: 0, deadlift: 0 };
+    for (const m of movements) out[m.exercise] += setsByKey[m.key].length;
+    return out;
+  }, [movements, setsByKey]);
 
   const preview = useMemo(() => {
     let kcal = 0;
     let minutes = 0;
-    for (const ex of LIFTING_EXERCISES) {
-      const sets = parsedByExercise[ex];
+    for (const m of movements) {
+      const sets = setsByKey[m.key];
       if (sets.length === 0) continue;
-      kcal += liftingSessionKcal(ex, sets, profile.weightKg, profile.heightCm);
+      kcal += liftingSessionKcal(m.exercise, sets, profile.weightKg, profile.heightCm);
       minutes += estimateLiftingMinutes(sets);
     }
     return { kcal, minutes };
-  }, [parsedByExercise, profile.weightKg, profile.heightCm]);
+  }, [movements, setsByKey, profile.weightKg, profile.heightCm]);
 
-  const prev = useMemo(
-    () => findPrevSession(history, exercise, language, editingEntry?.id),
-    [history, exercise, language, editingEntry?.id]
-  );
+  const visibleMovements = movements.filter((m) => m.exercise === exercise);
 
-  const current = rows[exercise];
-  const currentSets = parsedByExercise[exercise];
-  const currentE1rm = bestOneRepMax(currentSets);
-
-  function patchSection(kind: keyof ExerciseRows, next: SetRowInput[]) {
-    setRows({ ...rows, [exercise]: { ...current, [kind]: next } });
+  function patchMovement(key: string, patch: Partial<MovementDraft>) {
+    setMovements((prev) => prev.map((m) => (m.key === key ? { ...m, ...patch } : m)));
   }
 
-  function updateRow(kind: keyof ExerciseRows, index: number, patch: Partial<SetRowInput>) {
-    patchSection(
-      kind,
-      current[kind].map((r, i) => (i === index ? { ...r, ...patch } : r))
+  function patchSection(key: string, kind: SectionKind, next: SetRowInput[]) {
+    patchMovement(key, kind === 'warmup' ? { warmup: next } : { working: next });
+  }
+
+  function selectExercise(ex: LiftingExercise) {
+    setExercise(ex);
+    // Every visible tab needs at least one movement card to type into.
+    setMovements((prev) =>
+      prev.some((m) => m.exercise === ex) ? prev : [...prev, emptyMovement(ex, nextMovementKey(prev))]
     );
   }
 
-  function addRow(kind: keyof ExerciseRows) {
-    const section = current[kind];
+  function addMovement() {
+    setMovements((prev) => [
+      ...prev,
+      {
+        ...emptyMovement(exercise, nextMovementKey(prev)),
+        variationId: suggestNextVariationId(exercise, prev),
+      },
+    ]);
+  }
+
+  function removeMovement(key: string) {
+    setMovements((prev) => prev.filter((m) => m.key !== key));
+  }
+
+  function updateRow(m: MovementDraft, kind: SectionKind, index: number, patch: Partial<SetRowInput>) {
+    patchSection(
+      m.key,
+      kind,
+      m[kind].map((r, i) => (i === index ? { ...r, ...patch } : r))
+    );
+  }
+
+  function addRow(m: MovementDraft, kind: SectionKind) {
+    const section = m[kind];
     // Duplicate the last row — the common case is "same weight, same reps,
     // next set" (straight sets).
     const last = section[section.length - 1];
-    patchSection(kind, [...section, last ? { ...last } : { weight: '', reps: '' }]);
+    patchSection(m.key, kind, [...section, last ? { ...last } : { weight: '', reps: '' }]);
   }
 
-  function removeRow(kind: keyof ExerciseRows, index: number) {
+  function removeRow(m: MovementDraft, kind: SectionKind, index: number) {
     patchSection(
+      m.key,
       kind,
-      current[kind].filter((_, i) => i !== index)
+      m[kind].filter((_, i) => i !== index)
     );
   }
 
   // Load the previous session's warm-up + working sets as a starting point
   // for today — most sessions only need a small weight/rep tweak, not a
-  // full re-entry. Explicit tap, current tab only, so it never pulls in an
+  // full re-entry. Explicit tap, one movement only, so it never pulls in an
   // exercise the user isn't training today.
-  function applyTemplate() {
-    if (!prev) return;
-    setRows({
-      ...rows,
-      [exercise]: {
-        warmup: prev.sets.filter((s) => s.kind === 'warmup').map(setToRow),
-        working: prev.sets.filter((s) => s.kind === 'working').map(setToRow),
-      },
+  function applyTemplate(m: MovementDraft, prev: PrevSessionInfo) {
+    patchMovement(m.key, {
+      warmup: prev.sets.filter((s) => s.kind === 'warmup').map(setToRow),
+      working: prev.sets.filter((s) => s.kind === 'working').map(setToRow),
     });
   }
 
   // Fill the warm-up section with the standard ramp toward the first working
   // set's weight (bar ×10 → 50%×6 → 70%×4 → 85%×2).
-  function suggestWarmup() {
-    const firstWorking = parseRows(current.working, 'working')[0];
+  function suggestWarmup(m: MovementDraft) {
+    const firstWorking = parseSetRows(m.working, 'working')[0];
     if (!firstWorking || firstWorking.weightKg <= 0) return;
-    patchSection('warmup', warmupRamp(firstWorking.weightKg).map(setToRow));
+    patchSection(m.key, 'warmup', warmupRamp(firstWorking.weightKg).map(setToRow));
   }
 
   function confirm() {
-    const workouts: WorkoutSession[] = [];
-    for (const ex of LIFTING_EXERCISES) {
-      const sets = parsedByExercise[ex];
-      if (sets.length === 0) continue;
-      workouts.push({ type: ex, minutes: estimateLiftingMinutes(sets), sets });
-    }
+    const workouts = movementsToWorkouts(movements);
     if (workouts.length === 0) return;
     if (editingEntry && onSaveEdit) {
       onSaveEdit(editingEntry.id, workouts);
     } else {
       logActivity({ steps: 0, workouts });
-      setRows(emptyRows());
+      setMovements([emptyMovement(exercise, 'm0')]);
     }
     onClose();
   }
 
-  function renderSection(kind: keyof ExerciseRows, title: string) {
-    const section = current[kind];
+  // Display name of a movement: its variation when set, else the plain lift.
+  function movementName(m: MovementDraft): string {
+    return liftingMovementLabel(
+      { type: m.exercise, minutes: 0, variationId: m.variationId, variationName: m.variationName?.trim() },
+      language
+    );
+  }
+
+  function renderVariationPicker(m: MovementDraft) {
+    const custom = m.variationName !== undefined;
+    const standardActive = !custom && variationIdentity(m) === '';
+    const chips: { id: string | null; label: string; active: boolean; onPress: () => void }[] = [
+      {
+        id: null,
+        label: t('components.powerliftingSheet.variationStandard'),
+        active: standardActive,
+        onPress: () => patchMovement(m.key, { variationId: undefined, variationName: undefined }),
+      },
+      ...selectableVariationIds(m.exercise).map((id) => ({
+        id,
+        label: t(`blockVariations.${id}.label`),
+        active: !custom && m.variationId === id,
+        onPress: () => patchMovement(m.key, { variationId: id, variationName: undefined }),
+      })),
+      {
+        id: '__custom',
+        label: t('components.powerliftingSheet.customVariationChip'),
+        active: custom,
+        onPress: () => patchMovement(m.key, { variationId: undefined, variationName: m.variationName ?? '' }),
+      },
+    ];
+    return (
+      <View style={styles.variationBlock}>
+        <View style={styles.chipRow}>
+          {chips.map((chip) => (
+            <Pressable
+              key={chip.id ?? '__standard'}
+              onPress={chip.onPress}
+              style={({ pressed }) => [styles.chip, chip.active && styles.chipActive, pressed && styles.pressed]}
+            >
+              <Text style={[styles.chipText, chip.active && styles.chipTextActive]}>{chip.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {custom && (
+          <TextInput
+            style={styles.variationInput}
+            placeholder={t('components.powerliftingSheet.customVariationPlaceholder')}
+            placeholderTextColor={c.textMuted}
+            accessibilityLabel={t('components.powerliftingSheet.customVariationPlaceholder')}
+            maxLength={40}
+            value={m.variationName ?? ''}
+            onChangeText={(v) => patchMovement(m.key, { variationName: v })}
+          />
+        )}
+      </View>
+    );
+  }
+
+  function renderSection(m: MovementDraft, kind: SectionKind, title: string) {
+    const section = m[kind];
     return (
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -286,7 +324,7 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
             <Pressable
               hitSlop={8}
               style={({ pressed }) => [styles.suggestBtn, pressed && styles.pressed]}
-              onPress={suggestWarmup}
+              onPress={() => suggestWarmup(m)}
             >
               <Text style={styles.suggestText}>
                 {t('components.powerliftingSheet.suggestWarmupButton')}
@@ -310,7 +348,7 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
               placeholderTextColor={c.textMuted}
               keyboardType="decimal-pad"
               value={row.weight}
-              onChangeText={(v) => updateRow(kind, i, { weight: v })}
+              onChangeText={(v) => updateRow(m, kind, i, { weight: v })}
             />
             <Text style={styles.setUnit}>{t('components.powerliftingSheet.weightUnitLabel')}</Text>
             <TextInput
@@ -319,13 +357,13 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
               placeholderTextColor={c.textMuted}
               keyboardType="number-pad"
               value={row.reps}
-              onChangeText={(v) => updateRow(kind, i, { reps: v })}
+              onChangeText={(v) => updateRow(m, kind, i, { reps: v })}
             />
             <Text style={styles.setUnit}>{t('components.powerliftingSheet.repsUnitLabel')}</Text>
             <Pressable
               hitSlop={10}
               style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
-              onPress={() => removeRow(kind, i)}
+              onPress={() => removeRow(m, kind, i)}
             >
               <Text style={styles.removeText}>✕</Text>
             </Pressable>
@@ -333,10 +371,79 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
         ))}
         <Pressable
           style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-          onPress={() => addRow(kind)}
+          onPress={() => addRow(m, kind)}
         >
           <Text style={styles.addText}>{t('components.powerliftingSheet.addSetButton')}</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  function renderMovement(m: MovementDraft) {
+    // Previous-session reference for THIS movement — progressive-overload cue.
+    const prev = prevInfoFor(history, m, language, editingEntry?.id);
+    const e1rm = bestOneRepMax(setsByKey[m.key]);
+    return (
+      <View key={m.key} style={styles.movementCard}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t('components.powerliftingSheet.variationSectionTitle')}</Text>
+          {visibleMovements.length > 1 && (
+            <Pressable
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('components.powerliftingSheet.removeMovement')}
+              style={({ pressed }) => [styles.suggestBtn, pressed && styles.pressed]}
+              onPress={() => removeMovement(m.key)}
+            >
+              <Text style={styles.removeText}>✕ {t('components.powerliftingSheet.removeMovement')}</Text>
+            </Pressable>
+          )}
+        </View>
+        {renderVariationPicker(m)}
+
+        <View style={styles.prevCard}>
+          {prev ? (
+            <View style={styles.prevRow}>
+              <Text style={[styles.prevText, styles.prevTextFlex]}>
+                {t('components.powerliftingSheet.prevSessionLine', {
+                  date: prev.dateLabel,
+                  summary: prev.summary,
+                })}
+                {prev.e1rm > 0
+                  ? t('components.powerliftingSheet.prevSessionE1rmSuffix', { value: prev.e1rm })
+                  : ''}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                style={({ pressed }) => [styles.suggestBtn, pressed && styles.pressed]}
+                onPress={() => applyTemplate(m, prev)}
+              >
+                <Text style={styles.suggestText}>
+                  {t('components.powerliftingSheet.useTemplateButton')}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.prevText}>
+              {t('components.powerliftingSheet.noPrevSession', {
+                exercise: movementName(m),
+                days: HISTORY_LOOKBACK_DAYS,
+              })}
+            </Text>
+          )}
+        </View>
+
+        {renderSection(m, 'warmup', t('components.powerliftingSheet.warmupSectionTitle'))}
+        {renderSection(m, 'working', t('components.powerliftingSheet.workingSectionTitle'))}
+
+        {e1rm > 0 && (
+          <Text style={styles.e1rmText}>
+            {t('components.powerliftingSheet.e1rmToday', {
+              exercise: movementName(m),
+              value: e1rm,
+            })}
+          </Text>
+        )}
       </View>
     );
   }
@@ -357,12 +464,12 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
         {/* Exercise tabs */}
         <View style={styles.tabs}>
           {LIFTING_EXERCISES.map((ex) => {
-            const count = parsedByExercise[ex].length;
+            const count = countByExercise[ex];
             const active = exercise === ex;
             return (
               <Pressable
                 key={ex}
-                onPress={() => setExercise(ex)}
+                onPress={() => selectExercise(ex)}
                 style={({ pressed }) => [styles.tab, active && styles.tabActive, pressed && styles.pressed]}
               >
                 <Text style={[styles.tabText, active && styles.tabTextActive]}>
@@ -374,50 +481,14 @@ export function PowerliftingSheet({ visible, onClose, editingEntry, onSaveEdit }
           })}
         </View>
 
-        {/* Previous session of this exercise — progressive-overload reference */}
-        <View style={styles.prevCard}>
-          {prev ? (
-            <View style={styles.prevRow}>
-              <Text style={[styles.prevText, styles.prevTextFlex]}>
-                {t('components.powerliftingSheet.prevSessionLine', {
-                  date: prev.dateLabel,
-                  summary: prev.summary,
-                })}
-                {prev.e1rm > 0
-                  ? t('components.powerliftingSheet.prevSessionE1rmSuffix', { value: prev.e1rm })
-                  : ''}
-              </Text>
-              <Pressable
-                hitSlop={8}
-                style={({ pressed }) => [styles.suggestBtn, pressed && styles.pressed]}
-                onPress={applyTemplate}
-              >
-                <Text style={styles.suggestText}>
-                  {t('components.powerliftingSheet.useTemplateButton')}
-                </Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Text style={styles.prevText}>
-              {t('components.powerliftingSheet.noPrevSession', {
-                exercise: liftingLabel(exercise, t),
-                days: HISTORY_LOOKBACK_DAYS,
-              })}
-            </Text>
-          )}
-        </View>
+        {visibleMovements.map(renderMovement)}
 
-        {renderSection('warmup', t('components.powerliftingSheet.warmupSectionTitle'))}
-        {renderSection('working', t('components.powerliftingSheet.workingSectionTitle'))}
-
-        {currentE1rm > 0 && (
-          <Text style={styles.e1rmText}>
-            {t('components.powerliftingSheet.e1rmToday', {
-              exercise: liftingLabel(exercise, t),
-              value: currentE1rm,
-            })}
-          </Text>
-        )}
+        <Pressable
+          style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
+          onPress={addMovement}
+        >
+          <Text style={styles.addText}>{t('components.powerliftingSheet.addVariation')}</Text>
+        </Pressable>
 
         <View style={styles.previewCard}>
           <Text style={styles.previewText}>
@@ -548,5 +619,35 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   confirm: { backgroundColor: c.danger },
   confirmDisabled: { opacity: 0.5 },
   btnText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+  movementCard: {
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: c.borderSubtle,
+  },
+  variationBlock: { gap: 8 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: c.bgElevated,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  chipActive: { backgroundColor: c.danger, borderColor: c.danger },
+  chipText: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: c.textPrimary },
+  variationInput: {
+    backgroundColor: c.bgElevated,
+    borderRadius: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    fontSize: 14,
+    color: c.textPrimary,
+    borderWidth: 1,
+    borderColor: c.border,
+  },
   pressed: { opacity: 0.6 },
 });

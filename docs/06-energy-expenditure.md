@@ -371,6 +371,20 @@ chỉ là giá trị khởi tạo ban đầu; mỗi người dùng tự sửa đ
 - Có **sàn 15-20%** (không về 0 — cơ thể luôn có mỡ/cơ dự trữ). Sáng dậy thấp = **bình thường**,
   chỉ nhắc **nhẹ** "nên ăn", KHÔNG hù/đỏ (ranh giới sức khoẻ — CONTEXT mục 5).
 - **Bất biến:** tích phân xả đúng 24h = `passiveDailyBurn(profile)` (không lệch khỏi TDEE).
+- **Reserve = hàm thuần của nhật ký có dấu thời gian (replay 48 giờ), không phải con số cộng dồn.**
+  Mỗi sự kiện tác động vào **lúc nó xảy ra** (giờ ăn / giờ tập kết thúc), KHÔNG phải lúc được ghi:
+  `replaySatietyReserve` (`satietyEngine.ts`) phát lại mọi sự kiện theo thứ tự thời gian từ reserve 0 ở
+  đầu cửa sổ `SATIETY_REPLAY_LOOKBACK_HOURS = 48`, trừ tiêu hao nhịp sinh học giữa các sự kiện, ăn = cộng
+  (chặn trần 1000), tập = trừ (chặn sàn 0). Nguồn sự kiện: `food_log` (kcal, giờ ăn), `intake_events`
+  (`addCalories` id `energy_*`; chạm nhanh macro qua `kcalFromMacro`), `activity_log` (`satietyDrainKcal`
+  tại `endAt`) — dựng bởi `buildSatietyEvents` (`satietyEvents.ts`). Giá trị lưu ở
+  `battery_readings.satiety_reserve_kcal` chỉ là **cache**; `energyStore.recomputeSatiety` tính lại sau
+  mọi thao tác ghi/xoá. **Ghi muộn ≡ ghi đúng giờ.** Ví dụ: bữa 900 kcal @12:00 + 300 kcal @16:00 ghi lúc
+  22:30 → **42%** (trước đây: 100%, vì cộng hết vào lúc ghi rồi chạm trần).
+- **Sổ kcal (mục 6B) cố ý KHÔNG phụ thuộc thời gian:** "đã ăn 1800/2000" đúng bất kể ghi lúc nào.
+- Bữa ghi bù cho đêm qua (trong 48h) nay CÓ làm tăng reserve (trước đây backfill không bao giờ chạm satiety).
+  Hạn chế còn lại: buổi tập ghi bù quá khứ (`logActivityForPastDate`) vẫn `satietyDrainKcal = 0`.
+- **Bất biến:** tích phân xả đúng 24h = `passiveDailyBurn(profile)` (không lệch khỏi TDEE).
 
 ### 6B. Sổ calo hôm nay (dòng phụ) — engine S-M giữ lại
 - `đã ăn / mục tiêu` (kcal), **đếm lên, reset 6h sáng** (`energyDayString`, không phải nửa đêm).

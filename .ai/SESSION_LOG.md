@@ -1835,6 +1835,162 @@ layout xuất file giống hệt file mẫu khi in ra.
 
 ---
 
+## Session 30 — 2026-09-23
+
+**Làm gì:** Thực hiện kế hoạch `.ai/plans/2026-09-23-food-entry-nutrition-basis.md` — form thêm/sửa món cho
+nhập dinh dưỡng theo **100 g HOẶC theo 1 khẩu phần**, tự quy đổi qua lại, có ô xem trước. Phản hồi gốc
+của người dùng: hay nhập thành phần theo /100 g rồi ăn x gram nên cần app tự nhân theo khẩu phần (và ngược lại).
+i18n-covered (vi/en/de).
+
+**Kết quả:**
+- **Gốc vấn đề:** chip đơn vị (gram/gói/viên/khẩu phần) gộp 2 câu hỏi — "đếm thế nào" và "số gõ là /100 g hay
+  /khẩu phần". Tách riêng: thêm `NutritionBasis = 'per100' | 'perServing'` (chỉ trong form, **không lưu DB,
+  không thêm field `FoodItem`, không migration** — né bẫy [[fooditem-field-join-points]]).
+- `src/domain/food/customFoodInput.ts`: thêm `servingSizeOf`, `changeNutritionBasis` (quy đổi, không xoá),
+  `changePortionUnit` (thay `resetNutritionForUnitChange`, không còn xoá số khi đổi đơn vị),
+  `applyCustomFoodChange` (cửa chung của cả 2 modal), `nutritionPreview`, `formBasisLabel`, `NUTRITION_KEYS`,
+  `enteredNutritionOf` (dùng chung giữa build và preview để số xem trước = số sẽ lưu). `buildCustomFoodItem`
+  tách "metadata đếm" khỏi "thang đo số"; `isValidCustomFoodInput` bắt buộc mốc khẩu phần > 0 khi nhập theo
+  khẩu phần; `inputFromFoodItem` suy ra basis + bỏ đuôi số thực (610, không phải 609.9999999).
+- `CustomFoodFields.tsx`: chip "Nhập dinh dưỡng theo", dòng gợi ý/nhắc thiếu mốc, ô xem trước (số định dạng
+  theo `LOCALE_TAGS`). `FoodLogModal.tsx` + `FoodNutritionEditModal.tsx`: chuyển sang `applyCustomFoodChange` +
+  `formBasisLabel`, bỏ `resetNutritionForUnitChange`. 11 key i18n mới ở vi/en/de + sửa `servingLabelHint`.
+- Docs: `docs/07-food-log.md` mục 3a-2, `HUONG-DAN-SU-DUNG-APP.md`, `USER-GUIDE-DE.md`.
+- **Test:** `customFoodInput.test.ts` 33 → 77 test (TDD — viết trước, xác nhận đỏ rồi mới code).
+- **Sai khác so với kế hoạch (có chủ đích):** `changePortionUnit` tự chọn basis mặc định theo đơn vị — chuyển
+  cân ↔ đếm khi **chưa gõ số nào** thì đặt đếm→`perServing`, cân→`per100`; đã gõ số thì giữ nguyên. Lý do: luồng TPCN
+  cũ mặc định "Viên/Gói = số theo viên"; nếu basis cứ giữ `per100`, gõ "9 kcal/viên" theo phản xạ sẽ bị đọc thành
+  9 kcal/100 g (sai ~80 lần, âm thầm — đúng lỗi FIX #1 cũ từng chặn). Kế hoạch gốc chưa lường tới ca này.
+
+**Kiểm tra:** phạm vi của session này — `tsc --noEmit` ✅, `eslint` (các file đã sửa) ✅, `src/domain/food` +
+`src/i18n` 157/157 test ✅. **`npm run verify` toàn bộ KHÔNG xanh:** 13 test fail ở `energyStore.test.ts` +
+`energyStore.backfill.test.ts` (`satietyReserveKcal`…) — thuộc công việc satiety/energyStore của một phiên khác
+đang sửa dở cùng working tree (`satietyEngine.ts`, `energyStore.ts`, `.ai/plans/2026-09-23-battery-late-logging-timing.md`);
+các file đó không import gì từ phần food-form. Chạy lại trên bản HEAD (không có sửa dở của họ) thì 629/629 xanh.
+
+**EAS Update (2026-09-23):** đã publish lên nhánh `preview` (runtime `exposdk:57.0.0`, update group
+`85d0c951-797d-4b2c-bb77-645bc7ce09c7`) từ một **bản cô lập = HEAD + đúng các sửa của session này** (dựng bằng
+`git archive` + áp lại từng hunk, KHÔNG `git stash`), vì working tree chính đang lẫn sửa dở của phiên satiety —
+`eas update` đóng gói đúng thứ nằm trên đĩa nên chạy thẳng sẽ đẩy cả code chưa xong lên điện thoại. Trên bản cô lập
+`npm run verify` **xanh toàn bộ: 663/663 test + tsc + eslint**. Bản này KHÔNG chứa thay đổi satiety/`mealTimeStatus`
+của phiên kia. Lệnh: `EAS_NO_VCS=1 npx eas-cli update --branch preview --environment preview --non-interactive
+--message …` (không có `eas` cài sẵn — dùng `npx eas-cli`; đã đăng nhập `bodybuilder007`).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Ban đầu script Python sửa hàng loạt file domain bị lỗi cú pháp (nháy ba lồng nhau) → chưa ghi gì; viết lại file
+  bằng Write. Bài học: sửa file lớn thì Write cả file, đừng vá bằng chuỗi Python dài.
+- **Sai lầm quy trình:** để phân biệt lỗi test, tôi chạy `git stash` rồi `git stash pop` trong working tree
+  **đang dùng chung** với phiên khác — tạm thời gỡ các sửa dở của họ vài giây. Pop thành công, stash rỗng, không
+  mất gì, nhưng đây là việc không nên làm; lần sau phân biệt bằng `git worktree` riêng hoặc chỉ đọc test.
+  Xem [[parallel-subagent-file-conflicts]].
+- `nutritionBasis` không lưu DB nên món **gram** nhập theo khẩu phần sẽ mở lại ở chế độ /100 g khi sửa (số vẫn
+  đúng, đổi lại 1 chạm không mất dữ liệu). Chỉ làm lưu basis nếu người dùng phàn nàn.
+
+**Session tiếp theo phải làm:**
+1. **Người dùng test máy thật** theo checklist mục 4 của `.ai/plans/2026-09-23-food-entry-nutrition-basis.md`
+   (8 bước; chú ý bước 3 — Phở bò 350 g/450 kcal ghi 1 chạm → +450 kcal, và bước 8 — chuyển EN/DE).
+   Chưa có xác nhận test máy thật → chưa đánh dấu "Test thật ✅" ở roadmap.
+2. Khi phiên satiety/energyStore kia xong, chạy lại `npm run verify` để chốt toàn bộ xanh trước khi commit.
+3. **Chưa commit** — các file của session này chỉ nên `git add` theo tên (đừng `git add -A`: working tree đang
+   lẫn sửa dở của phiên khác).
+
+---
+
+## Session 31 — 2026-09-23
+
+**Làm gì:** Thực hiện kế hoạch `.ai/plans/2026-09-23-battery-late-logging-timing.md` — sửa lỗi **pin nhảy lên
+100% khi ghi bữa ăn muộn** (phản hồi người dùng: cả ngày bận, tối mới ghi bữa trưa/xế kèm đúng giờ ăn, nhưng
+pin no/đói đầy 100% dù bữa cuối đã cách 3–4 giờ). Đây là lỗi mô hình chứ không phải lỗi hiển thị. i18n-covered
+(vi/en/de).
+
+**Kết quả:**
+- **Gốc lỗi:** pin no/đói lưu dạng MỘT con số đang chạy; `logFood` cộng toàn bộ kcal vào **lúc ghi**
+  (`eatIntoReserve` tại thời điểm hiện tại), bỏ qua `timestamp` giờ ăn. Cả ngày không ghi → reserve về sàn 0 →
+  ghi 900+300 kcal lúc 22:30 → chạm trần 1000 = 100%. Đúng ra ≈ 275 kcal ≈ **42%**. Bốn pin đạm/tinh bột/nước/
+  khoáng cùng kiểu lỗi (chỉ drain phần thời gian SAU lúc ghi).
+- **Cách sửa (event-sourced replay):** pin là hàm thuần của nhật ký có dấu thời gian; giá trị lưu chỉ là cache.
+  W1 `replaySatietyReserve` (`satietyEngine.ts`) · W2 `buildSatietyEvents` + `recomputeSatiety` + nối vào mọi
+  action của `energyStore` (cửa sổ 48h, nguồn DB ∪ log hôm nay) · W3 `replayDrainingPin` + `recomputeFoodPinLevels`
+  cho protein/carbs/water/minerals (kèm sửa lỗi phụ: tắt hẳn app rồi mở lại thì các pin này không giảm) ·
+  W4 `FoodLogModal` chặn giờ ăn tương lai + gợi ý khi ghi muộn ≥30 phút (`mealTimeStatus`) · W5 tài liệu.
+  Sổ kcal cố ý không đổi.
+- **Số liệu:** kịch bản người dùng no/đói **100% → 42%**; bữa protein 50 g ăn 12:00 ghi 22:30: **50 g → 12,2 g**.
+- **Test:** 716/716 (trước 629 ở HEAD). Viết lại 13 test cũ (không xoá/không làm yếu; xem §8 của file kế hoạch)
+  + ~45 test mới. `npm run verify` **xanh hoàn toàn** (tsc + eslint + jest).
+- Bug phụ tìm ra & sửa: bộ lọc `addCalories` trong kế hoạch (`note==='calories'`) sai vì note có thể là chuỗi
+  tự do → dùng id `energy_*`; `seedReadings()` không reset `intakeLog` làm rò state giữa các test.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- **Chạy song song với phiên khác trong cùng working tree** (Session 30 food-form: `FoodLogModal.tsx`, 3 file locale,
+  docs, `SESSION_LOG.md`). Đã sửa `FoodLogModal`/locale bằng edit nhỏ đúng chỗ (locale của tôi ở khối `foodLogModal`,
+  của họ ở `customFoodFields`) và kiểm marker sau mỗi đợt. Phiên kia từng `git stash`/`pop` trong cây chung
+  (ghi ở Session 30) — marker của tôi vẫn nguyên. Xem [[parallel-subagent-file-conflicts]].
+- Baseline `npm run verify` đỏ lúc đầu do `customFoodInput.test.ts` viết dở của phiên kia → tôi kiểm phần mình
+  riêng (tsc loại file đó + `jest --testPathIgnorePatterns customFoodInput` + eslint), cuối cùng cả hai đã xanh.
+- Một lệnh `cat > file` thừa trong lệnh debug làm treo shell (đọc stdin); dừng bằng TaskStop, không hỏng file.
+
+**Session tiếp theo phải làm:**
+1. **Người dùng test máy thật** theo checklist mục 6 của `.ai/plans/2026-09-23-battery-late-logging-timing.md`
+   (10 bước; chú ý bước 1 — bữa trưa ghi 22:00 không được lên 100%, bước 2 — sổ kcal vẫn cộng đủ, bước 8 — ghi bù
+   bữa tối qua làm tăng pin). Chưa có xác nhận test máy thật → chưa đánh dấu "Test thật ✅".
+2. Mở rộng cùng mô hình replay cho pin **movement** và **sleep**, và cho buổi tập ghi bù quá khứ
+   (`logActivityForPastDate` vẫn `satietyDrainKcal = 0`) — xem mục 7 của file kế hoạch.
+3. Cân nhắc thêm UI **sửa giờ ăn** của một bữa đã ghi (hiện chỉ sửa lượng; đổi giờ = xoá rồi ghi lại).
+4. **Chưa commit** — chỉ `git add` theo tên file (đừng `git add -A`: cây làm việc đang lẫn sửa của phiên khác).
+
+---
+
+## Session 32 — 2026-09-23
+
+**Làm gì:** Thực hiện kế hoạch `.ai/plans/2026-09-23-training-log-notebook.md` (Sonnet triển khai theo kế hoạch của Opus):
+**Sổ tập luyện** — nhật ký bài tập kiểu Apple Notes trong tab Tập luyện (block → tuần → ngày, sửa được, ghi tay
+được), theo đúng ký hiệu trong sổ Notes thật của người dùng.
+
+**Kết quả:** W1–W7 + W9 xong, **W8 (hiện kế hoạch cạnh thực tế) và W6b (nhập chi tiết set tính cả pin cho ngày cũ) chủ ý bỏ**.
+- **Lõi thuần** (`src/domain/training/`): `trainingLogFormatter` (`5x5x72.5`, `6x4(+3)x75`, `110x(4+5+5+4+8)`, viết tắt
+  đè được, chữ ký + `detectDayConflict`, chuẩn hoá dấu phẩy), `trainingLogIndex` (block→tuần→ngày, `suggestEntryDate`),
+  `trainingLogPage` (cả kỳ thành một khối chữ để chia sẻ), `trainingLogWeights`, `entryEdit`; `src/lib/activityLabels.ts`
+  (dời nhãn khỏi file component), `src/lib/dateInput.ts` (parse `dd.mm[.yyyy]`, hiểu tháng/ngày cho English).
+- **Ghi biến thể khi Xả:** `WorkoutSession.variationId/variationName`; `PowerliftingSheet` viết lại theo danh sách
+  *movement* (`liftingMovements.ts`) nên ghi được `B` + `iC` trong một buổi. kcal không đổi.
+- **Dữ liệu:** 2 bảng `training_log_days` / `training_log_weeks` (không migration cột), `trainingLogRepository`,
+  `trainingLogStore`, `blockStore.renameBlock`, `energyStore.updateActivityForPastDate` (chỉ ghép action có sẵn),
+  `settingsStore.trainingLogFormat` + hook `useTrainingLogFormat`.
+- **Giao diện** (`src/components/training/`): `TrainingLogView` + `Period/Week/DayLine`, `TrainingLogLineEditor`,
+  `TrainingLogTextSheet`, `TrainingLogFormatSheet`, `TrainingLogPageSheet`, `BlockPlanView` (chuyển nguyên Block
+  Builder cũ); `TrainingScreen` thành thanh 2 chế độ. i18n vi/en/de đủ.
+- **Test:** 716 → **909** (+193), tsc + eslint sạch. Gồm 3 bộ **render test** (`react-test-renderer` có sẵn): dòng ngày,
+  trình soạn thảo, sheet Trang.
+- **Docs:** `docs/03-architecture.md` (mục "Sổ tập luyện" + 2 bảng), `docs/08-powerlifting-engine.md` §9, hai hướng dẫn
+  người dùng (mục 4b VN/DE).
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- **Ảnh Notes thật đổi cả thiết kế** (ký hiệu `n×r×tạ`, viết tắt, biến thể là một nửa nội dung sổ) → kế hoạch viết lại
+  3 lần trước khi làm; phát hiện app chưa ghi biến thể nên thêm W2.
+- **`PastDateField` không dùng được cho nhập tay:** chỉ ghi ngày khi ô mất focus, và bàn phím `decimal-pad` của iPhone
+  **không có dấu `/`** (ô ngày Xả bù cũ gần như chỉ dùng được bằng chip). Tách `parseDayMonthInput` (nhận `/ . , -`, từ
+  chối `31.02` thay vì nhảy sang tháng sau) cho cả `PastDateField` lẫn trình soạn thảo mới (ô ngày riêng).
+- **`act(() => onPress())` trong test:** `onPress` trả Promise từ mock → `act` thành bất đồng bộ, không kết thúc, làm
+  các test render sau ra chuỗi rỗng. Bọc `{ }` (đã ghi ở `docs/03-architecture.md`).
+- **Sửa số liệu có thể làm rơi buổi khác:** sheet Powerlifting/Bodybuilding thay cả mảng `workouts`; nếu entry có thêm
+  một buổi chạy thì mất. Sổ dùng `mergeEditedWorkouts` để giữ lại. **Lỗi này vẫn còn ở `TodayActivities`** (ngoài phạm vi,
+  hiếm vì Xả thường ghi một loại mỗi entry).
+- **Test lỗi ngẫu nhiên có sẵn, không thuộc sổ tập:** `energyStore.backfill.test.ts › removeFoodForPastDate ›
+  round-trips a fully-past backfill` (~ nửa số lần chạy, cả khi chạy riêng): `lastSatietySyncAt` lệch 1 ms vì đọc đồng
+  hồ thật — của công việc Session 31 (pin theo giờ ăn) đang chưa commit. Không sửa vì ngoài phạm vi.
+
+**Session tiếp theo phải làm:**
+1. **Người dùng test máy thật** theo checklist mục 7 của kế hoạch (22 bước). Chưa có xác nhận → chưa đánh dấu "Test thật ✅".
+   Chú ý nhất: gập/mở block-tuần trên máy thật, bàn phím trong sheet soạn thảo, đóng trình soạn thảo rồi mở sheet
+   Powerlifting ("Sửa số liệu"), dán trang chia sẻ vào Apple Notes, dấu phẩy trên bàn phím iPhone.
+2. **Sửa test lỗi ngẫu nhiên** `energyStore.backfill.test.ts` (đóng băng `Date.now` hoặc bỏ `lastSatietySyncAt` khỏi so
+   sánh) — hiện `npm run verify` đỏ khoảng nửa số lần.
+3. Nếu muốn: nhập sổ Notes cũ (Block 1–2) vào app dưới dạng dòng ghi tay (không chạm pin) — xem mục 8 của kế hoạch.
+4. Nếu muốn: vá `TodayActivities` cho khỏi làm rơi buổi khác cùng entry (dùng `mergeEditedWorkouts`); W8/W6b của kế hoạch.
+5. **Chưa commit** — chỉ `git add` theo tên file (cây làm việc còn lẫn thay đổi chưa commit của Session 30/31).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

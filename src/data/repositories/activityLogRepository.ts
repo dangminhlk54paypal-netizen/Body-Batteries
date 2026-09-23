@@ -1,6 +1,7 @@
 import { getDb } from '../db/database';
 import type { ActivityLogEntry, WorkoutSession } from '../../types/energy';
-import { energyDayString } from '../../lib/dateUtils';
+import { energyDayString, dateString } from '../../lib/dateUtils';
+import { countSessionsByDay } from './trainingLogMapper';
 
 interface ActivityLogRow {
   id: string;
@@ -125,4 +126,31 @@ export async function updateActivityLogEntry(entry: ActivityLogEntry): Promise<v
 export async function deleteActivityLogEntry(id: string): Promise<void> {
   const db = getDb();
   await db.runAsync('DELETE FROM activity_log WHERE id = ?', id);
+}
+
+// --- Training log (Sổ tập luyện) queries -----------------------------------
+
+// Every calendar day that has at least one entry WITH workouts (steps-only
+// entries never appear in the training log), with how many. One light query
+// over just the timestamps; the day grouping happens in JS
+// (countSessionsByDay) so it matches History's dateString() exactly.
+export async function getTrainingDayCounts(): Promise<{ date: string; sessions: number }[]> {
+  const db = getDb();
+  const rows = await db.getAllAsync<{ t: number }>(
+    `SELECT COALESCE(start_at, timestamp) AS t FROM activity_log WHERE workouts != '[]'`
+  );
+  return countSessionsByDay(rows.map((r) => r.t));
+}
+
+// Latest calendar day strictly before `date` that has an entry with workouts
+// (feeds the training log editor's "copy latest session").
+export async function getLatestTrainingDateBefore(date: string): Promise<string | null> {
+  const db = getDb();
+  const startMs = new Date(date + 'T00:00:00').getTime();
+  const row = await db.getFirstAsync<{ t: number | null }>(
+    `SELECT MAX(COALESCE(start_at, timestamp)) AS t FROM activity_log
+     WHERE workouts != '[]' AND COALESCE(start_at, timestamp) < ?`,
+    startMs
+  );
+  return row?.t != null ? dateString(new Date(row.t)) : null;
 }

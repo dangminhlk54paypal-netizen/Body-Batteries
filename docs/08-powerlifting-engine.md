@@ -88,3 +88,27 @@ Mô hình kcal buổi tập powerlifting đã có sẵn trong `liftingEngine.ts`
 [22] Murphy, C., Koehler, K. — "Energy deficiency impairs resistance training gains in lean mass but not strength: A meta-analysis and meta-regression." Scandinavian Journal of Medicine & Science in Sports, 2022. https://onlinelibrary.wiley.com/doi/10.1111/sms.14075
 [23] ACE Fitness — "7 Things to Know About Excess Post-exercise Oxygen Consumption (EPOC)." https://www.acefitness.org/resources/pros/expert-articles/5008/7-things-to-know-about-excess-post-exercise-oxygen-consumption-epoc/
 [24] Prilepin, A.S. (bảng gốc, huấn luyện cử tạ Olympic Liên Xô) — kiểm định lại trên powerlifting qua Pritchard, H. et al., "The effectiveness of Prilepin's chart for powerlifting strength improvements in resistance trained males," 2016 (4 tuần, cải thiện SBD rõ nhất ở squat/deadlift, giới hạn: mẫu gốc là cử tạ Olympic không phải powerlifting thuần); INOL: công thức của Hristo Hristov, tổng hợp qua PowerliftingTechnique.com/Torokhtiy — công cụ huấn luyện phổ biến, không có RCT độc lập kiểm chứng. https://www.researchgate.net/publication/304540647
+
+---
+
+## 9. Ghi biến thể khi Xả & Sổ tập luyện (Session 32)
+
+Engine block ở trên **lập kế hoạch**; phần này là phía **ghi lại thực tế**, nối vào cùng thư viện biến thể
+(`src/lib/powerliftingVariations.ts`, `blockVariations.<id>.label`):
+
+- **Ghi biến thể.** `WorkoutSession` có thêm `variationId?` (id trong thư viện) và `variationName?` (tên người
+  dùng tự gõ, thắng `variationId`). Không có cả hai = bài chuẩn/thi đấu — cũng là nghĩa của mọi dòng đã ghi
+  trước đây. `PowerliftingSheet` giữ danh sách *movement* thay vì một bộ set cho mỗi bài, nên một buổi ghi được
+  `Bench` + `Incline`. Nhãn thuần: kcal **không đổi** (`liftingSessionKcal` từng session; phút và kcal cộng
+  theo set nên tách movement không làm đổi tổng). Biến thể có `loadFactor === 1` (`*_standard`,
+  `bench_touch_and_go`) *là* bài chuẩn nên dùng chung chip "Chuẩn". "Buổi trước" khớp đúng biến thể; biến thể
+  chưa từng tập rơi về buổi **chuẩn** gần nhất (chỉ để tham khảo), bài chuẩn không bao giờ mượn buổi của biến
+  thể.
+- **Sổ tập nhóm theo block.** Tab Tập luyện → 📓 Sổ tập gom các ngày đã tập theo **block** (số thứ tự theo
+  `createdAt` trong các block còn tồn tại, hoặc tên người dùng đặt) → tuần `W1…` / `DELOAD` → ngày. Ngày
+  ngoài mọi block vào "Tập tự do · tháng". Block chỉ dùng để *nhóm*: kế hoạch ≠ thực tế, sổ không ghi ngược
+  vào kế hoạch; xoá block thì các ngày của nó rơi về "Tập tự do", dữ liệu không mất. Xem `docs/03-architecture.md`
+  mục "Sổ tập luyện".
+- **Ký hiệu** người dùng đang dùng (`5x5x72.5`, `6x4(+3)x75`, `110x(4+5+5+4+8)`) khác ký hiệu `5x5@95` trong
+  file Excel block mẫu; sổ theo sổ Notes thật của người dùng.
+

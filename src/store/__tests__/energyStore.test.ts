@@ -2,10 +2,14 @@ import { useEnergyStore } from '../energyStore';
 import type { BatteryReading } from '../../types/battery';
 import type { ActivityLogEntry } from '../../types/energy';
 import type { FoodItem, FoodLogEntry } from '../../types/food';
-import { energyDayString } from '../../lib/dateUtils';
+import { energyDayString, todayString } from '../../lib/dateUtils';
 import * as batteryRepository from '../../data/repositories/batteryRepository';
 import * as intakeRepository from '../../data/repositories/intakeRepository';
+import * as foodLogRepository from '../../data/repositories/foodLogRepository';
+import { getModeById } from '../../domain/modes/modeDefinitions';
 import { getAnyFoodById } from '../../data/food/foodLookup';
+import { useSettingsStore } from '../settingsStore';
+import { circadianBurnKcal } from '../../domain/energy/satietyEngine';
 
 // updateFood resolves the FoodItem via getAnyFoodById — mock the whole lookup
 // module so the test controls it (and so importing energyStore doesn't pull in
@@ -73,9 +77,63 @@ function seedReadings() {
     masterPercentage: 0,
     foodLog: [],
     activityLog: [],
+    // Reset too: the satiety replay reads today's in-memory intakeLog, so a
+    // quick-tap left over from an earlier test would leak in as eaten kcal.
+    intakeLog: [],
     lastDrainSyncAt: Date.now(),
     isLoaded: true,
   });
+}
+
+// The satiety reserve is a replay of the timestamped logs (an event acts when
+// it HAPPENED, see energyStore.recomputeSatiety), and its persisted anchor is
+// `Date.now()`. Freeze the clock at 14:00 local (after the 6am energy-day
+// rollover) so every replayed value is exactly reproducible.
+const HOUR_MS = 3_600_000;
+beforeEach(() => {
+  jest.useFakeTimers().setSystemTime(new Date(2026, 8, 23, 14, 0, 0));
+});
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+function profile() {
+  return useSettingsStore.getState().userProfile;
+}
+
+// Put a meal already in today's in-memory food log, eaten `hoursAgo` before the
+// frozen clock, so the replayed reserve is non-zero (it starts from 0 at the
+// window start; a workout on an empty reserve drains nothing).
+function seedMeal(kcal: number, hoursAgo = 1) {
+  const entry: FoodLogEntry = {
+    id: 'seed_meal',
+    timestamp: Date.now() - hoursAgo * HOUR_MS,
+    mealType: 'lunch',
+    foodId: 'seed_food',
+    foodNameVi: 'Bữa seed',
+    grams: 100,
+    energyKcal: kcal,
+    proteinG: 0,
+    fatG: 0,
+    carbG: 0,
+    waterG: 0,
+    mineralsMg: 0,
+    energyDayApplied: energyDayString(),
+  };
+  useEnergyStore.setState({ foodLog: [entry] });
+}
+
+// Replays satiety from the seeded logs and returns the resulting readings —
+// the "before" state a log→undo round-trip must return to.
+async function replayedBaseline(): Promise<BatteryReading[]> {
+  await useEnergyStore.getState().recomputeSatiety();
+  return useEnergyStore.getState().readings;
+}
+
+// Ledger/goal fields only. Used where a test cares that the LEDGER was left
+// alone but the satiety cache is legitimately rewritten by the replay.
+function ledgerOf(r: BatteryReading | undefined): BatteryReading | undefined {
+  return r && { ...r, satietyReserveKcal: undefined, lastSatietySyncAt: undefined };
 }
 
 function findReading(id: BatteryReading['batteryTypeId']): BatteryReading {
@@ -125,11 +183,15 @@ describe('energyStore — logActivity (B2)', () => {
   });
 
   it('a workout drains the satiety reserve and is snapshotted for exact undo', async () => {
-    // 60 min football @ 78kg = 624 kcal (matches energyBalanceEngine.test.ts)
+    // 60 min football @ 78kg = 624 kcal (matches energyBalanceEngine.test.ts).
+    // A 1000-kcal meal eaten 1h ago, then the workout now: reserve = meal
+    // minus 1h of burn minus the workout.
+    seedMeal(1000, 1);
     await useEnergyStore.getState().logActivity({ workouts: [{ type: 'football', minutes: 60 }] });
     const energy = findReading('energy');
     expect(energy.capacity).toBe(2022 + 624);
-    expect(energy.satietyReserveKcal).toBe(1000 - 624);
+    const expected = 1000 - circadianBurnKcal(profile(), Date.now() - HOUR_MS, Date.now()) - 624;
+    expect(Math.abs(energy.satietyReserveKcal! - expected)).toBeLessThanOrEqual(1);
     const entry = useEnergyStore.getState().activityLog[0];
     expect(entry.energyKcal).toBe(624);
     expect(entry.satietyDrainKcal).toBe(624);
@@ -161,11 +223,13 @@ describe('energyStore — logActivity with set-based powerlifting (S-PL)', () =>
   };
 
   it('grows the goal + drains satiety by the tonnage kcal, not MET × minutes', async () => {
+    seedMeal(1000, 1);
     await useEnergyStore.getState().logActivity({ workouts: [squatWorkout] });
     const energy = findReading('energy');
     expect(energy.capacity).toBe(2022 + 38);
     expect(energy.activityBonusKcal).toBe(38);
-    expect(energy.satietyReserveKcal).toBe(1000 - 38);
+    const expected = 1000 - circadianBurnKcal(profile(), Date.now() - HOUR_MS, Date.now()) - 38;
+    expect(Math.abs(energy.satietyReserveKcal! - expected)).toBeLessThanOrEqual(1);
     const entry = useEnergyStore.getState().activityLog[0];
     expect(entry.energyKcal).toBe(38);
     expect(entry.satietyDrainKcal).toBe(38);
@@ -187,7 +251,8 @@ describe('energyStore — logActivity with set-based powerlifting (S-PL)', () =>
   });
 
   it('removeActivity round-trips a set-based entry exactly', async () => {
-    const before = useEnergyStore.getState().readings;
+    seedMeal(1000, 1);
+    const before = await replayedBaseline();
     await useEnergyStore.getState().logActivity({ workouts: [squatWorkout] });
     const entryId = useEnergyStore.getState().activityLog[0].id;
 
@@ -221,7 +286,8 @@ describe('energyStore — removeActivity undoes logActivity exactly (B2)', () =>
   });
 
   it('round-trips a workout: satiety reserve and goal both restored exactly', async () => {
-    const before = useEnergyStore.getState().readings;
+    seedMeal(1000, 1);
+    const before = await replayedBaseline();
     await useEnergyStore.getState().logActivity({
       steps: 2000,
       workouts: [{ type: 'running', minutes: 30 }],
@@ -452,7 +518,8 @@ describe('energyStore — removeActivity reverses the correct energy-day reading
   });
 
   it('same energy-day: reverses in place on the store readings, exactly as before', async () => {
-    const before = useEnergyStore.getState().readings;
+    seedMeal(1000, 1);
+    const before = await replayedBaseline();
     await useEnergyStore.getState().logActivity({
       steps: 2000,
       workouts: [{ type: 'running', minutes: 30 }],
@@ -502,18 +569,23 @@ describe('energyStore — removeActivity reverses the correct energy-day reading
 
     // Today's readings (in the store) are untouched — this is the whole
     // point of the fix.
-    expect(findReading('energy')).toEqual(beforeReadings.find((r) => r.batteryTypeId === 'energy'));
+    // (Ledger/goal only: the satiety cache is rewritten by the replay.)
+    expect(ledgerOf(findReading('energy'))).toEqual(
+      ledgerOf(beforeReadings.find((r) => r.batteryTypeId === 'energy'))
+    );
     expect(findReading('movement')).toEqual(beforeReadings.find((r) => r.batteryTypeId === 'movement'));
 
     // The historical row was fetched, reversed (mirroring
-    // reverseActivityOnEnergyReading), and persisted on its own.
+    // reverseActivityOnEnergyReading), and persisted on its own. Its satiety
+    // fields are a dead cache now (the reserve is replayed from the logs),
+    // so they are left exactly as stored.
     expect(getReadingsSpy).toHaveBeenCalledWith('2026-07-01');
     expect(upsertSpy).toHaveBeenCalledWith([
       {
         ...historicalEnergy,
         capacity: 2500 - 300, // Math.max(0, 2500 - entry.energyKcal)
         activityBonusKcal: 0, // Math.max(0, 300 - 300)
-        satietyReserveKcal: 350, // eatIntoReserve(200, 150)
+        // satietyReserveKcal stays 200: the historical row's satiety is not reversed
       },
     ]);
   });
@@ -634,17 +706,13 @@ describe('energyStore — removeFood reverses the correct energy-day reading (FI
   });
 
   it('same energy-day (logged now): reverses in place on the store readings', async () => {
-    // Keep the satiety reserve below its cap so the eat/undo round-trip is
-    // exact (eating caps at full, undo floors at 0 — see removeFood doc).
-    useEnergyStore.setState((s) => ({
-      readings: s.readings.map((r) =>
-        r.batteryTypeId === 'energy' ? { ...r, satietyReserveKcal: 500 } : r
-      ),
-    }));
-    const before = useEnergyStore.getState().readings;
+    // Replayed baseline (empty log -> reserve 0). Eating 200 kcal now lifts the
+    // reserve to 200 and undoing it replays back to exactly the baseline.
+    const before = await replayedBaseline();
     await useEnergyStore.getState().logFood(makeFoodItem(), 100, Date.now());
     const entry = useEnergyStore.getState().foodLog[0];
     expect(entry.energyDayApplied).toBe(energyDayString()); // sanity: logged "now"
+    expect(findReading('energy').satietyReserveKcal).toBe(200);
 
     await useEnergyStore.getState().removeFood(entry.id);
 
@@ -692,17 +760,20 @@ describe('energyStore — removeFood reverses the correct energy-day reading (FI
 
     await useEnergyStore.getState().removeFood(crossDayEntry.id);
 
-    // Today's energy reading (in the store) is untouched — the whole point.
-    expect(findReading('energy')).toEqual(beforeReadings.find((r) => r.batteryTypeId === 'energy'));
+    // Today's energy ledger (in the store) is untouched — the whole point.
+    // (Satiety cache excluded: it is rewritten by the replay.)
+    expect(ledgerOf(findReading('energy'))).toEqual(
+      ledgerOf(beforeReadings.find((r) => r.batteryTypeId === 'energy'))
+    );
 
     // The historical row was fetched, reversed, and persisted on its own:
-    // burnEnergy(800, 200) = 600; satiety floor(400 - 200) = 200.
+    // burnEnergy(800, 200) = 600. Its satiety fields are a dead cache (the
+    // reserve is replayed from the logs), so they stay exactly as stored.
     expect(getReadingsSpy).toHaveBeenCalledWith('2026-07-01');
     expect(upsertSpy).toHaveBeenCalledWith([
       {
         ...historicalEnergy,
         level: 600,
-        satietyReserveKcal: 200,
       },
     ]);
   });
@@ -723,19 +794,12 @@ describe('energyStore — removeFood reverses the correct energy-day reading (FI
       waterG: 0,
       mineralsMg: 0,
     };
-    // Pre-tax the energy reading as if this 150-kcal food had been logged
-    // (both level and reserve, kept below cap so the in-place reversal is
-    // exact), then define the pristine "before it was eaten" state to undo to.
-    const expectedEnergy: BatteryReading = {
-      ...baseEnergyReading(),
-      level: 500,
-      satietyReserveKcal: 500,
-    };
+    // Pre-tax the energy LEDGER as if this 150-kcal food had been logged, then
+    // define the pristine "before it was eaten" ledger to undo to.
+    const expectedEnergy: BatteryReading = { ...baseEnergyReading(), level: 500 };
     useEnergyStore.setState((s) => ({
       readings: s.readings.map((r) =>
-        r.batteryTypeId === 'energy'
-          ? { ...expectedEnergy, level: 650, satietyReserveKcal: 650 }
-          : r
+        r.batteryTypeId === 'energy' ? { ...expectedEnergy, level: 650 } : r
       ),
       foodLog: [legacyEntry],
     }));
@@ -743,8 +807,9 @@ describe('energyStore — removeFood reverses the correct energy-day reading (FI
     await useEnergyStore.getState().removeFood(legacyEntry.id);
 
     // Reversed in place on the store readings (same-day treatment), not via
-    // the historical-row path.
-    expect(findReading('energy')).toEqual(expectedEnergy);
+    // the historical-row path. Ledger only: satiety is replayed from the logs
+    // (this 1970 row is far outside the window anyway).
+    expect(ledgerOf(findReading('energy'))).toEqual(ledgerOf(expectedEnergy));
   });
 });
 
@@ -877,13 +942,14 @@ describe('energyStore — updateFood (FIX #2, reverse-then-relog)', () => {
 describe('energyStore — removeIntake reverses addIntake (FIX #3)', () => {
   beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
-    // Seed with energy (satiety below the cap so a macro round-trip is exact)
-    // + a water + a protein sub-battery.
+    // Seed with energy + a water + a protein sub-battery. The food pins are
+    // replayed over their OWN row's calendar day, so their `date` must be the
+    // (frozen) today, as it always is on a real device.
     useEnergyStore.setState({
       readings: [
         { ...baseEnergyReading(), satietyReserveKcal: 500 },
-        { date: '2026-07-08', batteryTypeId: 'water', level: 0, capacity: 2000 },
-        { date: '2026-07-08', batteryTypeId: 'protein', level: 0, capacity: 120 },
+        { date: todayString(), batteryTypeId: 'water', level: 0, capacity: 2000 },
+        { date: todayString(), batteryTypeId: 'protein', level: 0, capacity: 120 },
       ],
       masterPercentage: 0,
       foodLog: [],
@@ -916,13 +982,15 @@ describe('energyStore — removeIntake reverses addIntake (FIX #3)', () => {
   });
 
   it('a protein tap also reverses the kcal charge and satiety top-up on undo', async () => {
-    const energyBefore = useEnergyStore.getState().readings.find((r) => r.batteryTypeId === 'energy');
+    // Replayed baseline (no meals logged -> reserve 0).
+    const energyBefore = (await replayedBaseline()).find((r) => r.batteryTypeId === 'energy');
 
-    // 50 g protein -> 200 kcal charged; satiety 500 -> 700.
+    // 50 g protein -> 200 kcal charged to the ledger; the tap is logged "now",
+    // so the replayed reserve is 200 at the frozen clock.
     await useEnergyStore.getState().addIntake('protein', 50);
     expect(findReading('protein').level).toBe(50);
     expect(findReading('energy').level).toBe(700); // 500 + 200
-    expect(findReading('energy').satietyReserveKcal).toBe(700); // 500 + 200
+    expect(findReading('energy').satietyReserveKcal).toBe(200);
 
     const id = useEnergyStore.getState().intakeLog[0].id;
     await useEnergyStore.getState().removeIntake(id);
@@ -974,7 +1042,8 @@ describe('energyStore — BUG A: workout-only logActivity charges the movement p
   });
 
   it('removeActivity round-trips a workout-only entry exactly (movement pin back to pre-log state)', async () => {
-    const before = useEnergyStore.getState().readings;
+    seedMeal(1000, 1);
+    const before = await replayedBaseline();
     await useEnergyStore.getState().logActivity({ workouts: [{ type: 'yoga', minutes: 45 }] });
     const entryId = useEnergyStore.getState().activityLog[0].id;
 
@@ -1035,8 +1104,8 @@ describe('energyStore — BUG B: addIntake(movement) grows the energy goal', () 
       readings: [
         baseEnergyReading(),
         baseMovementReading(),
-        { date: '2026-07-08', batteryTypeId: 'water', level: 0, capacity: 2000 },
-        { date: '2026-07-08', batteryTypeId: 'protein', level: 0, capacity: 120 },
+        { date: todayString(), batteryTypeId: 'water', level: 0, capacity: 2000 },
+        { date: todayString(), batteryTypeId: 'protein', level: 0, capacity: 120 },
       ],
       masterPercentage: 0,
       foodLog: [],
@@ -1091,5 +1160,230 @@ describe('energyStore — BUG B: addIntake(movement) grows the energy goal', () 
     const energy = findReading('energy');
     expect(energy.capacity).toBe(energyBefore.capacity); // unaffected — only movement grows the goal
     expect(energy.level).toBe(energyBefore.level + 200); // 50g * 4kcal/g
+  });
+});
+
+// Satiety-timing fix (.ai/plans/2026-09-23-battery-late-logging-timing.md):
+// a meal acts on the satiety reserve at the moment it was EATEN, not when it
+// was logged. Logging late and logging on time must give the same reserve.
+describe('energyStore — satiety follows meal time, not log time', () => {
+  // 200 kcal / 100 g (makeFoodItem default): grams = kcal / 2.
+  const at = (hour: number, minute = 0) => new Date(2026, 8, 23, hour, minute, 0, 0).getTime();
+  const setClock = (ms: number) => jest.setSystemTime(ms);
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('user scenario: 900 kcal @12:00 + 300 kcal @16:00 logged at 22:30 is NOT full', async () => {
+    setClock(at(22, 30));
+    seedReadings();
+    const item = makeFoodItem();
+    await useEnergyStore.getState().logFood(item, 450, at(12)); // 900 kcal
+    await useEnergyStore.getState().logFood(item, 150, at(16)); // 300 kcal
+
+    // Independent stepwise calculation using the circadian burn.
+    const at16 = 900 - circadianBurnKcal(profile(), at(12), at(16));
+    const expected = at16 + 300 - circadianBurnKcal(profile(), at(16), at(22, 30));
+    const reserve = findReading('energy').satietyReserveKcal!;
+    expect(Math.abs(reserve - expected)).toBeLessThanOrEqual(3);
+    expect(reserve).toBeLessThan(500); // previously: capped at 1000 (100%)
+  });
+
+  it('logging late equals logging on time', async () => {
+    const item = makeFoodItem();
+
+    // On time: each meal logged at the moment it is eaten, read at 22:30.
+    setClock(at(12));
+    seedReadings();
+    await useEnergyStore.getState().logFood(item, 450, Date.now());
+    setClock(at(16));
+    await useEnergyStore.getState().logFood(item, 150, Date.now());
+    setClock(at(22, 30));
+    await useEnergyStore.getState().recomputeSatiety();
+    const onTime = findReading('energy').satietyReserveKcal;
+
+    // Late: both meals logged at 22:30 with their real eating times.
+    seedReadings();
+    await useEnergyStore.getState().logFood(item, 450, at(12));
+    await useEnergyStore.getState().logFood(item, 150, at(16));
+    const late = findReading('energy').satietyReserveKcal;
+
+    expect(late).toBe(onTime);
+  });
+
+  it('the calorie LEDGER still counts the full kcal of a late-logged meal', async () => {
+    setClock(at(22, 30));
+    seedReadings(); // ledger level 500
+    await useEnergyStore.getState().logFood(makeFoodItem(), 450, at(12)); // 900 kcal
+    expect(findReading('energy').level).toBe(500 + 900);
+  });
+
+  it('removing an old, already-drained meal does not drag the reserve down by its full kcal', async () => {
+    setClock(at(22, 30));
+    seedReadings();
+    const item = makeFoodItem();
+    await useEnergyStore.getState().logFood(item, 100, at(9)); //  200 kcal, fully drained by 20:00
+    await useEnergyStore.getState().logFood(item, 300, at(20)); // 600 kcal, ~380 left at 22:30
+    const before = findReading('energy').satietyReserveKcal!;
+    expect(before).toBeGreaterThan(300);
+
+    const morningId = useEnergyStore.getState().foodLog.find((f) => f.timestamp === at(9))!.id;
+    await useEnergyStore.getState().removeFood(morningId);
+
+    // The morning meal had nothing left in the reserve, so removing it changes
+    // nothing (the old "subtract the full kcal now" would have dropped it by 200).
+    expect(findReading('energy').satietyReserveKcal).toBe(before);
+    // ...but its kcal did leave the ledger.
+    expect(findReading('energy').level).toBe(500 + 600);
+  });
+
+  it('a meal-time in the future is clamped to now (the UI blocks it too)', async () => {
+    setClock(at(12));
+    seedReadings();
+    await useEnergyStore.getState().logFood(makeFoodItem(), 100, at(15));
+    expect(useEnergyStore.getState().foodLog[0].timestamp).toBe(at(12));
+    expect(findReading('energy').satietyReserveKcal).toBe(200); // counted, not dropped
+  });
+
+  it('a manual addCalories tap is replayed too', async () => {
+    setClock(at(14));
+    seedReadings();
+    await replayedBaseline();
+    jest.spyOn(intakeRepository, 'getIntakeEventsInRange').mockResolvedValue([
+      { id: `energy_${at(11)}`, timestamp: at(11), batteryTypeId: 'energy', amount: 800, note: 'bánh mì' },
+    ]);
+    await useEnergyStore.getState().recomputeSatiety();
+    const expected = 800 - circadianBurnKcal(profile(), at(11), at(14));
+    expect(Math.abs(findReading('energy').satietyReserveKcal! - expected)).toBeLessThanOrEqual(1);
+  });
+
+  it('derived Excel-only intake rows (workout_*/movement_*) never count as eating', async () => {
+    setClock(at(14));
+    seedReadings();
+    jest.spyOn(intakeRepository, 'getIntakeEventsInRange').mockResolvedValue([
+      { id: `workout_${at(13)}_0`, timestamp: at(13), batteryTypeId: 'energy', amount: 624, note: 'workout: running 30m' },
+      { id: `movement_${at(13)}`, timestamp: at(13), batteryTypeId: 'movement', amount: 3000, note: 'steps' },
+    ]);
+    await useEnergyStore.getState().recomputeSatiety();
+    expect(findReading('energy').satietyReserveKcal).toBe(0);
+  });
+});
+
+// W3 of the same plan: the protein/carbs/water/minerals pins are a replay of
+// today's logs too — a meal logged late must not skip the hours of drain
+// between eating it and logging it.
+describe('energyStore — food pins follow meal time, not log time', () => {
+  const at = (hour: number, minute = 0) => new Date(2026, 8, 23, hour, minute, 0, 0).getTime();
+  const setClock = (ms: number) => jest.setSystemTime(ms);
+  const CAP = 120;
+  const rate = () => getModeById(useSettingsStore.getState().currentMode).drainRatePerHour;
+
+  function seedWithProtein() {
+    seedReadings();
+    useEnergyStore.setState((s) => ({
+      readings: [...s.readings, { date: todayString(), batteryTypeId: 'protein', level: 0, capacity: CAP }],
+    }));
+  }
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('a dinner logged at 22:30 that was eaten at 20:00 has already drained 2.5h', async () => {
+    setClock(at(22, 30));
+    seedWithProtein();
+    await useEnergyStore.getState().logFood(makeFoodItem(), 500, at(20)); // 50 g protein
+    const expected = 50 - CAP * rate() * 2.5;
+    expect(findReading('protein').level).toBeCloseTo(expected, 1);
+    expect(findReading('protein').level).toBeLessThan(50); // previously: the full 50 g
+  });
+
+  it('logging late equals logging on time (checked against the incremental tickDrain path)', async () => {
+    // On time: charged at 20:00, then the 2.5h drain tick.
+    setClock(at(20));
+    seedWithProtein();
+    await useEnergyStore.getState().logFood(makeFoodItem(), 500, Date.now());
+    setClock(at(22, 30));
+    await useEnergyStore.getState().tickDrain(2.5, useSettingsStore.getState().currentMode);
+    const onTime = findReading('protein').level;
+
+    // Late: logged at 22:30 with the real eating time.
+    seedWithProtein();
+    await useEnergyStore.getState().logFood(makeFoodItem(), 500, at(20));
+    expect(findReading('protein').level).toBeCloseTo(onTime, 1);
+  });
+
+  it('a lunch logged at 22:30 is lower than the same lunch logged at 12:05', async () => {
+    const lateLevel = async () => {
+      setClock(at(22, 30));
+      seedWithProtein();
+      await useEnergyStore.getState().logFood(makeFoodItem(), 500, at(12));
+      return findReading('protein').level;
+    };
+    const justAfterLevel = async () => {
+      setClock(at(12, 5));
+      seedWithProtein();
+      await useEnergyStore.getState().logFood(makeFoodItem(), 500, at(12));
+      return findReading('protein').level;
+    };
+    expect(await lateLevel()).toBeLessThan(await justAfterLevel());
+  });
+
+  it('removing a meal replays the pin from what remains', async () => {
+    setClock(at(22, 30));
+    seedWithProtein();
+    const item = makeFoodItem();
+    await useEnergyStore.getState().logFood(item, 500, at(20)); // 50 g
+    await useEnergyStore.getState().logFood(item, 200, at(21)); // 20 g
+    const both = findReading('protein').level;
+
+    const second = useEnergyStore.getState().foodLog.find((f) => f.timestamp === at(21))!;
+    await useEnergyStore.getState().removeFood(second.id);
+
+    expect(findReading('protein').level).toBeCloseTo(50 - CAP * rate() * 2.5, 1);
+    expect(findReading('protein').level).toBeLessThan(both);
+  });
+
+  it('a water quick-tap is replayed too, and undo returns to the pre-tap level', async () => {
+    setClock(at(14));
+    seedReadings();
+    useEnergyStore.setState((s) => ({
+      readings: [...s.readings, { date: todayString(), batteryTypeId: 'water', level: 0, capacity: 2000 }],
+    }));
+    await useEnergyStore.getState().addIntake('water', 500);
+    expect(findReading('water').level).toBe(500);
+    const id = useEnergyStore.getState().intakeLog[0].id;
+    await useEnergyStore.getState().removeIntake(id);
+    expect(findReading('water').level).toBe(0);
+  });
+
+  it('loadToday drains the pins for the hours the app was closed (replay, not the stale stored level)', async () => {
+    // A 20:00 dinner, stored pin level still 50 g (app was closed since then);
+    // reopened at 22:30. The persisted level must NOT be trusted.
+    setClock(at(22, 30));
+    const dinner: FoodLogEntry = {
+      id: 'dinner', timestamp: at(20), mealType: 'dinner', foodId: 'f', foodNameVi: 'x', grams: 500,
+      energyKcal: 0, proteinG: 50, fatG: 0, carbG: 0, waterG: 0, mineralsMg: 0,
+    };
+    jest.spyOn(foodLogRepository, 'getFoodLogForDate').mockResolvedValue([dinner]);
+    jest.spyOn(batteryRepository, 'getReadingsForDate').mockResolvedValue([
+      { ...baseEnergyReading(), date: todayString() },
+      { date: todayString(), batteryTypeId: 'protein', level: 50, capacity: CAP },
+    ]);
+    seedReadings();
+
+    const modeId = useSettingsStore.getState().currentMode;
+    await useEnergyStore.getState().loadToday(modeId);
+
+    const capacity = findReading('protein').capacity; // re-applied from the mode
+    expect(findReading('protein').level).toBeCloseTo(Math.max(0, 50 - capacity * rate() * 2.5), 1);
+    expect(findReading('protein').level).toBeLessThan(50);
   });
 });

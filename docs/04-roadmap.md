@@ -282,4 +282,11 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > **619/619 test PASS** (+13 test mới), tsc/lint sạch. **Chưa có xác nhận test máy thật.** Chi
 > tiết: `.ai/SESSION_LOG.md` Session 29.
 
+> 🟡 **(2026-09-23, Session 32, nhánh `ui-upgrade`, CHƯA COMMIT)** Tính năng **Sổ tập luyện** (tab Tập luyện): nhật ký bài
+> tập kiểu Apple Notes theo đúng sổ Notes của người dùng — tự sinh từ các buổi ghi ở Xả, gom block → tuần → ngày, sửa được /
+> ghi tay buổi quên Xả (không tính pin), tuỳ chọn định dạng + viết tắt, chia sẻ cả block thành một trang chữ; ghi được biến
+> thể (Pause/Incline…) khi Xả. Code xong W1–W7 + docs (W8, W6b chủ ý bỏ). Verify: **909 test**, tsc/lint sạch (có 1 test lỗi
+> ngẫu nhiên có sẵn của Session 31). **Chưa test máy thật.** Chi tiết: `.ai/SESSION_LOG.md` Session 32,
+> `.ai/plans/2026-09-23-training-log-notebook.md`.
+
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

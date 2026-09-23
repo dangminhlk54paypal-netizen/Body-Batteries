@@ -192,6 +192,15 @@ export interface WorkoutSession {
   bbTier?: BbMetTier;
   bbMet?: number;
   bbName?: string;
+  // Training-log variation (squat/bench_press/deadlift sessions only): which
+  // technique variation these sets were done in. `variationId` indexes
+  // POWERLIFTING_VARIATIONS (src/lib/powerliftingVariations.ts); `variationName`
+  // is a user-typed free-text variation (same convention as `customName`) and
+  // wins over `variationId` when both are set. Neither present = the plain
+  // standard/competition lift, which is also what every row logged before this
+  // field existed means. Label-only: kcal is still computed from the sets.
+  variationId?: string;
+  variationName?: string;
 }
 
 // Breakdown of one day's energy expenditure, all in kcal.

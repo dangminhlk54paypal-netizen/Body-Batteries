@@ -56,6 +56,42 @@ cho **đúng 1 hộp 65 ml**. Nên `FoodItem` tách bạch **hai câu hỏi khá
   `mode === 'edit'` của `FoodNutritionEditModal`; mappers + `schema.ts` +
   migration ALTER trong `database.ts`.
 
+## 3a-2. Nhập dinh dưỡng theo 100 g **hoặc** theo khẩu phần (Session 30)
+Form "Thêm món mới" / "Sửa thành phần" (`CustomFoodFields.tsx`, dùng chung cho
+`FoodLogModal` + `FoodNutritionEditModal`) từng gộp 2 câu hỏi thành 1: chip đơn vị
+(gram/gói/viên/khẩu phần) **cũng ngầm quyết định** số gõ vào là /100 g hay /1 khẩu phần.
+Nay tách riêng — thêm chip **"Nhập dinh dưỡng theo: [100g] [1 khẩu phần (350g)]"**:
+
+- `NutritionBasis = 'per100' | 'perServing'` — **chỉ tồn tại trong form, KHÔNG lưu DB,
+  KHÔNG thêm field vào `FoodItem`** (tránh 3 điểm nối ở mục 3a). Lưu trữ vẫn chỉ là
+  `per100g`; `buildCustomFoodItem` quy đổi khi lưu. Trực giao với `portionUnit`: món cân
+  gram nhập được theo khẩu phần ("1 tô phở 350 g = 450 kcal"), món đếm theo hộp nhập
+  được theo /100 ml (đúng như nhãn).
+- **Mốc khẩu phần** (`servingSizeOf`): món gram → `defaultServingG`; món đếm →
+  `servingWeightG`. Trả 0 nếu trống — quy đổi **không bao giờ đoán** 100 (khác với
+  fallback hiển thị của `buildCustomFoodItem`).
+- **Đổi chế độ = quy đổi, không xoá** (`changeNutritionBasis`: ×size/100 hoặc ×100/size,
+  làm tròn 6 chữ số có nghĩa để không hiện đuôi số thực). Chưa có mốc khẩu phần → xoá
+  các ô (không đoán). **Đổi chip đơn vị cũng không xoá số nữa** (`changePortionUnit`,
+  thay `resetNutritionForUnitChange` của FIX #1 cũ — vốn chỉ cần khi đơn vị ngầm quyết
+  định thang đo); nó mang mốc khẩu phần sang ô tương ứng, và — **chỉ khi chưa gõ số nào**
+  — đặt basis mặc định theo đơn vị (đếm → theo khẩu phần, cân → theo 100 g) để luồng TPCN
+  cũ ("Viên = số theo viên") không đọc nhầm 9 kcal/viên thành 9 kcal/100 g. Đã gõ số thì
+  basis giữ nguyên.
+- **Ô xem trước** (`nutritionPreview`): cùng món trên thang đo còn lại — nhập /100 g thì
+  hiện "≈ 1 khẩu phần (350g): 450 kcal · Đạm… · Béo… · Carbs…", nhập theo khẩu phần thì
+  hiện "≈ Mỗi 100g: …". Dùng chung `enteredNutritionOf` với `buildCustomFoodItem` nên số
+  xem trước = số sẽ lưu (kể cả luật carb ≥ đường + xơ, áp trên số gõ vào, TRƯỚC quy đổi).
+- **Validate:** nhập theo khẩu phần bắt buộc mốc khẩu phần > 0 (nút Lưu mờ + dòng nhắc);
+  luật cũ "món đếm cần `servingWeightG` > 0" giữ nguyên.
+- **Mở lại để sửa:** chế độ được **suy ra** (`inputFromFoodItem`) — món đếm mở ở
+  "theo khẩu phần" (đúng số người dùng gõ ban đầu, vd 610 mg/viên), món gram ở
+  "theo 100 g" — vì không lưu basis. Đổi qua lại 1 chạm không mất dữ liệu.
+- Mọi sửa form đi qua `applyCustomFoodChange` (cả 2 modal dùng chung, không tự viết lại).
+- Chữ hiển thị: `components.customFoodFields.basis*` / `preview*` (vi/en/de); nhãn
+  hậu tố/phụ đề dùng `formBasisLabel` ("100g" / "1 hộp" / "1 khẩu phần").
+  Ngoài phạm vi: lưu basis vào `FoodItem` để món gram mở lại đúng chế độ đã nhập.
+
 ## 3b. Xem lại món đã ăn hôm nay ("Hôm nay đã ăn")
 Khu vực trên Home (dưới các pin nhỏ) — `src/components/TodayMeals.tsx`:
 - **Tổng kcal/ngày** + phân bổ đạm/tinh bột/béo ở đầu mục.
@@ -105,6 +141,18 @@ hệ điều hành.
   resume) vẫn là nguồn xả thật duy nhất được lưu; `lastDrainSyncAt` cập nhật lại
   mỗi khi `loadToday` / `tickDrain` / `resetForNewDay` chạy nên không đếm trùng.
 - Tạm dừng interval khi app ở background (`AppState`), giống `useDrainTick.ts`.
+
+## 3d. Giờ ăn quyết định hiệu ứng lên pin (Session 31)
+- Giờ bạn chọn ở ô **"Giờ ăn"** không chỉ để gắn nhãn bữa: pin no/đói và các pin đạm/tinh bột/nước/khoáng
+  được tính theo **giờ đã ăn**, không phải giờ bấm ghi. Ghi bữa trưa lúc 22:30 (chọn giờ ăn 12:00) sẽ
+  không làm pin nhảy lên đầy — nó đã "tiêu hao" từ 12:00.
+- **Sổ kcal "đã ăn X / mục tiêu Y" vẫn cộng đủ** kcal của bữa ghi muộn (không phụ thuộc thời gian).
+- **Chặn giờ ăn ở tương lai** (hôm nay): nút "Ghi món" tắt và hiện dòng lỗi. Ghi sớm hơn hiện tại ≥ 30
+  phút thì hiện gợi ý "Pin no/đói sẽ tính từ lúc HH:MM, không phải lúc ghi." (i18n vi/en/de:
+  `components.foodLogModal.futureTimeError` / `lateLogHint`).
+- Xoá một bữa ăn cũ chỉ bớt đúng phần còn lại của nó trong pin (không trừ toàn bộ kcal).
+- Bữa ghi bù cho đêm qua (trong 48h) cũng được tính vào pin no/đói theo giờ ăn của nó.
+- Kỹ thuật: xem `docs/03-architecture.md` mục "Pin theo GIỜ ĂN".
 
 ## 4. Lưu trữ & Excel
 - Bảng `food_log` (`schema.ts` + `data/repositories/foodLogRepository.ts`) lưu
@@ -158,6 +206,8 @@ Người dùng phải kiểm tra được mọi con số, không phải tin suô
 - `src/data/food/` — `foodCsv.ts`, `foodDatabase.ts`, `foodDatabase.generated.ts`.
 - `src/domain/food/foodNutrition.ts` — tính dinh dưỡng + suy loại bữa.
 - `src/domain/food/portionUnits.ts` — nguồn duy nhất sinh nhãn đơn vị/khẩu phần.
+- `src/domain/food/customFoodInput.ts` — logic thuần của form thêm/sửa món: dựng
+  `FoodItem`, validate, quy đổi /100 g ↔ /khẩu phần, xem trước (mục 3a-2).
 - `src/domain/food/myFoodsBackup.ts` + `src/services/food/myFoodsBackupService.ts` —
   xuất/nhập danh sách món của người dùng.
 - `src/domain/food/foodSource.ts` — phân loại nguồn món (của tôi / catalog / USDA).

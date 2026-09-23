@@ -5,7 +5,9 @@ import { generateBlockPlan } from '../domain/energy/blockEngine';
 import {
   addTrainingBlock,
   getActiveTrainingBlock,
+  getTrainingBlockById,
   listTrainingBlocks,
+  updateTrainingBlock,
   deleteTrainingBlock,
 } from '../data/repositories/trainingBlockRepository';
 
@@ -21,6 +23,10 @@ interface BlockState {
   loadAllBlocks: () => Promise<void>;
   createBlock: (config: NewTrainingBlockConfig, profile: UserProfile) => Promise<GeneratedBlockPlan>;
   deleteBlock: (id: string) => Promise<void>;
+  // Sets the block's display title for the training log (blank clears it, so
+  // the log falls back to "Block <n>"). Works on any stored block, active or
+  // not — the log lists every block, not just the active one.
+  renameBlock: (id: string, name: string) => Promise<void>;
 }
 
 export const useBlockStore = create<BlockState>((set, get) => ({
@@ -58,6 +64,18 @@ export const useBlockStore = create<BlockState>((set, get) => ({
     set((s) => ({
       blocks: s.blocks.filter((b) => b.config.id !== id),
       activeBlock: wasActive ? null : s.activeBlock,
+    }));
+  },
+
+  renameBlock: async (id, name) => {
+    const plan = await getTrainingBlockById(id);
+    if (!plan) return;
+    const trimmed = name.trim();
+    const updated = { ...plan, config: { ...plan.config, name: trimmed === '' ? undefined : trimmed } };
+    await updateTrainingBlock(updated);
+    set((s) => ({
+      activeBlock: s.activeBlock?.config.id === id ? updated : s.activeBlock,
+      blocks: s.blocks.map((b) => (b.config.id === id ? updated : b)),
     }));
   },
 }));

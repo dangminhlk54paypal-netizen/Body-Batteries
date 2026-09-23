@@ -1,9 +1,15 @@
 import {
+  applyCustomFoodChange,
   buildCustomFoodItem,
+  changeNutritionBasis,
+  changePortionUnit,
+  formBasisLabel,
   inputFromFoodItem,
   isValidCustomFoodInput,
-  resetNutritionForUnitChange,
+  nutritionPreview,
+  servingSizeOf,
   EMPTY_CUSTOM_FOOD_INPUT,
+  NUTRITION_KEYS,
   type CustomFoodInput,
 } from '../customFoodInput';
 import type { FoodItem } from '../../../types/food';
@@ -270,6 +276,7 @@ describe('buildCustomFoodItem — pack/capsule (TPCN) portion conversion', () =>
     category: 'supplement',
     portionUnit: 'capsule',
     servingWeightG: '1.22',
+    nutritionBasis: 'perServing',
     energyKcal: '9',
     fatG: '1',
     epaMg: '300',
@@ -314,58 +321,478 @@ describe('buildCustomFoodItem — pack/capsule (TPCN) portion conversion', () =>
   });
 });
 
-describe('resetNutritionForUnitChange', () => {
-  // FIX #1 regression: switching Gram -> Viên/Gói must not let a number typed
-  // under the old unit get reinterpreted under the new scale (per-100g vs
-  // per-serving); the safe behaviour is to wipe the numeric fields instead.
-  it('switching gram -> capsule clears every nutrition field and servingWeightG, but keeps name/category', () => {
+describe('changePortionUnit', () => {
+  // The unit chip only decides how a portion is COUNTED now; the scale of the
+  // typed nutrition numbers belongs to nutritionBasis, so switching the unit
+  // must never wipe (or reinterpret) what the user already typed.
+  it('keeps every nutrition number when switching gram -> capsule', () => {
     const input: CustomFoodInput = { ...filled, portionUnit: 'gram' };
-    const result = resetNutritionForUnitChange(input, 'capsule');
+    const result = changePortionUnit(input, 'capsule');
     expect(result.portionUnit).toBe('capsule');
     expect(result.name).toBe(filled.name);
     expect(result.category).toBe(filled.category);
-    expect(result.servingWeightG).toBe('');
-    expect(result.energyKcal).toBe('');
-    expect(result.waterG).toBe('');
-    expect(result.proteinG).toBe('');
-    expect(result.fatG).toBe('');
-    expect(result.carbG).toBe('');
-    expect(result.fiberG).toBe('');
-    expect(result.sugarG).toBe('');
-    expect(result.calciumMg).toBe('');
-    expect(result.ironMg).toBe('');
-    expect(result.sodiumMg).toBe('');
-    expect(result.potassiumMg).toBe('');
-    expect(result.magnesiumMg).toBe('');
-    expect(result.zincMg).toBe('');
-    expect(result.epaMg).toBe('');
-    expect(result.dhaMg).toBe('');
+    for (const key of NUTRITION_KEYS) {
+      expect(result[key]).toBe(filled[key]);
+    }
+    expect(result.nutritionBasis).toBe(filled.nutritionBasis);
   });
 
-  it('switching capsule -> gram clears every nutrition field and servingWeightG, but keeps name/category', () => {
-    const input: CustomFoodInput = {
-      ...filled,
-      portionUnit: 'capsule',
-      servingWeightG: '1.22',
+  it('keeps every nutrition number when switching capsule -> gram', () => {
+    const input: CustomFoodInput = { ...filled, portionUnit: 'capsule', servingWeightG: '1.22' };
+    const result = changePortionUnit(input, 'gram');
+    expect(result.portionUnit).toBe('gram');
+    for (const key of NUTRITION_KEYS) {
+      expect(result[key]).toBe(filled[key]);
+    }
+  });
+
+  it('carries the gram serving size into servingWeightG when it was blank (gram -> counted)', () => {
+    const input: CustomFoodInput = { ...filled, defaultServingG: '350', servingWeightG: '' };
+    expect(changePortionUnit(input, 'serving').servingWeightG).toBe('350');
+  });
+
+  it('does not overwrite an existing servingWeightG (gram -> counted)', () => {
+    const input: CustomFoodInput = { ...filled, defaultServingG: '350', servingWeightG: '180' };
+    expect(changePortionUnit(input, 'serving').servingWeightG).toBe('180');
+  });
+
+  it('carries servingWeightG into defaultServingG (counted -> gram) when it is positive', () => {
+    const input: CustomFoodInput = { ...filled, portionUnit: 'serving', servingWeightG: '180' };
+    expect(changePortionUnit(input, 'gram').defaultServingG).toBe('180');
+  });
+
+  it('leaves defaultServingG alone (counted -> gram) when servingWeightG is blank or 0', () => {
+    const blank: CustomFoodInput = { ...filled, portionUnit: 'serving', servingWeightG: '' };
+    expect(changePortionUnit(blank, 'gram').defaultServingG).toBe(filled.defaultServingG);
+    const zero: CustomFoodInput = { ...filled, portionUnit: 'serving', servingWeightG: '0' };
+    expect(changePortionUnit(zero, 'gram').defaultServingG).toBe(filled.defaultServingG);
+  });
+
+  it('keeps servingWeightG when switching between counted units (pack -> capsule)', () => {
+    const input: CustomFoodInput = { ...filled, portionUnit: 'pack', servingWeightG: '5' };
+    expect(changePortionUnit(input, 'capsule').servingWeightG).toBe('5');
+  });
+
+  // Supplement/packaged labels print numbers per capsule/carton, and the old
+  // form always read a counted unit that way. Now that the scale is its own
+  // chip, an UNTOUCHED form follows the unit so a habitual "9 kcal per
+  // capsule" is not silently read as 9 kcal per 100 g (an ~80x error).
+  describe('default basis follows weighed <-> counted while nothing is typed', () => {
+    const blank: CustomFoodInput = { ...EMPTY_CUSTOM_FOOD_INPUT, name: 'Omega-3' };
+
+    it('gram -> counted defaults an empty form to perServing', () => {
+      for (const unit of ['pack', 'capsule', 'serving'] as const) {
+        expect(changePortionUnit(blank, unit).nutritionBasis).toBe('perServing');
+      }
+    });
+
+    it('counted -> gram defaults an empty form back to per100', () => {
+      const counted: CustomFoodInput = { ...blank, portionUnit: 'capsule', nutritionBasis: 'perServing' };
+      expect(changePortionUnit(counted, 'gram').nutritionBasis).toBe('per100');
+    });
+
+    it('never reinterprets numbers already typed: the basis stays put', () => {
+      expect(changePortionUnit({ ...blank, energyKcal: '9' }, 'capsule').nutritionBasis).toBe('per100');
+      const counted: CustomFoodInput = {
+        ...blank,
+        portionUnit: 'capsule',
+        nutritionBasis: 'perServing',
+        servingWeightG: '1.22',
+        epaMg: '300',
+      };
+      expect(changePortionUnit(counted, 'gram').nutritionBasis).toBe('perServing');
+    });
+
+    it('a whitespace-only field counts as empty', () => {
+      expect(changePortionUnit({ ...blank, energyKcal: '  ' }, 'capsule').nutritionBasis).toBe('perServing');
+    });
+
+    it('leaves the basis alone when the unit stays on the same side (weighed->weighed, counted->counted)', () => {
+      expect(changePortionUnit(blank, 'gram').nutritionBasis).toBe('per100');
+      const counted: CustomFoodInput = { ...blank, portionUnit: 'pack', nutritionBasis: 'per100' };
+      expect(changePortionUnit(counted, 'capsule').nutritionBasis).toBe('per100');
+    });
+  });
+});
+
+describe('servingSizeOf', () => {
+  it('reads defaultServingG for a weighed food', () => {
+    expect(servingSizeOf({ ...EMPTY_CUSTOM_FOOD_INPUT, defaultServingG: '350' })).toBe(350);
+  });
+
+  it('reads servingWeightG for a counted food, ignoring defaultServingG', () => {
+    expect(
+      servingSizeOf({
+        ...EMPTY_CUSTOM_FOOD_INPUT,
+        portionUnit: 'serving',
+        defaultServingG: '999',
+        servingWeightG: '180',
+      })
+    ).toBe(180);
+  });
+
+  it('returns 0 for blank / zero / negative / garbage — never falls back to 100', () => {
+    for (const bad of ['', '   ', '0', '-5', 'abc']) {
+      expect(servingSizeOf({ ...EMPTY_CUSTOM_FOOD_INPUT, defaultServingG: bad })).toBe(0);
+    }
+    expect(
+      servingSizeOf({ ...EMPTY_CUSTOM_FOOD_INPUT, portionUnit: 'pack', servingWeightG: '' })
+    ).toBe(0);
+  });
+
+  it('accepts a comma decimal (VI/DE keyboards)', () => {
+    expect(servingSizeOf({ ...EMPTY_CUSTOM_FOOD_INPUT, defaultServingG: '62,5' })).toBe(62.5);
+  });
+});
+
+describe('changeNutritionBasis', () => {
+  const per100: CustomFoodInput = {
+    ...EMPTY_CUSTOM_FOOD_INPUT,
+    name: 'Phở bò',
+    defaultServingG: '350',
+    nutritionBasis: 'per100',
+    energyKcal: '100',
+    proteinG: '5',
+    fatG: '',
+    carbG: '12,5',
+  };
+
+  it('per100 -> perServing multiplies every filled field by size/100 and leaves blanks blank', () => {
+    const r = changeNutritionBasis(per100, 'perServing');
+    expect(r.nutritionBasis).toBe('perServing');
+    expect(r.energyKcal).toBe('350');
+    expect(r.proteinG).toBe('17.5');
+    expect(r.fatG).toBe('');
+    expect(r.waterG).toBe('');
+    // "12,5" (comma keyboard) is parsed, not truncated to 12.
+    expect(r.carbG).toBe('43.75');
+  });
+
+  it('perServing -> per100 divides by size/100 and strips floating-point noise', () => {
+    const perServing: CustomFoodInput = {
+      ...per100,
+      nutritionBasis: 'perServing',
+      energyKcal: '450',
+      proteinG: '',
+      carbG: '',
     };
-    const result = resetNutritionForUnitChange(input, 'gram');
-    expect(result.portionUnit).toBe('gram');
-    expect(result.name).toBe(filled.name);
-    expect(result.category).toBe(filled.category);
-    expect(result.servingWeightG).toBe('');
-    expect(result.energyKcal).toBe('');
-    expect(result.epaMg).toBe('');
-    expect(result.dhaMg).toBe('');
+    const r = changeNutritionBasis(perServing, 'per100');
+    expect(r.nutritionBasis).toBe('per100');
+    // 450 / 350 * 100 = 128.5714285… — shown to 6 significant digits.
+    expect(r.energyKcal).toBe('128.571');
   });
 
-  it('resets nutrition fields even when the "new" unit equals the current one (simpler than adding a no-op branch)', () => {
-    const input: CustomFoodInput = { ...filled, portionUnit: 'gram' };
-    const result = resetNutritionForUnitChange(input, 'gram');
-    expect(result.portionUnit).toBe('gram');
-    expect(result.name).toBe(filled.name);
-    expect(result.category).toBe(filled.category);
-    expect(result.energyKcal).toBe('');
-    expect(result.sodiumMg).toBe('');
+  it('round-trips per100 -> perServing -> per100 back to the typed numbers', () => {
+    const back = changeNutritionBasis(changeNutritionBasis(per100, 'perServing'), 'per100');
+    expect(back.nutritionBasis).toBe('per100');
+    expect(Number(back.energyKcal)).toBeCloseTo(100, 3);
+    expect(Number(back.proteinG)).toBeCloseTo(5, 3);
+    expect(back.fatG).toBe('');
+    expect(Number(back.carbG)).toBeCloseTo(12.5, 3);
+  });
+
+  it('uses servingWeightG (not defaultServingG) for a counted food', () => {
+    const counted: CustomFoodInput = {
+      ...per100,
+      portionUnit: 'serving',
+      defaultServingG: '999',
+      servingWeightG: '180',
+      energyKcal: '70',
+    };
+    expect(changeNutritionBasis(counted, 'perServing').energyKcal).toBe('126');
+  });
+
+  it('wipes every nutrition field when there is no serving size to convert with (basis still changes)', () => {
+    for (const blank of ['', '0']) {
+      const r = changeNutritionBasis({ ...filled, defaultServingG: blank }, 'perServing');
+      expect(r.nutritionBasis).toBe('perServing');
+      for (const key of NUTRITION_KEYS) {
+        expect(r[key]).toBe('');
+      }
+      // Non-nutrition fields survive.
+      expect(r.name).toBe(filled.name);
+    }
+  });
+
+  it('returns the very same object when the basis does not change', () => {
+    expect(changeNutritionBasis(per100, 'per100')).toBe(per100);
+  });
+
+  it('leaves unparseable text untouched instead of turning it into "NaN"', () => {
+    const r = changeNutritionBasis({ ...per100, proteinG: 'abc' }, 'perServing');
+    expect(r.proteinG).toBe('abc');
+  });
+});
+
+describe('applyCustomFoodChange', () => {
+  it("routes 'portionUnit' through changePortionUnit", () => {
+    const r = applyCustomFoodChange(
+      { ...filled, defaultServingG: '350', servingWeightG: '' },
+      'portionUnit',
+      'serving'
+    );
+    expect(r.portionUnit).toBe('serving');
+    expect(r.servingWeightG).toBe('350');
+    expect(r.energyKcal).toBe(filled.energyKcal);
+  });
+
+  it("routes 'nutritionBasis' through changeNutritionBasis", () => {
+    const r = applyCustomFoodChange(
+      { ...EMPTY_CUSTOM_FOOD_INPUT, defaultServingG: '200', energyKcal: '50' },
+      'nutritionBasis',
+      'perServing'
+    );
+    expect(r.nutritionBasis).toBe('perServing');
+    expect(r.energyKcal).toBe('100');
+  });
+
+  it('sets any other field verbatim', () => {
+    const r = applyCustomFoodChange(filled, 'name', 'Món mới');
+    expect(r.name).toBe('Món mới');
+    expect(r.energyKcal).toBe(filled.energyKcal);
+  });
+});
+
+describe('buildCustomFoodItem — nutritionBasis', () => {
+  it('gram food typed per serving (350 g, 450 kcal) is stored as per-100g', () => {
+    const item = buildCustomFoodItem({
+      ...EMPTY_CUSTOM_FOOD_INPUT,
+      name: 'Phở bò',
+      defaultServingG: '350',
+      nutritionBasis: 'perServing',
+      energyKcal: '450',
+      proteinG: '20',
+    });
+    expect(item.portionUnit).toBe('gram');
+    expect(item.servingWeightG).toBeUndefined();
+    expect(item.defaultServingG).toBe(350);
+    expect(item.per100g.energyKcal).toBeCloseTo((450 / 350) * 100, 6);
+    expect(item.per100g.proteinG).toBeCloseTo((20 / 350) * 100, 6);
+  });
+
+  it('counted food typed per 100 g is stored as-is, with the counting metadata kept', () => {
+    const item = buildCustomFoodItem({
+      ...EMPTY_CUSTOM_FOOD_INPUT,
+      name: 'Sữa chua uống',
+      portionUnit: 'serving',
+      servingLabel: 'hộp',
+      measureUnit: 'ml',
+      servingWeightG: '180',
+      nutritionBasis: 'per100',
+      energyKcal: '70',
+    });
+    expect(item.per100g.energyKcal).toBe(70); // no conversion
+    expect(item.portionUnit).toBe('serving');
+    expect(item.servingWeightG).toBe(180);
+    expect(item.servingLabel).toBe('hộp');
+    expect(item.measureUnit).toBe('ml');
+  });
+
+  it('per100 on a gram food never rescales, whatever the serving size', () => {
+    const item = buildCustomFoodItem({
+      ...EMPTY_CUSTOM_FOOD_INPUT,
+      name: 'Cơm',
+      defaultServingG: '250',
+      nutritionBasis: 'per100',
+      energyKcal: '130',
+    });
+    expect(item.per100g.energyKcal).toBe(130);
+  });
+
+  it('applies the carb >= sugar + fiber rule on the typed (per-serving) numbers, before scaling', () => {
+    const item = buildCustomFoodItem({
+      ...EMPTY_CUSTOM_FOOD_INPUT,
+      name: 'Thanh ngũ cốc',
+      defaultServingG: '50',
+      nutritionBasis: 'perServing',
+      energyKcal: '200',
+      carbG: '3',
+      sugarG: '10',
+      fiberG: '5',
+    });
+    // carb lifted to 15 per serving, then x100/50 → 30 per 100 g.
+    expect(item.per100g.carbG).toBeCloseTo(30, 6);
+  });
+});
+
+describe('isValidCustomFoodInput — nutritionBasis', () => {
+  const base: CustomFoodInput = {
+    ...EMPTY_CUSTOM_FOOD_INPUT,
+    name: 'Phở bò',
+    energyKcal: '450',
+  };
+
+  it('perServing on a gram food needs a real positive serving size', () => {
+    expect(isValidCustomFoodInput({ ...base, nutritionBasis: 'perServing', defaultServingG: '' })).toBe(false);
+    expect(isValidCustomFoodInput({ ...base, nutritionBasis: 'perServing', defaultServingG: '0' })).toBe(false);
+    expect(isValidCustomFoodInput({ ...base, nutritionBasis: 'perServing', defaultServingG: '350' })).toBe(true);
+  });
+
+  it('per100 on a gram food still tolerates a blank serving size (falls back to 100 on save)', () => {
+    expect(isValidCustomFoodInput({ ...base, nutritionBasis: 'per100', defaultServingG: '' })).toBe(true);
+  });
+
+  it('a counted food needs servingWeightG under either basis', () => {
+    const counted: CustomFoodInput = { ...base, portionUnit: 'serving', servingWeightG: '' };
+    expect(isValidCustomFoodInput({ ...counted, nutritionBasis: 'per100' })).toBe(false);
+    expect(isValidCustomFoodInput({ ...counted, nutritionBasis: 'perServing' })).toBe(false);
+    expect(isValidCustomFoodInput({ ...counted, servingWeightG: '180', nutritionBasis: 'per100' })).toBe(true);
+    expect(isValidCustomFoodInput({ ...counted, servingWeightG: '180', nutritionBasis: 'perServing' })).toBe(true);
+  });
+});
+
+describe('inputFromFoodItem — nutritionBasis + number formatting', () => {
+  const gramItem: FoodItem = {
+    id: 'custom_x',
+    nameVi: 'Cơm',
+    nameEn: '',
+    category: 'grain',
+    defaultServingG: 200,
+    servingPresets: [],
+    per100g: {
+      energyKcal: 130,
+      waterG: 68,
+      proteinG: 2.7,
+      fatG: 0.3,
+      carbG: 28,
+      fiberG: 0.4,
+      sugarG: 0,
+      calciumMg: 10,
+      ironMg: 0.2,
+      sodiumMg: 1,
+      potassiumMg: 35,
+      magnesiumMg: 12,
+      zincMg: 0.5,
+    },
+    source: 'custom',
+    note: '',
+  };
+
+  it('opens a gram food in per100 mode', () => {
+    expect(inputFromFoodItem(gramItem).nutritionBasis).toBe('per100');
+  });
+
+  it('opens a counted food in perServing mode', () => {
+    const counted: FoodItem = { ...gramItem, portionUnit: 'capsule', servingWeightG: 1.22 };
+    expect(inputFromFoodItem(counted).nutritionBasis).toBe('perServing');
+  });
+
+  it('a counted item without a usable servingWeightG falls back to per100 (nothing to scale by)', () => {
+    const broken: FoodItem = { ...gramItem, portionUnit: 'capsule', servingWeightG: 0 };
+    expect(inputFromFoodItem(broken).nutritionBasis).toBe('per100');
+  });
+
+  it('shows no floating-point tail after converting per-100g back to per-capsule', () => {
+    // Stored the way buildCustomFoodItem would: 610 mg per 1.22 g capsule.
+    const counted: FoodItem = {
+      ...gramItem,
+      portionUnit: 'capsule',
+      servingWeightG: 1.22,
+      per100g: { ...gramItem.per100g, epaMg: (300 / 1.22) * 100, dhaMg: (310 / 1.22) * 100 },
+    };
+    const input = inputFromFoodItem(counted);
+    expect(input.epaMg).toBe('300');
+    expect(input.dhaMg).toBe('310');
+  });
+});
+
+describe('nutritionPreview', () => {
+  const base: CustomFoodInput = {
+    ...EMPTY_CUSTOM_FOOD_INPUT,
+    name: 'Phở bò',
+    defaultServingG: '250',
+    nutritionBasis: 'per100',
+    energyKcal: '100',
+    proteinG: '10',
+    fatG: '4',
+    carbG: '20',
+  };
+
+  it('per100 input previews one serving (target perServing)', () => {
+    const p = nutritionPreview(base);
+    expect(p).toEqual({
+      target: 'perServing',
+      servingSize: 250,
+      energyKcal: 250,
+      proteinG: 25,
+      fatG: 10,
+      carbG: 50,
+    });
+  });
+
+  it('perServing input previews per-100 (target per100)', () => {
+    const p = nutritionPreview({ ...base, nutritionBasis: 'perServing', energyKcal: '450', proteinG: '20' });
+    expect(p?.target).toBe('per100');
+    expect(p?.servingSize).toBe(250);
+    expect(p?.energyKcal).toBe(180);
+    expect(p?.proteinG).toBe(8);
+  });
+
+  it('rounds to one decimal place', () => {
+    const p = nutritionPreview({
+      ...base,
+      defaultServingG: '350',
+      nutritionBasis: 'perServing',
+      energyKcal: '450',
+    });
+    // 450 / 350 * 100 = 128.5714… → 128.6
+    expect(p?.energyKcal).toBe(128.6);
+  });
+
+  it('is null when there is no serving size', () => {
+    expect(nutritionPreview({ ...base, defaultServingG: '' })).toBeNull();
+    expect(nutritionPreview({ ...base, defaultServingG: '0' })).toBeNull();
+  });
+
+  it('is null when kcal is blank or invalid', () => {
+    expect(nutritionPreview({ ...base, energyKcal: '' })).toBeNull();
+    expect(nutritionPreview({ ...base, energyKcal: 'abc' })).toBeNull();
+    expect(nutritionPreview({ ...base, energyKcal: '-1' })).toBeNull();
+  });
+
+  it('lifts carbs to sugar + fiber exactly like buildCustomFoodItem, so the preview matches what is saved', () => {
+    const input: CustomFoodInput = { ...base, carbG: '3', sugarG: '10', fiberG: '5' };
+    const p = nutritionPreview(input);
+    expect(p?.carbG).toBe(37.5); // (10 + 5) per 100 g × 250/100
+  });
+
+  it('uses servingWeightG for a counted food', () => {
+    const p = nutritionPreview({
+      ...base,
+      portionUnit: 'serving',
+      defaultServingG: '999',
+      servingWeightG: '180',
+      energyKcal: '70',
+    });
+    expect(p?.servingSize).toBe(180);
+    expect(p?.energyKcal).toBe(126);
+  });
+});
+
+describe('formBasisLabel', () => {
+  const base = EMPTY_CUSTOM_FOOD_INPUT;
+
+  it('per100 reads 100g or 100ml by measure unit', () => {
+    expect(formBasisLabel({ ...base, nutritionBasis: 'per100', measureUnit: 'g' }, 'vi')).toBe('100g');
+    expect(formBasisLabel({ ...base, nutritionBasis: 'per100', measureUnit: 'ml' }, 'vi')).toBe('100ml');
+  });
+
+  it('perServing on a counted food reads "1 <noun>"', () => {
+    expect(
+      formBasisLabel(
+        { ...base, nutritionBasis: 'perServing', portionUnit: 'serving', servingLabel: 'hộp' },
+        'vi'
+      )
+    ).toBe('1 hộp');
+    expect(
+      formBasisLabel({ ...base, nutritionBasis: 'perServing', portionUnit: 'capsule' }, 'vi')
+    ).toBe('1 viên');
+  });
+
+  it('perServing on a gram food reads the generic "1 khẩu phần" and follows the language', () => {
+    expect(formBasisLabel({ ...base, nutritionBasis: 'perServing' }, 'vi')).toBe('1 khẩu phần');
+    expect(formBasisLabel({ ...base, nutritionBasis: 'perServing' }, 'en')).toBe('1 serving');
+    expect(formBasisLabel({ ...base, nutritionBasis: 'perServing' }, 'de')).toBe('1 Portion');
   });
 });
 
@@ -442,6 +869,7 @@ describe("buildCustomFoodItem — 'serving' portions measured in ml", () => {
     servingLabel: '  hộp  ',
     measureUnit: 'ml',
     servingWeightG: '65', // 65 ml ≈ 65 g
+    nutritionBasis: 'perServing',
     // Values printed on ONE 65ml carton.
     energyKcal: '50',
     carbG: '12',
@@ -498,12 +926,13 @@ describe("buildCustomFoodItem — 'serving' portions measured in ml", () => {
     expect(weighed.servingWeightG).toBeUndefined();
     // A liquid weighed by volume is still read in ml.
     expect(weighed.measureUnit).toBe('ml');
-    // No per-serving conversion happened — the numbers are already per 100ml.
+    // The gram food's serving is defaultServingG ('100' here), so the
+    // per-serving figures scale by 100/100 — the numbers come out unchanged.
     expect(weighed.per100g.energyKcal).toBe(50);
   });
 });
 
-describe("resetNutritionForUnitChange — servingLabel handling", () => {
+describe('changePortionUnit — servingLabel handling', () => {
   const withLabel: CustomFoodInput = {
     ...EMPTY_CUSTOM_FOOD_INPUT,
     portionUnit: 'serving',
@@ -512,11 +941,11 @@ describe("resetNutritionForUnitChange — servingLabel handling", () => {
   };
 
   it("keeps the typed noun while staying on 'serving'", () => {
-    expect(resetNutritionForUnitChange(withLabel, 'serving').servingLabel).toBe('hộp');
+    expect(changePortionUnit(withLabel, 'serving').servingLabel).toBe('hộp');
   });
 
   it('clears it when switching to a unit that has its own noun', () => {
-    expect(resetNutritionForUnitChange(withLabel, 'capsule').servingLabel).toBe('');
-    expect(resetNutritionForUnitChange(withLabel, 'gram').servingLabel).toBe('');
+    expect(changePortionUnit(withLabel, 'capsule').servingLabel).toBe('');
+    expect(changePortionUnit(withLabel, 'gram').servingLabel).toBe('');
   });
 });

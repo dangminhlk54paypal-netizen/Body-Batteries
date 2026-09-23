@@ -4,6 +4,7 @@ import type { BatteryReading } from '../../types/battery';
 import type { FoodItem, FoodLogEntry } from '../../types/food';
 import { todayString, dateString, energyDayString } from '../../lib/dateUtils';
 import { dailyCalorieTarget } from '../../domain/energy/weightGoal';
+import { circadianBurnKcal } from '../../domain/energy/satietyEngine';
 import * as batteryRepository from '../../data/repositories/batteryRepository';
 import * as foodLogRepository from '../../data/repositories/foodLogRepository';
 import * as dailyLogRepository from '../../data/repositories/dailyLogRepository';
@@ -131,7 +132,15 @@ describe('energyStore — logFoodForPastDate (S-S4)', () => {
   });
 
   it('a fully-past backfill never changes any of today\'s in-memory numbers', async () => {
-    const ts = pastNoonTimestamp(3);
+    // Frozen clock so the satiety cache (reserve + sync anchor) is exactly
+    // comparable before/after.
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-10T14:00:00'));
+    seedTodayReadings();
+    // The satiety reserve is a replay of the last 48h of logs, so establish
+    // the replayed baseline first (the seed's 500 is just a stale cache).
+    await useEnergyStore.getState().recomputeSatiety();
+
+    const ts = pastNoonTimestamp(3); // 3 days back: outside the 48h window
     const pastDay = dateString(new Date(ts));
     getReadingsSpy.mockResolvedValue(pastDayRows(pastDay));
 
@@ -203,7 +212,13 @@ describe('energyStore — logFoodForPastDate (S-S4)', () => {
     const loadedEnergy = state.readings.find((r) => r.batteryTypeId === 'energy');
     const loadedProtein = state.readings.find((r) => r.batteryTypeId === 'protein');
     expect(loadedEnergy?.level).toBe(700); // 500 + 200 kcal, in the store
-    expect(loadedEnergy?.satietyReserveKcal).toBe(500); // no satiety top-up
+    // Satiety is replayed from the meal's own time (23:00, 3h before "now"),
+    // not topped up at log time: 200 kcal eaten then, minus 3h of asleep-rate
+    // burn, floored at 0.
+    const profile = useSettingsStore.getState().userProfile;
+    expect(loadedEnergy?.satietyReserveKcal).toBe(
+      Math.max(0, 200 - circadianBurnKcal(profile, ts, Date.now()))
+    );
     expect(loadedProtein?.level).toBe(40); // today's nutrients untouched
 
     // Yesterday's nutrient row got the protein instead.
@@ -212,6 +227,31 @@ describe('energyStore — logFoodForPastDate (S-S4)', () => {
       (r) => r.batteryTypeId === 'protein' && r.date === '2026-07-09'
     );
     expect(historicalProtein?.level).toBe(30);
+  });
+
+  it('a backfilled meal INSIDE the 48h window counts toward satiety at its meal time', async () => {
+    // "Now" is 01:00 on the 10th; the meal was last night's 23:30 dinner
+    // (1.5h ago), logged late. Before the replay model, backfills never
+    // touched satiety, so this dinner was ignored entirely.
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-10T01:00:00'));
+    seedTodayReadings();
+    const ts = new Date('2026-07-09T23:30:00').getTime();
+    getReadingsSpy.mockResolvedValue([
+      { date: '2026-07-09', batteryTypeId: 'protein', level: 20, capacity: 120 },
+    ]);
+    // A past-calendar-day entry is not in today's in-memory foodLog, so the
+    // replay must find it in the DB — model the table with what was inserted.
+    jest
+      .spyOn(foodLogRepository, 'getFoodLogInRange')
+      .mockImplementation(async () => addEntrySpy.mock.calls.map((c) => c[0] as FoodLogEntry));
+
+    await useEnergyStore.getState().logFoodForPastDate(makeFoodItem(), 500, ts); // 1000 kcal
+
+    const energy = useEnergyStore.getState().readings.find((r) => r.batteryTypeId === 'energy');
+    const profile = useSettingsStore.getState().userProfile;
+    const expected = 1000 - circadianBurnKcal(profile, ts, Date.now());
+    expect(Math.abs((energy?.satietyReserveKcal ?? 0) - expected)).toBeLessThanOrEqual(1);
+    expect(energy?.satietyReserveKcal).toBeGreaterThan(500);
   });
 
   it('a timestamp on the current day delegates to logFood', async () => {

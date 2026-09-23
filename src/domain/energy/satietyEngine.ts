@@ -39,13 +39,16 @@ function nextHourBoundaryMs(ms: number): number {
   return d.getTime();
 }
 
-// Kcal burned between two timestamps, following the awake/asleep rate for
-// whichever part of the day each portion of the interval falls in. Integrating
-// this over any continuous 24h span always equals passiveDailyBurn(profile),
-// regardless of the starting hour (the awake/asleep rates are a fixed
-// partition of every 24h day, so a full day always contributes exactly
-// awakeHours + sleepHours of burn, no matter where the window starts).
-export function circadianBurnKcal(profile: UserProfile, fromMs: number, toMs: number): number {
+// Unrounded kcal burned between two timestamps, following the awake/asleep
+// rate for whichever part of the day each portion of the interval falls in.
+// Kept unrounded so replaySatietyReserve can chain many short segments without
+// each one rounding to 0-1 kcal (see syncSatietyReserve in energyStore for the
+// same reasoning). Integrating this over any continuous 24h span always
+// equals passiveDailyBurn(profile), regardless of the starting hour (the
+// awake/asleep rates are a fixed partition of every 24h day, so a full day
+// always contributes exactly awakeHours + sleepHours of burn, no matter where
+// the window starts).
+export function circadianBurnKcalExact(profile: UserProfile, fromMs: number, toMs: number): number {
   if (toMs <= fromMs) return 0;
   const rates = circadianHourlyRates(profile);
   let cursor = fromMs;
@@ -57,7 +60,12 @@ export function circadianBurnKcal(profile: UserProfile, fromMs: number, toMs: nu
     totalKcal += elapsedHours * rate;
     cursor = segmentEnd;
   }
-  return Math.round(totalKcal);
+  return totalKcal;
+}
+
+// Rounded to whole kcal — the value the rest of the app displays/persists.
+export function circadianBurnKcal(profile: UserProfile, fromMs: number, toMs: number): number {
+  return Math.round(circadianBurnKcalExact(profile, fromMs, toMs));
 }
 
 // Apply the passage of time to the reserve (floors at 0 — it never goes negative).
@@ -88,4 +96,46 @@ export function satietyPercentage(reserveKcal: number): number {
   const clamped = Math.max(0, Math.min(FULLNESS_CAPACITY_KCAL, reserveKcal));
   const pct = SATIETY_FLOOR_PCT + (100 - SATIETY_FLOOR_PCT) * (clamped / FULLNESS_CAPACITY_KCAL);
   return Math.max(0, Math.min(100, pct));
+}
+
+export interface SatietyEvent {
+  atMs: number;
+  kind: 'eat' | 'workout';
+  kcal: number; // always positive
+}
+
+// Replays timestamped events in chronological order from a known start state:
+// drain (circadian, unrounded) between events, eat = +kcal capped at
+// FULLNESS_CAPACITY_KCAL, workout = -kcal floored at 0. Events outside
+// [startMs, nowMs] are ignored. Input order does not matter (sorted inside,
+// stable for equal timestamps). Rounded once, at the end.
+//
+// This is the single source of truth for the satiety reserve: an event acts
+// at the moment it HAPPENED (meal time / workout end), not when it was logged,
+// so logging late and logging on time give the same result.
+export function replaySatietyReserve(
+  profile: UserProfile,
+  startReserveKcal: number,
+  startMs: number,
+  events: readonly SatietyEvent[],
+  nowMs: number
+): number {
+  const ordered = events
+    .filter((e) => e.kcal > 0 && e.atMs >= startMs && e.atMs <= nowMs)
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => a.e.atMs - b.e.atMs || a.i - b.i)
+    .map(({ e }) => e);
+
+  let reserve = Math.max(0, Math.min(FULLNESS_CAPACITY_KCAL, startReserveKcal));
+  let cursor = startMs;
+  for (const ev of ordered) {
+    reserve = Math.max(0, reserve - circadianBurnKcalExact(profile, cursor, ev.atMs));
+    reserve =
+      ev.kind === 'eat'
+        ? eatIntoReserve(reserve, ev.kcal)
+        : drainFromWorkout(reserve, ev.kcal);
+    cursor = ev.atMs;
+  }
+  reserve = Math.max(0, reserve - circadianBurnKcalExact(profile, cursor, nowMs));
+  return Math.round(reserve);
 }

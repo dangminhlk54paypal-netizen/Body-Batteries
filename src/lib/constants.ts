@@ -141,6 +141,11 @@ export const DATA_RETENTION_DAYS = 35;
 // entered. user yêu cầu 2026-07-17: chỉ bù tối đa 3 ngày.
 export const BACKFILL_MAX_DAYS_BACK = 3;
 
+// How far back the training log's "＋ Ghi buổi" (hand-written line) may go. Far
+// looser than BACKFILL_MAX_DAYS_BACK because a hand-written line is text only:
+// it never touches a battery, so there is nothing to keep consistent.
+export const TRAINING_LOG_MAX_DAYS_BACK = 730;
+
 // How far back a manually-logged weight entry can be corrected (fixing a
 // mistyped value) — separate from BACKFILL_MAX_DAYS_BACK above since this
 // gates EDITING an already-logged entry, not backfilling a new one.

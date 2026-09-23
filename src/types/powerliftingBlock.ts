@@ -95,6 +95,10 @@ export interface BlockWeekPlan {
 export interface TrainingBlockConfig {
   id: string;
   createdAt: number;
+  // User-chosen title shown in the training log ("Block 2 Accumulation"). Absent =
+  // the log numbers the block itself ("Block 2"). Lives in the config JSON column, so
+  // no migration.
+  name?: string;
   // Monday (YYYY-MM-DD) week 1 starts on — a block is anchored to whichever
   // calendar week the user picks to begin training, not just "week 1/2/3".
   weekStartDate: string;

@@ -112,7 +112,39 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-09-10 (Session 29, xem `.ai/SESSION_LOG.md`).** **Sửa bug "xuất Excel
+**Cập nhật lần cuối: 2026-09-23 (Session 32, xem `.ai/SESSION_LOG.md`).** **Sổ tập luyện** — nhật ký bài tập kiểu
+Apple Notes trong tab Tập luyện (📓 Sổ tập | 📋 Kế hoạch block): các buổi ghi ở Xả tự hiện thành dòng
+`26.08(77.7kg): S 130 4x3x115+3x100 PD 4x3x100`, gom **block → tuần → ngày** (gập/mở), sửa được (viết đè dòng,
+ghi chú, ghi tay buổi quên Xả — không chạm pin; "Sửa số liệu" tính lại pin qua `updateActivityForPastDate`), tuỳ chọn
+định dạng ⚙︎, 📄 trang chữ để chia sẻ sang Notes. Ghi được **biến thể** khi Xả (`variationId/variationName`,
+`PowerliftingSheet` theo danh sách movement). Sổ không lưu chữ máy sinh, chỉ lưu phần người dùng thêm
+(`training_log_days/weeks`). Kỹ thuật: `docs/03-architecture.md` mục "Sổ tập luyện"; kế hoạch + nhật ký triển khai:
+`.ai/plans/2026-09-23-training-log-notebook.md`. **909 test, tsc/eslint sạch; `npm run verify` đỏ ngẫu nhiên do 1 test
+có sẵn của Session 31 (`energyStore.backfill`, lệch 1 ms).** i18n vi/en/de đủ. **Chưa commit, chưa test máy thật**
+(checklist mục 7 của file kế hoạch).
+
+**Trước đó — Session 31 (2026-09-23).** **Sửa lỗi "pin nhảy lên 100% khi
+ghi bữa ăn muộn": pin nay tính theo GIỜ ĂN, không phải giờ ghi** — pin no/đói và 4 pin đạm/tinh bột/nước/khoáng là
+hàm thuần (replay) của nhật ký có dấu thời gian; giá trị lưu ở `battery_readings` chỉ là cache. Engine:
+`replaySatietyReserve` (`satietyEngine.ts`), `buildSatietyEvents` (`satietyEvents.ts`), `replayDrainingPin` /
+`recomputeFoodPinLevels` (`batteryEngine.ts`, `foodPinReplay.ts`); store: `recomputeSatiety` + `recomputeFoodPins`
+gọi sau mọi ghi/xoá. Sổ kcal cố ý không đổi. `FoodLogModal` chặn giờ ăn tương lai + gợi ý ghi muộn (i18n
+vi/en/de). Kịch bản người dùng: no/đói 100% → 42%. **`npm run verify` xanh hoàn toàn (716/716).** Hồ sơ lỗi +
+nhật ký sửa: `.ai/plans/2026-09-23-battery-late-logging-timing.md`; kỹ thuật `docs/03-architecture.md` mục "Pin theo
+GIỜ ĂN". **Chưa commit, chưa test máy thật** (checklist mục 6 của file kế hoạch). Chưa làm: replay cho pin
+movement/sleep + buổi tập ghi bù quá khứ.
+
+**Trước đó — Session 30 (2026-09-23).** **Form thêm/sửa món cho nhập
+dinh dưỡng theo 100 g HOẶC theo 1 khẩu phần** (`NutritionBasis`, chỉ trong form — không lưu DB, không
+thêm field `FoodItem`): đổi chế độ thì quy đổi số đã gõ thay vì xoá, có ô xem trước "≈ 1 khẩu phần: … kcal",
+đổi chip đơn vị không còn xoá số (`changePortionUnit` thay `resetNutritionForUnitChange`). Logic thuần ở
+`src/domain/food/customFoodInput.ts`, chi tiết `docs/07-food-log.md` mục 3a-2. i18n vi/en/de đủ.
+`customFoodInput.test.ts` 33 → 77 test; tsc/eslint sạch trong phạm vi sửa. **`npm run verify` toàn bộ chưa
+xanh:** 13 test `energyStore*` fail do công việc satiety dở dang của phiên khác trong cùng working tree (không
+liên quan phần food-form). **Chưa commit, chưa test máy thật** — checklist ở
+`.ai/plans/2026-09-23-food-entry-nutrition-basis.md` mục 4.
+
+**Trước đó — Session 29 (2026-09-10, xem `.ai/SESSION_LOG.md`).** **Sửa bug "xuất Excel
 Block Builder im lặng không ra gì" + thiết kế lại layout xuất Excel dạng bảng ma trận theo file mẫu
 người dùng gửi.** Nguyên nhân gốc bug im lặng: `TrainingScreen.tsx` thiếu `try/catch` (lỗi bị nuốt
 âm thầm) + lỗi thật bên dưới là `config.weekStartDate` thiếu ở block tạo trước Session 27 (JSON cũ

@@ -3,7 +3,7 @@ import type { BodybuildingExercise, MuscleGroup } from '../types/energy';
 // Built-in S-BB exercise library (~45 exercises / 8 muscle groups) — see
 // docs/06-energy-expenditure.md §1C. Display names are NEVER stored here:
 // each `id` is looked up via `t('bbExercises.' + id)` at render time (see
-// bbExerciseName in BodybuildingSheet.tsx), same convention as
+// bbExerciseName in lib/activityLabels.ts), same convention as
 // LIFTING_EXERCISES/activities.*. Deliberately excludes squat/bench_press/
 // deadlift — those stay on the physics-based Powerlifting sheet (S-PL); this
 // library is the MET-tier model for everything else (docs/06 §1C explains

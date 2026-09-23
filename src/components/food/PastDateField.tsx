@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { todayString, dateString, formatDisplayDate, isToday } from '../../lib/dateUtils';
+import { parseDayMonthInput } from '../../lib/dateInput';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
@@ -17,10 +18,6 @@ export interface PastDateFieldProps {
 // checks (not part of component render body).
 function getTodayString(): string {
   return todayString();
-}
-
-function getCurrentYear(): number {
-  return new Date().getFullYear();
 }
 
 // Pure "N days before `todayStr`" — unlike daysAgo() this never reads the
@@ -54,35 +51,6 @@ function validateDate(dateStr: string, today: string, maxDaysBack: number, t: TF
   return { ok: true };
 }
 
-// Parse dd/mm input to YYYY-MM-DD (using current year; if result is future, roll back 1 year)
-function parseDdMmInput(input: string, today: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  const match = /^(\d{1,2})\/(\d{1,2})$/.exec(trimmed);
-  if (!match) return null;
-
-  const day = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-
-  if (day < 1 || day > 31 || month < 1 || month > 12) {
-    return null;
-  }
-
-  let year = getCurrentYear();
-  let candidate = new Date(year, month - 1, day, 0, 0, 0, 0);
-  const candidateDateStr = dateString(candidate);
-
-  // If result is in the future, roll back 1 year
-  if (candidateDateStr > today) {
-    year -= 1;
-    candidate = new Date(year, month - 1, day, 0, 0, 0, 0);
-    return dateString(candidate);
-  }
-
-  return candidateDateStr;
-}
-
 export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldProps) {
   const { t, language } = useT();
   const c = useThemeColors();
@@ -112,7 +80,7 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
 
   // Handle dd/mm input blur: validate and commit if valid
   function handleInputBlur() {
-    const parsed = parseDdMmInput(inputValue, today);
+    const parsed = parseDayMonthInput(inputValue, today);
     if (!parsed) {
       setInputValue('');
       return;
@@ -140,7 +108,7 @@ export function PastDateField({ value, onChange, maxDaysBack }: PastDateFieldPro
 
   // Determine if there's a validation error in the current input
   const inputError = useMemo(() => {
-    const parsed = parseDdMmInput(inputValue, today);
+    const parsed = parseDayMonthInput(inputValue, today);
     if (!parsed || !inputValue.trim()) return null;
     const validation = validateDate(parsed, today, maxDaysBack, t);
     return validation.ok ? null : validation.reason;

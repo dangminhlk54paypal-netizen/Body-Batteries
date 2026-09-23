@@ -24,24 +24,11 @@ import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
-import { translate } from '../i18n/translate';
-import type { Language } from '../i18n/types';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 const BB_INTENSITIES: BbIntensity[] = ['light', 'moderate', 'superset'];
 const BB_TIERS: BbMetTier[] = ['isolation', 'compound', 'big_compound'];
-
-// Display name for a LOGGED bodybuilding session — a custom exercise's own
-// snapshotted `bbName` takes priority (its library entry may since have been
-// deleted), otherwise the built-in exercise's i18n label. Exported for
-// TodayActivities/BatterySourceSheet, same convention as
-// PowerliftingSheet.describeLiftingSets.
-export function bbExerciseName(session: WorkoutSession, language: Language): string {
-  if (session.bbName) return session.bbName;
-  if (session.bbExerciseId) return translate(language, `bbExercises.${session.bbExerciseId}`);
-  return translate(language, 'activities.bodybuilding');
-}
 
 // One editable set row. Kept as raw strings while typing (same convention as
 // PowerliftingSheet) and parsed only on preview/confirm.

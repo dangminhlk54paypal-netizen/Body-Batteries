@@ -7,6 +7,7 @@ import {
   applyDrain,
   computeMasterLevel,
   createDailyReading,
+  replayDrainingPin,
 } from '../batteryEngine';
 import { MODES } from '../../modes/modeDefinitions';
 import type { BatteryReading } from '../../../types/battery';
@@ -167,5 +168,69 @@ describe('createDailyReading', () => {
   it('clamps a carry-over level that exceeds the new capacity', () => {
     const result = createDailyReading('2026-06-18', 'protein', MODES.maintain, 200);
     expect(result.level).toBe(120);
+  });
+});
+describe('replayDrainingPin — events act at the time they HAPPENED', () => {
+  const HOUR = 60 * 60 * 1000;
+  const dayStart = new Date(2026, 8, 23, 0, 0, 0, 0).getTime();
+  const at = (h: number, m = 0) => new Date(2026, 8, 23, h, m, 0, 0).getTime();
+  const CAP = 120; // protein-like
+  const RATE = 0.05; // 5% of capacity per hour
+
+  it('no events -> 0', () => {
+    expect(replayDrainingPin(CAP, RATE, dayStart, [], at(22))).toBe(0);
+  });
+
+  it('core invariant: replaying a meal equals the incremental on-time path (applyIntake + applyDrain)', () => {
+    // On time: charged at 12:00 (applyIntake), then drained for the 2h until 14:00.
+    const atNoon = applyIntake(reading({ level: 0, capacity: CAP }), 40);
+    const onTime = applyDrain(atNoon, 2, RATE).level;
+    expect(replayDrainingPin(CAP, RATE, dayStart, [{ atMs: at(12), amount: 40 }], at(14))).toBeCloseTo(onTime, 1);
+  });
+
+  it('a lunch logged at 22:30 is lower than the same lunch logged at 12:05', () => {
+    const lunch = [{ atMs: at(12), amount: 60 }];
+    const readAtNight = replayDrainingPin(CAP, RATE, dayStart, lunch, at(22, 30));
+    const readJustAfter = replayDrainingPin(CAP, RATE, dayStart, lunch, at(12, 5));
+    expect(readAtNight).toBeLessThan(readJustAfter);
+    expect(readAtNight).toBe(0); // 60 g - 10.5h x 6 g/h, floored
+  });
+
+  it('drains only from the moment of the event (nothing before it)', () => {
+    // Before the event the pin is 0 (floor), so it can never go negative or "bank" drain.
+    expect(replayDrainingPin(CAP, RATE, dayStart, [{ atMs: at(12), amount: 30 }], at(13))).toBeCloseTo(30 - 6, 1);
+  });
+
+  it('caps at capacity, and drains afterwards', () => {
+    const level = replayDrainingPin(
+      CAP, RATE, dayStart,
+      [{ atMs: at(12), amount: 100 }, { atMs: at(12), amount: 100 }],
+      at(13)
+    );
+    expect(level).toBeCloseTo(CAP - 6, 1);
+  });
+
+  it('input order does not matter and the input is not mutated', () => {
+    const a = { atMs: at(9), amount: 20 };
+    const b = { atMs: at(11), amount: 30 };
+    const events = [b, a];
+    const snapshot = JSON.stringify(events);
+    const forward = replayDrainingPin(CAP, RATE, dayStart, [a, b], at(12));
+    expect(replayDrainingPin(CAP, RATE, dayStart, events, at(12))).toBe(forward);
+    expect(JSON.stringify(events)).toBe(snapshot);
+  });
+
+  it('ignores events outside [dayStart, now]', () => {
+    const base = replayDrainingPin(CAP, RATE, dayStart, [{ atMs: at(10), amount: 30 }], at(12));
+    const noisy = replayDrainingPin(
+      CAP, RATE, dayStart,
+      [{ atMs: at(10), amount: 30 }, { atMs: at(13), amount: 50 }, { atMs: dayStart - HOUR, amount: 50 }],
+      at(12)
+    );
+    expect(noisy).toBe(base);
+  });
+
+  it('zero capacity -> 0', () => {
+    expect(replayDrainingPin(0, RATE, dayStart, [{ atMs: at(10), amount: 30 }], at(12))).toBe(0);
   });
 });

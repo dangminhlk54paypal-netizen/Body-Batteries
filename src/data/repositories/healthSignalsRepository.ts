@@ -33,6 +33,23 @@ export async function getWeightHistory(
   return rows.map((r) => ({ id: r.id, timestamp: r.timestamp, value: r.value }));
 }
 
+// Manual weight readings on the calendar days [fromDate, toDate] (YYYY-MM-DD,
+// inclusive), OLDEST first — the training log prints the day's/week's weight
+// next to its lines, and reads a whole block of weeks in one query.
+export async function getWeightsInRange(fromDate: string, toDate: string): Promise<WeightEntry[]> {
+  const db = getDb();
+  const startMs = new Date(fromDate + 'T00:00:00').getTime();
+  const endMs = new Date(toDate + 'T23:59:59.999').getTime();
+  const rows = await db.getAllAsync<{ id: number; timestamp: number; value: number }>(
+    `SELECT id, timestamp, value FROM health_signals
+     WHERE source = 'manual' AND type = 'weight_kg' AND timestamp >= ? AND timestamp <= ?
+     ORDER BY timestamp ASC`,
+    startMs,
+    endMs
+  );
+  return rows.map((r) => ({ id: r.id, timestamp: r.timestamp, value: r.value }));
+}
+
 // Corrects a manually-logged weight entry in place (e.g. a mistyped value) —
 // the row's own `timestamp`/day stays untouched, only `value` changes.
 // Callers (WeightLogCard) restrict this to entries within the last few days

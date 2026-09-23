@@ -108,6 +108,15 @@ Direkt unter der großen Batterie:
    auf und aktualisiert die relevanten Nährstoff-Batterien.
 4. **Gewichtseingabe:** Das Formular akzeptiert sowohl Komma (`,`) als auch Punkt (`.`) —
    "79,4" oder "79.4" funktionieren beide.
+5. **Gericht nicht gefunden?** Legen Sie ein neues Gericht an und wählen Sie, worauf sich die
+   Nährwerte beziehen:
+   - **Pro 100 g** (wie auf dem Etikett „pro 100 g“): die Werte vom Etikett eingeben und Ihre
+     Portionsgröße (z. B. 250 g) angeben – die App zeigt sofort „≈ 1 Portion: … kcal“ und
+     rechnet beim Eintragen automatisch um.
+   - **Pro Portion** (z. B. 1 Schüssel Phở 350 g = 450 kcal): die Summe der ganzen Portion
+     eingeben; die App rechnet sie zum Speichern auf 100 g um.
+   Beim Wechsel zwischen beiden Modi werden die eingegebenen Werte **automatisch umgerechnet**,
+   nicht gelöscht.
 
 **🔥 Entladen** – protokollieren Sie Training/Bewegung:
 - Wählen Sie eine Kategorie (Cardio / Sport / Gym / Sonstiges), wählen Sie eine spezifische
@@ -175,6 +184,39 @@ Dieser Reiter beantwortet "Wie habe ich die letzten Tage gelebt":
   auch Blau (Nährstoff) und Orange (Energie) zur Konsistenz mit dem Diagramm. Tippen Sie auf
   eine Karte, um zu sehen was Sie an diesem Tag gegessen haben – Sie können auch **Mahlzeiten
   für vergangene Tage hinzufügen oder löschen**, falls Sie vergessen haben einzutragen.
+
+## 4b. Reiter 🏋️ Training — Trainingstagebuch
+
+Oben in diesem Reiter gibt es zwei Ansichten: **📓 Tagebuch** (standardmäßig geöffnet) und **📋 Blockplan**
+(Mehrwochenplanung für Powerlifting).
+
+Das **Tagebuch** ist Ihr Trainingsjournal im Stil der Notizen-App. Sie tragen **nichts doppelt** ein: Erfassen
+Sie das Training wie gewohnt unter **🔥 Verbrennen** (Kniebeuge/Bankdrücken/Kreuzheben, mit „Variante
+hinzufügen“ für Pause, Schrägbank …). Die Einheit erscheint automatisch im Tagebuch, zum Beispiel:
+
+`26.08(77.7kg): S 130 4x3x115+3x100 PD 4x3x100`
+
+- **Schreibweise:** `90` = ein Satz mit 1 Wdh. · `3x100` = 3 Wdh. mit 100 kg · `5x5x72.5` = 5 Sätze × 5 Wdh.
+  × 72,5 kg · `6x4(+3)x75` = 6 Sätze × 4 Wdh., im letzten Satz 3 Wdh. mehr · `110x(4+5+5+4+8)` = Sätze mit
+  unterschiedlichen Wdh. `S B D` = Kniebeuge / Bankdrücken / Kreuzheben; `PS PD` = Pause; `iC` = Schrägbank;
+  `LG` = enger Griff. Dezimalzahlen mit Punkt; beim Tippen auf dem Handy wird auch das Komma (`72,5`)
+  akzeptiert.
+- **Block antippen** → Wochen; **Woche antippen** → Tage. Nur der neueste Block und die neueste Woche sind
+  offen. Einen Block **lang drücken**, um ihn umzubenennen; eine Woche lang drücken (oder **✎ Wochennotiz**)
+  für eine Notiz („Urlaub“, „wenig geschlafen“ …).
+- **Zeile bearbeiten:** Tippen Sie auf eine Tageszeile. Sie können die ganze Zeile überschreiben (z. B.
+  `(95 ❌)`, `(rpe9.2)`, `(test)`) und eine Notiz unter dem Tag speichern. **Textänderungen ändern nur den
+  Text im Tagebuch, nicht kcal oder Akku.** Für die Zahlen tippen Sie im selben Fenster auf **Zahlen
+  bearbeiten** (der Akku dieses Tages wird neu berechnet). Ändert sich das Training eines Tages, nachdem Sie
+  die Zeile bearbeitet haben, fragt die App: **Automatische Zeile nutzen / Meine Zeile behalten /
+  Zusammenführen** — Ihr Text wird nie stillschweigend überschrieben.
+- **Training vergessen?** Tippen Sie auf **＋ Eintrag**, wählen Sie das Datum (z. B. `12.09` oder
+  `12.09.2025`) und schreiben Sie wie in Notizen. **📋 Letzte Einheit kopieren** füllt die letzte Einheit vor,
+  Sie ändern nur die Zahlen. Eine handgeschriebene Zeile bleibt nur im Tagebuch und **zählt nicht für den
+  Energie-Akku**.
+- **⚙︎** ändert die Schreibweise (abgekürzt oder ausgeschrieben, Punkt/Komma, Aufwärmsätze, kg, Körpergewicht,
+  Wochentag, kcal) und die Abkürzung jeder Übung. **📄 Seite / Teilen** (in jedem geöffneten Block) fasst den
+  ganzen Block als Text zusammen zum Teilen oder Einfügen in Notizen.
 
 ## 5. Reiter 📔 Tagebuch — privater Raum
 

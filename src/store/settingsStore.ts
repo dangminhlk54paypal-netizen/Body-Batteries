@@ -6,6 +6,8 @@ import type { CustomActivity, CustomExercise, UserProfile } from '../types/energ
 import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../lib/constants';
 import type { MovementDisplayUnit, WaterDisplayUnit } from '../lib/units';
 import type { Language } from '../i18n/types';
+import { DEFAULT_TRAINING_LOG_FORMAT, resolveTrainingLogFormat } from '../types/trainingLog';
+import type { TrainingLogFormat } from '../types/trainingLog';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -64,6 +66,10 @@ interface SettingsState {
   // src/hooks/useThemeColors.ts). Defaults to 'dark' so existing users see no
   // visual change until they explicitly opt into the light palette.
   themeMode: 'dark' | 'light';
+  // How the Tập luyện tab's training log writes its lines (shorthand, decimal
+  // style, which parts to show). Read it through useTrainingLogFormat() — it
+  // merges in defaults for options added after this device last saved.
+  trainingLogFormat: TrainingLogFormat;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -82,6 +88,9 @@ interface SettingsState {
   setLanguage: (language: Language) => void;
   setThemeMode: (mode: 'dark' | 'light') => void;
   setAutoTranslateCustomFoodNames: (enabled: boolean) => void;
+  setTrainingLogFormat: (patch: Partial<Omit<TrainingLogFormat, 'abbreviations'>>) => void;
+  // Sets (or, with an empty/blank value, removes) one abbreviation override.
+  setTrainingLogAbbreviation: (key: string, value: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -104,6 +113,7 @@ export const useSettingsStore = create<SettingsState>()(
       language: 'vi',
       themeMode: 'dark',
       autoTranslateCustomFoodNames: false,
+      trainingLogFormat: DEFAULT_TRAINING_LOG_FORMAT,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -132,6 +142,17 @@ export const useSettingsStore = create<SettingsState>()(
       setLanguage: (language) => set({ language }),
       setThemeMode: (mode) => set({ themeMode: mode }),
       setAutoTranslateCustomFoodNames: (enabled) => set({ autoTranslateCustomFoodNames: enabled }),
+      setTrainingLogFormat: (patch) =>
+        set((s) => ({ trainingLogFormat: { ...resolveTrainingLogFormat(s.trainingLogFormat), ...patch } })),
+      setTrainingLogAbbreviation: (key, value) =>
+        set((s) => {
+          const current = resolveTrainingLogFormat(s.trainingLogFormat);
+          const abbreviations = { ...current.abbreviations };
+          const trimmed = value.trim();
+          if (trimmed === '') delete abbreviations[key];
+          else abbreviations[key] = trimmed;
+          return { trainingLogFormat: { ...current, abbreviations } };
+        }),
     }),
     {
       name: 'settings-storage',

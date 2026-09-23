@@ -12,16 +12,16 @@ import {
 import {
   type CustomFoodInput,
   EMPTY_CUSTOM_FOOD_INPUT,
+  applyCustomFoodChange,
   buildCustomFoodItem,
+  formBasisLabel,
   inputFromFoodItem,
   isValidCustomFoodInput,
-  resetNutritionForUnitChange,
 } from '../domain/food/customFoodInput';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
 import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
 import { CustomFoodFields } from './food/CustomFoodFields';
-import { nutritionBasisLabel } from '../domain/food/portionUnits';
 import type { FoodItem } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
 import { useThemedStyles } from '../hooks/useThemeColors';
@@ -80,23 +80,14 @@ export function FoodNutritionEditModal({
 
   const valid = useMemo(() => isValidCustomFoodInput(input), [input]);
 
-  // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
-  // its field suffixes, so the intro subtitle always says the same thing.
-  const basisLabel = nutritionBasisLabel(
-    input.portionUnit,
-    input.servingLabel,
-    input.measureUnit,
-    language
-  );
+  // Same text CustomFoodFields uses for its field suffixes, so the intro
+  // subtitle always says the same thing ("100g" / "1 hộp").
+  const basisLabel = formBasisLabel(input, language);
 
+  // applyCustomFoodChange converts (rather than wipes) the typed nutrition
+  // numbers when the unit or the per-100g/per-serving basis changes.
   function set<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
-    if (key === 'portionUnit') {
-      // Per-100g and per-serving figures are different scales — clear the
-      // nutrition fields instead of silently reinterpreting stale numbers.
-      setInput((prev) => resetNutritionForUnitChange(prev, value as CustomFoodInput['portionUnit']));
-      return;
-    }
-    setInput((prev) => ({ ...prev, [key]: value }));
+    setInput((prev) => applyCustomFoodChange(prev, key, value));
   }
 
   async function handleSave() {

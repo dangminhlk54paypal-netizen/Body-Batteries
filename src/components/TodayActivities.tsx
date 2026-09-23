@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { ACTIVITY_TYPES, activityLabel } from './EnergyActionsBar';
+import { ACTIVITY_TYPES } from './EnergyActionsBar';
 import { PowerliftingSheet, describeLiftingSets } from './PowerliftingSheet';
-import { BodybuildingSheet, bbExerciseName } from './BodybuildingSheet';
+import { BodybuildingSheet } from './BodybuildingSheet';
+import { workoutLabel, isLiftingEntry, isBodybuildingEntry } from '../lib/activityLabels';
 import { formatTimeHHmm, parseTimeHHmmToday } from '../lib/dateUtils';
 import type { ActivityLogEntry, ActivityType, WorkoutSession } from '../types/energy';
 import type { ThemeColors } from '../lib/theme';
@@ -45,15 +46,6 @@ function timeRangeLabel(entry: ActivityLogEntry, t: TFn): string {
   return formatTimeHHmm(entry.timestamp);
 }
 
-// The label a workout shows in the history list — an S-BB session shows its
-// specific exercise name (checked FIRST: it also has `sets`, so it must not
-// fall through to the generic paths below); a custom activity's own nameVi
-// takes priority over the generic "custom activity" activityLabel entry.
-function workoutLabel(w: WorkoutSession, language: Language): string {
-  if (w.bbMet != null) return bbExerciseName(w, language);
-  return w.customName ?? activityLabel(w.type, language);
-}
-
 function summaryLabel(entry: ActivityLogEntry, t: TFn, language: Language): string {
   const parts: string[] = [];
   for (const w of entry.workouts) {
@@ -71,21 +63,8 @@ function summaryLabel(entry: ActivityLogEntry, t: TFn, language: Language): stri
   return parts.length > 0 ? parts.join(' · ') : t('components.todayActivities.fallbackLabel');
 }
 
-// Entries logged through the Bodybuilding sheet (S-BB) are edited there too.
-// MUST be checked BEFORE isLiftingEntry below: an S-BB session also carries
-// `sets`, so isLiftingEntry would otherwise misclassify it as a Powerlifting
-// entry — opening the wrong sheet, which would then silently DROP the
-// bodybuilding workouts on save (PowerliftingSheet only knows squat/bench/
-// deadlift and replaces the entry's entire `workouts` array).
-function isBodybuildingEntry(entry: ActivityLogEntry): boolean {
-  return entry.workouts.some((w) => w.bbMet != null);
-}
-
-// Entries logged through the Powerlifting sheet are edited there too — the
-// minutes form below can't represent sets and would silently flatten them.
-function isLiftingEntry(entry: ActivityLogEntry): boolean {
-  return entry.workouts.some((w) => (w.sets?.length ?? 0) > 0);
-}
+// Reminder: isBodybuildingEntry MUST be checked BEFORE isLiftingEntry (see
+// lib/activityLabels.ts) — an S-BB session also carries `sets`.
 
 // Custom-activity entries (type === 'custom') keep their type/customName/
 // customMet fixed in v1 — only minutes/steps/time are editable, since there

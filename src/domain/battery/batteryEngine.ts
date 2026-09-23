@@ -40,6 +40,48 @@ export function applyDrain(
 
 const HOUR_MS = 60 * 60 * 1000;
 
+export interface PinChargeEvent {
+  atMs: number;
+  amount: number; // always positive
+}
+
+// Level of a linearly-draining pin (protein/carbs/water/minerals) that starts
+// the day at 0 at `dayStartMs`: it loses capacity x drainRatePerHour every hour
+// (floor 0), and each event adds `amount` at the moment it HAPPENED (cap =
+// capacity). Events outside [dayStartMs, nowMs] are ignored; input order does
+// not matter. Rounded once at the end (0.1, like applyDrain).
+//
+// A pure function of the timestamped logs, so a meal logged late gives the
+// same level as the same meal logged on time (the incremental applyIntake +
+// tickDrain path only drains the time AFTER the log was written).
+export function replayDrainingPin(
+  capacity: number,
+  drainRatePerHour: number,
+  dayStartMs: number,
+  events: readonly PinChargeEvent[],
+  nowMs: number
+): number {
+  if (capacity <= 0) return 0;
+  const ordered = events
+    .filter((e) => e.amount > 0 && e.atMs >= dayStartMs && e.atMs <= nowMs)
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => a.e.atMs - b.e.atMs || a.i - b.i)
+    .map(({ e }) => e);
+
+  const drainOver = (fromMs: number, toMs: number) =>
+    capacity * drainRatePerHour * ((toMs - fromMs) / HOUR_MS);
+
+  let level = 0;
+  let cursor = dayStartMs;
+  for (const ev of ordered) {
+    level = Math.max(0, level - drainOver(cursor, ev.atMs));
+    level = Math.min(capacity, level + ev.amount);
+    cursor = ev.atMs;
+  }
+  level = Math.max(0, level - drainOver(cursor, nowMs));
+  return Math.round(level * 10) / 10;
+}
+
 // Caps an elapsed-drain interval [fromMs, toMs) so it never crosses a local
 // midnight boundary. Nutrient batteries (protein/carbs/water/...) are keyed
 // by calendar day and only get a fresh row once `loadToday` notices the day

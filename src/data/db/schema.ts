@@ -247,6 +247,32 @@ export const CREATE_TRAINING_BLOCKS = `
   );
 `;
 
+// Sổ tập luyện (training log): only what the USER adds on top of the log that
+// is derived live from activity_log — see types/trainingLog.ts. A day row
+// exists only when the user touched the day. `override_text` NULL = show the
+// auto-generated line. `source_signature` NULL + `override_text` set = a
+// HAND-WRITTEN line (no Xả entry behind it); with a signature it is an edit of
+// an auto line and the signature is how that auto line looked at edit time
+// (conflict detection). A row whose override and note are both empty is
+// deleted, never stored. Deliberately NOT swept by cleanupService.
+export const CREATE_TRAINING_LOG_DAYS = `
+  CREATE TABLE IF NOT EXISTS training_log_days (
+    date TEXT PRIMARY KEY,
+    override_text TEXT,
+    note TEXT,
+    source_signature TEXT,
+    updated_at INTEGER NOT NULL
+  );
+`;
+
+export const CREATE_TRAINING_LOG_WEEKS = `
+  CREATE TABLE IF NOT EXISTS training_log_weeks (
+    week_start TEXT PRIMARY KEY,
+    note TEXT,
+    updated_at INTEGER NOT NULL
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -259,4 +285,6 @@ export const ALL_SCHEMAS = [
   CREATE_FOOD_OVERRIDES,
   CREATE_ACTIVITY_LOG,
   CREATE_TRAINING_BLOCKS,
+  CREATE_TRAINING_LOG_DAYS,
+  CREATE_TRAINING_LOG_WEEKS,
 ];

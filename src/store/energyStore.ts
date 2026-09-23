@@ -8,11 +8,13 @@ import { getAnyFoodById } from '../data/food/foodLookup';
 import {
   addFoodLogEntry,
   getFoodLogForDate,
+  getFoodLogInRange,
   deleteFoodLogEntry,
 } from '../data/repositories/foodLogRepository';
 import {
   addActivityLogEntry,
   getActivityLogForDate,
+  getActivityLogInRange,
   deleteActivityLogEntry,
 } from '../data/repositories/activityLogRepository';
 import {
@@ -35,9 +37,13 @@ import {
 } from '../domain/energy/energyBalanceEngine';
 import {
   applyCircadianDrain,
-  eatIntoReserve,
-  drainFromWorkout,
+  replaySatietyReserve,
+  type SatietyEvent,
 } from '../domain/energy/satietyEngine';
+import { buildSatietyEvents } from '../domain/energy/satietyEvents';
+import { isManualQuickTapIntake } from '../domain/battery/intakeClassification';
+import { isFoodPin, recomputeFoodPinLevels } from '../domain/battery/foodPinReplay';
+import { SATIETY_REPLAY_LOOKBACK_HOURS } from '../lib/metabolicConstants';
 import { dailyCalorieTarget } from '../domain/energy/weightGoal';
 import {
   workoutKcal,
@@ -58,6 +64,7 @@ import {
   addIntakeEvent,
   deleteIntakeEventsByIds,
   getIntakeEventsForDate,
+  getIntakeEventsInRange,
 } from '../data/repositories/intakeRepository';
 import { getDailyLog, upsertDailyLog } from '../data/repositories/dailyLogRepository';
 import {
@@ -131,6 +138,12 @@ interface EnergyState {
   appleHealthStatus: 'idle' | 'syncing' | 'synced' | 'estimated';
   syncAppleHealthBurned: () => Promise<void>;
 
+  // Satiety = pure replay of the timestamped logs over the last
+  // SATIETY_REPLAY_LOOKBACK_HOURS (an event acts when it HAPPENED, not when it
+  // was logged). Called after every action that adds/removes such a log row;
+  // the reserve stored on the energy reading is only a cache of this result.
+  recomputeSatiety: () => Promise<void>;
+
   loadToday: (modeId: ModeId) => Promise<void>;
   // BUG B fix: `opts.stepType` (default 'walking') is used ONLY when
   // batteryId === 'movement' — a direct movement-pin charge (tap the battery
@@ -169,9 +182,10 @@ interface EnergyState {
   // read-modify-write of that day's persisted rows. Today's in-memory numbers
   // must not move, with one deliberate exception (spec 3c): in the 0h-6am
   // overlap a target day can BE the currently loaded one, and is then charged
-  // in place. Never touches the continuous satiety reserve — a past meal's
-  // satiation has already worn off. A timestamp on the current day delegates
-  // to logFood (the one true same-day path).
+  // in place. The satiety reserve is replayed from the food log by meal time
+  // (recomputeSatiety), so a meal inside the 48h window still counts and an
+  // older one has no effect. A timestamp on the current day delegates to
+  // logFood (the one true same-day path).
   logFoodForPastDate: (
     item: FoodItem,
     grams: number,
@@ -180,12 +194,11 @@ interface EnergyState {
   ) => Promise<void>;
   // Exact inverse of logFoodForPastDate for an entry fetched from the DB
   // (e.g. the History day-detail view) — the entry is NOT in store.foodLog.
-  // If it is (today's list), delegates to removeFood, which also owns the
-  // same-day satiety reversal.
+  // If it is (today's list), delegates to removeFood.
   removeFoodForPastDate: (entry: FoodLogEntry) => Promise<void>;
   // FIX #3: undo a manual sub-battery quick-tap (the exact inverse of
   // addIntake): reverse the battery charge and, for macros that also feed the
-  // calorie ledger, reverse the kcal + satiety top-up too.
+  // calorie ledger, reverse the kcal too (satiety follows by replay).
   removeIntake: (id: string) => Promise<void>;
   // `startAt`/`endAt` (B2) are optional and display-only — see
   // types/energy.ts ActivityLogEntry doc (no replay engine).
@@ -230,6 +243,11 @@ interface EnergyState {
   // (not in store.activityLog). If it is (today's list), delegates to
   // removeActivity, which also owns the same-day reversal.
   removeActivityForPastDate: (entry: ActivityLogEntry) => Promise<void>;
+  // Edit an activity entry of ANY day (the training log's "Sửa số liệu"):
+  // today's entry → updateActivity; an older one → removeActivityForPastDate +
+  // logActivityForPastDate under its ORIGINAL timestamp, so it keeps its day.
+  // Composes the two existing past-date actions — no battery logic of its own.
+  updateActivityForPastDate: (entry: ActivityLogEntry, patch: ActivityPatch) => Promise<void>;
   tickDrain: (elapsedHours: number, modeId: ModeId) => Promise<void>;
   resetForNewDay: (modeId: ModeId) => Promise<void>;
 }
@@ -277,9 +295,64 @@ function syncSatietyReserve(
   };
 }
 
+// Monotonic token so overlapping recomputeSatiety calls (each awaits DB reads)
+// can't apply out of order: only the most recently STARTED one writes.
+let satietyRecomputeSeq = 0;
+
+// Gathers every satiety-relevant event in [fromMs, nowMs] from the DB plus the
+// store's in-memory logs for today (de-duplicated by id inside
+// buildSatietyEvents). The DB is the source of truth; the in-memory rows cover
+// a SQLite-less web build and any row not yet flushed. A DB failure degrades
+// to in-memory only rather than throwing.
+async function loadSatietyEvents(
+  fromMs: number,
+  memory: { foodLog: FoodLogEntry[]; activityLog: ActivityLogEntry[]; intakeLog: IntakeEvent[] }
+): Promise<SatietyEvent[]> {
+  let foodLog = memory.foodLog;
+  let activityLog = memory.activityLog;
+  let intakeEvents = memory.intakeLog;
+  try {
+    const fromDate = dateString(new Date(fromMs));
+    const toDate = todayString();
+    const [dbFood, dbIntake, dbActivity] = await Promise.all([
+      getFoodLogInRange(fromDate, toDate),
+      getIntakeEventsInRange(fromDate, toDate),
+      getActivityLogInRange(fromDate, toDate),
+    ]);
+    foodLog = [...dbFood, ...foodLog];
+    intakeEvents = [...dbIntake, ...intakeEvents];
+    activityLog = [...dbActivity, ...activityLog];
+  } catch (e) {
+    console.warn('loadSatietyEvents: DB read failed, using in-memory logs only:', e);
+  }
+  // The range queries cut on whole days; replaySatietyReserve drops anything
+  // outside [fromMs, nowMs] by event time.
+  return buildSatietyEvents({ foodLog, intakeEvents, activityLog });
+}
+
+// protein/carbs/water/minerals are a pure replay of today's timestamped logs
+// (a meal acts when it was EATEN — see replayDrainingPin), so every action that
+// adds/removes a food-log row or a manual quick-tap re-derives them from the
+// log instead of nudging the stored level. `modeId` defaults to the current
+// mode (the whole day is replayed at that mode's drain rate — a documented
+// approximation if the mode changed mid-day).
+function recomputeFoodPins(
+  readings: BatteryReading[],
+  foodLog: FoodLogEntry[],
+  intakeLog: IntakeEvent[],
+  modeId: ModeId = useSettingsStore.getState().currentMode
+): BatteryReading[] {
+  return recomputeFoodPinLevels(readings, {
+    foodLog,
+    intakeLog,
+    drainRatePerHour: getModeById(modeId).drainRatePerHour,
+    nowMs: Date.now(),
+  });
+}
+
 // Reverse a logged activity's effect on an energy reading — the exact
-// mirror of the growGoalFromActivity + drainFromWorkout applied by
-// logActivity, using the entry's own energyKcal/satietyDrainKcal snapshot.
+// mirror of the growGoalFromActivity applied by logActivity, using the
+// entry's own energyKcal snapshot (the satiety side is replayed, see above).
 // Pulled out as its own pure function (FIX #5) so removeActivity can apply
 // it either to `readings` in the store (same energy-day) or to a historical
 // row fetched from the repository (different energy-day), without
@@ -294,10 +367,8 @@ function reverseActivityOnEnergyReading(
     // kcal it grew, floored at 0 so a shrink can never go negative.
     capacity: Math.max(0, r.capacity - entry.energyKcal),
     activityBonusKcal: Math.max(0, (r.activityBonusKcal ?? 0) - entry.energyKcal),
-    // Reverse drainFromWorkout: give the satiety reserve the drained kcal
-    // back, capped at full — mirroring how removeFood floors its reversal at
-    // 0 in the opposite direction.
-    satietyReserveKcal: eatIntoReserve(r.satietyReserveKcal ?? 0, entry.satietyDrainKcal),
+    // The satiety reserve is NOT touched here: it is replayed from the logs
+    // (recomputeSatiety), so deleting the log row is the reversal.
   };
 }
 
@@ -315,8 +386,8 @@ function foodLogEntryId(timestamp: number, foodId: string): string {
 }
 
 // Reverse a logged food's charge on an energy reading — the exact mirror of
-// the chargeEnergy + eatIntoReserve applied by logFood, using the entry's own
-// energyKcal snapshot. Pulled out as its own pure function (FIX #1, mirroring
+// the chargeEnergy applied by logFood, using the entry's own energyKcal
+// snapshot. Pulled out as its own pure function (FIX #1, mirroring
 // reverseActivityOnEnergyReading) so removeFood can apply it either to
 // `readings` in the store (same energy-day) or to a historical row fetched
 // from the repository (different energy-day). Reversal on the reserve floors
@@ -326,11 +397,11 @@ function reverseFoodOnEnergyReading(
   r: BatteryReading,
   entry: FoodLogEntry
 ): BatteryReading {
-  const burned = burnEnergy(r, entry.energyKcal);
-  return {
-    ...burned,
-    satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - entry.energyKcal),
-  };
+  // Ledger only. The satiety reserve is replayed from the logs
+  // (recomputeSatiety), so removing the log row already undoes its top-up at
+  // the right point in time — subtracting the full kcal from the reserve NOW
+  // would over-drain it for a meal eaten hours ago.
+  return burnEnergy(r, entry.energyKcal);
 }
 
 // BUG A fix: exactly how much an ActivityLogEntry charged the movement pin at
@@ -341,18 +412,6 @@ function reverseFoodOnEnergyReading(
 // actually applied.
 function movementChargeOf(entry: ActivityLogEntry): number {
   return entry.movementStepsApplied ?? entry.steps ?? 0;
-}
-
-// FIX #3: which intake_events rows count as MANUAL sub-battery quick-taps (the
-// ones addIntake creates and removeIntake can undo), versus the derived rows
-// logActivity/addCalories also write to the same table purely for the Excel
-// export (steps / workout / calories) or that target the movement/energy
-// batteries. Only the former belong in `intakeLog`.
-function isManualQuickTapIntake(event: IntakeEvent): boolean {
-  if (event.batteryTypeId === 'movement' || event.batteryTypeId === 'energy') return false;
-  if (event.note === 'steps' || event.note === 'calories') return false;
-  if (event.note.startsWith('workout')) return false;
-  return true;
 }
 
 // Which mode a backfilled day's fresh readings should be sized by: the mode
@@ -482,6 +541,33 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     set({ appleHealthBurnedKcal: estimate, lastAppleHealthSync: ts, appleHealthStatus: 'estimated' });
   },
 
+  recomputeSatiety: async () => {
+    const seq = ++satietyRecomputeSeq;
+    const nowMs = Date.now();
+    const fromMs = nowMs - SATIETY_REPLAY_LOOKBACK_HOURS * 3_600_000;
+    const { foodLog, activityLog, intakeLog } = get();
+    const events = await loadSatietyEvents(fromMs, { foodLog, activityLog, intakeLog });
+    if (seq !== satietyRecomputeSeq) return; // superseded by a newer recompute
+
+    const reserve = replaySatietyReserve(currentProfile(), 0, fromMs, events, nowMs);
+    let energy: BatteryReading | undefined;
+    // Patch only the satiety fields on the FRESHEST readings, so a ledger or
+    // nutrient change landing during the DB reads is never clobbered.
+    set((s) => ({
+      readings: s.readings.map((r) => {
+        if (r.batteryTypeId !== 'energy') return r;
+        energy = { ...r, satietyReserveKcal: reserve, lastSatietySyncAt: nowMs };
+        return energy;
+      }),
+    }));
+    if (!energy) return;
+    try {
+      await upsertReadings([energy]);
+    } catch (e) {
+      console.warn('recomputeSatiety persistence failed:', e);
+    }
+  },
+
   loadToday: async (modeId) => {
     const today = todayString();
     const energyDay = energyDayString();
@@ -525,14 +611,18 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       }
       energy = syncSatietyReserve(energy, profile, Date.now());
 
-      const readings = [...nutrients, energy];
-      await upsertReadings(readings);
-      await upsertDailyLog({ date: today, modeId });
       const foodLog = await getFoodLogForDate(today);
       const activityLog = await getActivityLogForDate(today);
       // FIX #3: only the manual sub-battery quick-taps — filter out the
       // steps/workout/calories rows logActivity/addCalories also wrote here.
       const intakeLog = (await getIntakeEventsForDate(today)).filter(isManualQuickTapIntake);
+
+      // The food pins are replayed from today's logs, so they also account for
+      // the hours the app was closed (the persisted levels only drain while a
+      // tick actually runs).
+      const readings = recomputeFoodPins([...nutrients, energy], foodLog, intakeLog, modeId);
+      await upsertReadings(readings);
+      await upsertDailyLog({ date: today, modeId });
 
       set({
         readings,
@@ -543,6 +633,9 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
         lastDrainSyncAt: Date.now(),
         isLoaded: true,
       });
+      // Replace the carried-over/drained satiety estimate above with the
+      // authoritative replay of the timestamped logs.
+      await get().recomputeSatiety();
     } catch (e) {
       // Storage unavailable (e.g. SQLite-less web build). Render in-memory
       // defaults so the screen never goes blank.
@@ -580,17 +673,14 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     updated[idx] = applyIntake(updated[idx], amount);
     const toPersist: BatteryReading[] = [updated[idx]];
 
-    // Eating protein/carbs also charges the calorie ledger (4 kcal/g) and
-    // tops up the satiety reserve (the headline fullness battery).
+    // Eating protein/carbs also charges the calorie ledger (4 kcal/g). The
+    // satiety reserve is replayed from the logged intake event (recomputeSatiety
+    // below), not bumped here.
     const kcal = kcalFromMacro(batteryId, amount);
     if (kcal > 0) {
       const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
       if (ei !== -1) {
         updated[ei] = chargeEnergy(updated[ei], kcal);
-        updated[ei] = {
-          ...updated[ei],
-          satietyReserveKcal: eatIntoReserve(updated[ei].satietyReserveKcal ?? 0, kcal),
-        };
         toPersist.push(updated[ei]);
       }
     }
@@ -600,7 +690,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     // never grew the energy goal, unlike logActivity's growGoalFromActivity
     // path. Mirror that here (steps only, no workouts) so tapping the
     // movement pin and logging an equivalent walk/hike agree. Deliberately
-    // does NOT touch level or satietyReserveKcal — moving means more room to
+    // does NOT touch the level or the satiety reserve — moving means more room to
     // eat, not kcal already eaten (same rule as logActivity's steps).
     if (batteryId === 'movement' && amount > 0) {
       const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
@@ -622,6 +712,16 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const ts = nowTimestamp();
     const event: IntakeEvent = { id: `${batteryId}_${ts}`, timestamp: ts, batteryTypeId: batteryId, amount, note };
 
+    // A food-fed pin (in practice: the water quick-tap) is replayed from today's
+    // logs plus this tap, not nudged: the tap's effect is the same as any
+    // other timestamped event. A non-positive amount is not an "intake", so it
+    // keeps the plain applyIntake result above.
+    if (isFoodPin(batteryId) && amount > 0 && isManualQuickTapIntake(event)) {
+      const { foodLog, intakeLog } = get();
+      updated[idx] = recomputeFoodPins([updated[idx]], foodLog, [...intakeLog, event])[0];
+      toPersist[0] = updated[idx];
+    }
+
     // Optimistic UI update (master = energy %).
     set((s) => ({
       readings: updated,
@@ -635,6 +735,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('addIntake persistence failed:', e);
     }
+    if (kcal > 0) await get().recomputeSatiety();
 
     const { lowBatteryThreshold } = useSettingsStore.getState();
     // Only alert on the battery just topped up, if it's still low. The energy
@@ -653,10 +754,6 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     const updated = [...readings];
     updated[ei] = chargeEnergy(updated[ei], kcal);
-    updated[ei] = {
-      ...updated[ei],
-      satietyReserveKcal: eatIntoReserve(updated[ei].satietyReserveKcal ?? 0, kcal),
-    };
     set({ readings: updated, masterPercentage: energyPercentage(updated) });
 
     try {
@@ -666,6 +763,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('addCalories persistence failed:', e);
     }
+    await get().recomputeSatiety();
   },
 
   // Log a food from the database (food_items.csv): charges the energy battery by
@@ -673,36 +771,24 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   // minerals) by the portion's macros. Unlike addIntake, energy is NOT re-derived
   // from macros here (that would double-count) — we use the CSV's energy_kcal,
   // which also accounts for fat (9 kcal/g).
-  logFood: async (item, grams, timestamp, portion) => {
+  logFood: async (item, grams, requestedTimestamp, portion) => {
     if (grams <= 0) return;
+    // Defensive: a meal can't be eaten in the future. The UI blocks this too;
+    // clamping here keeps a bad caller from parking a meal ahead of "now"
+    // (replaySatietyReserve ignores events after now, so it would vanish).
+    const timestamp = Math.min(requestedTimestamp, Date.now());
 
     const n = nutritionForGrams(item, grams);
     const mealType = mealTypeForTimestamp(timestamp, useSettingsStore.getState().mealWindows);
 
-    // Nutrient sub-batteries fed by food (no kcal side-effect — energy is added
-    // once below). water_g ≈ ml; minerals is a coarse mg rollup.
-    const nutrientCharges: Partial<Record<BatteryId, number>> = {
-      protein: n.proteinG,
-      carbs: n.carbG,
-      water: n.waterG,
-      minerals: n.mineralsMg,
-    };
-
     // Applied inside set() below (against the freshest readings) rather than
     // against a copy captured before the await, so a drain tick landing while
-    // the log row is being written can't be clobbered.
+    // the log row is being written can't be clobbered. Only the calorie LEDGER
+    // is charged directly: satiety and the protein/carbs/water/minerals pins
+    // are replayed from the food log at the MEAL time, not topped up at log
+    // time (recomputeSatiety / recomputeFoodPins).
     const chargeReadings = (rs: BatteryReading[]): BatteryReading[] =>
-      rs.map((r) => {
-        if (r.batteryTypeId === 'energy') {
-          const charged = chargeEnergy(r, n.energyKcal);
-          return {
-            ...charged,
-            satietyReserveKcal: eatIntoReserve(charged.satietyReserveKcal ?? 0, n.energyKcal),
-          };
-        }
-        const charge = nutrientCharges[r.batteryTypeId];
-        return charge && charge > 0 ? applyIntake(r, charge) : r;
-      });
+      rs.map((r) => (r.batteryTypeId === 'energy' ? chargeEnergy(r, n.energyKcal) : r));
 
     const entry: FoodLogEntry = {
       id: foodLogEntryId(timestamp, item.id),
@@ -739,11 +825,12 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     }
 
     set((s) => {
-      const charged = chargeReadings(s.readings);
+      const nextFoodLog = [...s.foodLog, entry];
+      const charged = recomputeFoodPins(chargeReadings(s.readings), nextFoodLog, s.intakeLog);
       return {
         readings: charged,
         masterPercentage: energyPercentage(charged),
-        foodLog: [...s.foodLog, entry],
+        foodLog: nextFoodLog,
       };
     });
 
@@ -752,6 +839,8 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('logFood reading persistence failed:', e);
     }
+
+    await get().recomputeSatiety();
   },
 
   // Undo a logged food: reverse its charge on the energy + nutrient batteries
@@ -762,13 +851,6 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const { readings, foodLog } = get();
     const entry = foodLog.find((f) => f.id === id);
     if (!entry) return;
-
-    const reverseCharges: Partial<Record<BatteryId, number>> = {
-      protein: entry.proteinG,
-      carbs: entry.carbG,
-      water: entry.waterG,
-      minerals: entry.mineralsMg,
-    };
 
     // FIX #1 (mirrors removeActivity/FIX #5): the food's kcal charge was
     // applied at log time to the reading for `entry.energyDayApplied` (the
@@ -783,18 +865,21 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const sameEnergyDay =
       entry.energyDayApplied === undefined || entry.energyDayApplied === currentEnergyDay;
 
-    const updated = readings.map((r) => {
-      if (r.batteryTypeId === 'energy') {
-        return sameEnergyDay ? reverseFoodOnEnergyReading(r, entry) : r;
-      }
-      const amt = reverseCharges[r.batteryTypeId];
-      return amt && amt > 0 ? applyIntake(r, -amt) : r;
-    });
+    // The protein/carbs/water/minerals pins are replayed from the remaining
+    // food log (recomputeFoodPins), not reversed by subtraction.
+    const remainingFoodLog = foodLog.filter((f) => f.id !== id);
+    const updated = recomputeFoodPins(
+      readings.map((r) =>
+        r.batteryTypeId === 'energy' && sameEnergyDay ? reverseFoodOnEnergyReading(r, entry) : r
+      ),
+      remainingFoodLog,
+      get().intakeLog
+    );
 
     set({
       readings: updated,
       masterPercentage: energyPercentage(updated),
-      foodLog: foodLog.filter((f) => f.id !== id),
+      foodLog: remainingFoodLog,
     });
 
     try {
@@ -813,6 +898,8 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('removeFood persistence failed:', e);
     }
+
+    await get().recomputeSatiety();
   },
 
   // FIX #2: edit a logged food. Simplest-and-safest strategy, mirroring
@@ -855,8 +942,9 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
   // read-modify-write of that day's persisted rows otherwise. Satiety is never
   // touched on either path: unlike logFood, a backfilled meal is not "food in
   // the belly right now".
-  logFoodForPastDate: async (item, grams, timestamp, portion) => {
+  logFoodForPastDate: async (item, grams, requestedTimestamp, portion) => {
     if (grams <= 0) return;
+    const timestamp = Math.min(requestedTimestamp, Date.now()); // see logFood
 
     const entryCalendarDay = dateString(new Date(timestamp));
     const entryEnergyDay = energyDayString(new Date(timestamp));
@@ -893,18 +981,25 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     // in place so Home updates immediately. applyFoodToDayReadings is the
     // satiety-free sibling of logFood's charging.
     if (calendarIsCurrent || energyIsCurrent) {
-      const { readings, foodLog } = get();
-      const updated = readings.map((r) => {
+      const { readings, foodLog, intakeLog } = get();
+      // A same-calendar-day entry belongs in today's "Hôm nay đã ăn" list.
+      const nextFoodLog = calendarIsCurrent
+        ? [...foodLog, entry].sort((a, b) => a.timestamp - b.timestamp)
+        : foodLog;
+      const charged = readings.map((r) => {
         const targeted = r.batteryTypeId === 'energy' ? energyIsCurrent : calendarIsCurrent;
         return targeted ? applyFoodToDayReadings([r], n)[0] : r;
       });
+      // When today's nutrient day is the target, its pins are replayed from the
+      // log (the increment above is overwritten) so the meal counts at its own
+      // time. Historical rows below keep the plain increment.
+      const updated = calendarIsCurrent
+        ? recomputeFoodPins(charged, nextFoodLog, intakeLog)
+        : charged;
       set({
         readings: updated,
         masterPercentage: energyPercentage(updated),
-        // A same-calendar-day entry belongs in today's "Hôm nay đã ăn" list.
-        foodLog: calendarIsCurrent
-          ? [...foodLog, entry].sort((a, b) => a.timestamp - b.timestamp)
-          : foodLog,
+        foodLog: nextFoodLog,
       });
       try {
         await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
@@ -947,6 +1042,10 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('logFoodForPastDate persistence failed:', e);
     }
+
+    // Replay decides by meal time whether this still matters to the satiety
+    // reserve (it does if the meal falls inside the 48h window).
+    await get().recomputeSatiety();
   },
 
   // S-S4: undo a backfilled/past entry fetched from the DB — the exact mirror
@@ -982,10 +1081,19 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
 
     // Currently loaded targets (0h-6am overlap): reverse in place.
     if (calendarIsCurrent || energyIsCurrent) {
-      const updated = get().readings.map((r) => {
+      const { foodLog, intakeLog } = get();
+      const reversed = get().readings.map((r) => {
         const targeted = r.batteryTypeId === 'energy' ? energyIsCurrent : calendarIsCurrent;
         return targeted ? reverseFoodOnDayReadings([r], entry)[0] : r;
       });
+      // Today's nutrient pins are replayed from the log (see logFoodForPastDate).
+      const updated = calendarIsCurrent
+        ? recomputeFoodPins(
+            reversed,
+            foodLog.filter((f) => f.id !== entry.id),
+            intakeLog
+          )
+        : reversed;
       set({ readings: updated, masterPercentage: energyPercentage(updated) });
       try {
         await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
@@ -1018,13 +1126,14 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('removeFoodForPastDate persistence failed:', e);
     }
+
+    await get().recomputeSatiety();
   },
 
   // FIX #3: undo a manual sub-battery quick-tap — the exact inverse of
   // addIntake. Reverse the battery charge (apply -amount), and if that battery
   // also feeds the calorie ledger (kcalFromMacro > 0) reverse the kcal charge
-  // (burnEnergy) and floor the satiety reserve by that kcal, mirroring
-  // removeFood's floor-at-0 reversal.
+  // (burnEnergy); the satiety reserve follows by replay (recomputeSatiety).
   removeIntake: async (id) => {
     const { readings, intakeLog } = get();
     const event = intakeLog.find((e) => e.id === id);
@@ -1033,7 +1142,15 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const toPersist: BatteryReading[] = [];
     const updated = readings.map((r) => {
       if (r.batteryTypeId === event.batteryTypeId) {
-        const reversed = applyIntake(r, -event.amount);
+        // A food-fed pin is replayed from the logs without this tap; any other
+        // battery (e.g. sleep) is reversed by subtraction as before.
+        const reversed = isFoodPin(r.batteryTypeId)
+          ? recomputeFoodPins(
+              [r],
+              get().foodLog,
+              intakeLog.filter((e) => e.id !== id)
+            )[0]
+          : applyIntake(r, -event.amount);
         toPersist.push(reversed);
         return reversed;
       }
@@ -1044,11 +1161,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     if (kcal > 0) {
       const ei = updated.findIndex((r) => r.batteryTypeId === 'energy');
       if (ei !== -1) {
-        const burned = burnEnergy(updated[ei], kcal);
-        updated[ei] = {
-          ...burned,
-          satietyReserveKcal: Math.max(0, (burned.satietyReserveKcal ?? 0) - kcal),
-        };
+        updated[ei] = burnEnergy(updated[ei], kcal);
         toPersist.push(updated[ei]);
       }
     }
@@ -1065,6 +1178,8 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('removeIntake persistence failed:', e);
     }
+
+    if (kcal > 0) await get().recomputeSatiety();
   },
 
   // Log activity (steps and/or workout sessions) as its own independent,
@@ -1084,15 +1199,11 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const updated = [...readings];
     updated[ei] = growGoalFromActivity(updated[ei], profile, steps, workouts);
     // A workout also drains the satiety reserve in one lump (training makes
-    // you hungrier). Steps don't — the ambient step average is already part
-    // of the circadian passive burn.
+    // you hungrier) — applied by replay at the workout's END time
+    // (recomputeSatiety, via the entry's satietyDrainKcal snapshot). Steps
+    // don't — the ambient step average is already part of the circadian
+    // passive burn.
     const workoutBurn = totalWorkoutKcal(workouts, profile.weightKg, profile.heightCm);
-    if (workoutBurn > 0) {
-      updated[ei] = {
-        ...updated[ei],
-        satietyReserveKcal: drainFromWorkout(updated[ei].satietyReserveKcal ?? 0, workoutBurn),
-      };
-    }
     // BUG A fix: a workout-only entry (type + minutes, no steps — the
     // activity modal's primary flow) used to never charge the movement pin,
     // because minutes have no representation in the pin's own unit (steps).
@@ -1183,11 +1294,13 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('logActivity persistence failed:', e);
     }
+
+    if (workoutBurn > 0) await get().recomputeSatiety();
   },
 
   // Undo a logged activity (B2): reverse its effect on the energy goal
-  // (capacity/activityBonusKcal), restore the satiety reserve it drained, and
-  // reverse the movement pin charge — the exact mirror of removeFood, using
+  // (capacity/activityBonusKcal), let the satiety reserve recover by replay
+  // (recomputeSatiety), and reverse the movement pin charge — the exact mirror of removeFood, using
   // the entry's own snapshot (energyKcal/satietyDrainKcal/steps) rather than
   // recomputing from the current profile, so it stays correct even if the
   // profile changed since the entry was logged.
@@ -1282,6 +1395,8 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('removeActivity persistence failed:', e);
     }
+
+    if (entry.satietyDrainKcal > 0) await get().recomputeSatiety();
   },
 
   // Edit a logged activity (B2). Simplest-and-safest approach: fully reverse
@@ -1524,6 +1639,24 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     }
   },
 
+  updateActivityForPastDate: async (entry, patch) => {
+    if (get().activityLog.some((a) => a.id === entry.id)) {
+      await get().updateActivity(entry.id, patch);
+      return;
+    }
+    await get().removeActivityForPastDate(entry);
+    await get().logActivityForPastDate(
+      {
+        steps: patch.steps ?? entry.steps,
+        workouts: patch.workouts ?? entry.workouts,
+        // Same `undefined` = keep / `null` = clear convention as updateActivity.
+        startAt: patch.startAt === undefined ? entry.startAt : (patch.startAt ?? undefined),
+        endAt: patch.endAt === undefined ? entry.endAt : (patch.endAt ?? undefined),
+      },
+      entry.timestamp
+    );
+  },
+
   tickDrain: async (elapsedHours, modeId) => {
     const { readings } = get();
     const mode = getModeById(modeId);
@@ -1585,6 +1718,8 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     } catch (e) {
       console.warn('resetForNewDay persistence failed:', e);
     }
+
+    await get().recomputeSatiety();
   },
 }));
 

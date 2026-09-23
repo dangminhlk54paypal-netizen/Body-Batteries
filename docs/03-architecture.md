@@ -32,7 +32,7 @@ App được chia thành các lớp rõ ràng để bạn và AI luôn biết "c
 ```
 src/
 ├── screens/            # Các màn hình (Home, History, Settings, Diary, Onboarding)
-├── components/         # Khối tái sử dụng (BatteryCell, MasterBattery, TrendChart...)
+├── components/         # Khối tái sử dụng (BatteryCell, MasterBattery, TrendChart...); training/ = Sổ tập luyện
 ├── navigation/         # Điều hướng tab (React Navigation)
 ├── hooks/              # Hook React (useDrainTick, useLiveEnergyReading, useLowEnergyWatch)
 ├── store/              # Zustand: energyStore, settingsStore
@@ -42,6 +42,7 @@ src/
 │   ├── energy/         # metabolismEngine (BMR/TDEE), energyBalanceEngine (sổ calo), satietyEngine (pin no/đói), weightGoal (mục tiêu kcal), profileValidation
 │   ├── food/           # foodNutrition, foodLogSummary (quy đổi món ăn → dinh dưỡng)
 │   ├── modes/          # Định nghĩa các Mode và ảnh hưởng
+│   ├── training/       # Sổ tập luyện: trainingLogFormatter (dòng kiểu Notes), trainingLogIndex (block→tuần→ngày), trainingLogPage, entryEdit
 │   └── rules/          # Quy tắc nhắc nhở/cảnh báo
 ├── data/
 │   ├── db/             # Khởi tạo SQLite, schema
@@ -62,6 +63,85 @@ src/
 - `.ai/` — luật dự án, skills, agents, báo cáo song song. `.claude/` — cấu hình Claude Code
   (native subagents + hooks lint tự động, xem `.ai/CONTEXT.md` mục 6).
 - `services/health/` chưa tồn tại — sẽ tạo khi tích hợp HealthKit/Health Connect (S-F v2).
+
+---
+
+## 🔋 Pin theo GIỜ ĂN, không phải giờ ghi (Session 31, 2026-09-23)
+
+**Nguyên tắc:** mỗi sự kiện tác động lên pin tại **thời điểm nó xảy ra**. Giá trị pin hiện tại = phát
+lại (replay) mọi sự kiện có dấu thời gian theo thứ tự, trừ tiêu hao giữa các sự kiện. Ghi muộn và ghi
+đúng giờ phải cho **cùng một kết quả**. Lý do không vá cục bộ: pin có trần và sàn nên hiệu ứng của một
+sự kiện chèn vào quá khứ không cộng tuyến tính — phải biết quỹ đạo, tức là cần nhật ký.
+
+| Pin | Cách tính | Hàm thuần | Nguồn |
+|---|---|---|---|
+| No/đói (headline) | replay 48h từ reserve 0, tiêu hao nhịp sinh học | `replaySatietyReserve` | `food_log`, `intake_events`, `activity_log` (DB ∪ log hôm nay trong bộ nhớ, khử trùng theo id) |
+| protein/carbs/water/minerals | replay từ 0h của **ngày dòng pin**, tiêu hao tuyến tính `capacity × drainRatePerHour` | `replayDrainingPin` / `recomputeFoodPinLevels` | `foodLog` + `intakeLog` trong store |
+| Sổ kcal (`energy.level`) | cộng dồn, **không** phụ thuộc thời gian | `chargeEnergy` / `burnEnergy` | — |
+| movement, sleep | như cũ (tăng/giảm dần) — chưa chuyển | `applyIntake` / `applyDrain` | — |
+
+- Giá trị lưu ở `battery_readings` của no/đói và 4 pin trên chỉ là **cache** của replay; store gọi lại
+  (`recomputeSatiety`, `recomputeFoodPins`) sau `loadToday`, `logFood`, `removeFood`, backfill, `addIntake`,
+  `removeIntake`, `addCalories`, `logActivity`, `removeActivity`, `resetForNewDay`. `tickDrain` giữ nguyên
+  (drain tăng dần cho cùng kết quả).
+- `recomputeSatiety` có token chống chạy chồng (`satietyRecomputeSeq`): chỉ lần bắt đầu muộn nhất được ghi.
+- Xấp xỉ đã chấp nhận: pin dinh dưỡng replay bằng **mode hiện tại** cho cả ngày (đổi mode giữa ngày thì
+  phần đã qua tính lại theo mode mới).
+- UI: `FoodLogModal` chặn giờ ăn ở tương lai (`mealTimeStatus`) và gợi ý khi ghi muộn ≥ 30 phút.
+- Hồ sơ lỗi + nhật ký sửa: `.ai/plans/2026-09-23-battery-late-logging-timing.md`.
+
+---
+
+## 📓 Sổ tập luyện — nhật ký bài tập kiểu Apple Notes (Session 32, 2026-09-23)
+
+Tab **Tập luyện** có hai chế độ: **📓 Sổ tập** (mặc định) và **📋 Kế hoạch block** (màn Block Builder cũ,
+`BlockPlanView`, không đổi hành vi). Sổ tập biến các buổi đã ghi ở **Xả** thành cuốn sổ đọc như file Notes
+của người dùng: `26.08(77.7kg): S 130 4x3x115+3x100 PD 4x3x100`. Kế hoạch đầy đủ + nhật ký triển khai:
+`.ai/plans/2026-09-23-training-log-notebook.md`.
+
+**Nguyên tắc (đừng phá):**
+1. **`activity_log` là nguồn sự thật, sổ không lưu chữ máy sinh.** Dòng được sinh lại mỗi lần hiển thị
+   (`formatDayLine`), nên đổi ngôn ngữ / viết tắt / tuỳ chọn thì cả sổ cũ đổi theo. Chỉ phần **người dùng
+   thêm** được lưu (`training_log_days`, `training_log_weeks`, `TrainingBlockConfig.name`).
+2. **Sửa chữ ≠ sửa số liệu.** Sửa/ghi tay trong sổ **không bao giờ** đổi kcal hay pin. Muốn đổi số liệu phải
+   mở lại sheet Powerlifting/Bodybuilding ("Sửa số liệu") → `energyStore.updateActivityForPastDate` (chỉ ghép
+   `updateActivity` / `removeActivityForPastDate` + `logActivityForPastDate` dưới `timestamp` cũ; test chứng
+   minh kết quả y hệt như ghi đúng từ đầu).
+3. **Dòng ghi tay không tạo `activity_log`** và không gọi bất kỳ action nào của `energyStore` (người dùng hay
+   quên Xả). Không bị giới hạn 3 ngày của Xả bù (`TRAINING_LOG_MAX_DAYS_BACK = 730`).
+4. **Không bao giờ tự ghi đè chữ người dùng.** Dòng đã sửa/ghi tay được gắn `source_signature`; khi các buổi
+   Xả của ngày đổi, `detectDayConflict` trả `sourceChanged` / `xaAddedToManual` / `sourceGone` và UI hỏi
+   (Dùng dòng tự động / Giữ dòng của tôi / Gộp).
+
+**Ký hiệu (từ sổ thật của người dùng)** — `trainingLogFormatter.ts`:
+`90` (1 rep) · `3x100` (rep×tạ) · `5x5x72.5` (set×rep×tạ) · `6x4(+3)x75` (set cuối làm thêm 3 rep) ·
+`110x(4+5+5+4+8)` (rep không đều) · cụm nối bằng `+`, sau top single là khoảng trắng (`130 4x3x115+3x100`).
+Tên bài viết tắt (S/B/D, PS/PD/iC/LG…, đè được theo từng khoá `lift:`/`var:`/`cvar:`/`bb:`). Thập phân mặc
+định là **dấu chấm**; ô nhập số dùng `parseDecimal` (chấp nhận `,`), dòng ghi tay chuẩn hoá `72,5`→`72.5`
+(`normalizeManualBody`, chỉ với dòng tập, không với ghi chú).
+
+**Dữ liệu → giao diện:**
+```
+activity_log ─┐
+training_log_* ├→ buildTrainingLogIndex (thuần: block → tuần → ngày)  → trainingLogStore.periods
+training_blocks ┘
+tuần mở ra → tải activity_log + training_log_days + cân nặng của tuần → formatDayLine → TrainingLogDayLine
+```
+`TrainingLogView` sở hữu mọi sheet (soạn thảo, ghi chú tuần/tên block, định dạng ⚙︎, Trang 📄); các dòng chỉ
+báo `TrainingLogActions`. `revision` của `trainingLogStore` tăng mỗi lần ghi hoặc mỗi lần tab được focus, để
+tuần đang mở tải lại (màn hình tab không bị unmount). Kỳ mới nhất và tuần mới nhất mở sẵn, còn lại gập.
+
+**Ghi biến thể khi Xả:** `WorkoutSession.variationId?` / `variationName?` (JSON, không migration).
+`PowerliftingSheet` giữ danh sách *movement* (`liftingMovements.ts`) nên một ngày ghi được `B` + `iC`.
+Kcal vẫn tính theo tạ × rep thật từng session.
+
+**i18n:** đã phủ vi/en/de (namespace `trainingLog`, `components.powerliftingSheet.*`). Viết tắt là ký hiệu
+quốc tế nên giống nhau ở cả 3 ngôn ngữ nhưng vẫn nằm trong file locale.
+
+**Bẫy đã gặp:** (a) `act(() => onPress())` trong test — nếu `onPress` trả Promise thì `act` thành bất đồng
+bộ và làm test sau render rỗng; bọc `{ }`. (b) `PastDateField` chỉ ghi ngày khi ô mất focus và bàn phím
+`decimal-pad` không có `/` → trình soạn thảo dùng ô ngày riêng (`parseDayMonthInput`). (c) Hai `<Modal>` lồng
+nhau lỗi trên iOS → "Sửa số liệu" đóng trình soạn thảo rồi mới mở sheet Powerlifting.
 
 ---
 
@@ -210,6 +290,17 @@ Các "bảng" dữ liệu chính lưu trong SQLite. *Tên cột bằng tiếng A
 |-----|------|---------|
 | `date` | text | ngày |
 | `encrypted_content` | text | nội dung đã mã hoá — **app không tự giải mã để phân tích** |
+
+### `training_log_days` / `training_log_weeks` — phần người dùng tự thêm vào Sổ tập luyện (Session 32)
+| Cột | Kiểu | Ý nghĩa |
+|-----|------|---------|
+| `date` (days) / `week_start` (weeks) | text | ngày `YYYY-MM-DD` / Thứ 2 của tuần |
+| `override_text` (days) | text, có thể NULL | dòng người dùng viết đè hoặc ghi tay; NULL = dùng dòng tự sinh |
+| `note` | text, có thể NULL | ghi chú dưới ngày / ghi chú tuần |
+| `source_signature` (days) | text, có thể NULL | dấu vân tay các buổi Xả lúc người dùng sửa; **NULL + có `override_text` = dòng ghi tay** |
+| `updated_at` | number | thời điểm sửa |
+
+Bản ghi rỗng (không dòng, không ghi chú) bị **xoá**, không lưu. Hai bảng này **không** nằm trong `cleanupService`.
 
 ---
 

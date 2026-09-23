@@ -25,8 +25,6 @@ import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
-import { translate } from '../i18n/translate';
-import type { Language } from '../i18n/types';
 
 // Module-level wrapper so the impure todayString() call is invisible to the
 // component's purity analysis — same trick as FoodLogModal's getTodayString.
@@ -34,12 +32,6 @@ function getTodayString(): string {
   return todayString();
 }
 
-// Display label for a MET-based activity type, following the current app
-// language. Exported so the activity-history edit form (TodayActivities) and
-// BatterySourceSheet can reuse the same lookup instead of duplicating it.
-export function activityLabel(type: ActivityType, language: Language): string {
-  return translate(language, `activities.${type}`);
-}
 // Excludes 'custom' (rate travels on the session, see CustomActivity) AND
 // 'bodybuilding' (S-BB — rate travels on WorkoutSession.bbMet, see S-BB
 // exercises logged only through BodybuildingSheet's own muscle-group picker,

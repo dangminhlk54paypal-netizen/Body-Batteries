@@ -19,14 +19,15 @@ import {
   formatServingDefinition,
   isPortionCounted,
   measureUnitOf,
-  nutritionBasisLabel,
   portionUnitNoun,
 } from '../domain/food/portionUnits';
 import { suggestFoods, type FoodSuggestion } from '../domain/food/foodSuggestions';
+import { mealTimeStatus } from '../domain/food/mealTimeStatus';
 import {
+  applyCustomFoodChange,
   buildCustomFoodItem,
+  formBasisLabel,
   isValidCustomFoodInput,
-  resetNutritionForUnitChange,
   EMPTY_CUSTOM_FOOD_INPUT,
   type CustomFoodInput,
 } from '../domain/food/customFoodInput';
@@ -39,6 +40,7 @@ import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
 import * as haptics from '../lib/haptics';
 import { useT } from '../i18n/useT';
+import { LOCALE_TAGS } from '../i18n';
 
 interface Props {
   visible: boolean;
@@ -239,25 +241,15 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     setAdding(true);
   }
 
+  // applyCustomFoodChange converts (rather than wipes) the typed nutrition
+  // numbers when the unit or the per-100g/per-serving basis changes.
   function updateCustomField<K extends keyof CustomFoodInput>(key: K, value: CustomFoodInput[K]) {
-    if (key === 'portionUnit') {
-      // Per-100g and per-serving figures are different scales — clear the
-      // nutrition fields instead of silently reinterpreting stale numbers.
-      setCustomInput((prev) => resetNutritionForUnitChange(prev, value as CustomFoodInput['portionUnit']));
-      return;
-    }
-    setCustomInput((prev) => ({ ...prev, [key]: value }));
+    setCustomInput((prev) => applyCustomFoodChange(prev, key, value));
   }
 
   const customValid = isValidCustomFoodInput(customInput);
-  // Matches the per-serving/per-100g interpretation CustomFoodFields uses for
-  // its field suffixes (see that component for the source of truth).
-  const customNutritionBasisLabel = nutritionBasisLabel(
-    customInput.portionUnit,
-    customInput.servingLabel,
-    customInput.measureUnit,
-    language
-  );
+  // Same text CustomFoodFields uses for its field suffixes ("100g" / "1 hộp").
+  const customNutritionBasisLabel = formBasisLabel(customInput, language);
 
   // Builds the FoodItem, persists it via the registry (SQLite + searchable
   // immediately), then hands off into the existing selected-entry view so
@@ -295,6 +287,23 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   const preview =
     selected && validAmount ? nutritionForGrams(selected, effectiveGrams) : null;
   const mealTimeLabel = mealLabel(mealTypeForHour(hourNum), language);
+
+  // Today-flow only. The meal time drives the batteries (satiety and the
+  // nutrient pins are replayed from the food log by meal time): a time in the
+  // future is blocked, and a time well in the past explains why the pin
+  // will not jump to full.
+  const logsToday = isToday(logDate);
+  const timeFilled = hour !== '' && minute !== '';
+  const mealTimeMs = timestampForToday(hourNum, minuteNum);
+  const mealStatus = mealTimeStatus(mealTimeMs, nowTimestamp());
+  const futureMealTime = logsToday && timeFilled && mealStatus === 'future';
+  const lateLogHintTime =
+    logsToday && timeFilled && mealStatus === 'late'
+      ? new Date(mealTimeMs).toLocaleTimeString(LOCALE_TAGS[language], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null;
 
   async function confirm() {
     // BUG-1 (S-S6): same double-tap guard as savingCustomFood — a second tap
@@ -680,6 +689,14 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                     onChangeText={setMinute}
                   />
                 </View>
+                {futureMealTime && (
+                  <Text style={styles.timeError}>{t('components.foodLogModal.futureTimeError')}</Text>
+                )}
+                {!futureMealTime && lateLogHintTime && (
+                  <Text style={styles.timeHint}>
+                    {t('components.foodLogModal.lateLogHint', { time: lateLogHintTime })}
+                  </Text>
+                )}
 
                 <Text style={styles.fieldLabel}>{t('components.foodLogModal.logDateFieldLabel')}</Text>
                 <PastDateField
@@ -723,11 +740,11 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   style={({ pressed }) => [
                     styles.modalBtn,
                     styles.eat,
-                    (!validAmount || savingFood) && styles.disabled,
+                    (!validAmount || savingFood || futureMealTime) && styles.disabled,
                     pressed && styles.pressed,
                   ]}
                   onPress={confirm}
-                  disabled={!validAmount || savingFood}
+                  disabled={!validAmount || savingFood || futureMealTime}
                 >
                   <Text style={styles.btnText}>{t('components.foodLogModal.confirmButton')}</Text>
                 </Pressable>
@@ -866,6 +883,8 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   },
   previewKcal: { color: c.accent, fontSize: 18, fontWeight: '800' },
   previewMacro: { color: c.textSoft, fontSize: 13 },
+  timeError: { color: c.dangerStrong, fontSize: 13, fontWeight: '600' },
+  timeHint: { color: c.textMuted, fontSize: 12 },
   backfillNotice: {
     color: c.warning,
     fontSize: 13,

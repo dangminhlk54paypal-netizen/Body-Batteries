@@ -211,3 +211,13 @@ export const FULLNESS_CAPACITY_KCAL = 1000;
 // The satiety % never drops below this floor, even at reserve = 0 — the body
 // always keeps some reserve; this is a gauge floor, not a claim about biology.
 export const SATIETY_FLOOR_PCT = 20;
+
+// How far back the satiety reserve is replayed from the timestamped logs
+// (food_log / intake_events / activity_log) — see replaySatietyReserve. The
+// reserve is a pure function of those logs (an event acts when it HAPPENED,
+// not when it was logged); the value stored on the energy reading is only a
+// cache. 48h is ample: a full reserve (1000 kcal) is drained within ~19h even
+// at the slower asleep rate (~53 kcal/h for a typical profile), and two
+// trajectories that start from different states only diverge until one of
+// them hits the floor/cap, after which they coincide.
+export const SATIETY_REPLAY_LOOKBACK_HOURS = 48;

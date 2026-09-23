@@ -105,6 +105,12 @@ Ngay dưới pin lớn là các nút hành động:
    dựa theo giờ ăn — nạp thẳng vào pin Năng lượng + các pin dinh dưỡng liên
    quan.
 4. **Lưu ý cân nặng:** form nhập số gram nhận cả dấu phẩy (`,`) lẫn dấu chấm (`.`) — gõ "79,4" hoặc "79.4" đều được.
+5. **Không thấy món?** Bấm thêm món mới và chọn cách nhập dinh dưỡng:
+   - **Theo 100g** (như nhãn thực phẩm in "/100g"): gõ số trên nhãn, điền khẩu phần
+     của bạn (vd 250g) — app hiện ngay "≈ 1 khẩu phần: … kcal" và tự tính khi ghi món.
+   - **Theo 1 khẩu phần** (vd 1 tô phở 350g = 450 kcal): gõ tổng của cả khẩu phần;
+     app tự quy về /100g để lưu.
+   Bấm qua lại giữa hai chế độ, số đã gõ được **tự quy đổi** chứ không bị xoá.
 
 **🔥 Xả** — ghi lại việc bạn tập/di chuyển:
 - Chọn nhóm (Cardio / Thể thao / Gym / Khác), chọn môn cụ thể (đi bộ, chạy,
@@ -169,6 +175,36 @@ Tab này trả lời câu "mấy hôm nay mình sống thế nào":
   dùng màu xanh dương (Dinh dưỡng) và cam (Năng lượng) để khớp với biểu đồ.
   Bấm vào một thẻ để xem chi tiết từng món đã ăn hôm đó — kể cả **thêm hoặc xoá
   món cho một ngày đã qua** nếu bạn quên ghi lúc đó.
+
+## 4b. Tab 🏋️ Tập luyện — Sổ tập luyện
+
+Tab này có hai chế độ ở đầu trang: **📓 Sổ tập** (mở sẵn) và **📋 Kế hoạch block** (lập kế hoạch nhiều tuần
+cho powerlifting).
+
+**Sổ tập** là cuốn nhật ký bài tập của bạn, viết theo kiểu ghi chú trên iPhone. Bạn **không nhập hai lần**:
+cứ ghi buổi tập ở **🔥 Xả** như thường (bài Squat/Bench/Deadlift, ô "Thêm biến thể" cho Pause, Incline…),
+buổi đó tự hiện trong sổ, ví dụ:
+
+`26.08(77.7kg): S 130 4x3x115+3x100 PD 4x3x100`
+
+- **Đọc ký hiệu:** `90` = một set 1 rep · `3x100` = 3 rep, 100 kg · `5x5x72.5` = 5 set × 5 rep × 72,5 kg ·
+  `6x4(+3)x75` = 6 set × 4 rep, set cuối làm thêm 3 rep · `110x(4+5+5+4+8)` = các set rep khác nhau.
+  `S B D` = Squat / Bench / Deadlift; `PS PD` = Pause; `iC` = Incline; `LG` = grip hẹp. Số thập phân ghi
+  bằng dấu chấm; khi gõ bằng bàn phím điện thoại, dấu phẩy (`72,5`) vẫn được nhận.
+- **Bấm block** → hiện các tuần; **bấm tuần** → hiện các ngày. Chỉ block và tuần mới nhất mở sẵn.
+  **Nhấn giữ** tên block để đặt tên riêng (vd. "Block2 Accumulation"); nhấn giữ tuần (hoặc nút
+  **✎ Ghi chú tuần**) để ghi chú tuần ("nghỉ lễ", "ngủ ít"…).
+- **Sửa dòng:** bấm vào một dòng ngày. Bạn viết đè cả dòng (thêm `(95 ❌)`, `(rpe9.2)`, `(test)`…) và ghi chú
+  dưới ngày. **Sửa chữ chỉ đổi chữ trong sổ, không đổi kcal hay pin.** Muốn đổi số liệu buổi tập, bấm
+  **Sửa số liệu** trong cùng cửa sổ (pin của ngày đó được tính lại). Nếu sau khi bạn sửa tay mà buổi tập của
+  ngày đó lại đổi, app hỏi bạn: **Dùng dòng tự động / Giữ dòng của tôi / Gộp** — không bao giờ tự xoá chữ của
+  bạn.
+- **Quên Xả?** Bấm **＋ Ghi buổi**, chọn ngày (gõ `12.09`, hoặc `12.09.2025` cho năm khác), gõ nội dung như
+  trong Notes. Nút **📋 Chép buổi gần nhất** điền sẵn buổi trước để bạn chỉ sửa số. Dòng ghi tay chỉ lưu trong
+  sổ, **không tính vào pin năng lượng**.
+- **⚙︎** đổi cách sổ viết (viết tắt hay tên đầy đủ, dấu chấm/dấu phẩy, hiện set khởi động, kg, cân nặng, thứ
+  trong tuần, kcal) và đổi chữ viết tắt từng bài. **📄 Trang / Chia sẻ** (trong mỗi block đang mở) gộp cả block
+  thành một trang chữ để chia sẻ hoặc dán sang Ghi chú.
 
 ## 5. Tab 📔 Nhật ký — góc riêng tư
 
