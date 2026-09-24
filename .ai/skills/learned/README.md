@@ -4,7 +4,7 @@ Thư mục này chứa các "bài học" mà AI ghi lại khi gặp **lỗi/khó
 
 ## Khi nào tạo file mới ở đây
 - Một bug mất > 2 lần thử mới sửa được.
-- Một "cái bẫy" của Expo SDK 54 / React Native / SQLite mà dễ tái phạm.
+- Một "cái bẫy" của Expo SDK 57 / React Native / SQLite mà dễ tái phạm.
 - Một quyết định kỹ thuật đã cân nhắc kỹ và không muốn bàn lại từ đầu.
 
 ## Mẫu 1 file (1 bài học = 1 file `kebab-case.md`)

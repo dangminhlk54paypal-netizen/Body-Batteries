@@ -85,3 +85,23 @@ Go builds, so staying on Expo Go left no choice but to move the project.)
   but this is the thing to verify first if/when a development-client build
   (`expo-dev-client`, already installed) is made to test real HealthKit sync
   on-device.
+
+# Testing on the phone: EAS Update (TEMPORARY — solo-developer phase)
+
+While the project has a single developer (since 2026-09-24), every change
+that affects what runs on the device ends with a cloud publish so the owner
+can try it on their iPhone via Expo Go — no Mac dev server needed:
+
+1. Finish the change and get `npm run verify` fully green.
+2. Run `.ai/skills/eas-preview-publish.md`: publish to the **`preview`**
+   branch (`npx eas-cli update --branch preview --environment preview
+   --non-interactive --message "…"`) and send the owner the
+   `https://u.expo.dev/update/<group-id>` link plus a concrete test checklist.
+   This is pre-approved for `preview` only — ask before any other branch.
+3. Skip it for docs/test-only changes; for new native modules say a dev-client
+   build is needed instead. If the working tree mixes in another session's
+   unfinished work, publish from an isolated copy (see the skill) — never
+   `git stash`/`reset` the shared tree.
+
+This rule is temporary: once a second person joins the team, stop
+auto-publishing and follow "Khi team có thêm người" in the skill.
