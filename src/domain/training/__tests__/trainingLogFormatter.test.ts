@@ -7,6 +7,7 @@ import {
   normalizeDecimalCommas,
   normalizeManualBody,
   abbreviationKeyOf,
+  formatWeekHeading,
 } from '../trainingLogFormatter';
 import { translate } from '../../../i18n/translate';
 import { weekdayLabel } from '../../../lib/dateUtils';
@@ -391,5 +392,22 @@ describe('normalizeDecimalCommas / normalizeManualBody', () => {
   it("only rewrites when the user displays dots (decimal: 'dot')", () => {
     expect(normalizeManualBody('S 72,5', FMT)).toBe('S 72.5');
     expect(normalizeManualBody('S 72,5', fmt({ decimal: 'locale' }))).toBe('S 72,5');
+  });
+});
+
+describe('formatWeekHeading — which block/week, its dates, its weight', () => {
+  const week = { weekStart: '2026-09-07', weekEnd: '2026-09-13', weekNumber: 1, sessions: 3, dates: [] };
+  const block = { kind: 'block' as const, blockNumber: 2 };
+
+  it('block week: "B2W1: 07.09–13.09 76.3kg"', () => {
+    expect(formatWeekHeading(week, block, 76.3, FMT, 'vi')).toBe('B2W1: 07.09–13.09 76.3kg');
+    expect(formatWeekHeading(week, block, null, FMT, 'vi')).toBe('B2W1: 07.09–13.09');
+    expect(formatWeekHeading(week, block, 76.3, fmt({ showBodyWeight: false }), 'vi')).toBe('B2W1: 07.09–13.09');
+  });
+
+  it('deload week and a free week', () => {
+    expect(formatWeekHeading({ ...week, isDeload: true }, block, null, FMT, 'vi')).toBe('B2 DELOAD: 07.09–13.09');
+    expect(formatWeekHeading(week, { kind: 'free' }, 76.3, FMT, 'vi')).toBe('07.09–13.09 76.3kg');
+    expect(formatWeekHeading(week, block, null, FMT, 'en')).toBe('B2W1: 09/07–09/13');
   });
 });

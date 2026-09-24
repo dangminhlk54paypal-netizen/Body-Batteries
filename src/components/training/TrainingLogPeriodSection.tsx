@@ -78,7 +78,7 @@ function TrainingLogPeriodBody({ period, format, isLatest, actions }: Props) {
         <TrainingLogWeekSection
           key={week.weekStart}
           week={week}
-          kind={period.kind}
+          period={period}
           weights={weights}
           format={format}
           defaultExpanded={isLatest && i === lastIndex}

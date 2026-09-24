@@ -138,6 +138,45 @@ Kcal vẫn tính theo tạ × rep thật từng session.
 **i18n:** đã phủ vi/en/de (namespace `trainingLog`, `components.powerliftingSheet.*`). Viết tắt là ký hiệu
 quốc tế nên giống nhau ở cả 3 ngôn ngữ nhưng vẫn nằm trong file locale.
 
+### Bổ sung Session 34 (2026-09-24): tiêu đề tuần đầy đủ, biểu đồ tiến độ, sửa ngược từ 📄 Trang
+
+**Tiêu đề tuần** (`formatWeekHeading(week, period, …)`): tuần trong block ghi `B2W1: 07.09–13.09 76.3kg`
+(số block + số tuần, khoảng ngày, lần cân đầu tiên của tuần), deload `B2 DELOAD: …`; tuần tập tự do vẫn là
+`07.09–13.09 76.3kg` (không có block nên không có `B…W…`). Trang 📄 dùng cùng tiêu đề.
+
+**Bộ đọc ngược ký hiệu** — `trainingLogParser.ts` (`parseDayBody`, `parseSetChain`, `buildLabelLookup`): đọc
+dòng ngày thành bài + set theo đúng ngữ pháp trên. Nhãn tra theo thứ tự: nhãn của chính các buổi Xả hôm đó
+(nên biến thể tự đặt tên vẫn nhận ra), viết tắt người dùng đè, viết tắt mặc định, tên đầy đủ; không phân biệt
+hoa/thường (`pS` = `PS`). Ngoặc không phải ký hiệu (`(95 ❌)`, `(rpe9.2)`, `(test)`) và chữ gạch ngang/❌ là
+**ghi chú của người dùng**, không bao giờ thành set. Phần đọc không được thì báo lại, không đoán.
+Lưu ý: phiên song song (Kế hoạch block, Session 33) có `setNotation.ts` đọc cùng ký hiệu cho ô kế hoạch
+(dễ dãi hơn: `5x5@72.5`, `(4x2+5)x90`). Hai bộ đọc nên gộp làm một khi cả hai đã commit.
+
+**📈 Biểu đồ tiến độ** (`TrainingProgressChart`, dữ liệu `trainingLogProgress.buildLiftProgress`), ngay dưới
+sổ: mỗi tuần (26 tuần gần nhất) một điểm = **set làm việc nặng nhất** của S/B/D **bài chuẩn** (biến thể như
+Pause bị bỏ để ngày tập kỹ thuật không trông như tụt sức). Nút chuyển **kg** / **× cân nặng** (một trục mỗi
+lần, không vẽ hai trục). Cân nặng của tuần = lần cân đầu tiên trong tuần, không có thì lần gần nhất trước đó,
+không có nữa thì cân nặng hồ sơ. Ngày có dòng ghi tay/sửa tay thì **dòng đó thắng** (đọc bằng parser), nên buổi
+quên Xả vẫn lên biểu đồ. Chạm biểu đồ để xem từng tuần (tên `B2W3`, kg, tỉ lệ, cao nhất đến tuần đó). Màu
+S/B/D: token `liftSquat/liftBench/liftDeadlift` trong `theme.ts` (đã chạy kiểm tra mù màu; luôn kèm nhãn chữ).
+
+**Sửa ngược từ 📄 Trang** — ngoại lệ có kiểm soát của nguyên tắc 2 ("sửa chữ ≠ sửa số liệu"). Trong Trang,
+nút **✎ Sửa trang** biến cả kỳ thành một ô chữ. Luồng 2 bước, **không có gì chạm pin trước khi người dùng xem**:
+```
+chữ đã sửa ─→ parsePageText (thuần: so với PeriodPage của buildPeriodPage → DayEdit / ghi chú tuần / tên block)
+           ─→ planPageEdit (service: tải buổi Xả + bản ghi sổ từng ngày → planDaySync) ─→ màn "Xem thay đổi"
+           ─→ applyPageEdit ─→ energyStore.updateActivityForPastDate (tính lại kcal & pin) + trainingLogStore.writeNotebook
+           ─→ màn "Đã cập nhật": từng mục ghi rõ vào đâu (Buổi Xả / Chữ trong sổ / Dòng ghi tay / Ghi chú…),
+              trước → sau, kcal buổi tập trước → sau, và lý do nếu không áp dụng.
+```
+`planDaySync` (`trainingLogDaySync.ts`) bảo thủ: bài viết y như cũ giữ nguyên session (khởi động, phút, dữ
+liệu bodybuilding); bài đổi số thì dựng lại set (giữ set khởi động cũ); bài bị xoá khỏi dòng thì bỏ khỏi entry.
+**Không áp dụng vào Xả** (chỉ lưu chữ, có ghi lý do) khi: có phần không đọc được; sửa sẽ làm rỗng cả một entry
+(đó là xoá, phải làm ở Lịch sử); dòng của ngày có Xả bị xoá/để trống (buổi Xả giữ nguyên). Ngày không có Xả →
+dòng ghi tay như cũ (không tạo `activity_log`). Cân nặng trong `(77.7kg)` không sửa từ trang. Dòng có ghi chú
+kiểu `(95 ❌)` vẫn cập nhật Xả, chữ của người dùng được giữ làm dòng của ngày và gắn chữ ký của buổi **mới**
+(không bật banner xung đột). Service nhận các hàm ghi qua tham số (`PageEditWriters`), nên test không cần store.
+
 **Bẫy đã gặp:** (a) `act(() => onPress())` trong test — nếu `onPress` trả Promise thì `act` thành bất đồng
 bộ và làm test sau render rỗng; bọc `{ }`. (b) `PastDateField` chỉ ghi ngày khi ô mất focus và bàn phím
 `decimal-pad` không có `/` → trình soạn thảo dùng ô ngày riêng (`parseDayMonthInput`). (c) Hai `<Modal>` lồng

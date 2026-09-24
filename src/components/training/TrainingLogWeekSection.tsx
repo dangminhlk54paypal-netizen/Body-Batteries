@@ -18,6 +18,7 @@ import type { ActivityLogEntry } from '../../types/energy';
 import type {
   TrainingLogDayRecord,
   TrainingLogFormat,
+  TrainingLogPeriod,
   TrainingLogWeek,
 } from '../../types/trainingLog';
 import type { ThemeColors } from '../../lib/theme';
@@ -26,7 +27,7 @@ import { useT } from '../../i18n/useT';
 
 interface Props {
   week: TrainingLogWeek;
-  kind: 'block' | 'free';
+  period: TrainingLogPeriod;
   weights: WeightPoint[]; // manual weigh-ins of the whole period
   format: TrainingLogFormat;
   defaultExpanded: boolean;
@@ -39,13 +40,13 @@ function getTodayString(): string {
   return todayString();
 }
 
-// "W4: 77.5kg" / "DELOAD:" inside a block; "07.09–13.09" for a free week.
-export function TrainingLogWeekSection({ week, kind, weights, format, defaultExpanded, actions }: Props) {
+// "B2W4: 07.09–13.09 77.5kg" inside a block; "07.09–13.09 77.5kg" for a free week.
+export function TrainingLogWeekSection({ week, period, weights, format, defaultExpanded, actions }: Props) {
   const { language } = useT();
 
   const weight = firstWeightInRange(week.weekStart, week.weekEnd, weights);
-  const label = formatWeekLabel(week, kind, language);
-  const title = formatWeekHeading(week, kind, weight, format, language);
+  const label = formatWeekLabel(week, period, language);
+  const title = formatWeekHeading(week, period, weight, format, language);
 
   return (
     <TrainingNotebookSection

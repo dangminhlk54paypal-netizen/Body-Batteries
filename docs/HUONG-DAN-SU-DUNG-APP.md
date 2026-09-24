@@ -205,6 +205,25 @@ buổi đó tự hiện trong sổ, ví dụ:
 - **⚙︎** đổi cách sổ viết (viết tắt hay tên đầy đủ, dấu chấm/dấu phẩy, hiện set khởi động, kg, cân nặng, thứ
   trong tuần, kcal) và đổi chữ viết tắt từng bài. **📄 Trang / Chia sẻ** (trong mỗi block đang mở) gộp cả block
   thành một trang chữ để chia sẻ hoặc dán sang Ghi chú.
+- **Tiêu đề tuần** cho biết ngay tuần đó là tuần nào: `B2W1: 07.09–13.09 76.3kg` = Block 2, tuần 1, từ ngày
+  đến ngày, cân nặng lần cân đầu tiên trong tuần. Tuần tập tự do (ngoài block) chỉ có ngày và cân nặng.
+- **Sửa ngược từ Trang:** trong 📄 Trang, bấm **✎ Sửa trang**, sửa thẳng trên chữ (ví dụ đổi `S 130` thành
+  `S 132.5`, thêm bài bị thiếu, sửa ghi chú). Bấm **Xem thay đổi**: app liệt kê từng mục sẽ cập nhật và cập nhật
+  thế nào (buổi Xả được tính lại kcal & pin, hay chỉ đổi chữ trong sổ). Bấm **Áp dụng**, app báo lại đã cập nhật
+  mục nào, trước → sau, kcal buổi tập trước → sau. App **không xoá buổi Xả** từ Trang, không đổi cân nặng từ
+  Trang, và nếu có chỗ nó không hiểu thì chỉ lưu chữ và nói rõ lý do.
+- **📈 Tiến độ sức mạnh** (ngay dưới sổ): mỗi tuần một điểm là mức tạ nặng nhất bạn làm ở Squat / Bench /
+  Deadlift (bài chuẩn). Nút **kg** / **× cân nặng** đổi sang tỉ lệ so với cân nặng tuần đó. Chạm vào biểu đồ để
+  xem số của từng tuần. Buổi bạn ghi tay trong sổ cũng được tính.
+
+**Kế hoạch block — sửa theo ý bạn.** Kế hoạch app lập chỉ là gợi ý. Trong chế độ **📋 Kế hoạch block**:
+- Mỗi bài có dòng **Kế hoạch** (kế hoạch thật của bạn) và bên dưới là **Gợi ý của app** kèm RPE ở set cuối; bấm ⓘ
+  **Cách app tính** để xem phép tính. Bấm **✎ Sửa** để gõ kế hoạch của bạn theo kiểu Notes (`110x1 5x5x95`,
+  `6x4(+3)x75`…); app hiện lại từng set nó hiểu trước khi lưu. **Khôi phục gợi ý của app** để quay lại.
+- Mỗi tuần có nút **✎ Ngày**: nhập tuần đó từ ngày nào đến ngày nào (vd. lùi một tuần vì đi nghỉ). Các tuần sau tự dời
+  theo; mỗi buổi hiện kèm ngày thật.
+- Gợi ý mới tính theo **số set × số rep × RPE mục tiêu**, có tính độ mỏi qua các set, và bài phụ nhẹ hơn bài chính.
+  Block tạo trước đó sẽ có nút **Cập nhật gợi ý**, bài bạn đã sửa vẫn giữ nguyên.
 
 ## 5. Tab 📔 Nhật ký — góc riêng tư
 

@@ -1991,6 +1991,85 @@ pin no/đói đầy 100% dù bữa cuối đã cách 3–4 giờ). Đây là l�
 
 ---
 
+## Session 33 — 2026-09-24 (Kế hoạch block: sửa theo ý người dùng + số liệu thực tế hơn)
+
+**Làm gì:** Xử lý 3 phản hồi của người dùng về chế độ 📋 Kế hoạch block: (1) sửa kế hoạch thật ngay trong app, gợi ý +
+cách tính của app vẫn hiện bên cạnh; (2) nhập ngày cụ thể cho một tuần, các tuần sau tự dời theo; (3) số liệu
+"4 set × 7 rep × 73% 1RM" phi thực tế trong buổi nặng, và Volume phải thiên về tăng cơ/sức bền (tăng volume).
+(Mục "2." trong phản hồi bị trống — chưa xử lý.)
+
+**Kết quả:**
+- **Engine** (`blockEngine.ts`): thay bảng %1RM cố định bằng **set × rep × RPE set cuối** → %1RM = nghịch đảo Epley của
+  (rep + RIR + mệt tích luỹ 0,15×rep/set). Volume: 4×10 RPE 6,5 (~63%) → 6×8 RPE 7,5 (~65%), thêm set qua các tuần.
+  **Sửa bug:** `role: 'secondary'` trước đây bị bỏ qua (bài phụ nhận nguyên khối lượng bài chính) → nay bớt 1 set, RPE −1,
+  +1,5 RIR. Mỗi gợi ý lưu `reference` (phép tính) cạnh `sets` (kế hoạch).
+- **Sửa kế hoạch** (`blockPlanEdits.ts`, `BlockVariationEditSheet`): gõ ký hiệu Notes, bộ đọc `setNotation.ts` (có xem trước,
+  báo phần không hiểu), khôi phục gợi ý, kcal tính lại. Block cũ có nút "Cập nhật gợi ý" (giữ phần người dùng đã sửa và ngày).
+- **Ngày tuần** (`setWeekDates`, `BlockWeekDatesSheet`): từ–đến (1–14 ngày), tuần sau nối tiếp giữ độ dài, không chồng
+  tuần trước; mỗi buổi hiện ngày thật; wizard liệt kê ngày từng tuần; ô ngày đoán năm gần nhất (`parseDayMonthNear`).
+- Bản in Excel in đúng kế hoạch người dùng bằng ký hiệu (`110 5x5x95 (~92%)`).
+- i18n vi/en/de đủ. Test **967/967**, tsc + eslint sạch. Docs: `docs/08-powerlifting-engine.md` (2.1 cập nhật, mục 10 mới),
+  hai hướng dẫn người dùng.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Chạy song song với **một phiên khác** đang làm Sổ tập trong cùng thư mục (`trainingLogParser.ts`, `trainingLogDaySync.ts`,
+  `trainingLogPageEdit.ts`, sửa `trainingLogFormatter`/`trainingLogPage`/`TrainingLog*Section`). Không đụng các file đó;
+  verify xanh với cả hai. Hai bộ đọc ký hiệu tồn tại song song (`setNotation.ts` chỉ đọc chuỗi set cho kế hoạch;
+  `trainingLogParser.ts` của phiên kia đọc cả dòng ngày) — nên gộp khi phiên kia xong.
+- `110x1` (tạ×rep, kiểu file Excel) vs `3x100` (rep×tạ, kiểu sổ): quy ước số nhỏ hơn là rep; giới hạn đã ghi trong code.
+- Test render màn Kế hoạch cần mock `CollapsibleSection` (reanimated chỉ chạy native).
+
+**EAS Update (2026-09-24):** nhánh `preview`, runtime `exposdk:57.0.0`, update group
+`e18cb06d-4c49-4e91-b161-e5ebd8dd3780`, publish từ **bản cô lập** (HEAD `94d1cd0` + 17 file của session này + chỉ các
+hunk `cellLine`/`blockBuilder.summaryWeekDates*`/`planAppendix.*` của 3 file ngôn ngữ; KHÔNG chứa việc Session 34).
+Trên bản cô lập `npm run verify` xanh (967/967 + tsc + eslint). Lệnh `EAS_NO_VCS=1 npx eas-cli update …`.
+Chưa có xác nhận test máy thật.
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: sửa một bài (gõ `110x1 5x5x95`), đổi ngày tuần 2, bấm "Cập nhật gợi ý" với block đang có.
+2. Hỏi lại mục "2." của phản hồi (bị trống).
+3. Gộp `setNotation.ts` với `trainingLogParser.ts` của phiên kia khi nó xong.
+4. **Chưa commit** — chỉ `git add` đúng file của session này (cây còn thay đổi của phiên khác; không `git add -A`).
+
+---
+
+## Session 34 — 2026-09-24 (Sổ tập: tiêu đề tuần B2W1, biểu đồ tiến độ, sửa ngược từ 📄 Trang)
+
+**Làm gì:** 3 yêu cầu của người dùng về Sổ tập luyện: (1) tiêu đề tuần dạng `B2W1: 07.09–13.09 76.3kg`; (2) biểu đồ
+kg nâng được theo thời gian + tỉ lệ so với cân nặng, ngay dưới sổ; (3) sửa được trong 📄 Trang / Chia sẻ, app
+chỉnh ngược lại buổi Xả trước đó (tính lại số liệu) và báo trên màn hình đã cập nhật mục nào, như thế nào.
+
+**Kết quả:**
+- `formatWeekLabel/formatWeekHeading` nhận `period` (số block): `B2W1: 07.09–13.09 76.3kg`, `B2 DELOAD: …`; tuần tự do
+  giữ `07.09–13.09 76.3kg`. Locale `weekLabel` = `B{{b}}W{{n}}`, `deloadLabel` = `B{{b}} DELOAD`.
+- `trainingLogParser.ts` (đọc ngược ký hiệu, nhãn, ghi chú `(95 ❌)`), `trainingLogDaySync.ts` (kế hoạch áp vào Xả, bảo thủ),
+  `trainingLogPageEdit.ts` (đọc trang đã sửa, so với `PeriodPage` mới của `buildPeriodPage`),
+  `services/training/trainingLogPageSync.ts` (xem trước → áp dụng → báo cáo, kcal trước → sau),
+  `trainingLogStore.writeNotebook` (ghi nhiều bản ghi, 1 lần tải lại). `TrainingLogPageSheet`: xem / sửa / xem thay đổi / đã cập nhật.
+- `trainingLogProgress.ts` + `TrainingProgressChart` (26 tuần, S/B/D bài chuẩn, kg ↔ × cân nặng, chạm để xem tuần).
+  Màu `liftSquat/liftBench/liftDeadlift` trong `theme.ts` (đã chạy kiểm tra bảng màu mù màu).
+- i18n vi/en/de đủ (`trainingLog.progress.*`, `trainingLog.pageEdit.*`). Test mới: parser 19, daySync 11, pageEdit 6,
+  progress 3, service 6, heading 2. `npm run verify` xanh: 77 suite / 1014 test. Docs: `03-architecture.md` (mục bổ sung
+  Session 34), hai hướng dẫn người dùng.
+- **EAS Update:** nhánh `preview`, runtime `exposdk:57.0.0`, update group `4a6a467c-02a0-49ee-85e7-3d85c5e3ff71`, publish từ
+  **bản cô lập** (HEAD + đúng file/hunk của session này, KHÔNG gồm thay đổi Kế hoạch block của Session 33); trong bản cô lập
+  `npm run verify` xanh toàn bộ 74 suite / 956 test. **Chưa có xác nhận test máy thật.**
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Chạy song song với phiên Session 33 (Kế hoạch block) trong cùng thư mục: chỉ sửa bằng thay thế từng chỗ, kiểm tra 3 file
+  locale còn đủ key của cả hai phiên. Hai bộ đọc ký hiệu (`setNotation.ts` của phiên kia, `trainingLogParser.ts` của
+  phiên này) — chưa gộp để khỏi đụng code đang dở của phiên kia.
+- Sửa từ Trang có thể đổi pin nên làm 2 bước (xem trước rồi mới áp dụng); không bao giờ xoá buổi Xả hay đổi cân nặng từ
+  Trang; phần không đọc được → chỉ lưu chữ + ghi lý do.
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: tiêu đề `B…W…`; biểu đồ (đổi kg/× cân nặng, chạm tuần); Trang → ✎ Sửa trang → đổi một số
+   của buổi Xả → Xem thay đổi → Áp dụng → kiểm tra kcal ở Lịch sử và dòng trong sổ; thử thêm `(95 ❌)`; thử xoá một dòng Xả.
+2. Gộp `setNotation.ts` và `trainingLogParser.ts` (một ngữ pháp, một bộ đọc) khi cả hai đã commit.
+3. **Chưa commit** — chỉ `git add` đúng file của session này (không `git add -A`).
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

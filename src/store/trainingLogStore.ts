@@ -51,6 +51,13 @@ interface TrainingLogState {
   // Drops the day's whole log record (line + note). Auto lines from Xả return.
   deleteDay: (date: string) => Promise<void>;
   saveWeekNote: (weekStart: string, note: string) => Promise<void>;
+  // Many day/week records in one go (the 📄 page editor), then ONE reload.
+  // Records are written as given (the caller already normalized them).
+  writeNotebook: (input: {
+    days: Omit<TrainingLogDayRecord, 'updatedAt'>[];
+    deleteDates: string[];
+    weeks: { weekStart: string; note: string }[];
+  }) => Promise<void>;
   // Body of the closest earlier day that has content (a hand-written/edited
   // line, or a Xả session), for the editor's "copy latest session".
   findPreviousDayBody: (beforeDate: string) => Promise<string | null>;
@@ -143,6 +150,14 @@ export const useTrainingLogStore = create<TrainingLogState>((set, get) => {
 
     saveWeekNote: async (weekStart, note) => {
       await upsertTrainingLogWeek({ weekStart, note, updatedAt: Date.now() });
+      await get().loadIndex();
+    },
+
+    writeNotebook: async ({ days, deleteDates, weeks }) => {
+      const now = Date.now();
+      for (const d of days) await upsertTrainingLogDay({ ...d, updatedAt: now });
+      for (const date of deleteDates) await deleteTrainingLogDay(date);
+      for (const w of weeks) await upsertTrainingLogWeek({ weekStart: w.weekStart, note: w.note, updatedAt: now });
       await get().loadIndex();
     },
 

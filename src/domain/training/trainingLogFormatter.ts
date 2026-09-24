@@ -200,32 +200,42 @@ export function formatBodyWeight(kg: number, format: TrainingLogFormat, language
   return t(language, 'trainingLog.format.weightPlain', { kg: formatNumber(kg, format, language) });
 }
 
-// A week's label: "W4" / "DELOAD" inside a block, "07.09–13.09" for a free week.
+// A week's label: "B2W4" / "B2 DELOAD" inside a block (block number + week, so
+// the week reads on its own), "07.09–13.09" for a free week.
 export function formatWeekLabel(
   week: TrainingLogWeek,
-  kind: 'block' | 'free',
+  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
   language: Language
 ): string {
-  if (kind === 'block') {
+  if (period.kind === 'block') {
+    const b = period.blockNumber ?? 0;
     return week.isDeload
-      ? t(language, 'trainingLog.deloadLabel')
-      : t(language, 'trainingLog.weekLabel', { n: week.weekNumber ?? 0 });
+      ? t(language, 'trainingLog.deloadLabel', { b })
+      : t(language, 'trainingLog.weekLabel', { b, n: week.weekNumber ?? 0 });
   }
+  return formatWeekRange(week, language);
+}
+
+// "07.09–13.09" (vi/de) / "09/07–09/13" (en).
+export function formatWeekRange(week: TrainingLogWeek, language: Language): string {
   return `${formatDayDate(week.weekStart, language)}–${formatDayDate(week.weekEnd, language)}`;
 }
 
-// The week heading as the notebook writes it: "W4: 77.5kg" (Notes puts a colon
-// after a block week's label; a date range has none). The weight is only there
-// when the user weighed in that week and `showBodyWeight` is on.
+// The week heading: "B2W1: 07.09–13.09 76.3kg" inside a block — which block
+// and week, its dates, and the week's first weigh-in — or "07.09–13.09 76.3kg"
+// for a free week. The weight is only there when the user weighed in that
+// week and `showBodyWeight` is on.
 export function formatWeekHeading(
   week: TrainingLogWeek,
-  kind: 'block' | 'free',
+  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
   weekWeightKg: number | null,
   format: TrainingLogFormat,
   language: Language
 ): string {
-  const label = formatWeekLabel(week, kind, language);
-  const heading = kind === 'block' ? `${label}:` : label;
+  const heading =
+    period.kind === 'block'
+      ? `${formatWeekLabel(week, period, language)}: ${formatWeekRange(week, language)}`
+      : formatWeekRange(week, language);
   return format.showBodyWeight && weekWeightKg != null
     ? `${heading} ${formatBodyWeight(weekWeightKg, format, language)}`
     : heading;

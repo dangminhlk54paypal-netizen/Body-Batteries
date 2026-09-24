@@ -217,6 +217,28 @@ hinzufügen“ für Pause, Schrägbank …). Die Einheit erscheint automatisch i
 - **⚙︎** ändert die Schreibweise (abgekürzt oder ausgeschrieben, Punkt/Komma, Aufwärmsätze, kg, Körpergewicht,
   Wochentag, kcal) und die Abkürzung jeder Übung. **📄 Seite / Teilen** (in jedem geöffneten Block) fasst den
   ganzen Block als Text zusammen zum Teilen oder Einfügen in Notizen.
+- **Wochenüberschrift** zeigt sofort, welche Woche es ist: `B2W1: 07.09–13.09 76.3kg` = Block 2, Woche 1,
+  Zeitraum, erstes Wiegen der Woche. Wochen mit freiem Training (außerhalb eines Blocks) zeigen nur Zeitraum
+  und Gewicht.
+- **Von der Seite aus korrigieren:** In 📄 Seite auf **✎ Seite bearbeiten** tippen und direkt im Text
+  korrigieren (z. B. `S 130` → `S 132.5`, fehlende Übung ergänzen, Notiz ändern). **Änderungen prüfen** listet
+  jeden Punkt und wie er übernommen wird (Xả-Einheit mit neu berechneten kcal & Batterien, oder nur Text im
+  Tagebuch). Nach **Übernehmen** zeigt die App, was wo geändert wurde, vorher → nachher und die Trainings-kcal
+  vorher → nachher. Xả-Einheiten und das Körpergewicht werden von der Seite aus nie gelöscht bzw. geändert; was
+  die App nicht versteht, speichert sie nur als Text und sagt warum.
+- **📈 Kraftentwicklung** (direkt unter dem Tagebuch): pro Woche der schwerste Satz in Kniebeuge / Bankdrücken /
+  Kreuzheben (Wettkampfform). **kg** / **× Körpergewicht** wechselt zum Verhältnis zum Körpergewicht dieser
+  Woche. Auf das Diagramm tippen, um eine Woche anzusehen. Handschriftliche Einträge zählen mit.
+
+**Blockplan — nach Ihren Vorstellungen.** Der Plan der App ist nur ein Vorschlag. In **📋 Blockplan**:
+- Jede Übung zeigt **Plan** (Ihr tatsächlicher Plan) und darunter den **Vorschlag der App** mit RPE im letzten Satz;
+  ⓘ **So rechnet die App** zeigt die Rechnung. Mit **✎ Bearbeiten** tippen Sie Ihren Plan wie in Notizen
+  (`110x1 5x5x95`, `6x4(+3)x75` …); die App zeigt jeden gelesenen Satz vor dem Speichern.
+  **Vorschlag der App wiederherstellen** stellt ihn wieder her.
+- Jede Woche hat **✎ Datum**: von wann bis wann sie läuft (z. B. eine Woche später wegen Urlaub). Die folgenden
+  Wochen verschieben sich mit; jede Einheit zeigt ihr echtes Datum.
+- Vorschläge werden jetzt aus **Sätze × Wdh. × Ziel-RPE** berechnet, mit Ermüdung über die Sätze; Nebenübungen sind
+  leichter als die Hauptübung. Ältere Blöcke zeigen **Vorschläge aktualisieren**; Ihre eigenen Änderungen bleiben.
 
 ## 5. Reiter 📔 Tagebuch — privater Raum
 

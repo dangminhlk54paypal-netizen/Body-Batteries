@@ -83,11 +83,11 @@ describe('buildPeriodText — the notebook page as plain text', () => {
     expect(text).toBe(
       [
         'Block 1',
-        'W1:',
+        'B1W1: 27.07–02.08',
         '27.07: B 90 5x5x72.5 iC 5x5x62.5',
         '29.07: PS 110 5x5x85',
         '',
-        'W2:',
+        'B1W2: 03.08–09.08',
         '03.08: D 100 5x5x80',
       ].join('\n')
     );
@@ -121,12 +121,12 @@ describe('buildPeriodText — the notebook page as plain text', () => {
     expect(text).toBe(
       [
         'Block2 Accumulation',
-        'W1: 77.5kg',
+        'B1W1: 27.07–02.08 77.5kg',
         'ngủ ít',
         '27.07: B 90 (95 ❌) 5x5x72.5',
         'Cảm giác quá tải thần kinh',
         '',
-        'W2: 77kg',
+        'B1W2: 03.08–09.08 77kg',
         '03.08(77kg): D 100 5x5x80',
       ].join('\n')
     );
@@ -150,7 +150,7 @@ describe('buildPeriodText — the notebook page as plain text', () => {
     );
     expect(text.split('\n').slice(0, 5)).toEqual([
       'Block 1',
-      'W1:',
+      'B1W1: 27.07–02.08',
       '28.07: S 120 5x4x100 PD 4x3x80',
       '30.07:',
       'nghỉ ốm',
@@ -161,7 +161,7 @@ describe('buildPeriodText — the notebook page as plain text', () => {
     const text = buildPeriodText(base(period({ trainingDays: [{ date: '2026-07-27', sessions: 1 }] }), {
       entries: [entry('2026-07-27', [dl(100, 80)])],
     }));
-    expect(text.endsWith('W2:\n—')).toBe(true);
+    expect(text.endsWith('B1W2: 03.08–09.08\n—')).toBe(true);
   });
 
   it('follows the format options (full names, decimal style, kg)', () => {
@@ -182,7 +182,7 @@ describe('buildPeriodText — the notebook page as plain text', () => {
     const text = buildPeriodText(base(free, { entries: [entry('2026-06-17', [dl(120, 100)])] }));
     const [title, weekLine, dayLine] = text.split('\n');
     expect(title).toMatch(/^Tập tự do · /);
-    expect(weekLine).toBe('15.06–21.06'); // no colon: a date range, not "W1:"
+    expect(weekLine).toBe('15.06–21.06'); // no colon: a date range, not "B1W1: …"
     expect(dayLine).toBe('17.06: D 120 5x5x100');
   });
 

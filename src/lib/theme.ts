@@ -63,6 +63,12 @@ export const darkColors = {
   mealBreakfast: '#FFB347', // per-meal-type indicator color (Settings meal windows)
   trendNutrition: '#54A0FF', // blue — nutrition line/badge (đối lập với amber)
   trendEnergy: '#FFB020', // amber — energy line/badge
+  // Strength-progress chart series (squat / bench / deadlift) — categorical
+  // slots 1–3 of the dataviz reference palette, stepped for the dark card,
+  // validated for colour-blind separation (always shown with S/B/D labels).
+  liftSquat: '#3987e5',
+  liftBench: '#d95926',
+  liftDeadlift: '#199e70',
 
   // ── Semantic status ──────────────────────────────────────────────────────
   danger: '#FF6B6B', // soft/warm — deletions, over-burn move action
@@ -132,6 +138,9 @@ export const lightColors: ThemeColors = {
   mealBreakfast: '#FFB347',
   trendNutrition: '#2E7FE0', // darker blue for legibility on white
   trendEnergy: '#D98A00', // darker amber for legibility on white
+  liftSquat: '#2a78d6',
+  liftBench: '#eb6834',
+  liftDeadlift: '#1baf7a',
 
   // ── Semantic status ──────────────────────────────────────────────────────
   danger: '#FF6B6B',

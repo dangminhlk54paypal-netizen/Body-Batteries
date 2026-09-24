@@ -6,6 +6,7 @@ import { TrainingLogLineEditor } from './TrainingLogLineEditor';
 import { TrainingLogTextSheet } from './TrainingLogTextSheet';
 import { TrainingLogFormatSheet } from './TrainingLogFormatSheet';
 import { TrainingLogPageSheet } from './TrainingLogPageSheet';
+import { TrainingProgressChart } from './TrainingProgressChart';
 import { PowerliftingSheet } from '../PowerliftingSheet';
 import { BodybuildingSheet } from '../BodybuildingSheet';
 import type { TrainingLogActions } from './trainingLogActions';
@@ -187,6 +188,9 @@ export function TrainingLogView() {
             ))}
           </View>
         )}
+
+        {/* Right under the notebook: weekly top sets + ratio to body weight. */}
+        {periods.length > 0 && <TrainingProgressChart format={format} />}
       </ScrollView>
 
       {editor && (
@@ -242,7 +246,9 @@ export function TrainingLogView() {
         <TrainingLogPageSheet
           key={`page-${page.key}`}
           visible={page.visible}
-          period={page.period}
+          // The live copy: an edit made from the page can rename the block or
+          // add days, and the page should show the index as it is now.
+          period={periods.find((p) => p.key === page.period.key) ?? page.period}
           format={format}
           onClose={() => setPage((p) => (p ? { ...p, visible: false } : p))}
         />
