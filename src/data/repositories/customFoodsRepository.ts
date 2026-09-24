@@ -47,6 +47,24 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
   );
 }
 
+// Rewrites only the two stored name columns — used by the startup repair of
+// URL-encoded names (see loadCustomFoodsIntoRegistry). Deliberately not
+// addCustomFood: its INSERT OR REPLACE would reset created_at and reorder
+// the user's "Mine" list.
+export async function updateCustomFoodNames(
+  id: string,
+  nameVi: string,
+  nameEn: string
+): Promise<void> {
+  const db = getDb();
+  await db.runAsync(
+    'UPDATE custom_foods SET name_vi = ?, name_en = ? WHERE id = ?',
+    nameVi,
+    nameEn,
+    id
+  );
+}
+
 export async function getAllCustomFoods(): Promise<FoodItem[]> {
   const db = getDb();
   const rows = await db.getAllAsync<CustomFoodRow>(

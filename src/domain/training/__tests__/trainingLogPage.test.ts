@@ -127,7 +127,7 @@ describe('buildPeriodText — the notebook page as plain text', () => {
         'Cảm giác quá tải thần kinh',
         '',
         'B1W2: 03.08–09.08 77kg',
-        '03.08(77kg): D 100 5x5x80',
+        '03.08: D 100 5x5x80',
       ].join('\n')
     );
   });

@@ -3,6 +3,7 @@ import type { Language } from '../../i18n/types';
 import { LANGUAGES } from '../../i18n/types';
 import { useSettingsStore } from '../../store/settingsStore';
 import { addCustomFoodAndRegister } from '../../data/food/customFoodRegistry';
+import { decodePercentEncodedText } from '../../domain/food/foodNameText';
 
 // Free, no-signup translation API (5,000 words/day anonymous — plenty for
 // occasional custom-food saves). See the design discussion this opt-in
@@ -29,8 +30,18 @@ export async function translateText(
     const res = await fetch(url);
     if (!res.ok) return null;
     const json = await res.json();
+    // MyMemory reports quota/invalid-pair errors with HTTP 200 but a non-200
+    // responseStatus, putting the ERROR MESSAGE in translatedText ("MYMEMORY
+    // WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS…") — never save that
+    // as a food name.
+    const status = json?.responseStatus;
+    if (status !== undefined && Number(status) !== 200) return null;
     const translated = json?.responseData?.translatedText;
-    return typeof translated === 'string' && translated.trim() ? translated.trim() : null;
+    if (typeof translated !== 'string') return null;
+    // When it can't translate, MyMemory can echo the query back still
+    // URL-encoded ("Fischst%C3%A4bchen%20Berida") — decode before saving.
+    const cleaned = decodePercentEncodedText(translated.trim());
+    return cleaned ? cleaned : null;
   } catch {
     return null;
   }

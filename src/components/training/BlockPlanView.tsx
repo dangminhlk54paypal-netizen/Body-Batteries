@@ -121,14 +121,24 @@ export function BlockPlanView() {
       <View key={at.variationIndex} style={[styles.variationRow, at.variationIndex > 0 && styles.rowDivider]}>
         <View style={styles.variationHeaderRow}>
           <Text style={styles.variationLabel}>{label}</Text>
-          <InfoPopover title={label} body={t(`blockVariations.${variation.variation.variationId}.rationale`)} />
+          {/* One ⓘ holds everything secondary: what the variation is, the
+              app's suggestion, and how it was calculated. */}
+          <InfoPopover
+            title={label}
+            sections={[
+              { body: t(`blockVariations.${variation.variation.variationId}.rationale`) },
+              { body: refLine },
+              { heading: t('planAppendix.howCalcTitle'), body: explainReference(ref, t) },
+            ]}
+          />
           <Pressable
             hitSlop={8}
             accessibilityRole="button"
-            style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+            accessibilityLabel={t('planAppendix.editA11y', { label })}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
             onPress={() => setEditing((prev) => ({ key: (prev?.key ?? 0) + 1, visible: true, at }))}
           >
-            <Text style={styles.editBtnText}>{t('planAppendix.editButton')}</Text>
+            <Text style={styles.iconBtnText}>{t('planAppendix.editButton')}</Text>
           </Pressable>
         </View>
         {/* The plan — the user's own sets once edited, else the suggestion. */}
@@ -137,11 +147,6 @@ export function BlockPlanView() {
           {formatSetSequence(variation.sets, format, language)}
           {variation.userEdited ? <Text style={styles.editedBadge}>  {t('planAppendix.editedBadge')}</Text> : null}
         </Text>
-        {/* The info column: the app's suggestion and how it was calculated. */}
-        <View style={styles.variationHeaderRow}>
-          <Text style={styles.referenceLine}>{refLine}</Text>
-          <InfoPopover title={t('planAppendix.howCalcTitle')} body={explainReference(ref, t)} />
-        </View>
         <Text style={styles.variationKcal}>{t('planAppendix.kcalLine', { kcal: variation.estimatedKcal })}</Text>
       </View>
     );
@@ -219,7 +224,18 @@ export function BlockPlanView() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>{t('planAppendix.title')}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{t('planAppendix.title')}</Text>
+          {activeBlock && (
+            <InfoPopover
+              title={t('planAppendix.title')}
+              sections={[
+                { body: t('planAppendix.epocNote') },
+                ...(config?.deficitModeEnabled ? [{ body: t('planAppendix.proteinRecommendationNote') }] : []),
+              ]}
+            />
+          )}
+        </View>
 
         {!activeBlock ? (
           <View style={styles.emptyBlock}>
@@ -231,10 +247,6 @@ export function BlockPlanView() {
         ) : (
           <>
             {anyBeginnerEstimated && <Text style={styles.badgeText}>{t('planAppendix.beginnerEstimateBadge')}</Text>}
-            <Text style={styles.epocNote}>{t('planAppendix.epocNote')}</Text>
-            {config?.deficitModeEnabled && (
-              <Text style={styles.epocNote}>{t('planAppendix.proteinRecommendationNote')}</Text>
-            )}
 
             <View style={styles.actionRow}>
               <Pressable
@@ -312,13 +324,13 @@ const createStyles = (c: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     scroll: { padding: 24, paddingTop: 12, gap: 14 },
-    title: { fontSize: 22, fontWeight: '700', color: c.textPrimary, marginBottom: 4 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    title: { fontSize: 22, fontWeight: '700', color: c.textPrimary },
     emptyBlock: { alignItems: 'center', gap: 12, paddingVertical: 40 },
     emptyText: { color: c.textMuted, fontSize: 14, textAlign: 'center' },
     createBtn: { backgroundColor: c.accent, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
     createBtnText: { color: c.bg, fontSize: 14, fontWeight: '700' },
     badgeText: { color: c.warning, fontSize: 12, fontWeight: '700' },
-    epocNote: { color: c.textTertiary, fontSize: 12, lineHeight: 16 },
     actionRow: { flexDirection: 'row', gap: 10, marginVertical: 4 },
     actionBtn: {
       flex: 1,
@@ -346,7 +358,6 @@ const createStyles = (c: ThemeColors) =>
     planLine: { color: c.textPrimary, fontSize: 14, lineHeight: 20 },
     planLabel: { color: c.textSecondary, fontWeight: '600' },
     editedBadge: { color: c.accent, fontSize: 12, fontWeight: '700' },
-    referenceLine: { color: c.textTertiary, fontSize: 12, lineHeight: 17, flexShrink: 1 },
     editBtn: {
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -356,6 +367,17 @@ const createStyles = (c: ThemeColors) =>
       borderColor: c.borderSubtle,
     },
     editBtnText: { color: c.accent, fontSize: 12, fontWeight: '700' },
+    iconBtn: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.bgElevated,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+    },
+    iconBtnText: { color: c.accent, fontSize: 14, fontWeight: '700' },
     datesBtn: { alignSelf: 'flex-start' },
     legacyBanner: {
       gap: 8,

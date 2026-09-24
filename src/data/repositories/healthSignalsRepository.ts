@@ -9,14 +9,50 @@ export interface WeightEntry {
 const DEFAULT_WEIGHT_HISTORY_LIMIT = 10;
 
 export async function logWeight(kg: number): Promise<void> {
+  await logWeightAt(Date.now(), kg);
+}
+
+// A reading at a chosen moment — how a weight is logged for an earlier day
+// (the Weight card's date field; see weighInTimestamp). Several readings on a
+// day stay separate rows, exactly like logWeight.
+export async function logWeightAt(timestamp: number, kg: number): Promise<void> {
   const db = getDb();
   await db.runAsync(
     `INSERT INTO health_signals (timestamp, source, type, value) VALUES (?, ?, ?, ?)`,
-    Date.now(),
+    timestamp,
     'manual',
     'weight_kg',
     kg
   );
+}
+
+// The weight the notebook page gives a day ("14.09(79.5kg): …"): that day's
+// first manual reading takes the value, else one is added at `timestamp` —
+// so applying the same page twice never logs the day twice.
+export async function setWeightForDay(date: string, kg: number, timestamp: number): Promise<void> {
+  await setFirstWeightInRange(date, date, kg, timestamp);
+}
+
+// The same for a whole week — the weight a week heading shows is the week's
+// first reading ("07.09–13.09 80kg").
+export async function setFirstWeightInRange(
+  fromDate: string,
+  toDate: string,
+  kg: number,
+  timestamp: number
+): Promise<void> {
+  const db = getDb();
+  const startMs = new Date(fromDate + 'T00:00:00').getTime();
+  const endMs = new Date(toDate + 'T23:59:59.999').getTime();
+  const existing = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM health_signals
+     WHERE source = 'manual' AND type = 'weight_kg' AND timestamp >= ? AND timestamp <= ?
+     ORDER BY timestamp ASC LIMIT 1`,
+    startMs,
+    endMs
+  );
+  if (existing) await updateWeight(existing.id, kg);
+  else await logWeightAt(timestamp, kg);
 }
 
 export async function getWeightHistory(

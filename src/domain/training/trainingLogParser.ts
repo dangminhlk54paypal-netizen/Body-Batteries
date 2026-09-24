@@ -16,6 +16,8 @@ import { movementLabel } from './trainingLogFormatter';
 //   5x5x72.5         → 5 sets × 5 reps @ 72.5
 //   6x4(+3)x75       → 5 sets × 4 + a last set of 7 @ 75
 //   110x(4+5+5+4+8)  → one set per rep count @ 110
+//   95 + 4x6x72.5    → a prime (warm-up 1 × 95), then the working sets —
+//                      also "95+ 4x6x72.5"; see PRIME_JOIN in the formatter
 // Clusters join with "+"; a comma between digits is a decimal ("72,5").
 // Anything else in parentheses — "(95 ❌)", "(rpe9.2)", "(test)" — and
 // struck-through / ❌ tokens are the user's annotations: set aside, never sets.
@@ -30,13 +32,15 @@ export interface MovementIdentity {
 export interface ParsedChain {
   raw: string; // as written, e.g. "4x3x115+3x100"
   sets: { reps: number; weightKg: number }[];
+  // The movement's prime ("95" in "B 95 + 4x6x72.5"): its sets are warm-ups.
+  isPrime?: boolean;
 }
 
 export interface ParsedMovement {
   label: string; // as written, e.g. "PS"
   identity: MovementIdentity | null; // null = a label no lift is known by
   chains: ParsedChain[];
-  sets: LiftingSet[]; // every chain's sets, kind 'working'
+  sets: LiftingSet[]; // every chain's sets: the prime's 'warmup', the rest 'working'
   text: string; // label + chains, normalized spacing
 }
 
@@ -249,19 +253,39 @@ export function parseDayBody(
     if (chains.length === 0) {
       unparsed.push(text);
     } else {
+      // A "prime" with nothing after it was just a trailing "+".
+      if (chains.length === 1 && chains[0].isPrime) chains[0] = { raw: chains[0].raw, sets: chains[0].sets };
       movements.push({
         label: text,
         identity: lookup.get(labelKey(text)) ?? null,
         chains,
-        sets: chains.flatMap((c) => c.sets.map((s) => ({ kind: 'working' as const, ...s }))),
-        text: `${text} ${chains.map((c) => c.raw).join(' ')}`,
+        sets: chains.flatMap((c) =>
+          c.sets.map((s) => ({ kind: c.isPrime ? ('warmup' as const) : ('working' as const), ...s }))
+        ),
+        text: `${text} ${chains.map((c) => (c.isPrime ? `${c.raw} +` : c.raw)).join(' ')}`,
       });
     }
     label = [];
     chains = [];
   };
+  // "95 + 4x6x72.5" / "95+ 4x6x72.5": the movement's first chain, a single
+  // cluster, set apart by a "+" from more sets → that first chain is the prime.
+  const isPrimeCandidate = (chain: ParsedChain) =>
+    label.length > 0 && chains.length === 0 && splitTopLevel(chain.raw).length === 1;
+  const startsChain = (i: number) => {
+    const next = tokens[i + 1];
+    return next !== undefined && parseSetChain(next.replace(/^\+|\+$/g, ''), language) != null;
+  };
 
-  for (const raw of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const raw = tokens[i];
+    if (raw === '+' && label.length > 0 && chains.length === 1 && !chains[0].isPrime && startsChain(i)) {
+      const only = chains[0];
+      if (splitTopLevel(only.raw).length === 1) {
+        chains[0] = { ...only, isPrime: true };
+        continue;
+      }
+    }
     // Separators the formatter or the user put between movements.
     if (raw === '·' || raw === '-' || raw === '–' || raw === '+') {
       flush();
@@ -272,7 +296,10 @@ export function parseDayBody(
     const chain = parseSetChain(tok, language);
     if (chain) {
       if (label.length === 0) unparsed.push(raw);
-      else chains.push({ ...chain, raw: tok });
+      else {
+        const glued = /\+$/.test(raw) && isPrimeCandidate({ ...chain, raw: tok }) && startsChain(i);
+        chains.push({ ...chain, raw: tok, ...(glued ? { isPrime: true } : {}) });
+      }
       continue;
     }
     if (chains.length > 0) flush(); // a word after sets starts the next movement

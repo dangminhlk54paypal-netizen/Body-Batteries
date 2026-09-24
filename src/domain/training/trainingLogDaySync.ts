@@ -2,9 +2,9 @@ import { estimateLiftingMinutes } from '../energy/liftingEngine';
 import type { Language } from '../../i18n/types';
 import type { ActivityLogEntry, LiftingSet, WorkoutSession } from '../../types/energy';
 import type { TrainingLogFormat } from '../../types/trainingLog';
-import { formatDayLine, formatMovement, formatSetSequence, normalizeManualBody } from './trainingLogFormatter';
+import { formatDayLine, formatMovement, formatSetSequence, normalizeManualBody, primeSet } from './trainingLogFormatter';
 import { identityOfWorkout, parseDayBody, sameIdentity, stripKcalSuffix } from './trainingLogParser';
-import type { ParsedMovement } from './trainingLogParser';
+import type { MovementIdentity, ParsedMovement } from './trainingLogParser';
 
 // What a corrected day line (typed on the 📄 page) means for the day's Xả
 // entries. Pure: it only PLANS — the service applies the plan through
@@ -26,8 +26,18 @@ export interface EntryUpdate {
 }
 
 export type DaySyncPlan =
-  // No Xả entry behind this day: the line lives only in the notebook.
-  | { kind: 'manual'; override: string }
+  // No Xả entry behind this day and the line can't become one (blank, or part
+  // of it is not lifts/sets — listed in `unparsed`): it lives only in the notebook.
+  | { kind: 'manual'; override: string; unparsed: string[] }
+  // No Xả entry behind this day, and the whole line reads as lifts and sets: a
+  // workout the user forgot to Xả. It becomes a real Xả session of that day
+  // (kcal & batteries), logged through energyStore.logActivityForPastDate.
+  | {
+      kind: 'create';
+      workouts: WorkoutSession[];
+      override: string | null; // same meaning as in 'sync'
+      annotations: string[];
+    }
   // The line was emptied but Xả has sessions: Xả is never deleted from here.
   | { kind: 'blankXa' }
   // Could not be applied to Xả; the text is still saved as the user's line.
@@ -83,6 +93,62 @@ function sameSets(a: LiftingSet[], b: LiftingSet[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+// The session's warm-ups after the user wrote `primes` as its prime: unchanged
+// when the prime still reads the same, else the old heaviest warm-up gives way
+// to what was typed ("95 + …" → "100 + …" logs a 100 kg warm-up, not 95).
+function withPrime(oldWarmups: LiftingSet[], primes: LiftingSet[]): LiftingSet[] {
+  const current = primeSet(oldWarmups);
+  if (current && primes.length === 1 && current.weightKg === primes[0].weightKg && current.reps === primes[0].reps) {
+    return oldWarmups;
+  }
+  return [...oldWarmups.filter((s) => s !== current), ...primes];
+}
+
+function sessionFor(identity: MovementIdentity, sets: LiftingSet[]): WorkoutSession {
+  const session: WorkoutSession = { type: identity.exercise, minutes: estimateLiftingMinutes(sets), sets };
+  if (identity.variationName) session.variationName = identity.variationName;
+  else if (identity.variationId) session.variationId = identity.variationId;
+  return session;
+}
+
+// The auto line the given workouts would print as — to tell whether the user's
+// text still needs to be kept as an override once they are saved.
+function autoBodyOf(date: string, entries: ActivityLogEntry[], format: TrainingLogFormat, language: Language): string {
+  return formatDayLine({ date, entries, format: { ...format, showKcal: false }, language }).body;
+}
+
+// When a backfilled session is logged: 18:00 of that day (the same energy day
+// and calendar day), but never later than now — a line written for today at
+// 9:00 is logged at 9:00, through the normal same-day path.
+export function backfillTimestamp(date: string, now: number): number {
+  return Math.min(new Date(`${date}T18:00:00`).getTime(), now);
+}
+
+function planCreate(date: string, body: string, override: string, format: TrainingLogFormat, language: Language): DaySyncPlan {
+  if (body === '') return { kind: 'manual', override, unparsed: [] };
+  const parsed = parseDayBody(body, { format, language, known: [] });
+  const unparsed = [...parsed.unparsed, ...parsed.movements.filter((m) => !m.identity).map((m) => m.text)];
+  if (unparsed.length > 0 || parsed.movements.length === 0) return { kind: 'manual', override, unparsed };
+
+  const workouts = parsed.movements.map((m) => sessionFor(m.identity!, m.sets));
+  const draft: ActivityLogEntry = {
+    id: 'draft',
+    timestamp: new Date(`${date}T18:00:00`).getTime(),
+    steps: 0,
+    workouts,
+    energyKcal: 0,
+    satietyDrainKcal: 0,
+    energyDayApplied: date,
+  };
+  const autoBody = autoBodyOf(date, [draft], format, language);
+  return {
+    kind: 'create',
+    workouts,
+    override: collapse(override) === collapse(autoBody) ? null : override,
+    annotations: parsed.annotations,
+  };
+}
+
 export function planDaySync(input: {
   date: string;
   entries: ActivityLogEntry[]; // the day's Xả entries
@@ -97,7 +163,7 @@ export function planDaySync(input: {
   const body = collapse(stripKcalSuffix(input.newBody, language));
   const override = normalizeManualBody(body, format);
 
-  if (entries.length === 0) return { kind: 'manual', override };
+  if (entries.length === 0) return planCreate(date, body, override, format, language);
   if (body === '') return { kind: 'blankXa' };
 
   const old: OldMovement[] = entries.flatMap((entry, entryIdx) =>
@@ -166,26 +232,20 @@ export function planDaySync(input: {
     const oldWarmups = replaced?.workout.sets?.filter((s) => s.kind === 'warmup') ?? [];
 
     // With warm-ups shown, the first chain may be the (unchanged) warm-up ramp.
-    let working = m.sets;
+    let working = m.sets.filter((s) => s.kind === 'working');
+    const primes = m.sets.filter((s) => s.kind === 'warmup');
     if (format.showWarmups && oldWarmups.length > 0 && m.chains.length > 1) {
       const ramp = formatSetSequence(oldWarmups, format, language);
       if (collapse(m.chains[0].raw) === ramp) {
         working = m.chains.slice(1).flatMap((c) => c.sets.map((s) => ({ kind: 'working' as const, ...s })));
       }
     }
-    const sets = [...oldWarmups, ...working];
+    const sets = [...(primes.length > 0 ? withPrime(oldWarmups, primes) : oldWarmups), ...working];
     const entryIdx = replaced?.entryIdx ?? lastEntry;
     if (replaced?.workout.sets && sameSets(replaced.workout.sets, sets)) {
       next[entryIdx].push(replaced.workout);
     } else {
-      const session: WorkoutSession = {
-        type: identity.exercise,
-        minutes: estimateLiftingMinutes(sets),
-        sets,
-      };
-      if (identity.variationName) session.variationName = identity.variationName;
-      else if (identity.variationId) session.variationId = identity.variationId;
-      next[entryIdx].push(session);
+      next[entryIdx].push(sessionFor(identity, sets));
     }
     lastEntry = entryIdx;
   }
@@ -206,12 +266,7 @@ export function planDaySync(input: {
   }
 
   const nextEntries = entries.map((e, i) => ({ ...e, workouts: next[i] }));
-  const autoBody = formatDayLine({
-    date,
-    entries: nextEntries,
-    format: { ...format, showKcal: false },
-    language,
-  }).body;
+  const autoBody = autoBodyOf(date, nextEntries, format, language);
   return {
     kind: 'sync',
     updates,

@@ -6,6 +6,7 @@ import {
   isEmptyWeekRecord,
   rowToDayRecord,
   rowToWeekRecord,
+  rowToLiftMax,
 } from '../trainingLogMapper';
 
 describe('rowToDayRecord / rowToWeekRecord', () => {
@@ -28,8 +29,12 @@ describe('rowToDayRecord / rowToWeekRecord', () => {
     expect(rowToWeekRecord({ week_start: '2026-08-24', note: 'nghỉ lễ', updated_at: 9 })).toEqual({
       weekStart: '2026-08-24',
       note: 'nghỉ lễ',
+      label: null,
       updatedAt: 9,
     });
+    expect(
+      rowToWeekRecord({ week_start: '2026-09-21', note: null, label: 'B3W3', updated_at: 9 }).label
+    ).toBe('B3W3');
   });
 
   it('keeps NULL columns as null (NULL signature = hand-written line)', () => {
@@ -64,6 +69,9 @@ describe('emptiness rules', () => {
     expect(isEmptyWeekRecord({ note: null })).toBe(true);
     expect(isEmptyWeekRecord({ note: '  ' })).toBe(true);
     expect(isEmptyWeekRecord({ note: 'x' })).toBe(false);
+    // A week that only carries a label is still worth a row.
+    expect(isEmptyWeekRecord({ note: null, label: 'B3W3' })).toBe(false);
+    expect(isEmptyWeekRecord({ note: null, label: ' ' })).toBe(true);
   });
 
   it('cleanText trims and turns blank into null', () => {
@@ -92,5 +100,13 @@ describe('countSessionsByDay', () => {
 
   it('returns [] for no timestamps', () => {
     expect(countSessionsByDay([])).toEqual([]);
+  });
+});
+
+describe('rowToLiftMax', () => {
+  it('maps a row, and drops a lift the app does not know', () => {
+    const row = { id: 'm', lift: 'squat', weight_kg: 180, date: '2026-08-12', note: null, created_at: 5 };
+    expect(rowToLiftMax(row)).toEqual({ id: 'm', lift: 'squat', weightKg: 180, date: '2026-08-12', note: null, createdAt: 5 });
+    expect(rowToLiftMax({ ...row, lift: 'curl' })).toBeNull();
   });
 });

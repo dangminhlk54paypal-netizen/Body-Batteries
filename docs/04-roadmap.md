@@ -143,6 +143,23 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > nặng** ngày đó. Verify: **tsc/eslint sạch, 517/517 test PASS**. Chi tiết: `.ai/SESSION_LOG.md`
 > Session 19.
 >
+> **2026-09-24, đã publish EAS preview (group `4a361594-8841-411e-82fc-2f03eeac40ae`, bản cô
+> lập), chưa có xác nhận test máy thật:** "Cân nặng theo thời gian" bỏ nút "Xem thêm/Ẩn bớt" —
+> lịch sử giờ cuộn **bên trong một khung cố định** (cao tối đa 300, `nestedScrollEnabled`) nên
+> dữ liệu nhiều tháng không kéo dài cả màn History. Nhóm theo tháng với tiêu đề tháng dính trên
+> đầu khung (TB kg + số lần ghi), mỗi dòng có chênh lệch so với lần ghi trước (màu trung tính,
+> không đánh giá). Logic thuần: `src/domain/health/weightHistoryGroups.ts` (+ test); nhãn tháng:
+> `formatMonthYear` trong `dateUtils`. Đã phủ i18n VI/EN/DE (`components.weightLogCard.*`).
+> Cùng ngày (EAS preview group `a989722d-2ffd-4244-9990-7d7775d82885`, bản cô lập, chưa test máy
+> thật): thêm **biểu đồ cân nặng theo thời gian** (`WeightTrendChart.tsx`) phía trên danh sách, có
+> đường mốc nền tính từ **chiều cao** trong hồ sơ: chấm xanh = giới hạn trên mức phù hợp (BMI 24.9,
+> WHO) + vùng tô xanh 18.5–24.9; nét đứt vàng/cam/đỏ = vượt 10/20/35 kg so với mốc đó. Trục kg chỉ
+> mở tới đường mốc KẾ TIẾP phía trên số cân cao nhất (tránh ép dẹt đường cân nặng); chip 1 tháng /
+> 3 tháng / 1 năm / Tất cả (tính lùi từ lần ghi mới nhất). Logic thuần:
+> `src/domain/health/weightChartModel.ts` (+ test); công thức BMI dùng chung
+> `healthyWeightRangeKgRaw` trong `dailyRecommendations.ts`; màu trong `theme.ts` (`weightRef*`).
+> Có câu "chỉ tham khảo, hãy gặp chuyên gia y tế" theo ranh giới sức khoẻ. i18n VI/EN/DE đủ.
+>
 > **Session 22 (2026-08-06), CODE XONG chưa test máy — polish theo feedback người dùng:** cột
 > Excel giờ **tự fit độ rộng theo nội dung thật** (header + toàn bộ giá trị mỗi cột), thay vì width
 > cố định đoán tay chỉ có ở 2/8 sheet trước đây. Cận trên **12cm (~64 ký tự)** cho cột quá dài (tên

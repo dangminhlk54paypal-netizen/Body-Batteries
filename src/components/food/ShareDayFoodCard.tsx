@@ -5,7 +5,8 @@ import { foodLogEntryDisplayName, getAnyFoodById } from '../../data/food/foodLoo
 import { formatLoggedPortion } from '../../domain/food/portionUnits';
 import { mealLabel } from '../../lib/constants';
 import { formatDisplayDate, todayString } from '../../lib/dateUtils';
-import { darkColors } from '../../lib/theme';
+import type { ThemeColors } from '../../lib/theme';
+import { useThemedStyles } from '../../hooks/useThemeColors';
 import type { FoodLogEntry } from '../../types/food';
 import { useT } from '../../i18n/useT';
 
@@ -16,11 +17,9 @@ import { useT } from '../../i18n/useT';
 // one of them instead of only whatever fit above the fold when the user
 // tapped the button — that gap is exactly what this component exists to close.
 //
-// Colors are the fixed `darkColors` brand palette, not the live theme
-// (useThemeColors) — a shared-to-social-media image should look like "Body
-// Batteries" the same way regardless of whether the sharer has the app's
-// light or dark mode on, the same reasoning lib/constants.ts already applies
-// to per-battery identity colors.
+// Colors follow the app's live theme (useThemedStyles): a user on light mode
+// gets a light poster, dark mode a dark one — the saved image matches what
+// they see in the app.
 interface Props {
   entries: FoodLogEntry[];
 }
@@ -34,6 +33,7 @@ export const ShareDayFoodCard = forwardRef<View, Props>(function ShareDayFoodCar
   ref
 ) {
   const { t, language } = useT();
+  const styles = useThemedStyles(createStyles);
   const summary = summarizeFoodLog(entries);
 
   return (
@@ -85,43 +85,42 @@ export const ShareDayFoodCard = forwardRef<View, Props>(function ShareDayFoodCar
   );
 });
 
-const c = darkColors;
-
-const styles = StyleSheet.create({
-  card: {
-    width: CARD_WIDTH,
-    backgroundColor: c.bg,
-    padding: 24,
-    gap: 14,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-  },
-  brand: { color: c.accent, fontSize: 16, fontWeight: '800' },
-  date: { color: c.textTertiary, fontSize: 13 },
-  overview: { alignItems: 'center', gap: 4, paddingVertical: 6 },
-  kcal: { color: c.textPrimary, fontSize: 40, fontWeight: '800' },
-  macroLine: { color: c.textSecondary, fontSize: 14 },
-  mealBlock: {
-    backgroundColor: c.bgCard,
-    borderRadius: 14,
-    padding: 14,
-    gap: 8,
-  },
-  mealHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: c.bgElevated,
-    paddingBottom: 6,
-  },
-  mealTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
-  mealKcal: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
-  entryRow: { gap: 1 },
-  entryName: { color: c.textBright, fontSize: 14, fontWeight: '500' },
-  entryMeta: { color: c.textTertiary, fontSize: 12 },
-  tagline: { color: c.textSubtle, fontSize: 11, textAlign: 'center', marginTop: 6 },
-});
+const createStyles = (c: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      width: CARD_WIDTH,
+      backgroundColor: c.bg,
+      padding: 24,
+      gap: 14,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+    },
+    brand: { color: c.accent, fontSize: 16, fontWeight: '800' },
+    date: { color: c.textTertiary, fontSize: 13 },
+    overview: { alignItems: 'center', gap: 4, paddingVertical: 6 },
+    kcal: { color: c.textPrimary, fontSize: 40, fontWeight: '800' },
+    macroLine: { color: c.textSecondary, fontSize: 14 },
+    mealBlock: {
+      backgroundColor: c.bgCard,
+      borderRadius: 14,
+      padding: 14,
+      gap: 8,
+    },
+    mealHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: c.bgElevated,
+      paddingBottom: 6,
+    },
+    mealTitle: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+    mealKcal: { color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+    entryRow: { gap: 1 },
+    entryName: { color: c.textBright, fontSize: 14, fontWeight: '500' },
+    entryMeta: { color: c.textTertiary, fontSize: 12 },
+    tagline: { color: c.textSubtle, fontSize: 11, textAlign: 'center', marginTop: 6 },
+  });

@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, ScrollView, ActivityIndicator, Alert, Switch, StyleSheet } from 'react-native';
 import { BottomSheet } from '../ui/BottomSheet';
 import { useTrainingLogStore } from '../../store/trainingLogStore';
+import { useEnergyStore } from '../../store/energyStore';
+import { backfillTimestamp, planDaySync } from '../../domain/training/trainingLogDaySync';
+import { saveLineAsXa } from '../../services/training/trainingLogPageSync';
 import { useTrainingLogFormat } from '../../hooks/useTrainingLogFormat';
 import { getActivityLogForDate } from '../../data/repositories/activityLogRepository';
 import { getTrainingLogDay } from '../../data/repositories/trainingLogRepository';
@@ -48,9 +51,11 @@ function getEarliestDate(): string {
 }
 
 // Adds a hand-written entry (a workout the user forgot to Xả) or edits one
-// day's line and note. Everything typed here only changes TEXT in the log —
-// never kcal or a battery; changing the numbers of a Xả entry goes through
-// "Sửa số liệu" (the lifting/bodybuilding sheet), which is what recalculates.
+// day's line and note. On a day WITHOUT Xả, a line that reads fully as lifts
+// and sets becomes a real Xả session of that day (kcal & batteries — the
+// "⚡ Tạo buổi Xả" switch, on by default, with a preview); anything else stays
+// notebook text. On a day WITH Xả, edits here only change text; changing its
+// numbers goes through "Sửa số liệu" (the lifting/bodybuilding sheet).
 // The parent remounts this sheet (via `key`) for every opening, so its fields
 // always start fresh.
 export function TrainingLogLineEditor({ visible, onClose, mode, initialDate, onEditEntry }: Props) {
@@ -65,6 +70,9 @@ export function TrainingLogLineEditor({ visible, onClose, mode, initialDate, onE
   const saveDayNote = useTrainingLogStore((s) => s.saveDayNote);
   const deleteDay = useTrainingLogStore((s) => s.deleteDay);
   const findPreviousDayBody = useTrainingLogStore((s) => s.findPreviousDayBody);
+  const writeNotebook = useTrainingLogStore((s) => s.writeNotebook);
+  const logActivityForPastDate = useEnergyStore((s) => s.logActivityForPastDate);
+  const [createXa, setCreateXa] = useState(true);
 
   // English reads dates month-first, everything else day-first — the same
   // order the log itself prints them in.
@@ -120,6 +128,15 @@ export function TrainingLogLineEditor({ visible, onClose, mode, initialDate, onE
   const body = bodyEdit ?? initialBody;
   const note = noteEdit ?? record?.note ?? '';
   const signature = useMemo(() => trainingDaySignature(entries), [entries]);
+  // A day without Xả: what the line would become (a session, or text only).
+  const backfill = useMemo(
+    () =>
+      ready && validDate && !hasEntries
+        ? planDaySync({ date: validDate, entries: [], newBody: body, format, language })
+        : null,
+    [ready, validDate, hasEntries, body, format, language]
+  );
+  const willCreate = createXa && backfill?.kind === 'create';
 
   const bodyBlank = body.trim() === '';
   const noteBlank = note.trim() === '';
@@ -131,7 +148,15 @@ export function TrainingLogLineEditor({ visible, onClose, mode, initialDate, onE
     if (!validDate || !ready) return;
     setSaving(true);
     try {
-      if (!hasEntries) {
+      if (willCreate && backfill?.kind === 'create') {
+        await saveLineAsXa(
+          { date: validDate, plan: backfill, note },
+          {
+            createEntry: (d, workouts) => logActivityForPastDate({ workouts }, backfillTimestamp(d, Date.now())),
+            writeNotebook,
+          }
+        );
+      } else if (!hasEntries) {
         // A hand-written line (new, or an existing one — a line whose Xả entries
         // are gone reads as hand-written too).
         if (bodyBlank && noteBlank) await deleteDay(validDate);
@@ -268,8 +293,39 @@ export function TrainingLogLineEditor({ visible, onClose, mode, initialDate, onE
                   </Pressable>
                 </View>
               )}
+              {backfill?.kind === 'create' && (
+                <View style={styles.autoBox}>
+                  <View style={styles.switchRow}>
+                    <Text style={styles.switchLabel}>{t('trainingLog.editor.createXaLabel')}</Text>
+                    <Switch
+                      value={createXa}
+                      onValueChange={setCreateXa}
+                      accessibilityLabel={t('trainingLog.editor.createXaLabel')}
+                    />
+                  </View>
+                  {createXa && (
+                    <>
+                      <Text style={styles.hint}>{t('trainingLog.editor.createXaPreview')}</Text>
+                      {backfill.workouts.map((w, i) => (
+                        <Text key={i} style={styles.autoText}>
+                          • {formatMovement(w, format, language)}
+                        </Text>
+                      ))}
+                    </>
+                  )}
+                </View>
+              )}
+              {backfill?.kind === 'manual' && backfill.unparsed.length > 0 && (
+                <Text style={styles.notice}>
+                  {t('trainingLog.editor.createXaUnparsed', { detail: backfill.unparsed.join(' · ') })}
+                </Text>
+              )}
               <Text style={styles.hint}>
-                {hasEntries ? t('trainingLog.editor.editHint') : t('trainingLog.editor.manualHint')}
+                {hasEntries
+                  ? t('trainingLog.editor.editHint')
+                  : willCreate
+                    ? t('trainingLog.editor.createXaHint')
+                    : t('trainingLog.editor.manualHint')}
               </Text>
             </View>
 
@@ -377,6 +433,8 @@ const createStyles = (c: ThemeColors) =>
     chipBtnText: { color: c.accent, fontSize: 12, fontWeight: '700' },
     autoBox: { gap: 4, padding: 8, borderRadius: 8, backgroundColor: c.bgHighlight },
     autoText: { color: c.textSecondary, fontSize: 14, lineHeight: 20 },
+    switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    switchLabel: { flex: 1, color: c.textPrimary, fontSize: 14, fontWeight: '700' },
     entryRow: { gap: 6, paddingVertical: 4 },
     entryText: { color: c.textPrimary, fontSize: 14, lineHeight: 20 },
     dangerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },

@@ -7,45 +7,69 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import Svg, { Line } from 'react-native-svg';
 import {
-  logWeight,
+  logWeightAt,
   getWeightHistory,
   updateWeight,
   type WeightEntry,
 } from '../data/repositories/healthSignalsRepository';
-import { dateString, todayString, daysBetween, formatDisplayDate } from '../lib/dateUtils';
+import { todayString, daysBetween, formatDisplayDate, formatMonthYear } from '../lib/dateUtils';
+import {
+  groupWeightHistoryByMonth,
+  isTrendTowardGoal,
+  weightGoalDirection,
+  type WeightTrend,
+} from '../domain/health/weightHistoryGroups';
+import { useSettingsStore } from '../store/settingsStore';
+import { WeightTrendChart } from './WeightTrendChart';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
 import { WEIGHT_EDIT_MAX_DAYS_BACK } from '../lib/constants';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
+import { parseDayMonthInput } from '../lib/dateInput';
+import { weighInTimestamp } from '../domain/health/weighIn';
 import { useT } from '../i18n/useT';
 
-// Recent history fetched so "Xem thêm" has older rows to reveal beyond the
-// always-visible window below — well past DATA_RETENTION_DAYS's typical use.
-const FETCH_LIMIT = 60;
-// Always-visible rows before the "Xem thêm"/"Ẩn bớt" toggle appears.
-const VISIBLE_COUNT = 7;
+// Weight readings are never pruned by the retention cleanup, so the log can
+// span many months — ~3 years of daily readings is plenty for the list.
+const FETCH_LIMIT = 1000;
+// The history list scrolls INSIDE a fixed-height frame (instead of a
+// "Xem thêm" toggle that stretched the whole History page), so a long log
+// never pushes the rest of the screen down. ≈ 1 month header + 7 rows.
+const LIST_MAX_HEIGHT = 300;
+// Past this many readings the list overflows the frame — show the hint.
+const HINT_THRESHOLD = 7;
+
+const TREND_ARROW: Record<WeightTrend, string> = { up: '▲', down: '▼', same: '' };
 
 interface Props {
+  // Bumped by the parent screen when the user scrolls it — collapses the
+  // chart's tap caption (see WeightTrendChart).
+  dismissKey?: number;
   // Called after a successful log OR edit — lets HistoryScreen refresh the
   // day-detail weight it fetches independently, without waiting for this
   // card's own next focus-driven reload.
   onChanged?: () => void;
 }
 
-export function WeightLogCard({ onChanged }: Props = {}) {
+export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const [weightText, setWeightText] = useState('');
+  // Blank = today. "14.09" logs the reading for that earlier day (a weight
+  // from old notes), so the strength chart's ratio has it.
+  const [dateText, setDateText] = useState('');
   const [entries, setEntries] = useState<WeightEntry[]>([]);
-  const [expanded, setExpanded] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WeightEntry | null>(null);
   const [editValueText, setEditValueText] = useState('');
+  const heightCm = useSettingsStore((s) => s.userProfile.heightCm);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,13 +81,19 @@ export function WeightLogCard({ onChanged }: Props = {}) {
     setEntries(await getWeightHistory(FETCH_LIMIT));
   }
 
+  // Day-first like the notebook ("14.09"); month-first in English.
+  const dateOrder = language === 'en' ? 'md' : 'dm';
+  const today = todayString();
+  const logDate = dateText.trim() === '' ? today : parseDayMonthInput(dateText, today, dateOrder);
+
   async function handleLog() {
     const parsed = parseDecimal(weightText);
     const { min, max } = PROFILE_LIMITS.weightKg;
-    if (isNaN(parsed) || parsed < min || parsed > max) return;
+    if (isNaN(parsed) || parsed < min || parsed > max || !logDate) return;
     const rounded = Math.round(parsed * 10) / 10;
-    await logWeight(rounded);
+    await logWeightAt(weighInTimestamp(logDate, Date.now()), rounded);
     setWeightText('');
+    setDateText('');
     await loadEntries();
     onChanged?.();
   }
@@ -85,7 +115,22 @@ export function WeightLogCard({ onChanged }: Props = {}) {
     onChanged?.();
   }
 
-  const visibleEntries = expanded ? entries : entries.slice(0, VISIBLE_COUNT);
+  const groups = groupWeightHistoryByMonth(entries);
+  // One direction for the whole list, from the NEWEST reading: above the
+  // healthy range losing is green, below it gaining is, inside it neutral.
+  const goal = entries.length > 0 ? weightGoalDirection(entries[0].value, heightCm) : 'maintain';
+  const trendColor = (trend: WeightTrend | null) => {
+    const toward = isTrendTowardGoal(trend, goal);
+    return toward == null ? c.textTertiary : toward ? c.weightTrendToward : c.weightTrendAway;
+  };
+  // Month headers stick to the top of the frame while their rows scroll;
+  // ScrollView needs the child index of each header among its flat children.
+  const stickyHeaderIndices: number[] = [];
+  let childIndex = 0;
+  for (const g of groups) {
+    stickyHeaderIndices.push(childIndex);
+    childIndex += 1 + g.rows.length;
+  }
 
   return (
     <View style={styles.container}>
@@ -101,51 +146,106 @@ export function WeightLogCard({ onChanged }: Props = {}) {
           value={weightText}
           onChangeText={setWeightText}
         />
+        <TextInput
+          style={[styles.input, styles.dateInput]}
+          placeholder={t('components.weightLogCard.datePlaceholder')}
+          placeholderTextColor={c.textMuted}
+          keyboardType="numbers-and-punctuation"
+          value={dateText}
+          onChangeText={setDateText}
+          accessibilityLabel={t('components.weightLogCard.dateLabel')}
+        />
         <Pressable
-          style={({ pressed }) => [styles.btn, pressed && styles.pressed]}
+          disabled={!logDate}
+          style={({ pressed }) => [styles.btn, !logDate && styles.btnDisabled, pressed && styles.pressed]}
           onPress={handleLog}
         >
-          <Text style={styles.btnText}>{t('components.weightLogCard.logButton')}</Text>
+          <Text style={styles.btnText}>
+            {logDate && logDate !== today
+              ? t('components.weightLogCard.logForDate', { date: formatDisplayDate(logDate, language) })
+              : t('components.weightLogCard.logButton')}
+          </Text>
         </Pressable>
       </View>
+      {!logDate ? <Text style={styles.dateError}>{t('components.weightLogCard.dateInvalid')}</Text> : null}
 
       {entries.length === 0 ? (
         <Text style={styles.empty}>{t('components.weightLogCard.emptyText')}</Text>
       ) : (
         <>
-          {visibleEntries.map((e) => {
-            const dayKey = dateString(new Date(e.timestamp));
-            const canEdit = daysBetween(dayKey, todayString()) <= WEIGHT_EDIT_MAX_DAYS_BACK;
-            return (
-              <View key={e.id} style={styles.entryRow}>
-                <Text style={styles.entryDate}>{formatDisplayDate(dayKey, language)}</Text>
-                <View style={styles.entryRight}>
-                  <Text style={styles.entryValue}>{e.value.toFixed(1)} kg</Text>
-                  {canEdit && (
-                    <Pressable
-                      hitSlop={10}
-                      style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
-                      onPress={() => startEdit(e)}
-                      accessibilityLabel={t('common.edit')}
-                    >
-                      <Text style={styles.editText}>✎</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-
-          {entries.length > VISIBLE_COUNT && (
-            <Pressable
-              style={({ pressed }) => [styles.seeMoreBtn, pressed && styles.pressed]}
-              onPress={() => setExpanded((v) => !v)}
-            >
-              <Text style={styles.seeMoreText}>
-                {expanded ? t('common.seeLess') : t('common.seeMore')}
-              </Text>
-            </Pressable>
-          )}
+          <WeightTrendChart entries={entries} dismissKey={dismissKey} />
+          <Text style={styles.listMeta}>
+            {t('components.weightLogCard.entryCount', { count: entries.length })}
+            {entries.length > HINT_THRESHOLD
+              ? ` · ${t('components.weightLogCard.scrollHint')}`
+              : ''}
+          </Text>
+          <ScrollView
+            style={styles.listFrame}
+            nestedScrollEnabled
+            persistentScrollbar
+            stickyHeaderIndices={stickyHeaderIndices}
+          >
+            {groups.flatMap((g) => [
+              <View key={`m-${g.monthKey}`} style={styles.monthHeader}>
+                <Text style={styles.monthTitle}>{formatMonthYear(g.monthKey, language)}</Text>
+                <Text style={styles.monthSummary}>
+                  {t('components.weightLogCard.monthSummary', {
+                    avg: g.average.toFixed(1),
+                    count: g.rows.length,
+                  })}
+                </Text>
+              </View>,
+              ...g.rows.map(({ entry: e, dayKey, trend, weekBreakAbove }) => {
+                const canEdit = daysBetween(dayKey, todayString()) <= WEIGHT_EDIT_MAX_DAYS_BACK;
+                return (
+                  <View key={e.id} style={styles.entryRow}>
+                    {/* Light dashed line between Mon–Sun weeks (an SVG line:
+                        RN's one-sided dashed border is unreliable on iOS). */}
+                    {weekBreakAbove && (
+                      <Svg style={styles.weekBreak}>
+                        <Line
+                          x1="0"
+                          y1="0.5"
+                          x2="100%"
+                          y2="0.5"
+                          stroke={c.textFaint}
+                          strokeWidth={1}
+                          strokeDasharray="4,4"
+                        />
+                      </Svg>
+                    )}
+                    <Text style={styles.entryDate}>{formatDisplayDate(dayKey, language)}</Text>
+                    <View style={styles.entryRight}>
+                      <Text style={[styles.entryArrow, { color: trendColor(trend) }]}>
+                        {trend ? TREND_ARROW[trend] : ''}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.entryValue,
+                          isTrendTowardGoal(trend, goal) != null && { color: trendColor(trend) },
+                        ]}
+                      >
+                        {e.value.toFixed(1)} kg
+                      </Text>
+                      <View style={styles.editSlot}>
+                        {canEdit && (
+                          <Pressable
+                            hitSlop={10}
+                            style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                            onPress={() => startEdit(e)}
+                            accessibilityLabel={t('common.edit')}
+                          >
+                            <Text style={styles.editText}>✎</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                );
+              }),
+            ])}
+          </ScrollView>
         </>
       )}
 
@@ -220,19 +320,51 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   btnText: { color: c.textPrimary, fontWeight: '700', fontSize: 13 },
+  btnDisabled: { opacity: 0.4 },
+  dateInput: { flex: 0, width: 84 },
+  dateError: { color: c.danger, fontSize: 12 },
   pressed: { opacity: 0.6 },
   empty: { color: c.textFaint, fontSize: 13 },
+  listMeta: { color: c.textTertiary, fontSize: 12 },
+  listFrame: {
+    maxHeight: LIST_MAX_HEIGHT,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: c.bgElevated,
+  },
+  monthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    // Opaque so rows scrolling underneath the sticky header don't show through.
+    backgroundColor: c.bgElevated,
+  },
+  monthTitle: { color: c.textPrimary, fontSize: 13, fontWeight: '700' },
+  monthSummary: { color: c.textTertiary, fontSize: 12, fontVariant: ['tabular-nums'] },
   entryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: c.bgElevated,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
   },
+  weekBreak: { position: 'absolute', top: 0, left: 12, right: 12, height: 1 },
   entryDate: { color: c.textSoft, fontSize: 13 },
   entryRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  entryValue: { color: c.textPrimary, fontSize: 13, fontWeight: '600' },
+  entryArrow: { fontSize: 10, minWidth: 12, textAlign: 'right' },
+  entryValue: {
+    color: c.textPrimary,
+    fontSize: 13,
+    fontWeight: '600',
+    minWidth: 56,
+    textAlign: 'right',
+    fontVariant: ['tabular-nums'],
+  },
+  // Fixed-width slot so values stay column-aligned whether or not the row
+  // is still editable (older than WEIGHT_EDIT_MAX_DAYS_BACK).
+  editSlot: { width: 24, height: 24 },
   editBtn: {
     width: 24,
     height: 24,
@@ -242,8 +374,6 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     justifyContent: 'center',
   },
   editText: { color: c.infoAlt, fontSize: 12, fontWeight: '700' },
-  seeMoreBtn: { alignItems: 'center', paddingVertical: 8 },
-  seeMoreText: { color: c.infoAlt, fontSize: 13, fontWeight: '600' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
     backgroundColor: c.bgCard,

@@ -4,6 +4,7 @@ import TestRenderer, { act } from 'react-test-renderer';
 import { TrainingLogLineEditor } from '../TrainingLogLineEditor';
 import { useTrainingLogStore } from '../../../store/trainingLogStore';
 import { useSettingsStore } from '../../../store/settingsStore';
+import { useEnergyStore } from '../../../store/energyStore';
 import { trainingDaySignature } from '../../../domain/training/trainingLogFormatter';
 import { DEFAULT_TRAINING_LOG_FORMAT } from '../../../types/trainingLog';
 import { dateString } from '../../../lib/dateUtils';
@@ -28,6 +29,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('../../../data/repositories/activityLogRepository');
 jest.mock('../../../data/repositories/trainingBlockRepository');
 jest.mock('../../../data/repositories/trainingLogRepository');
+jest.mock('../../../data/repositories/liftMaxRepository');
 
 const activityRepo = jest.mocked(activityLogRepository);
 const logRepo = jest.mocked(trainingLogRepository);
@@ -80,7 +82,10 @@ const actions = {
   saveDayNote: jest.fn(),
   deleteDay: jest.fn(),
   findPreviousDayBody: jest.fn(),
+  writeNotebook: jest.fn(),
 };
+const originalEnergy = useEnergyStore.getState();
+const logActivityForPastDate = jest.fn();
 
 async function render(
   props: { mode?: 'add' | 'edit'; entries?: ActivityLogEntry[]; rec?: TrainingLogDayRecord | null } = {},
@@ -144,28 +149,62 @@ beforeEach(() => {
   Object.values(actions).forEach((a) => a.mockResolvedValue(undefined));
   useSettingsStore.setState({ language: 'vi', themeMode: 'dark', trainingLogFormat: DEFAULT_TRAINING_LOG_FORMAT });
   useTrainingLogStore.setState(actions);
+  logActivityForPastDate.mockResolvedValue(undefined);
+  useEnergyStore.setState({ logActivityForPastDate });
 });
 afterEach(async () => {
   await act(async () => {
     mounted.splice(0).forEach((t) => t.unmount());
   });
   useTrainingLogStore.setState(originalStore);
+  useEnergyStore.setState(originalEnergy);
 });
 
 describe('TrainingLogLineEditor — adding a hand-written entry', () => {
-  it('starts with Save disabled, then saves the typed line as a hand-written day', async () => {
+  it('starts with Save disabled, then turns a readable line into a NEW Xả session of that day', async () => {
     const onClose = jest.fn();
     const tree = await render({ mode: 'add' }, { onClose });
     expect(saveBtn(tree).props.disabled).toBe(true);
 
     await type(tree, LINE, 'S 120 5x4x100');
     expect(saveBtn(tree).props.disabled).toBe(false);
+    // The preview says what will be created.
+    expect(allText(tree)).toContain('Sẽ tạo buổi Xả gồm');
     await press(tree, 'Lưu');
 
-    expect(actions.saveManualDay).toHaveBeenCalledWith(PAST, 'S 120 5x4x100', '');
+    expect(logActivityForPastDate).toHaveBeenCalledTimes(1);
+    const [activity, timestamp] = logActivityForPastDate.mock.calls[0];
+    expect(activity.workouts[0]).toMatchObject({ type: 'squat' });
+    expect(dateString(new Date(timestamp))).toBe(PAST);
+    // The session prints the same line → nothing hand-written is kept.
+    expect(actions.writeNotebook).toHaveBeenCalledWith({
+      days: [{ date: PAST, overrideText: null, note: null, sourceSignature: null }],
+      deleteDates: [],
+      weeks: [],
+    });
+    expect(actions.saveManualDay).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
-    // Hand-written: never the "edit an auto line" path.
-    expect(actions.saveDayOverride).not.toHaveBeenCalled();
+  });
+
+  it('with "Tạo buổi Xả" switched off, the line stays hand-written', async () => {
+    const tree = await render({ mode: 'add' });
+    await type(tree, LINE, 'S 120 5x4x100');
+    const toggle = tree.root.findAll((n) => typeof n.props.onValueChange === 'function')[0];
+    await act(async () => {
+      toggle.props.onValueChange(false);
+    });
+    await press(tree, 'Lưu');
+    expect(logActivityForPastDate).not.toHaveBeenCalled();
+    expect(actions.saveManualDay).toHaveBeenCalledWith(PAST, 'S 120 5x4x100', '');
+  });
+
+  it('a line it cannot read stays hand-written and says why', async () => {
+    const tree = await render({ mode: 'add' });
+    await type(tree, LINE, 'đi bơi 30 phút');
+    expect(allText(tree)).toContain('Chưa tạo được buổi Xả');
+    await press(tree, 'Lưu');
+    expect(logActivityForPastDate).not.toHaveBeenCalled();
+    expect(actions.saveManualDay).toHaveBeenCalledWith(PAST, 'đi bơi 30 phút', '');
   });
 
   it('can be a note only', async () => {
@@ -182,7 +221,8 @@ describe('TrainingLogLineEditor — adding a hand-written entry', () => {
     await type(tree, { placeholder: 'dd.mm' }, `${dd}.${mm}`);
     await type(tree, LINE, 'D 140 6x4x110');
     await press(tree, 'Lưu');
-    expect(actions.saveManualDay).toHaveBeenCalledWith(twoDaysAgo, 'D 140 6x4x110', '');
+    expect(dateString(new Date(logActivityForPastDate.mock.calls[0][1]))).toBe(twoDaysAgo);
+    expect(actions.writeNotebook.mock.calls[0][0].days[0].date).toBe(twoDaysAgo);
   });
 
   it('rejects a date that is not a date, and keeps Save disabled', async () => {
@@ -305,12 +345,25 @@ describe('TrainingLogLineEditor — editing a day logged in Xả', () => {
 });
 
 describe('TrainingLogLineEditor — hand-written day', () => {
-  it('a hand-written day is edited through saveManualDay, keeping the note', async () => {
+  it('saving a readable hand-written day turns it into a Xả session, keeping the note', async () => {
     const rec = record({ overrideText: 'D 140 6x4x110', note: 'tốt' });
     const tree = await render({ rec });
     expect(inputBy(tree, LINE).props.value).toBe('D 140 6x4x110');
     expect(inputBy(tree, NOTE).props.value).toBe('tốt');
     await type(tree, LINE, 'D 142.5 6x4x110');
+    await press(tree, 'Lưu');
+    expect(logActivityForPastDate.mock.calls[0][0].workouts[0]).toMatchObject({ type: 'deadlift' });
+    expect(actions.writeNotebook.mock.calls[0][0].days[0]).toMatchObject({ date: PAST, note: 'tốt' });
+  });
+
+  it('with the switch off, a hand-written day is edited through saveManualDay, keeping the note', async () => {
+    const rec = record({ overrideText: 'D 140 6x4x110', note: 'tốt' });
+    const tree = await render({ rec });
+    await type(tree, LINE, 'D 142.5 6x4x110');
+    const toggle = tree.root.findAll((n) => typeof n.props.onValueChange === 'function')[0];
+    await act(async () => {
+      toggle.props.onValueChange(false);
+    });
     await press(tree, 'Lưu');
     expect(actions.saveManualDay).toHaveBeenCalledWith(PAST, 'D 142.5 6x4x110', 'tốt');
   });

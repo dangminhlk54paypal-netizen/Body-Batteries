@@ -8,6 +8,8 @@ import {
   normalizeManualBody,
   abbreviationKeyOf,
   formatWeekHeading,
+  formatWeekHeadingParts,
+  splitDayBody,
 } from '../trainingLogFormatter';
 import { translate } from '../../../i18n/translate';
 import { weekdayLabel } from '../../../lib/dateUtils';
@@ -117,8 +119,16 @@ describe('formatSetSequence — grammar from the user’s real notes', () => {
     expect(formatMovement(lift('bench_press', s), fmt({ showWarmups: true }), 'vi')).toBe(
       'B 8x20+6x60+3x80 90+97.5+100 5x2(+3)x90'
     );
-    // Off by default: the ramp is hidden.
-    expect(formatMovement(lift('bench_press', s), FMT, 'vi')).toBe('B 90+97.5+100 5x2(+3)x90');
+    // Off by default: the ramp is hidden, only its heaviest set shows as the prime.
+    expect(formatMovement(lift('bench_press', s), FMT, 'vi')).toBe('B 3x80 + 90+97.5+100 5x2(+3)x90');
+    expect(formatMovement(lift('bench_press', s), fmt({ showPrime: false }), 'vi')).toBe('B 90+97.5+100 5x2(+3)x90');
+  });
+
+  it('the prime is the heaviest warm-up, written before the volume: "B 95 + 4x6x72.5"', () => {
+    const s = [warmup(20, 10), warmup(60, 5), warmup(95, 1), warmup(80, 3), ...working(72.5, same(4, 6))];
+    expect(formatMovement(lift('bench_press', s), FMT, 'vi')).toBe('B 95 + 4x6x72.5');
+    // No warm-ups → no prime.
+    expect(formatSetSequence(working(72.5, same(4, 6)), FMT, 'vi')).toBe('4x6x72.5');
   });
 
   it('a last set with FEWER reps is listed, not abbreviated', () => {
@@ -409,5 +419,50 @@ describe('formatWeekHeading — which block/week, its dates, its weight', () => 
     expect(formatWeekHeading({ ...week, isDeload: true }, block, null, FMT, 'vi')).toBe('B2 DELOAD: 07.09–13.09');
     expect(formatWeekHeading(week, { kind: 'free' }, 76.3, FMT, 'vi')).toBe('07.09–13.09 76.3kg');
     expect(formatWeekHeading(week, block, null, FMT, 'en')).toBe('B2W1: 09/07–09/13');
+  });
+  it('splits into the bold label, the plain dates and the weight', () => {
+    expect(formatWeekHeadingParts(week, block, 76.3, FMT, 'vi')).toEqual({ lead: 'B2W1', range: '07.09–13.09', weight: '76.3kg' });
+    expect(formatWeekHeadingParts(week, { kind: 'free' }, null, FMT, 'vi')).toEqual({ lead: null, range: '07.09–13.09', weight: null });
+    expect(formatWeekHeadingParts({ ...week, customLabel: 'B3W3' }, { kind: 'free' }, 75, fmt({ showBodyWeight: false }), 'vi')).toEqual({
+      lead: 'B3W3',
+      range: '07.09–13.09',
+      weight: null,
+    });
+  });
+});
+
+describe('splitDayBody — movement labels vs the rest', () => {
+  const labels = (body: string) => splitDayBody(body).filter((s) => s.kind === 'label').map((s) => s.text);
+  const primes = (body: string) => splitDayBody(body).filter((s) => s.kind === 'prime').map((s) => s.text);
+  const joined = (body: string) => splitDayBody(body).map((s) => s.text).join('');
+
+  it('marks each abbreviation followed by its numbers', () => {
+    expect(labels('S 130 4x3x115+3x100 PD 4x3x100')).toEqual(['S', 'PD']);
+    expect(labels('iC 5x5x60 LG (4+5)x80')).toEqual(['iC', 'LG']);
+  });
+
+  it('keeps multi-word labels together and leaves trailing words plain', () => {
+    expect(labels('Bench press 5x5x100 · ~350 kcal')).toEqual(['Bench press']);
+    expect(labels('Đạp xe 30 phút')).toEqual(['Đạp xe']);
+    expect(labels('nghỉ vì ốm')).toEqual([]);
+  });
+
+  it('gives back the body unchanged when joined', () => {
+    for (const b of ['S 130 4x3x115 (rpe9.2)  PD 4x3x100', '', 'test', 'B 95+ 4x6x72.5  iC 3x6x60']) {
+      expect(joined(b)).toBe(b);
+    }
+  });
+
+  it('marks the prime: the first cluster set apart by " + " (or a glued "95+ ")', () => {
+    expect(primes('B 95 + 4x6x72.5 iC 3x6x60')).toEqual(['95']);
+    expect(primes('B 95+ 4x6x72.5  iC 3x6x60')).toEqual(['95']);
+    expect(primes('S 135 + 4x6x100  PD 3x140 + 2x3x100+3x105')).toEqual(['135', '3x140']);
+    expect(labels('B 95+ 4x6x72.5')).toEqual(['B']);
+  });
+
+  it('never takes a top single, clusters or a movement separator for a prime', () => {
+    expect(primes('S 130 4x3x115+3x100')).toEqual([]);
+    expect(primes('B 90+97.5+100 4x2x90')).toEqual([]);
+    expect(primes('S 100 + B 80')).toEqual([]);
   });
 });

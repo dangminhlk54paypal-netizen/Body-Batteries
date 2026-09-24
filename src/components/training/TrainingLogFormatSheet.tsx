@@ -69,8 +69,8 @@ interface AbbrRow {
   placeholder: string;
 }
 
-type BooleanOption = 'showWarmups' | 'showUnit' | 'showBodyWeight' | 'showWeekday' | 'showKcal';
-const BOOLEAN_OPTIONS: BooleanOption[] = ['showWarmups', 'showUnit', 'showBodyWeight', 'showWeekday', 'showKcal'];
+type BooleanOption = 'showPrime' | 'showWarmups' | 'showUnit' | 'showBodyWeight' | 'showWeekday' | 'showKcal';
+const BOOLEAN_OPTIONS: BooleanOption[] = ['showPrime', 'showWarmups', 'showUnit', 'showBodyWeight', 'showWeekday', 'showKcal'];
 
 // The ⚙︎ sheet: how the log writes its lines. Every option applies to the whole
 // notebook at once (lines are re-generated on display, never stored), and the
@@ -123,7 +123,6 @@ export function TrainingLogFormatSheet({ visible, onClose }: Props) {
   const sample = formatDayLine({
     date: SAMPLE_DATE,
     entries: [SAMPLE_ENTRY],
-    bodyWeightKg: 77.7,
     format,
     language,
   });

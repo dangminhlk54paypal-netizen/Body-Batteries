@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { TrainingLogPeriodSection } from './TrainingLogPeriodSection';
 import { TrainingLogLineEditor } from './TrainingLogLineEditor';
@@ -17,6 +17,7 @@ import { useTrainingLogFormat } from '../../hooks/useTrainingLogFormat';
 import { getTrainingLogWeek } from '../../data/repositories/trainingLogRepository';
 import { isBodybuildingEntry } from '../../lib/activityLabels';
 import { mergeEditedWorkouts } from '../../domain/training/entryEdit';
+import { formatDayDate, formatDefaultFreeTitle, formatPeriodTitle } from '../../domain/training/trainingLogFormatter';
 import { todayString } from '../../lib/dateUtils';
 import type { ActivityLogEntry, WorkoutSession } from '../../types/energy';
 import type { TrainingLogPeriod } from '../../types/trainingLog';
@@ -41,8 +42,8 @@ interface EditorState {
 interface TextSheetState {
   key: number;
   visible: boolean;
-  kind: 'week' | 'block';
-  id: string; // week start (Monday) or block id
+  kind: 'week' | 'block' | 'month';
+  id: string; // week start (Monday), block id, or free month (YYYY-MM)
   title: string;
   hint?: string;
   placeholder: string;
@@ -66,7 +67,7 @@ interface EntryEditState {
 // component owns every sheet; the rows below only report taps (see
 // trainingLogActions.ts).
 export function TrainingLogView() {
-  const { t } = useT();
+  const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const format = useTrainingLogFormat();
@@ -75,6 +76,8 @@ export function TrainingLogView() {
   const loadIndex = useTrainingLogStore((s) => s.loadIndex);
   const saveWeekNote = useTrainingLogStore((s) => s.saveWeekNote);
   const renameBlock = useBlockStore((s) => s.renameBlock);
+  const deleteBlock = useBlockStore((s) => s.deleteBlock);
+  const renameMonth = useTrainingLogStore((s) => s.renameMonth);
   const updateActivityForPastDate = useEnergyStore((s) => s.updateActivityForPastDate);
 
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -115,23 +118,70 @@ export function TrainingLogView() {
         multiline: true,
       });
     },
-    renameBlock: (period) => {
-      if (!period.blockId) return;
-      openTextSheet({
-        kind: 'block',
-        id: period.blockId,
-        title: t('trainingLog.textSheet.blockNameTitle'),
-        hint: t('trainingLog.textSheet.blockNameHint', { n: period.blockNumber ?? 0 }),
-        placeholder: t('trainingLog.textSheet.blockNamePlaceholder'),
-        initialValue: period.blockName ?? '',
-        multiline: false,
-      });
+    periodMenu: (period) => {
+      if (period.kind === 'free') {
+        if (!period.monthKey) return;
+        openTextSheet({
+          kind: 'month',
+          id: period.monthKey,
+          title: t('trainingLog.textSheet.monthNameTitle'),
+          hint: t('trainingLog.textSheet.monthNameHint', { title: formatDefaultFreeTitle(period, language) }),
+          placeholder: t('trainingLog.textSheet.monthNamePlaceholder'),
+          initialValue: period.monthName ?? '',
+          multiline: false,
+        });
+        return;
+      }
+      const blockId = period.blockId;
+      if (!blockId) return;
+      Alert.alert(formatPeriodTitle(period, language), undefined, [
+        {
+          text: t('trainingLog.blockMenu.rename'),
+          onPress: () =>
+            openTextSheet({
+              kind: 'block',
+              id: blockId,
+              title: t('trainingLog.textSheet.blockNameTitle'),
+              hint: t('trainingLog.textSheet.blockNameHint', { n: period.blockNumber ?? 0 }),
+              placeholder: t('trainingLog.textSheet.blockNamePlaceholder'),
+              initialValue: period.blockName ?? '',
+              multiline: false,
+            }),
+        },
+        { text: t('trainingLog.blockMenu.delete'), style: 'destructive', onPress: () => confirmDeleteBlock(period, blockId) },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
     },
   };
+
+  // Deletes the block PLAN only: the days logged in it stay and fall back into
+  // their free months (the index places them by date).
+  function confirmDeleteBlock(period: TrainingLogPeriod, blockId: string) {
+    Alert.alert(
+      t('trainingLog.blockMenu.deleteConfirmTitle', { title: formatPeriodTitle(period, language) }),
+      t('trainingLog.blockMenu.deleteConfirmMessage', {
+        start: formatDayDate(period.startDate, language),
+        end: formatDayDate(period.endDate, language),
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            await deleteBlock(blockId);
+            await loadIndex();
+          },
+        },
+      ]
+    );
+  }
 
   async function saveTextSheet(sheet: TextSheetState, text: string) {
     if (sheet.kind === 'week') {
       await saveWeekNote(sheet.id, text);
+    } else if (sheet.kind === 'month') {
+      await renameMonth(sheet.id, text); // reloads the index itself
     } else {
       await renameBlock(sheet.id, text);
       await loadIndex(); // block names come from the index

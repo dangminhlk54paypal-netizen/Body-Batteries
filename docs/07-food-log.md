@@ -123,8 +123,9 @@ hệ điều hành.
   ngay trên điện thoại test qua Expo Go, không cần dev-client/build lại.
 - `src/components/food/ShareDayFoodCard.tsx` — layout riêng cho ảnh chia sẻ
   (không phải chụp lại `TodayMeals`): tổng quan (kcal + đạm/carbs/béo) rồi từng
-  bữa/món đầy đủ. Dùng màu cố định `darkColors` (không theo theme sáng/tối
-  người dùng đang chọn) để ảnh ra ngoài luôn đúng nhận diện thương hiệu.
+  bữa/món đầy đủ. Màu theo chủ đề sáng/tối người dùng đang chọn
+  (`useThemedStyles`) — app sáng thì ảnh nền sáng, app tối thì ảnh nền tối
+  (Session 35; trước đó cố định `darkColors`).
 - `src/services/share/dayFoodShareService.ts` — `shareTodayFoodCard(ref, language)`
   gọi `captureRef` rồi `Sharing.shareAsync` (cùng pattern `exportDataInRange`
   trong `excelExportService.ts` đã dùng).

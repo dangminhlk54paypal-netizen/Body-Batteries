@@ -32,7 +32,7 @@ App được chia thành các lớp rõ ràng để bạn và AI luôn biết "c
 ```
 src/
 ├── screens/            # Các màn hình (Home, History, Settings, Diary, Onboarding)
-├── components/         # Khối tái sử dụng (BatteryCell, MasterBattery, TrendChart...); training/ = Sổ tập luyện
+├── components/         # Khối tái sử dụng (BatteryRing, MasterBattery, WeekRingsCard...); training/ = Sổ tập luyện
 ├── navigation/         # Điều hướng tab (React Navigation)
 ├── hooks/              # Hook React (useDrainTick, useLiveEnergyReading, useLowEnergyWatch)
 ├── store/              # Zustand: energyStore, settingsStore
@@ -143,6 +143,41 @@ quốc tế nên giống nhau ở cả 3 ngôn ngữ nhưng vẫn nằm trong fi
 **Tiêu đề tuần** (`formatWeekHeading(week, period, …)`): tuần trong block ghi `B2W1: 07.09–13.09 76.3kg`
 (số block + số tuần, khoảng ngày, lần cân đầu tiên của tuần), deload `B2 DELOAD: …`; tuần tập tự do vẫn là
 `07.09–13.09 76.3kg` (không có block nên không có `B…W…`). Trang 📄 dùng cùng tiêu đề.
+
+**Bổ sung Session 36 — nhãn tuần & tên tháng tự đặt.** Trong ✎ Sửa trang, gõ nhãn trước khoảng ngày của tuần
+(`B3W3: 21.09–27.09 75kg`) thì nhãn đó **thay** nhãn mặc định trên tiêu đề tuần (cả tuần block lẫn tuần tự do).
+`parsePageText` nhận tiêu đề tuần **theo khoảng ngày** (`weekHeadingPattern`: `[nhãn:] <ngày–ngày> [cân nặng]`,
+chấp nhận `-`/`–`/`—`) chứ không so nguyên dòng cũ — trước đây dòng có nhãn mới không khớp nên bị lưu thành ghi chú.
+Gõ lại nhãn mặc định (`B2W1`, không phân biệt hoa/thường) hoặc bỏ nhãn = xoá nhãn. Cùng một tuần xuất hiện hai lần
+thì nhãn gõ đầu tiên thắng (nhờ đó dòng `B3W3: …` từng bị lưu nhầm thành ghi chú tự sửa ở lần Sửa trang kế tiếp).
+Lưu ở cột mới `training_log_weeks.label` (ALTER-if-missing); `writeNotebook`/`saveWeekNote` **gộp** trường, nên
+sửa ghi chú không xoá nhãn và ngược lại. **Tháng tập tự do** đổi tên được (sửa dòng đầu Trang, hoặc nhấn giữ tiêu
+đề như block) → bảng mới `training_log_months(month_key, name)`; tên trống / gõ lại tên mặc định = về
+`Tập tự do · <tháng>`. Tháng đã đặt tên thì phụ đề hiện thêm khoảng ngày. Index nhận `weekLabels`/`monthNames`
+→ `TrainingLogWeek.customLabel`, `TrainingLogPeriod.monthName`. i18n vi/en/de đủ (`pageEdit.target.weekLabel/monthName`,
+`textSheet.monthName*`); bỏ lý do cũ `titleNotEditable`.
+
+**Bổ sung Session 37 — viết bù thành Xả thật, 1RM ⭐, chia sẻ ảnh biểu đồ, sheet Excel sức mạnh.**
+- *Viết bù → buổi Xả* (người dùng chọn 2026-09-24, thay quy tắc cũ "dòng ghi tay không tính pin"): `planDaySync`
+  cho ngày **không có Xả** giờ trả `kind: 'create'` khi cả dòng đọc được thành bài/set (S/B/D + biến thể) →
+  `WorkoutSession[]` (`minutes = estimateLiftingMinutes`); còn phần không đọc được → `'manual'` kèm `unparsed`.
+  Ghi qua `energyStore.logActivityForPastDate` với `backfillTimestamp(date, now)` = 18:00 ngày đó (≤ now) → kcal,
+  pin của ngày đó, Lịch sử, cột kcal đốt trong Excel đều có. Ba lối vào, **luôn xem trước**: form ＋ Ghi buổi (công
+  tắc "⚡ Tạo buổi Xả", bật sẵn, liệt kê bài sẽ tạo), ✎ Sửa trang (mục `xaCreate`), và nút **⚡ Ghi N dòng tay vào
+  Xả** trong 📄 Trang (`planPageEdit({ backfillManual: true })` — mọi dòng tay chưa đổi của kỳ; dòng không đọc được
+  báo `unparsedManual`, không ghi gì). Dùng chung `createDaySession`/`saveLineAsXa` (trainingLogPageSync.ts); sau
+  khi tạo, override bỏ nếu dòng tự động in y như chữ người dùng, không thì giữ chữ + gắn signature mới.
+- *1RM ⭐*: bảng `lift_maxes(id, lift, weight_kg, date, note, created_at)`, `liftMaxRepository`, nạp vào
+  `trainingLogStore.liftMaxes` trong `loadIndex`; `LiftMaxSheet` ghi/xoá. Vẽ là **ngôi sao** màu theo bài
+  (`liftSquat/liftBench/liftDeadlift`), đặt đúng ngày, không nối vào đường tuần; ở chế độ × cân nặng chia cho
+  `bodyWeightOn(date)` (cùng quy tắc cân của điểm tuần).
+- *Biểu đồ dùng chung*: `progressChartModel.ts` (thuần: trục theo **ngày**, tick, series, stars, nhãn cuối) +
+  `ProgressChartSvg` vẽ; `TrainingProgressChart` (màn hình) và `ShareProgressCard` (ảnh, theo theme sáng/tối) dùng
+  cùng model. Chia sẻ qua `services/share/imageShareService.shareViewAsImage` (captureRef, dùng chung với ảnh bữa ăn).
+- *Excel*: thêm sheet **Tiến độ sức mạnh** (mỗi tuần: S/B/D nặng nhất, cân nặng, × cân nặng — cùng số với biểu đồ,
+  gồm cả dòng ghi tay) và **1RM**, chỉ khi có dữ liệu (`domain/training/strengthExcelRows.ts`).
+- i18n vi/en/de đủ (`trainingLog.progress.share*/max*`, `trainingLog.maxSheet.*`, `trainingLog.editor.createXa*`,
+  `pageEdit.backfill*`, `export.sheets.strengthProgress/liftMaxes`, `export.strength.*`).
 
 **Bộ đọc ngược ký hiệu** — `trainingLogParser.ts` (`parseDayBody`, `parseSetChain`, `buildLabelLookup`): đọc
 dòng ngày thành bài + set theo đúng ngữ pháp trên. Nhãn tra theo thứ tự: nhãn của chính các buổi Xả hôm đó

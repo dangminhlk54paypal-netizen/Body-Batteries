@@ -144,10 +144,12 @@ Engine block ở trên **lập kế hoạch**; phần này là phía **ghi lại
 Kế hoạch app lập chỉ là **tham chiếu**; người dùng sửa thành kế hoạch thật của mình ngay trong app (tab Tập luyện →
 📋 Kế hoạch block):
 
-- **Sửa bài của một tuần:** nút "✎ Sửa" ở mỗi bài → gõ theo ký hiệu Notes của người dùng (`110x1 5x5x95`,
+- **Sửa bài của một tuần:** nút bút chì "✎" ở mỗi bài → gõ theo ký hiệu Notes của người dùng (`110x1 5x5x95`,
   `6x4(+3)x75`, `110x(4+5+5)`, `5x5@95` kiểu bảng tính, `(4x2+5)x90`), có xem trước từng set trước khi lưu
   (`domain/training/setNotation.ts`). Lưu vào `sets` của biến thể đó (`userEdited = true`); gợi ý của app vẫn nằm ở
-  `reference` và luôn hiện bên dưới kèm ⓘ "Cách app tính". "Khôi phục gợi ý của app" đưa về đúng số cũ. kcal ngày/tuần
+  `reference`, xem trong popup ⓘ cạnh tên bài (giải thích biến thể + gợi ý của app + "Cách app tính"; ghi chú EPOC/đạm
+  nằm trong ⓘ cạnh tiêu đề). `InfoPopover` mở Modal giữa màn hình — bản mở-rộng-tại-chỗ cũ (`flexBasis: '100%'`) không
+  hiện gì trên máy thật; không đặt nó bên trong BottomSheet (2 Modal chồng nhau). "Khôi phục gợi ý của app" đưa về đúng số cũ. kcal ngày/tuần
   tính lại theo set của người dùng (`liftingSessionKcal`, không công thức thứ hai). Bản in Excel và Sổ tập đọc `sets`,
   nên dùng kế hoạch của người dùng.
 - **Ngày thật của từng tuần:** nút "✎ Ngày" trong mỗi tuần → nhập từ ngày / đến ngày (1–14 ngày). Các tuần **sau**

@@ -6,6 +6,7 @@ import type { TrainingLogDayRecord } from '../../types/trainingLog';
 import * as activityLogRepository from '../../data/repositories/activityLogRepository';
 import * as trainingBlockRepository from '../../data/repositories/trainingBlockRepository';
 import * as trainingLogRepository from '../../data/repositories/trainingLogRepository';
+import * as liftMaxRepository from '../../data/repositories/liftMaxRepository';
 
 // Same shims as the other store tests: keep expo-sqlite and AsyncStorage out
 // of the import chain, and replace every repository with an auto-mock so this
@@ -18,10 +19,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('../../data/repositories/activityLogRepository');
 jest.mock('../../data/repositories/trainingBlockRepository');
 jest.mock('../../data/repositories/trainingLogRepository');
+jest.mock('../../data/repositories/liftMaxRepository');
 
 const repo = jest.mocked(trainingLogRepository);
 const activityRepo = jest.mocked(activityLogRepository);
 const blockRepo = jest.mocked(trainingBlockRepository);
+const maxRepo = jest.mocked(liftMaxRepository);
 
 const day = (patch: Partial<TrainingLogDayRecord> = {}): TrainingLogDayRecord => ({
   date: '2026-08-26',
@@ -43,6 +46,10 @@ beforeEach(() => {
   blockRepo.listTrainingBlocks.mockResolvedValue([]);
   repo.listTrainingLogDates.mockResolvedValue([]);
   repo.listTrainingLogWeekStarts.mockResolvedValue([]);
+  repo.listTrainingLogWeekLabels.mockResolvedValue([]);
+  repo.listTrainingLogMonthNames.mockResolvedValue([]);
+  repo.getTrainingLogWeek.mockResolvedValue(null);
+  maxRepo.listLiftMaxes.mockResolvedValue([]);
   repo.getTrainingLogDay.mockResolvedValue(null);
   repo.upsertTrainingLogDay.mockResolvedValue(undefined);
   repo.upsertTrainingLogWeek.mockResolvedValue(undefined);
@@ -224,5 +231,36 @@ describe('findPreviousDayBody', () => {
     );
     expect(await useTrainingLogStore.getState().findPreviousDayBody('2026-08-26')).toBe('S 130 (test)');
     expect(activityRepo.getActivityLogForDate).not.toHaveBeenCalled();
+  });
+});
+
+describe('week labels, month names, 1RMs', () => {
+  it('saving a week note keeps the week’s label (and a label edit keeps the note)', async () => {
+    repo.getTrainingLogWeek.mockResolvedValue({ weekStart: '2026-09-21', note: 'ngủ ít', label: 'B3W3', updatedAt: 1 });
+    await useTrainingLogStore.getState().saveWeekNote('2026-09-21', 'ốm');
+    expect(repo.upsertTrainingLogWeek.mock.calls.at(-1)![0]).toMatchObject({ note: 'ốm', label: 'B3W3' });
+
+    await useTrainingLogStore.getState().writeNotebook({ days: [], deleteDates: [], weeks: [{ weekStart: '2026-09-21', label: 'B3W4' }] });
+    expect(repo.upsertTrainingLogWeek.mock.calls.at(-1)![0]).toMatchObject({ note: 'ngủ ít', label: 'B3W4' });
+  });
+
+  it('loads labels, month names and 1RMs into the index', async () => {
+    activityRepo.getTrainingDayCounts.mockResolvedValue([{ date: '2026-09-22', sessions: 1 }]);
+    repo.listTrainingLogWeekLabels.mockResolvedValue([{ weekStart: '2026-09-21', label: 'B3W3' }]);
+    repo.listTrainingLogMonthNames.mockResolvedValue([{ monthKey: '2026-09', name: 'Power Lifting' }]);
+    const m = { id: 'x', lift: 'squat' as const, weightKg: 180, date: '2026-09-01', note: null, createdAt: 1 };
+    maxRepo.listLiftMaxes.mockResolvedValue([m]);
+    await useTrainingLogStore.getState().loadIndex();
+    const s = useTrainingLogStore.getState();
+    expect(s.periods[0]).toMatchObject({ monthName: 'Power Lifting' });
+    expect(s.periods[0].weeks[0].customLabel).toBe('B3W3');
+    expect(s.liftMaxes).toEqual([m]);
+  });
+
+  it('addLiftMax stores a trimmed note (blank → null) and reloads', async () => {
+    maxRepo.insertLiftMax.mockResolvedValue(undefined);
+    await useTrainingLogStore.getState().addLiftMax({ lift: 'deadlift', weightKg: 220, date: '2026-09-01', note: '  ' });
+    expect(maxRepo.insertLiftMax.mock.calls[0][0]).toMatchObject({ lift: 'deadlift', weightKg: 220, note: null });
+    expect(maxRepo.listLiftMaxes).toHaveBeenCalled();
   });
 });

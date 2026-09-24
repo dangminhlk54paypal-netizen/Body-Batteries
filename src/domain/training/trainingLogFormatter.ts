@@ -22,6 +22,7 @@ import type {
 //   even sets       → 5x5x72.5      (sets x reps x weight)
 //   last set +extra → 6x4(+3)x75    (last set did 3 more reps than the rest)
 //   anything else   → 110x(4+5+5+4+8)
+//   prime + volume  → 95 + 4x6x72.5 (heaviest warm-up, then the working sets)
 // The symbols x + ( ) are notation, not UI words, so they are written inline
 // (same as describeLiftingSets). Every WORD goes through translate().
 //
@@ -109,7 +110,27 @@ export function formatSetSequence(
 
   if (working.length === 0) return warmupText;
   if (format.showWarmups && warmupText) return `${warmupText} ${workingText}`;
+  const prime = format.showPrime ? primeSet(sets) : null;
+  if (prime) {
+    const primeText = prime.reps === 1 ? weight(prime.weightKg) : `${prime.reps}x${weight(prime.weightKg)}`;
+    return `${primeText}${PRIME_JOIN}${workingText}`;
+  }
   return workingText;
+}
+
+// Between the prime and the working sets. The spaced "+" is what tells the
+// prime apart from a top single ("130 4x3x115") and from clusters
+// ("4x3x115+3x100") — splitDayBody and the parser both read it that way.
+export const PRIME_JOIN = ' + ';
+
+// The prime: the heaviest warm-up set (the last one when several tie), or null
+// without warm-ups.
+export function primeSet(sets: LiftingSet[]): LiftingSet | null {
+  let best: LiftingSet | null = null;
+  for (const s of sets) {
+    if (s.kind === 'warmup' && s.reps > 0 && (!best || s.weightKg >= best.weightKg)) best = s;
+  }
+  return best;
 }
 
 // Default abbreviation for a lift / variation id, or null when the locale has
@@ -207,6 +228,18 @@ export function formatWeekLabel(
   period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
   language: Language
 ): string {
+  if (week.customLabel) return week.customLabel;
+  return formatDefaultWeekLabel(week, period, language);
+}
+
+// The label the app gives a week on its own, ignoring the user's customLabel:
+// "B2W1" / "B2 DELOAD" in a block, the dates in a free week. The page editor
+// compares against it to tell "the user typed the default back" from a label.
+export function formatDefaultWeekLabel(
+  week: TrainingLogWeek,
+  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
+  language: Language
+): string {
   if (period.kind === 'block') {
     const b = period.blockNumber ?? 0;
     return week.isDeload
@@ -223,8 +256,9 @@ export function formatWeekRange(week: TrainingLogWeek, language: Language): stri
 
 // The week heading: "B2W1: 07.09–13.09 76.3kg" inside a block — which block
 // and week, its dates, and the week's first weigh-in — or "07.09–13.09 76.3kg"
-// for a free week. The weight is only there when the user weighed in that
-// week and `showBodyWeight` is on.
+// for a free week. A label the user gave the week ("B3W3") takes the label's
+// place in either kind: "B3W3: 21.09–27.09 75kg". The weight is only there
+// when the user weighed in that week and `showBodyWeight` is on.
 export function formatWeekHeading(
   week: TrainingLogWeek,
   period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
@@ -232,20 +266,97 @@ export function formatWeekHeading(
   format: TrainingLogFormat,
   language: Language
 ): string {
-  const heading =
-    period.kind === 'block'
-      ? `${formatWeekLabel(week, period, language)}: ${formatWeekRange(week, language)}`
-      : formatWeekRange(week, language);
-  return format.showBodyWeight && weekWeightKg != null
-    ? `${heading} ${formatBodyWeight(weekWeightKg, format, language)}`
-    : heading;
+  const { lead, range, weight } = formatWeekHeadingParts(week, period, weekWeightKg, format, language);
+  const rest = weight ? `${range} ${weight}` : range;
+  return lead ? `${lead}: ${rest}` : rest;
 }
 
-// "Block 2" / the user's own name, or "Free training · September 2026".
+// The same heading split where the notebook styles each part differently:
+// `lead` the label ("B2W1", bold) — null for an unlabelled free week —,
+// `range` the dates ("07.09–13.09", plain) and `weight` ("76.3kg", green
+// italic) — null when there is none or `showBodyWeight` is off.
+export function formatWeekHeadingParts(
+  week: TrainingLogWeek,
+  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
+  weekWeightKg: number | null,
+  format: TrainingLogFormat,
+  language: Language
+): { lead: string | null; range: string; weight: string | null } {
+  return {
+    lead: period.kind === 'block' || week.customLabel ? formatWeekLabel(week, period, language) : null,
+    range: formatWeekRange(week, language),
+    weight: format.showBodyWeight && weekWeightKg != null ? formatBodyWeight(weekWeightKg, format, language) : null,
+  };
+}
+
+// Letters only (any Latin script incl. Vietnamese/German diacritics) — a
+// movement label such as "S", "PD", "iC" or "Bench press".
+const LABEL_WORD = /^[A-Za-zÀ-ỹ]+$/;
+// One bare cluster: a weight ("95") or reps x weight ("3x80"), unit optional.
+const BARE_CLUSTER = /^\d+(?:[.,]\d+)?(?:x\d+(?:[.,]\d+)?)?(?:kg)?$/i;
+const STARTS_SETS = /^[\d(]/;
+
+export type DayBodyPart = { text: string; kind: 'label' | 'prime' | 'text' };
+
+// A day line's body cut into what the notebook styles: movement labels (bold
+// grey), primes (italic) and the rest — "B 95 + 4x6x72.5" → "B" | " " |
+// "95" | " + 4x6x72.5". A label is a run of letter-only words directly
+// followed by a number or a bracket (trailing words like "kcal", "phút" and
+// notes stay plain). A prime is the first cluster after a label when a "+"
+// set apart by a space follows it — "95 + 4x6x72.5" or the hand-written
+// "95+ 4x6x72.5" — never "4x3x115+3x100" or a top single "130 4x3x115".
+// Joining every `text` gives back the body unchanged.
+export function splitDayBody(body: string): DayBodyPart[] {
+  // "95+" (a prime glued to its "+") becomes two words so it can be styled apart.
+  const parts = body
+    .split(/(\s+)/)
+    .flatMap((p) => (/\S\+$/.test(p) && BARE_CLUSTER.test(p.slice(0, -1)) ? [p.slice(0, -1), '+'] : [p]))
+    .filter((p) => p !== '');
+  const words = parts.map((p, i) => i).filter((i) => !/^\s+$/.test(parts[i]));
+  const kinds = parts.map((): DayBodyPart['kind'] => 'text');
+
+  for (let w = 0; w < words.length; w++) {
+    if (!LABEL_WORD.test(parts[words[w]])) continue;
+    let end = w;
+    while (end + 1 < words.length && LABEL_WORD.test(parts[words[end + 1]])) end++;
+    const first = words[end + 1];
+    if (first !== undefined && STARTS_SETS.test(parts[first])) {
+      for (let k = words[w]; k <= words[end]; k++) kinds[k] = 'label'; // incl. the spaces inside
+      const plus = words[end + 2];
+      const after = words[end + 3];
+      if (
+        BARE_CLUSTER.test(parts[first]) &&
+        plus !== undefined &&
+        parts[plus] === '+' &&
+        after !== undefined &&
+        STARTS_SETS.test(parts[after])
+      ) {
+        kinds[first] = 'prime';
+      }
+    }
+    w = end;
+  }
+
+  const out: DayBodyPart[] = [];
+  parts.forEach((text, i) => {
+    const last = out[out.length - 1];
+    if (last && last.kind === kinds[i]) last.text += text;
+    else out.push({ text, kind: kinds[i] });
+  });
+  return out;
+}
+
+// "Block 2" / the user's own name, or "Free training · September 2026" / the
+// user's own name for that month ("Power Lifting").
 export function formatPeriodTitle(period: TrainingLogPeriod, language: Language): string {
   if (period.kind === 'block') {
     return period.blockName ?? t(language, 'trainingLog.blockTitle', { n: period.blockNumber ?? 0 });
   }
+  return period.monthName ?? formatDefaultFreeTitle(period, language);
+}
+
+// "Free training · September 2026" — a free month's title when it has no name.
+export function formatDefaultFreeTitle(period: Pick<TrainingLogPeriod, 'monthKey'>, language: Language): string {
   const month = new Date(`${period.monthKey}-01T00:00:00`).toLocaleDateString(LOCALE_TAGS[language], {
     month: 'long',
     year: 'numeric',

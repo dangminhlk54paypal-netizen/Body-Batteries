@@ -91,6 +91,17 @@ function round1Decimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+// WHO healthy-BMI weight bounds (18.5–24.9) for a height, UNROUNDED — shared
+// by the recommendations sheet and the weight-over-time chart's reference
+// lines so both always agree.
+export function healthyWeightRangeKgRaw(heightCm: number): RangeValue {
+  const heightM = heightCm / 100;
+  return {
+    min: BMI_HEALTHY_MIN * heightM * heightM,
+    max: BMI_HEALTHY_MAX * heightM * heightM,
+  };
+}
+
 export function dailyRecommendations(profile: UserProfile): DailyRecommendations {
   const { targetKcal, maintenanceKcal } = dailyCalorieTarget(profile);
 
@@ -124,9 +135,9 @@ export function dailyRecommendations(profile: UserProfile): DailyRecommendations
   const sleep = sleepRecommendationH(profile.age, false);
   const sleepHours: RangeValue = { min: sleep.minH, max: sleep.maxH };
 
-  const heightM = profile.heightCm / 100;
-  const healthyWeightMinRaw = BMI_HEALTHY_MIN * heightM * heightM;
-  const healthyWeightMaxRaw = BMI_HEALTHY_MAX * heightM * heightM;
+  const { min: healthyWeightMinRaw, max: healthyWeightMaxRaw } = healthyWeightRangeKgRaw(
+    profile.heightCm
+  );
   const healthyWeightKg: RangeValue = {
     min: round1Decimal(healthyWeightMinRaw),
     max: round1Decimal(healthyWeightMaxRaw),

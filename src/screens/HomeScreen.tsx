@@ -12,7 +12,7 @@ import {
 import { useEnergyStore } from '../store/energyStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { LiveMasterBattery } from '../components/LiveMasterBattery';
-import { BatteryStack } from '../components/BatteryStack';
+import { BatteryRing } from '../components/BatteryRing';
 import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
 import { BatterySourceSheet } from '../components/BatterySourceSheet';
@@ -286,7 +286,7 @@ export function HomeScreen() {
 
         {/* Sub-batteries */}
         <Text style={styles.sectionLabel}>{t('screens.home.subBatteriesLabel')}</Text>
-        <BatteryStack
+        <BatteryRing
           batteries={batteryStates}
           onPressCell={handleCellPress}
           waterDisplayUnit={waterDisplayUnit}

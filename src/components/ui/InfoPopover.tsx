@@ -1,54 +1,68 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
 
-interface Props {
-  // Already-resolved strings (callers pass t('...')) — this component has
-  // no locale keys of its own besides the show/hide toggle chrome.
-  title: string;
+export interface InfoSection {
+  heading?: string;
   body: string;
 }
 
-// Small "ⓘ" affordance that expands its explanation INLINE, never as a
-// second <Modal>/<BottomSheet> — every screen that will host this
-// (BlockBuilderWizard, PlanAppendixSheet) is already itself rendered inside
-// one BottomSheet Modal, and this app has a documented real bug (Session 18
-// roadmap entry) where two RN <Modal>s stacked hide the top one on iOS.
-// Toggle-in-place is the only interaction that's safe everywhere this is used.
-export function InfoPopover({ title, body }: Props) {
+interface Props {
+  // Already-resolved strings (callers pass t('...')) — this component has
+  // no locale keys of its own besides the badge/close chrome.
+  title: string;
+  sections: InfoSection[];
+}
+
+// Small "ⓘ" badge that opens its explanation in a centered popup — the same
+// pattern as BodyProfileCard's InfoPopup. It used to expand inline, relying on
+// `flexBasis: '100%'` inside a `flexWrap` row to push the panel onto its own
+// line; on device the panel never became visible, so tapping ⓘ showed
+// nothing. A Modal doesn't depend on the host row's layout at all.
+// Only safe where no other Modal is open at the same moment (two stacked RN
+// <Modal>s hide the top one on iOS) — so don't place it inside a BottomSheet.
+export function InfoPopover({ title, sections }: Props) {
   const { t } = useT();
   const styles = useThemedStyles(createStyles);
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    // `flexBasis: '100%'` ONLY while expanded, combined with `flexWrap:
-    // 'wrap'` on whatever row hosts this (see PlanAppendixSheet/
-    // TrainingScreen) — forces the open panel onto its own full-width line
-    // instead of staying a same-line flex sibling next to the label, which
-    // is what let long explanation text push past the screen edge (RN's
-    // default `overflow: visible` renders that overflow instead of
-    // clipping it, so it just goes invisible off-screen). Collapsed, the
-    // badge alone stays inline and auto-width as before.
-    <View style={expanded ? styles.wrapperExpanded : undefined}>
+    <>
       <Pressable
         hitSlop={8}
-        onPress={() => setExpanded((e) => !e)}
+        onPress={() => setOpen(true)}
         style={({ pressed }) => [styles.badge, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={expanded ? t('planAppendix.infoToggleHide') : t('planAppendix.infoToggleShow')}
-        accessibilityState={{ expanded }}
+        accessibilityLabel={t('planAppendix.infoAbout', { title })}
       >
-        <Text style={styles.badgeText}>ⓘ</Text>
+        <Text style={styles.badgeText}>i</Text>
       </Pressable>
-      {expanded && (
-        <View style={styles.panel}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.body}>{body}</Text>
-        </View>
-      )}
-    </View>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
+          {/* Swallows taps on the card so they don't reach the backdrop. */}
+          <Pressable style={styles.card} onPress={() => {}}>
+            <Text style={styles.title}>{title}</Text>
+            <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+              {sections.map((s, i) => (
+                <View key={i} style={styles.section}>
+                  {s.heading ? <Text style={styles.heading}>{s.heading}</Text> : null}
+                  <Text style={styles.body}>{s.body}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <Pressable
+              style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
+              onPress={() => setOpen(false)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.closeText}>{t('common.close')}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -65,16 +79,32 @@ const createStyles = (c: ThemeColors) =>
       borderColor: c.borderSubtle,
     },
     pressed: { opacity: 0.6 },
-    badgeText: { color: c.accent, fontSize: 12, fontWeight: '700' },
-    wrapperExpanded: { flexBasis: '100%' },
-    panel: {
-      width: '100%',
-      marginTop: 6,
-      padding: 10,
-      borderRadius: 10,
-      backgroundColor: c.bgHighlight,
-      gap: 4,
+    badgeText: { color: c.accent, fontSize: 12, fontWeight: '700', fontStyle: 'italic' },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'center',
+      padding: 24,
     },
-    title: { color: c.textBright, fontSize: 12, fontWeight: '700' },
-    body: { color: c.textTertiary, fontSize: 12, lineHeight: 17, flexShrink: 1 },
+    card: {
+      backgroundColor: c.bgElevated,
+      borderRadius: 16,
+      padding: 18,
+      gap: 10,
+      maxHeight: '80%',
+    },
+    title: { color: c.textBright, fontSize: 16, fontWeight: '700' },
+    scroll: { flexGrow: 0 },
+    scrollContent: { gap: 12 },
+    section: { gap: 4 },
+    heading: { color: c.textSoft, fontSize: 13, fontWeight: '700' },
+    body: { color: c.textSecondary, fontSize: 13, lineHeight: 19 },
+    closeBtn: {
+      alignSelf: 'flex-end',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: c.accent,
+    },
+    closeText: { color: c.bg, fontSize: 13, fontWeight: '700' },
   });

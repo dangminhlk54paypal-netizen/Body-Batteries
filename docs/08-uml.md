@@ -18,7 +18,7 @@ UI không tự lưu dữ liệu — luôn đi qua Domain → Data.
 flowchart TB
     subgraph UI["UI Layer — screens/ + components/"]
         Screens["screens/\nHomeScreen · HistoryScreen · DiaryScreen\nSettingsScreen · OnboardingScreen"]
-        Components["components/\nMasterBattery · BatteryCell/Stack\nMicroBatteryStack · TrendChart\nFoodLogModal · IntakeModal\nPowerliftingSheet · BodybuildingSheet ..."]
+        Components["components/\nMasterBattery · BatteryRing\nMicroBatteryStack · WeekRingsCard\nFoodLogModal · IntakeModal\nPowerliftingSheet · BodybuildingSheet ..."]
     end
 
     subgraph State["State Layer — store/ (Zustand)"]
@@ -532,7 +532,7 @@ flowchart TD
     Home --> MasterBattery
     Home --> ModeSelector
     Home --> MicroBatteryStack --> MicroBatterySourceSheet
-    Home --> BatteryStack --> BatteryCell --> BatterySourceSheet
+    Home --> BatteryRing --> BatterySourceSheet
     Home --> EnergyActionsBar
     EnergyActionsBar --> IntakeModal
     EnergyActionsBar --> FoodLogModal --> CustomFoodFields

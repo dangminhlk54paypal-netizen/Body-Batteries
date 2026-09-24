@@ -7,7 +7,11 @@ import {
   rowToWeekRecord,
 } from './trainingLogMapper';
 import type { TrainingLogDayRow, TrainingLogWeekRow } from './trainingLogMapper';
-import type { TrainingLogDayRecord, TrainingLogWeekRecord } from '../../types/trainingLog';
+import type {
+  TrainingLogDayRecord,
+  TrainingLogMonthRecord,
+  TrainingLogWeekRecord,
+} from '../../types/trainingLog';
 
 // The user's own additions to the training log (hand-written lines, edits,
 // notes). Everything auto-generated lives in activity_log, not here.
@@ -124,9 +128,44 @@ export async function upsertTrainingLogWeek(rec: TrainingLogWeekRecord): Promise
     return;
   }
   await db.runAsync(
-    'INSERT OR REPLACE INTO training_log_weeks (week_start, note, updated_at) VALUES (?, ?, ?)',
+    'INSERT OR REPLACE INTO training_log_weeks (week_start, note, label, updated_at) VALUES (?, ?, ?, ?)',
     rec.weekStart,
     cleanText(rec.note),
+    cleanText(rec.label),
     rec.updatedAt
+  );
+}
+
+// Weeks the user gave their own label ("B3W3") — the index puts them on the
+// week headings.
+export async function listTrainingLogWeekLabels(): Promise<{ weekStart: string; label: string }[]> {
+  const db = getDb();
+  const rows = await db.getAllAsync<{ week_start: string; label: string }>(
+    "SELECT week_start, label FROM training_log_weeks WHERE label IS NOT NULL AND TRIM(label) != ''"
+  );
+  return rows.map((r) => ({ weekStart: r.week_start, label: r.label }));
+}
+
+export async function listTrainingLogMonthNames(): Promise<TrainingLogMonthRecord[]> {
+  const db = getDb();
+  const rows = await db.getAllAsync<{ month_key: string; name: string }>(
+    'SELECT month_key, name FROM training_log_months'
+  );
+  return rows.map((r) => ({ monthKey: r.month_key, name: r.name }));
+}
+
+// Blank name = back to the default "Tập tự do · <month>" (the row is removed).
+export async function setTrainingLogMonthName(monthKey: string, name: string): Promise<void> {
+  const db = getDb();
+  const clean = cleanText(name);
+  if (clean == null) {
+    await db.runAsync('DELETE FROM training_log_months WHERE month_key = ?', monthKey);
+    return;
+  }
+  await db.runAsync(
+    'INSERT OR REPLACE INTO training_log_months (month_key, name, updated_at) VALUES (?, ?, ?)',
+    monthKey,
+    clean,
+    Date.now()
   );
 }

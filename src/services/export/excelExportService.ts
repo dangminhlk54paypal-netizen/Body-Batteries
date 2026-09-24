@@ -5,9 +5,14 @@ import { autoFitColumns, workbookToBase64WithFrozenHeaders } from './xlsxWriteUt
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { getIntakeEventsInRange } from '../../data/repositories/intakeRepository';
 import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
-import { getWeightHistory, getAppleHealthBurnedInRange } from '../../data/repositories/healthSignalsRepository';
+import { getWeightHistory, getAppleHealthBurnedInRange, getWeightsInRange } from '../../data/repositories/healthSignalsRepository';
 import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
-import { todayString, daysAgo, formatDisplayDate } from '../../lib/dateUtils';
+import { getTrainingLogDaysInRange } from '../../data/repositories/trainingLogRepository';
+import { listLiftMaxes } from '../../data/repositories/liftMaxRepository';
+import { bodyWeightOn, buildLiftProgress } from '../../domain/training/trainingLogProgress';
+import { buildLiftMaxRows, buildStrengthProgressRows } from '../../domain/training/strengthExcelRows';
+import { resolveTrainingLogFormat } from '../../types/trainingLog';
+import { todayString, daysAgo, formatDisplayDate, addDaysToDateString } from '../../lib/dateUtils';
 import { mealLabel, batteryTypeName } from '../../lib/constants';
 import { useSettingsStore } from '../../store/settingsStore';
 import { nutrientTargetsForProfile } from '../../lib/nutrientTargets';
@@ -23,7 +28,7 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-// Build the .xlsx (all 8 sheets) for an arbitrary date range and return it as a
+// Build the .xlsx (8 sheets, + the 2 training sheets when there is training) for an arbitrary date range and return it as a
 // base64 string. Does the DB reads but no file I/O — shared by every export.
 // Every header/label in the workbook follows `language` — see
 // src/i18n/locales/*.ts `export.*`/`nutrients.*`/`meals.*`/`batteries.*`.
@@ -206,6 +211,36 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
   const referenceSheet = utils.json_to_sheet(referenceRows);
   autoFitColumns(referenceSheet);
   utils.book_append_sheet(wb, referenceSheet, t('export.sheets.referenceThresholds'));
+
+  // Training sheets — the same numbers as the strength chart: the week's
+  // heaviest S/B/D from Xả sessions AND the notebook's own lines, and every
+  // recorded 1RM. Only added when there is something to show.
+  const [trainingDays, liftWeights, liftMaxes] = await Promise.all([
+    getTrainingLogDaysInRange(fromDate, toDate),
+    // A year earlier too, so the first weeks can carry a weigh-in forward.
+    getWeightsInRange(addDaysToDateString(fromDate, -365), toDate),
+    listLiftMaxes(),
+  ]);
+  const strengthWeeks = buildLiftProgress({
+    entries: activityLog,
+    dayRecords: trainingDays,
+    weights: liftWeights,
+    fallbackBodyWeightKg: userProfile.weightKg,
+    format: resolveTrainingLogFormat(useSettingsStore.getState().trainingLogFormat),
+    language,
+  });
+  if (strengthWeeks.length > 0) {
+    const strengthSheet = utils.json_to_sheet(buildStrengthProgressRows(strengthWeeks, language));
+    autoFitColumns(strengthSheet);
+    utils.book_append_sheet(wb, strengthSheet, t('export.sheets.strengthProgress'));
+  }
+  const maxesInRange = liftMaxes.filter((m) => m.date >= fromDate && m.date <= toDate);
+  if (maxesInRange.length > 0) {
+    const bodyWeightOf = (date: string) => bodyWeightOn(date, liftWeights, userProfile.weightKg);
+    const maxSheet = utils.json_to_sheet(buildLiftMaxRows(maxesInRange, bodyWeightOf, language));
+    autoFitColumns(maxSheet);
+    utils.book_append_sheet(wb, maxSheet, t('export.sheets.liftMaxes'));
+  }
 
   return workbookToBase64WithFrozenHeaders(wb);
 }

@@ -76,9 +76,9 @@ describe('parsePageText — what the user changed on the page', () => {
     expect(page.text.split('\n').slice(0, 3)).toEqual([
       'Block 1',
       'B1W1: 07.09–13.09 76.3kg',
-      '08.09(76.3kg): S 130 4x3x115',
+      '08.09: S 130 4x3x115',
     ]);
-    expect(diffOf((t) => t)).toEqual({ days: [], weekNotes: [], title: null, invalidDates: [] });
+    expect(diffOf((t) => t)).toEqual({ days: [], weekNotes: [], weekLabels: [], weekWeights: [], title: null, invalidDates: [] });
   });
 
   it('a corrected number is a day edit with before/after bodies', () => {
@@ -93,7 +93,7 @@ describe('parsePageText — what the user changed on the page', () => {
     const d = diffOf((t) =>
       t
         .replace('B1W1: 07.09–13.09 76.3kg', 'B1W1: 07.09–13.09 76.3kg\nngủ ít')
-        .replace('08.09(76.3kg): S 130 4x3x115', '08.09(76.3kg): S 130 4x3x115\nCảm giác nặng')
+        .replace('08.09: S 130 4x3x115', '08.09: S 130 4x3x115\nCảm giác nặng')
     );
     expect(d.weekNotes).toEqual([{ weekStart: '2026-09-07', label: 'B1W1', before: '', after: 'ngủ ít' }]);
     expect(d.days[0].after?.note).toBe('Cảm giác nặng');
@@ -103,7 +103,7 @@ describe('parsePageText — what the user changed on the page', () => {
     const d = diffOf((t) =>
       t
         .replace('Block 1', 'Block2 Peak')
-        .replace('08.09(76.3kg): S 130 4x3x115', '10.09: D 150\n25.09: S 200')
+        .replace('08.09: S 130 4x3x115', '10.09: D 150\n25.09: S 200')
         .replace('15.09: B 5x5x90', '')
     );
     expect(d.title).toEqual({ before: 'Block 1', after: 'Block2 Peak' });
@@ -116,13 +116,116 @@ describe('parsePageText — what the user changed on the page', () => {
   });
 
   it('English pages are read month-first', () => {
-    const d = diffOf((t) => t.replace('09/08(76.3kg): S 130 4x3x115', '09/08(76.3kg): S 135 4x3x115'), 'en');
+    const d = diffOf((t) => t.replace('09/08: S 130 4x3x115', '09/08: S 135 4x3x115'), 'en');
     expect(d.days.map((x) => x.date)).toEqual(['2026-09-08']);
   });
 
-  it('a changed weigh-in in the prefix is reported', () => {
-    const d = diffOf((t) => t.replace('08.09(76.3kg):', '08.09(76,1kg):'));
+  it('a weigh-in typed into a day prefix is reported (day lines print none)', () => {
+    const d = diffOf((t) => t.replace('08.09:', '08.09(76,1kg):'));
     expect(d.days[0].after?.weightKg).toBe(76.1);
-    expect(d.days[0].before?.weightKg).toBe(76.3);
+    expect(d.days[0].before?.weightKg).toBeNull();
+  });
+});
+
+describe('parsePageText — the weight in a week heading', () => {
+  it('a changed heading weight is that week’s weigh-in (decimal comma too)', () => {
+    const d = diffOf((t) => t.replace('B1W1: 07.09–13.09 76.3kg', 'B1W1: 07.09–13.09 80,5kg'));
+    expect(d.weekWeights).toEqual([
+      { weekStart: '2026-09-07', weekEnd: '2026-09-13', label: 'B1W1', before: 76.3, after: 80.5 },
+    ]);
+    expect(d.days).toEqual([]);
+  });
+
+  it('a weight typed into a heading that had none is an edit too', () => {
+    const d = diffOf((t) => t.replace('B1W2: 14.09–20.09 76.3kg', 'B1W2: 14.09–20.09 79kg'));
+    expect(d.weekWeights.map((w) => [w.weekStart, w.before, w.after])).toEqual([['2026-09-14', 76.3, 79]]);
+  });
+
+  it('removing the weight, or leaving it, changes nothing', () => {
+    expect(diffOf((t) => t.replace('B1W1: 07.09–13.09 76.3kg', 'B1W1: 07.09–13.09')).weekWeights).toEqual([]);
+    expect(diffOf((t) => t.replace('76.3kg', '76.30kg')).weekWeights).toEqual([]);
+  });
+});
+
+describe('parsePageText — week labels typed in front of the dates', () => {
+  it('reads "B3W3: <dates> <weight>" in a block as that week’s own label', () => {
+    const diff = diffOf((t) => t.replace('B1W2: 14.09–20.09', 'B3W3: 14.09–20.09'));
+    expect(diff.weekLabels).toEqual([{ weekStart: '2026-09-14', range: '14.09–20.09', before: '', after: 'B3W3' }]);
+    expect(diff.weekNotes).toEqual([]);
+    expect(diff.days).toEqual([]);
+  });
+
+  it('typing the default label back (any case) is not a label', () => {
+    expect(diffOf((t) => t.replace('B1W2:', 'b1w2:')).weekLabels).toEqual([]);
+  });
+
+  const free = buildTrainingLogIndex({
+    trainingDays: [
+      { date: '2026-09-17', sessions: 1 },
+      { date: '2026-09-22', sessions: 1 },
+    ],
+    logDates: [],
+    weekNoteStarts: [],
+    blocks: [],
+    today: '2026-09-24',
+  })[0];
+  const freeEntries = [
+    entry('2026-09-17', [{ type: 'squat', minutes: 30, sets: working(100, [6, 6]) }]),
+    entry('2026-09-22', [{ type: 'bench_press', minutes: 30, sets: working(80, [5]) }]),
+  ];
+  const freeDiff = (edit: (text: string) => string, customLabel?: string) => {
+    const withLabel = customLabel
+      ? { ...free, weeks: free.weeks.map((w) => (w.weekStart === '2026-09-21' ? { ...w, customLabel } : w)) }
+      : free;
+    const page = buildPeriodPage({
+      period: withLabel,
+      entries: freeEntries,
+      dayRecords: [],
+      weekRecords: [],
+      weights: [],
+      format: DEFAULT_TRAINING_LOG_FORMAT,
+      language: 'vi',
+    });
+    return {
+      page,
+      diff: parsePageText({
+        page,
+        text: edit(page.text),
+        rangeStart: withLabel.startDate,
+        rangeEnd: withLabel.endDate,
+        today: '2026-09-24',
+        language: 'vi',
+      }),
+    };
+  };
+
+  it('a free week gets a label (and is no longer a note of the previous day)', () => {
+    const { diff } = freeDiff((t) => t.replace('21.09–27.09', 'B3W3: 21.09–27.09'));
+    expect(diff.weekLabels).toEqual([{ weekStart: '2026-09-21', range: '21.09–27.09', before: '', after: 'B3W3' }]);
+    expect(diff.days).toEqual([]);
+  });
+
+  it('accepts a plain hyphen between the dates', () => {
+    const { diff } = freeDiff((t) => t.replace('21.09–27.09', 'B3W3: 21.09 - 27.09'));
+    expect(diff.weekLabels.map((w) => w.after)).toEqual(['B3W3']);
+  });
+
+  it('heals a label line that was saved as a day note: first label wins, the note goes away', () => {
+    // What the old parser left behind: the "B3W3: …" line under 17.09.
+    const { diff } = freeDiff((t) => t.replace('17.09: S 2x6x100', '17.09: S 2x6x100\nB3W3: 21.09–27.09'));
+    expect(diff.weekLabels.map((w) => [w.weekStart, w.after])).toEqual([['2026-09-21', 'B3W3']]);
+    expect(diff.days).toEqual([]);
+  });
+
+  it('shows the label on the page and removing it clears it', () => {
+    const { page, diff } = freeDiff((t) => t.replace('B3W3: 21.09–27.09', '21.09–27.09'), 'B3W3');
+    expect(page.text).toContain('B3W3: 21.09–27.09');
+    expect(diff.weekLabels).toEqual([{ weekStart: '2026-09-21', range: '21.09–27.09', before: 'B3W3', after: '' }]);
+  });
+
+  it('a note line that merely mentions the dates stays a note', () => {
+    const { diff } = freeDiff((t) => t.replace('17.09: S 2x6x100', '17.09: S 2x6x100\nnghỉ 21.09–27.09 vì ốm nặng'));
+    expect(diff.weekLabels).toEqual([]);
+    expect(diff.days.map((d) => d.after?.note)).toEqual(['nghỉ 21.09–27.09 vì ốm nặng']);
   });
 });

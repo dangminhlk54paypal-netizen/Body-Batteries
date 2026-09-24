@@ -222,3 +222,28 @@ describe('suggestEntryDate', () => {
     expect(suggestEntryDate(week([]), '2026-08-20')).toBe('2026-08-20');
   });
 });
+
+describe('the user’s own week labels and free-month names', () => {
+  it('puts a week label on block and free weeks, and a name on the free month', () => {
+    const periods = buildTrainingLogIndex({
+      trainingDays: [
+        { date: '2026-08-04', sessions: 1 },
+        { date: '2026-09-17', sessions: 1 },
+      ],
+      logDates: [],
+      weekNoteStarts: [],
+      blocks: [block('b1', 1, '2026-08-03', 1)],
+      today: '2026-09-24',
+      weekLabels: [
+        { weekStart: '2026-08-03', label: 'Heavy' },
+        { weekStart: '2026-09-14', label: 'B3W3' },
+      ],
+      monthNames: [{ monthKey: '2026-09', name: 'Power Lifting' }],
+    });
+    const free = periods.find((p) => p.kind === 'free')!;
+    const blk = periods.find((p) => p.kind === 'block')!;
+    expect(free.monthName).toBe('Power Lifting');
+    expect(free.weeks[0].customLabel).toBe('B3W3');
+    expect(blk.weeks[0].customLabel).toBe('Heavy');
+  });
+});

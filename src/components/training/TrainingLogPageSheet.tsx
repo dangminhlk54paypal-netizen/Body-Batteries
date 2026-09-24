@@ -5,17 +5,24 @@ import { useTrainingLogStore } from '../../store/trainingLogStore';
 import { useEnergyStore } from '../../store/energyStore';
 import { useBlockStore } from '../../store/blockStore';
 import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
-import { getWeightsInRange } from '../../data/repositories/healthSignalsRepository';
+import {
+  getWeightsInRange,
+  setFirstWeightInRange,
+  setWeightForDay,
+} from '../../data/repositories/healthSignalsRepository';
 import {
   getTrainingLogDaysInRange,
   getTrainingLogWeeksInRange,
 } from '../../data/repositories/trainingLogRepository';
 import { formatDayDate, formatPeriodTitle } from '../../domain/training/trainingLogFormatter';
 import { buildPeriodPage } from '../../domain/training/trainingLogPage';
+import { backfillTimestamp } from '../../domain/training/trainingLogDaySync';
 import type { PeriodPage } from '../../domain/training/trainingLogPage';
 import { applyPageEdit, planHasWrites, planPageEdit } from '../../services/training/trainingLogPageSync';
 import type { PageChange, PageEditPlan } from '../../services/training/trainingLogPageSync';
-import { todayString } from '../../lib/dateUtils';
+import { addDaysToDateString, todayString } from '../../lib/dateUtils';
+import { WEEK_WEIGHT_LOOKBACK_DAYS } from '../../domain/training/trainingLogWeights';
+import { weighInTimestamp } from '../../domain/health/weighIn';
 import type { TrainingLogFormat, TrainingLogPeriod } from '../../types/trainingLog';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
@@ -51,7 +58,9 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
   const styles = useThemedStyles(createStyles);
   const revision = useTrainingLogStore((s) => s.revision);
   const writeNotebook = useTrainingLogStore((s) => s.writeNotebook);
+  const renameMonth = useTrainingLogStore((s) => s.renameMonth);
   const updateActivityForPastDate = useEnergyStore((s) => s.updateActivityForPastDate);
+  const logActivityForPastDate = useEnergyStore((s) => s.logActivityForPastDate);
   const renameBlock = useBlockStore((s) => s.renameBlock);
 
   const [page, setPage] = useState<PeriodPage | null>(null);
@@ -61,6 +70,9 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
   const [plan, setPlan] = useState<PageEditPlan | null>(null);
   const [result, setResult] = useState<PageChange[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // The review came from "Ghi dòng tay vào Xả" (not from an edit): going back
+  // returns to the page, not to a text box.
+  const [backfilling, setBackfilling] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -70,7 +82,8 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
       getActivityLogInRange(startDate, endDate),
       getTrainingLogDaysInRange(startDate, endDate),
       getTrainingLogWeeksInRange(startDate, endDate),
-      getWeightsInRange(startDate, endDate),
+      // Lookback → the first week heading can carry an earlier weight forward.
+      getWeightsInRange(addDaysToDateString(startDate, -WEEK_WEIGHT_LOOKBACK_DAYS), endDate),
     ]).then(([entries, dayRecords, weekRecords, weights]) => {
       if (!cancelled) {
         setPage(buildPeriodPage({ period, entries, dayRecords, weekRecords, weights, format, language }));
@@ -102,6 +115,31 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
     setBusy(true);
     try {
       setPlan(await planPageEdit({ period, page: base, text: draft, format, language, today: getTodayString() }));
+      setBackfilling(false);
+      setMode('review');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Every hand-written line of the period → a Xả session, previewed first.
+  async function reviewBackfill() {
+    if (!page) return;
+    setBusy(true);
+    try {
+      setBase(page);
+      setPlan(
+        await planPageEdit({
+          period,
+          page,
+          text: page.text,
+          format,
+          language,
+          today: getTodayString(),
+          backfillManual: true,
+        })
+      );
+      setBackfilling(true);
       setMode('review');
     } finally {
       setBusy(false);
@@ -114,10 +152,16 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
     try {
       const done = await applyPageEdit(plan, {
         updateEntry: (entry, workouts) => updateActivityForPastDate(entry, { workouts }),
+        createEntry: (date, workouts) => logActivityForPastDate({ workouts }, backfillTimestamp(date, Date.now())),
         writeNotebook,
         renameBlock: async (blockId, name) => {
           await renameBlock(blockId, name);
         },
+        renameMonth,
+        setDayWeight: (date, kg) => setWeightForDay(date, kg, weighInTimestamp(date, Date.now())),
+        // No reading that week yet → one on its Monday morning.
+        setWeekWeight: (weekStart, weekEnd, kg) =>
+          setFirstWeightInRange(weekStart, weekEnd, kg, weighInTimestamp(weekStart, Date.now())),
       });
       setResult(done);
       setMode('done');
@@ -130,6 +174,7 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
     setPlan(null);
     setResult(null);
     setBase(null);
+    setBackfilling(false);
     setMode('view');
   }
 
@@ -151,6 +196,24 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
               <Text selectable style={styles.page}>
                 {text}
               </Text>
+            )}
+            {page && page.manualDates.length > 0 && (
+              <View style={styles.backfillBox}>
+                <Text style={styles.hint}>{t('trainingLog.pageEdit.backfillExplain')}</Text>
+                <Pressable
+                  disabled={busy}
+                  style={({ pressed }) => [styles.backfillBtn, pressed && styles.pressed]}
+                  onPress={reviewBackfill}
+                >
+                  {busy ? (
+                    <ActivityIndicator color={c.accent} />
+                  ) : (
+                    <Text style={styles.editText}>
+                      {t('trainingLog.pageEdit.backfillButton', { count: page.manualDates.length })}
+                    </Text>
+                  )}
+                </Pressable>
+              </View>
             )}
             <View style={styles.row}>
               <Pressable style={({ pressed }) => [styles.btn, styles.cancel, pressed && styles.pressed]} onPress={onClose}>
@@ -217,7 +280,11 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
                     ? t('trainingLog.pageEdit.doneTitle', { count: applied })
                     : t('trainingLog.pageEdit.reviewTitle', { count: applied })}
                 </Text>
-                {mode === 'review' && <Text style={styles.hint}>{t('trainingLog.pageEdit.reviewHint')}</Text>}
+                {mode === 'review' && (
+                  <Text style={styles.hint}>
+                    {backfilling ? t('trainingLog.pageEdit.backfillHint') : t('trainingLog.pageEdit.reviewHint')}
+                  </Text>
+                )}
                 {changes.map((ch) => (
                   <ChangeRow key={ch.key} change={ch} done={mode === 'done'} />
                 ))}
@@ -229,9 +296,11 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
                   <Pressable
                     disabled={busy}
                     style={({ pressed }) => [styles.btn, styles.cancel, pressed && styles.pressed]}
-                    onPress={() => setMode('edit')}
+                    onPress={() => (backfilling ? finish() : setMode('edit'))}
                   >
-                    <Text style={styles.cancelText}>{t('trainingLog.pageEdit.backToEdit')}</Text>
+                    <Text style={styles.cancelText}>
+                      {backfilling ? t('trainingLog.pageEdit.cancel') : t('trainingLog.pageEdit.backToEdit')}
+                    </Text>
                   </Pressable>
                   <Pressable
                     disabled={busy || !planHasWrites(plan!)}
@@ -266,7 +335,11 @@ function ChangeRow({ change, done }: { change: PageChange; done: boolean }) {
   const styles = useThemedStyles(createStyles);
   const where = change.date ? formatDayDate(change.date, language) : null;
   const target = t(`trainingLog.pageEdit.target.${change.target}`, { label: change.weekLabel ?? '' });
-  const isWeight = change.reason === 'weightNotSynced';
+  const isWeight =
+    change.target === 'weight' ||
+    change.target === 'weekWeight' ||
+    change.reason === 'weightNotSynced' ||
+    change.reason === 'weightInvalid';
   const show = (v: string) =>
     v.trim() === ''
       ? t('trainingLog.pageEdit.emptyValue')
@@ -278,7 +351,7 @@ function ChangeRow({ change, done }: { change: PageChange; done: boolean }) {
     <View
       style={[
         styles.change,
-        change.target === 'xa' && styles.changeXa,
+        (change.target === 'xa' || change.target === 'xaCreate') && styles.changeXa,
         (change.target === 'skipped' || change.reason === 'failed') && styles.changeSkipped,
       ]}
     >
@@ -295,11 +368,13 @@ function ChangeRow({ change, done }: { change: PageChange; done: boolean }) {
           {show(change.after)}
         </Text>
       ) : null}
-      {change.target === 'xa' && change.kcalBefore != null && change.reason !== 'failed' ? (
+      {(change.target === 'xa' || change.target === 'xaCreate') && change.kcalBefore != null && change.reason !== 'failed' ? (
         <Text style={styles.changeKcal}>
           {done && change.kcalAfter != null
             ? t('trainingLog.pageEdit.kcal', { before: change.kcalBefore, after: change.kcalAfter })
-            : t('trainingLog.pageEdit.kcalPending', { before: change.kcalBefore })}
+            : change.target === 'xaCreate'
+              ? t('trainingLog.pageEdit.kcalCreatePending')
+              : t('trainingLog.pageEdit.kcalPending', { before: change.kcalBefore })}
         </Text>
       ) : null}
       {change.reason ? (
@@ -345,6 +420,15 @@ const createStyles = (c: ThemeColors) =>
       borderLeftColor: c.borderSubtle,
     },
     changeXa: { borderLeftColor: c.accent },
+    backfillBox: { gap: 6, padding: 12, borderRadius: 12, backgroundColor: c.bgElevated },
+    backfillBtn: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.accent,
+    },
     changeSkipped: { opacity: 0.75 },
     changeTitle: { color: c.textPrimary, fontSize: 13, fontWeight: '700' },
     changeLine: { color: c.textSecondary, fontSize: 13, lineHeight: 19 },

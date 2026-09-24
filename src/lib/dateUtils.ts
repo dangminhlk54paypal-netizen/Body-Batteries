@@ -87,6 +87,23 @@ export function formatDisplayDate(dateStr: string, language: Language): string {
   });
 }
 
+// "YYYY-MM" → localized month + year ("Tháng 9 năm 2026", "September 2026",
+// "September 2026"), first letter capitalized for use as a section header.
+export function formatMonthYear(monthKey: string, language: Language): string {
+  const d = new Date(monthKey + '-01T00:00:00');
+  const label = d.toLocaleDateString(LOCALE_TAGS[language], { month: 'long', year: 'numeric' });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+// Compact numeric date for chart axes ("01/06/26", "6/1/26", "01.06.26").
+export function formatShortDate(timestamp: number, language: Language): string {
+  return new Date(timestamp).toLocaleDateString(LOCALE_TAGS[language], {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+  });
+}
+
 const DMY_MONTHS = [
   'Jan',
   'Feb',

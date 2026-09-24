@@ -103,3 +103,29 @@ describe('parseDayBody — labels, movements, annotations', () => {
     expect(lookup.get('b')).toEqual({ exercise: 'bench_press' });
   });
 });
+
+describe('parseDayBody — the prime in front of the volume', () => {
+  const warm = (weightKg: number, reps: number): LiftingSet => ({ kind: 'warmup', weightKg, reps });
+
+  it('reads the user’s own ways of writing it as a warm-up, then the working sets', () => {
+    const [b, ic] = parse('B 95+ 4x6x72.5  iC 3x6x60').movements;
+    expect(b.sets).toEqual([warm(95, 1), ...working(72.5, same(4, 6))]);
+    expect(ic.sets).toEqual(working(60, same(3, 6)));
+    const [s, pd] = parse('S 135 + 4x6x100  PD 140 + 2x3x100+3x105').movements;
+    expect(s.sets).toEqual([warm(135, 1), ...working(100, same(4, 6))]);
+    expect(pd.sets).toEqual([warm(140, 1), ...working(100, same(2, 3)), ...working(105, [3])]);
+  });
+
+  it('round-trips the formatter’s own prime line', () => {
+    const sets = [warm(60, 5), warm(100, 3), ...working(130, [1]), ...working(115, same(4, 3))];
+    const text = formatSetSequence(sets, FMT, 'vi');
+    expect(text).toBe('3x100 + 130 4x3x115');
+    expect(parse(`S ${text}`).movements[0].sets).toEqual(sets.slice(1)); // the prime + the working sets
+  });
+
+  it('a "+" between two movements stays a separator, a trailing "+" is not a prime', () => {
+    const p = parse('S 100 + B 80');
+    expect(p.movements.map((m) => m.sets)).toEqual([working(100, [1]), working(80, [1])]);
+    expect(parse('S 100+').movements[0].sets).toEqual(working(100, [1]));
+  });
+});

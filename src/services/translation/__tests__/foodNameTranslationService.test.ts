@@ -79,6 +79,27 @@ describe('translateText', () => {
     }) as unknown as typeof fetch;
     expect(await translateText('x', 'vi', 'en')).toBeNull();
   });
+  it('decodes a URL-encoded echo instead of saving %XX escapes', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        responseStatus: 200,
+        responseData: { translatedText: 'Fischst%C3%A4bchen%20Berida' },
+      }),
+    }) as unknown as typeof fetch;
+    expect(await translateText('Fischstäbchen Berida', 'vi', 'en')).toBe('Fischstäbchen Berida');
+  });
+
+  it('returns null when MyMemory reports an error status (quota/invalid pair)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        responseStatus: 429,
+        responseData: { translatedText: 'MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS' },
+      }),
+    }) as unknown as typeof fetch;
+    expect(await translateText('x', 'vi', 'en')).toBeNull();
+  });
 });
 
 describe('autoTranslateCustomFoodName', () => {

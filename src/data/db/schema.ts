@@ -269,7 +269,37 @@ export const CREATE_TRAINING_LOG_WEEKS = `
   CREATE TABLE IF NOT EXISTS training_log_weeks (
     week_start TEXT PRIMARY KEY,
     note TEXT,
+    label TEXT,
     updated_at INTEGER NOT NULL
+  );
+`;
+
+// `label`: the user's own week name ("B3W3") typed on the 📄 page — added
+// after the table first shipped, so older installs get it via ALTER.
+export const TRAINING_LOG_WEEKS_MIGRATION_COLUMNS = [
+  { name: 'label', ddl: 'ALTER TABLE training_log_weeks ADD COLUMN label TEXT' },
+];
+
+// The user's own name for a free-training month (key YYYY-MM), shown instead
+// of "Tập tự do · tháng 9 năm 2026". A row exists only while a name is set.
+export const CREATE_TRAINING_LOG_MONTHS = `
+  CREATE TABLE IF NOT EXISTS training_log_months (
+    month_key TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`;
+
+// One-rep maxes the user recorded (⭐ on the strength chart) — see
+// types/trainingLog.ts LiftMaxRecord. `lift` is a LiftingExercise.
+export const CREATE_LIFT_MAXES = `
+  CREATE TABLE IF NOT EXISTS lift_maxes (
+    id TEXT PRIMARY KEY,
+    lift TEXT NOT NULL,
+    weight_kg REAL NOT NULL,
+    date TEXT NOT NULL,
+    note TEXT,
+    created_at INTEGER NOT NULL
   );
 `;
 
@@ -287,4 +317,6 @@ export const ALL_SCHEMAS = [
   CREATE_TRAINING_BLOCKS,
   CREATE_TRAINING_LOG_DAYS,
   CREATE_TRAINING_LOG_WEEKS,
+  CREATE_TRAINING_LOG_MONTHS,
+  CREATE_LIFT_MAXES,
 ];

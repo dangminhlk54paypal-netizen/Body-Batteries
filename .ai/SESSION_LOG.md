@@ -2070,6 +2070,263 @@ chỉnh ngược lại buổi Xả trước đó (tính lại số liệu) và b
 
 ---
 
+## Session 35 — 2026-09-24 (Sửa tên món bị mã hoá `%C3%…`; ảnh chia sẻ theo chủ đề sáng/tối)
+
+**Làm gì:** (1) Tên món tự thêm hiện dạng `Fischst%C3%A4bchen%20Berida` trong "Log a food". (2) Ảnh "chia sẻ ngày"
+luôn nền tối dù app đang để sáng.
+
+**Kết quả:**
+- Nguyên nhân (1): tính năng tự dịch tên món (MyMemory) khi không dịch được thì trả lại chính câu hỏi **còn mã hoá URL**,
+  app lưu nguyên vào `name_en`. Thêm `src/domain/food/foodNameText.ts` (`decodePercentEncodedText`,
+  `repairEncodedFoodNames` — chỉ giải mã khi có `%XX` và không có khoảng trắng, nên "Sữa 1.5%" không bị đụng).
+  Dùng ở 3 chỗ: `translateText` (giải mã + bỏ kết quả khi `responseStatus` ≠ 200, tránh lưu câu báo lỗi hết hạn mức làm
+  tên món); `loadCustomFoodsIntoRegistry` tự sửa món đã lưu hỏng lúc mở app rồi ghi lại DB bằng
+  `updateCustomFoodNames` (chỉ UPDATE tên, không đổi `created_at`/thứ tự); fallback snapshot trong
+  `foodLogEntryDisplayName`.
+- (2): `ShareDayFoodCard` chuyển từ `darkColors` cố định sang `useThemedStyles`. Không thêm chữ UI mới → không cần key i18n.
+- Test mới: `foodNameText.test.ts` (7), thêm 2 test cho `translateText`. `npm run verify` xanh: 78 suite / 1023 test.
+- **EAS Update:** nhánh `preview`, update group `c583b6e0-083c-48b0-bca9-b2bc0fee1d92`, publish từ working tree (chỉ có file
+  của session này). **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: mở app → "Log a food" gõ "Fisch" → tên hiện đúng "Fischstäbchen Berida"; đổi app sang Sáng →
+   chia sẻ ngày → ảnh nền sáng; đổi Tối → ảnh nền tối.
+2. **Chưa commit.**
+
+---
+
+## Session 36 — 2026-09-24 (Sổ tập: nhãn tuần tự đặt từ 📄 Trang, đổi tên tháng tập tự do)
+
+**Làm gì:** Gõ `B3W3: 21.09–27.09 75kg` trong ✎ Sửa trang bị lưu thành ghi chú dưới ngày 18.09 thay vì thành tiêu đề
+tuần; tháng "Tập tự do" không đổi tên được (báo `titleNotEditable`).
+
+**Kết quả:**
+- Nguyên nhân: `parsePageText` chỉ nhận tiêu đề tuần khi dòng khớp nguyên tiêu đề cũ / bắt đầu bằng nhãn cũ. Giờ
+  nhận theo **khoảng ngày** (`[nhãn:] ngày–ngày [cân nặng]`), phần trước ngày là nhãn tự đặt → `WeekLabelEdit`.
+- Lưu: cột mới `training_log_weeks.label` (migration ALTER), bảng mới `training_log_months`. Store gộp trường khi
+  ghi tuần (ghi chú ↔ nhãn không đè nhau). Index → `customLabel`/`monthName`; `formatWeekLabel`/`formatWeekHeading`/
+  `formatPeriodTitle` hiện tên tự đặt. Đổi tên tháng: sửa dòng đầu Trang hoặc nhấn giữ tiêu đề (`renamePeriod`).
+- i18n vi/en/de đủ; bỏ key `titleNotEditable`. Docs: `03-architecture.md` (bổ sung Session 36), hai hướng dẫn.
+- Test mới: parser 7, sync 3, index 1, mapper 2. `npm run verify` xanh: 78 suite / 1034 test. Lưu ý: test
+  `energyStore.backfill` “round-trips a fully-past backfill” thỉnh thoảng đỏ khi chạy cả bộ (lệch 1 ms
+  `lastSatietySyncAt`) — flaky có sẵn, không liên quan; chạy riêng luôn xanh.
+- **EAS Update:** nhánh `preview`, update group `5c3d5c47-319a-4e19-8322-cc2e97878a8a` (gồm cả sửa của Session 35),
+  publish từ working tree. **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: Trang tháng 9 → ✎ Sửa trang → Xem thay đổi → phải thấy "Nhãn tuần 21.09–27.09: B3W3"
+   và ghi chú 18.09 bị xoá (tự sửa dòng lưu nhầm) → Áp dụng → tiêu đề tuần thành `B3W3: 21.09–27.09 75kg`.
+   Nhấn giữ "Tập tự do · tháng 9…" → đặt "Power Lifting".
+2. Sửa test flaky `energyStore.backfill` (so `lastSatietySyncAt` bằng fake timers).
+3. **Chưa commit** Session 35 + 36.
+
+---
+
+## Session 37b — 2026-09-24 (Kế hoạch block: gọn chữ vào nút i, sửa lỗi bấm i không hiện gì)
+
+**Làm gì:** Người dùng báo bấm các nút ⓘ trong 📋 Kế hoạch block không hiện gì, và muốn bớt chữ nhỏ.
+
+**Kết quả:**
+- `InfoPopover` giờ mở **Modal giữa màn hình** (cùng mẫu `InfoPopup` của `BodyProfileCard`) thay vì mở rộng tại chỗ.
+  Nguyên nhân khả dĩ: panel mở rộng dựa vào `flexBasis: '100%'` trong hàng `flexWrap` — trên máy thật (New Arch)
+  không hiện; Modal không phụ thuộc layout hàng chứa. API đổi thành `title` + `sections[]`.
+- `BlockPlanView`: mỗi bài còn 1 nút **i** (giải thích biến thể + "Gợi ý của app…RPE" + "Cách app tính"); dòng gợi ý
+  không còn hiện sẵn. Ghi chú EPOC + đạm (Deficit Mode) chuyển vào nút **i** cạnh tiêu đề. Nút sửa chỉ còn **✎**
+  (có `accessibilityLabel`). Giữ nguyên nhãn "1RM ước lượng", banner công thức cũ, nút "✎ Ngày".
+- i18n vi/en/de: `editButton` → `'✎'`, thêm `editA11y`, `infoAbout`; bỏ `infoToggleShow`/`infoToggleHide`.
+  Docs: `08-powerlifting-engine.md`, hai hướng dẫn sử dụng. Test `BlockPlanEditing` +2 (bấm i thấy gợi ý/EPOC).
+- `npm run verify` xanh (81 suite / 1062 test). **EAS Update:** nhánh `preview`, group
+  `c5976fc7-335d-42d9-83fd-8119a021088c`, publish từ **bản cô lập** (HEAD + đúng các thay đổi của session này, không
+  gồm việc dở Session 35/36). **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: bấm i cạnh tên bài + cạnh tiêu đề → popup hiện đủ chữ, đóng được bằng "Đóng"/chạm nền.
+2. **Chưa commit** Session 37.
+
+---
+
+## Session 37 — 2026-09-24 (Viết bù thành buổi Xả thật, ⭐ 1RM trên biểu đồ, chia sẻ ảnh biểu đồ, Excel sức mạnh)
+
+**Làm gì:** (1) Viết bù buổi quên Xả (kể cả tháng trước) trong Sổ tập phải được tính vào Excel và các phép tính tiến độ.
+Người dùng chọn: **tạo buổi Xả thật** (kcal & pin của ngày đó), có xem trước. (2) Xuất biểu đồ tiến độ thành ảnh.
+(3) Ghi 1RM S/B/D, hiện thành ngôi sao màu theo bài, không thuộc đường tập.
+
+**Kết quả:**
+- `planDaySync` → `kind: 'create'` cho ngày không có Xả khi cả dòng đọc được; `backfillTimestamp`; service
+  `createDaySession`/`saveLineAsXa`; `planPageEdit({ backfillManual })`; form ＋ Ghi buổi có công tắc + xem trước;
+  📄 Trang có nút "⚡ Ghi N dòng tay vào Xả". Excel thêm sheet Tiến độ sức mạnh + 1RM.
+- Bảng `lift_maxes`, `liftMaxRepository`, `LiftMaxSheet`; `progressChartModel.ts` + `ProgressChartSvg` dùng chung cho
+  biểu đồ và `ShareProgressCard`; `imageShareService.shareViewAsImage` (ảnh bữa ăn dùng lại).
+- Sửa test flaky `energyStore.backfill` (ghim `Date.now`).
+- i18n vi/en/de đủ. Docs: `03-architecture.md` (bổ sung Session 37), hai hướng dẫn.
+- **Phiên song song** trong cùng thư mục (lịch sử cân nặng `WeightLogCard`/`weightHistoryGroups`, `InfoPopover`,
+  `BlockPlanView`, `dateUtils`, `docs/04-roadmap.md`, 3 hunk mỗi file locale) — không đụng tới. Test
+  `BlockPlanEditing` đỏ trong thư mục chung là của phiên đó (bản cô lập xanh).
+- **EAS Update:** nhánh `preview`, update group `f9dccbe4-f97d-4717-83f7-cb9c30462036`, publish từ **bản cô lập**
+  (HEAD + file của Session 35–37, locale chỉ gồm hunk của mình); trong đó `npm run verify` xanh 80 suite / 1056 test.
+  **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: ＋ Ghi buổi ngày cũ → thấy "Sẽ tạo buổi Xả gồm" → Lưu → Lịch sử ngày đó có buổi, kcal;
+   📄 Trang tháng 8 → "⚡ Ghi N dòng tay vào Xả" → Áp dụng; ⭐ Ghi 1RM → sao trên biểu đồ; 📤 Chia sẻ ảnh (sáng/tối);
+   xuất Excel → sheet Tiến độ sức mạnh + 1RM.
+2. **Chưa commit** Session 35–37; commit riêng file của mình, không `git add -A` (phiên song song đang dở).
+
+---
+
+## Session 38 — 2026-09-24 (Lịch sử cân nặng cuộn trong khung + biểu đồ mốc BMI; cân nặng tuần mang sang)
+
+**Làm gì:** (1) "Cân nặng theo thời gian" bỏ "Xem thêm", cuộn trong khung cố định, nhóm theo tháng. (2) Biểu đồ cân nặng
+với đường mốc theo chiều cao. (3) Tiêu đề tuần trong Sổ tập mang cân nặng tuần trước sang khi tuần chưa cân.
+
+**Kết quả:**
+- `WeightLogCard` + `weightHistoryGroups.ts` (tiêu đề tháng dính, chênh lệch mỗi lần ghi, màu trung tính).
+- `WeightTrendChart` + `weightChartModel.ts`: chấm xanh = BMI 24.9 (WHO) theo chiều cao hồ sơ + vùng 18.5–24.9; nét đứt
+  vàng/cam/đỏ = +10/+20/+35 kg; trục chỉ mở tới mốc kế tiếp trên số cân cao nhất; chip 1T/3T/1N/Tất cả. Công thức dùng
+  chung `healthyWeightRangeKgRaw` (`dailyRecommendations.ts`); màu `weightRef*` trong `theme.ts`; câu "chỉ tham khảo".
+- `weekHeadingWeight` (`trainingLogWeights.ts`): cân đầu tuần, không có thì lấy lần cân gần nhất trước tuần (tra lùi
+  365 ngày). Dòng ngày vẫn chỉ in cân nặng thật của ngày đó. Parser bỏ qua số cân ở tiêu đề tuần → không tạo lần cân giả.
+- i18n vi/en/de đủ. Docs: `04-roadmap.md`. `npm run verify` xanh: 82 suite / 1073 test.
+- **Sự cố:** hai lần publish trước của session này (`4a361594…`, `a989722d…`) từ bản cô lập HEAD + file của mình đã
+  **đè** bản preview của Session 36/37 → máy người dùng mất tính năng Sổ tập mới. Đã sửa: publish lại **từ working
+  tree** (gồm Session 35–38), group `c24ec48f-cf7c-42b6-bbbe-a47fb6a22462`. **Chưa có xác nhận test máy thật.**
+
+**Đợt 2 (cùng session, theo feedback):**
+- Biểu đồ cân nặng gọn lại: bỏ chú giải + ghi chú cố định; **chạm** vào đường mốc / điểm cân / vùng xanh → 1 ô chú thích
+  ngay dưới (`pickWeightChartTarget`). Tự đóng khi: cuộn màn Lịch sử (`HistoryScreen` tăng `scrollKey` ở
+  `onScrollBeginDrag` → prop `dismissKey`, chú thích mở ở key cũ bị ẩn — không cần effect), rời tab (`useFocusEffect`
+  cleanup), đổi khoảng thời gian, chạm chỗ trống / chạm lại.
+- Danh sách cân nặng: bỏ số chênh lệch; ▲/▼ + màu so với lần cân **mới nhất cách ≥ 7 ngày** (nghỉ lâu hơn → lần cân
+  trước khoảng nghỉ). Hướng theo lần cân mới nhất: trên BMI 24.9 → giảm = xanh; dưới BMI 18.5 → tăng = xanh; trong
+  khoảng phù hợp → trung tính (không khuyến khích người đã khoẻ giảm thêm). `weightGoalDirection`/`isTrendTowardGoal`.
+- Pin nhỏ trên Home: `BatteryRing` thay `BatteryStack`/`BatteryCell` (đã xoá). 6 ô trên một vòng, độ dài cung = lượng
+  hôm nay / mục tiêu; > 100 % hiện cung mảnh bên ngoài (tối đa thêm 1 ô). Giữa vòng "N/6 đạt mục tiêu"; lưới chú giải
+  3×2 (tên theo `batteryTypeName` — sửa luôn lỗi cũ hiện tên seed tiếng Việt). Logic: `batteryRingModel.ts` (+ test).
+- i18n vi/en/de đủ. `npm run verify` xanh: 83 suite / 1089 test. **EAS:** publish từ working tree (gồm Session 35–38),
+  group `7ae61394-ece9-40a1-9531-945d5a817637`. **Chưa có xác nhận test máy thật.**
+- Đợt 3: danh sách cân nặng có **nét đứt nhẹ giữa các tuần Thứ 2–CN** (`weekBreakAbove`, vẽ bằng SVG vì viền dashed
+  một cạnh của RN không ổn trên iOS); bỏ vạch liền giữa từng ngày. Verify xanh 83 suite / 1092 test. EAS group
+  `77510099-ac42-4f1b-be28-3be41846e7c7` (từ working tree). Chưa test máy thật.
+- Đợt 4 (người dùng chọn qua câu hỏi): **Lịch sử** bỏ `TrendChart` (đã xoá) + 8 thẻ cột → `WeekRingsCard`: 7 vòng
+  6 màu nhỏ (lượng nạp / mục tiêu từng ngày, như Home; số giữa = mục tiêu đạt), cân bằng kcal dưới mỗi ngày + tổng các
+  ngày đã xong (≈ kg, 7700 kcal/kg), chú giải kèm "đạt n/7". Quy tắc kcal = Excel Daily Totals (ăn − Apple Health, không
+  có thì capacity pin năng lượng); màu theo `weightGoalDirection`. Logic `weekRingsModel.ts` (+ test). Bỏ key
+  `nutritionBadge/energyBadge`, `components.trendChart`. Trước đây thẻ dùng `readings.level` (mức pin đã xả) → sai nghĩa.
+- Sửa **"Week 1 (Invalid Date – Invalid Date)"** ở Kế hoạch Block: block tạo trước Session 27 lưu tuần không có
+  `startDate/endDate`; `rowToPlan` giờ điền tuần liên tiếp Thứ 2–CN từ `weekStartDate` (thiếu thì Thứ 2 của tuần tạo
+  block, thay vì hôm nay). Nút ⓘ lệch trong ảnh người dùng là giao diện cũ (trước Session 37), bản hiện tại đã khác.
+- Verify xanh 84 suite / 1102 test. EAS group `b5651fbf-8205-4323-b097-53b1b5ce2a3c` (working tree). Chưa test máy thật.
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: Home → vòng pin nhỏ (bấm ô/chú giải mở form nạp/nguồn; bấm lượng nước đổi ml/L);
+   Lịch sử → chạm đường/điểm trên biểu đồ → chú thích, cuộn đi thì đóng; màu ▲/▼ danh sách cân nặng;
+   Sổ tập → tiêu đề tuần không cân vẫn có kg tuần trước; các mục của Session 36–37 (nhãn tuần, đổi tên tháng, ⭐ 1RM).
+2. `formatMovementAmount` (`src/lib/units.ts`) còn chữ cứng "bước" — chuyển sang i18n.
+3. **Chưa commit** Session 35–38.
+
+---
+
+## Session 39 — 2026-09-24 (Sổ tập: màu/kiểu chữ tiêu đề, bút chì cạnh tuần, mở sẵn các tuần)
+
+**Làm gì:** Người dùng muốn bỏ 2 nút "＋ Ghi buổi"/"✎ Ghi chú tuần" dưới mỗi tuần, thay bằng bút chì; đổi kiểu chữ.
+
+**Kết quả:**
+- `TrainingNotebookSection`: tiêu đề block/tháng màu `notebookPeriod` (xanh dương) + nghiêng; tiêu đề tuần nhận
+  `titleLead` (nhãn "B3W1" đậm) + phần ngày/cân nặng chữ thường màu `textPrimary`; prop `onEdit`/`editLabel` vẽ nút ✎.
+- `formatWeekHeadingParts` (domain, + test) tách nhãn / phần còn lại; `formatWeekHeading` dựng từ nó (📄 Trang không đổi).
+- `TrainingLogWeekSection`: bỏ hàng nút dưới tuần; ✎ mở Alert chọn Ghi buổi / Ghi chú tuần. Nhấn giữ vẫn như cũ.
+- `TrainingLogDayLine`: ngày đầu dòng màu `notebookDate` (tím) + nghiêng. Token mới trong `theme.ts` (cả sáng/tối).
+- `TrainingLogPeriodSection`: mọi tuần mở sẵn khi mở block/tháng (trước chỉ tuần mới nhất).
+- i18n vi/en/de: thêm `trainingLog.weekEditA11y`. Docs: hai hướng dẫn sử dụng. `npm run verify` xanh 83 suite / 1090 test.
+- **EAS:** publish từ **working tree** (gồm Session 35–39, tránh đè như sự cố Session 38), group
+  `69321728-278b-493a-9d62-c216a51e3eb1`. **Chưa có xác nhận test máy thật.**
+
+**Đợt 2 (cùng session, theo feedback):**
+- ✎ cạnh tiêu đề tháng/block mở 📄 Trang (bỏ nút "📄 Trang / Chia sẻ"); ✎ tuần giữ menu Ghi buổi / Ghi chú tuần.
+- Dòng ngày **không in cân nặng** nữa (sổ, 📄 Trang, mẫu trong Định dạng sổ); cân nặng chỉ ở tiêu đề tuần, màu
+  `notebookWeight` (xanh lá) nghiêng. Gõ cân vào tiền tố ngày trong 📄 Trang vẫn được đọc (before = null).
+  `formatWeekHeadingParts` → `{ lead, range, weight }`; `TrainingNotebookSection.titleTail`.
+- Ký hiệu bài (S, PD, iC…) in đậm màu `notebookLift` (xám): `splitDayBody` (domain, + test) — chuỗi từ chỉ-chữ-cái
+  đứng ngay trước số/ngoặc; áp dụng cả dòng tự viết.
+- Màu chế độ tối nâng sáng/đậm hơn để 4 màu (xanh dương/xanh lá/tím/xám) tách bạch trên nền tối.
+- i18n: thêm `trainingLog.periodEditA11y`, bỏ `pageButton`. `npm run verify` xanh 83 suite / 1095 test.
+  **EAS:** working tree, group `2f260fd9-caec-473c-919e-989d75248927`. **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: Sổ tập ở cả sáng/tối; ✎ tháng mở Trang; ✎ tuần; dòng ngày không còn cân.
+2. **Chưa commit** Session 35–39.
+
+---
+
+## Session 40 — 2026-09-25 (Sổ tập: ghi prime trước phần volume, chữ nghiêng)
+
+**Làm gì:** Người dùng muốn mỗi bài ghi cả prime (set khởi động nặng nhất) trước volume, vd. `B 95 + 4x6x72.5`, in nghiêng.
+
+**Kết quả:**
+- `TrainingLogFormat.showPrime` (mặc định bật, công tắc trong ⚙︎ Định dạng sổ; bỏ qua khi `showWarmups` in cả ramp).
+  `formatSetSequence` in `prime + volume` qua `PRIME_JOIN = ' + '`; `primeSet()` = warm-up nặng nhất (hoà → set sau).
+- `splitDayBody` trả `kind: 'label' | 'prime' | 'text'`; prime = cụm đầu tiên sau nhãn, theo sau là "+" tách bằng
+  dấu cách (`95 + …` hoặc `95+ …`). `TrainingLogDayLine` vẽ prime nghiêng.
+- Parser: prime → set `warmup` (`ParsedChain.isPrime`); "+" đứng riêng giữa hai bài vẫn là dấu tách bài.
+  `planDaySync`: prime giữ nguyên → giữ mọi warm-up; prime đổi → thay warm-up nặng nhất (`withPrime`); ngày chưa có
+  Xả → prime thành warm-up của buổi mới. Biểu đồ tiến độ (chỉ tính set chính) không bị prime làm lệch.
+- Test cũ của `trainingLogDaySync` chạy với `showPrime: false` (chúng kiểm tra chuyện khác), thêm khối test prime;
+  thêm test formatter/parser/DayLine. i18n vi/en/de `formatSheet.showPrime`. Docs: hai hướng dẫn sử dụng.
+- `npm run verify` xanh 84 suite / 1113 test. **EAS:** working tree, group `a0a47c5a-c461-4a33-99ba-f742963a4b29`.
+  **Chưa có xác nhận test máy thật.**
+
+**Đợt 2 (cùng session):**
+- Dòng ngày nhỏ đi 1 cỡ (15→14, ghi chú 14→13, dấu ✎/✍ 13→12).
+- Nhấn giữ tiêu đề block → Alert **Đổi tên / Xoá block này** (action `renamePeriod` đổi tên thành `periodMenu`).
+  Xoá = `blockStore.deleteBlock` + `loadIndex()`; chỉ xoá kế hoạch, buổi đã ghi về tháng tự do (index xếp theo ngày).
+  Lý do: người dùng thấy "Block 1 · 24/09–04/11" (block tạo thử ở Kế hoạch block) chiếm các tuần trong sổ.
+- i18n vi/en/de `trainingLog.blockMenu.*`. Docs: hai hướng dẫn. `npm run verify` xanh 84 suite / 1113 test.
+  **EAS:** working tree, group `289b946f-0a9f-4247-81c5-170cbf5c4ebb`. **Chưa có xác nhận test máy thật.**
+
+**Đợt 3 (hỏi về biểu đồ Tiến độ sức mạnh):** không cần sửa code — `buildLiftProgress` đã đọc cả dòng tự viết trong sổ
+(dòng của sổ thắng Xả trong cùng ngày) và biểu đồ tính lại mỗi khi `revision` tăng (mọi lần ghi sổ đều `loadIndex()`).
+Thêm test với đúng dòng mẫu của người dùng (`B 95+ 4x6x72.5`, `S 135 + 4x6x100  pd 140+…`): chỉ S/B/D chuẩn, prime
+không tính. Không cần EAS update (chỉ thêm test).
+
+**Đợt 4:** tháng/block mở ra nằm trong khung cuộn riêng `maxHeight 320` (~2 tuần; `TrainingNotebookSection.bodyMaxHeight`,
+`nestedScrollEnabled`); period không phải mới nhất tự thu lại sau 2 phút không chạm (`TrainingLogPeriodSection`: state
+`expanded` điều khiển từ ngoài qua `expanded`/`onExpandedChange`, `onTouchStart` trên View bọc ngoài đặt lại hẹn giờ).
+Test mới `TrainingLogPeriodSection.test.tsx` (fake timers). `npm run verify` xanh 85 suite / 1117 test. **EAS:** working
+tree, group `60faa74e-7900-4cc0-b7d4-7ab36069ea71`. **Chưa có xác nhận test máy thật.**
+
+**Đợt 5 (tỉ lệ × cân nặng không "vọt lên" khi giảm cân):** nguyên nhân trong code — (1) tuần trước lần cân đầu tiên
+chia cho cân **hồ sơ** (cân hiện tại, nhẹ hơn) → tỉ lệ đầu bị thổi phồng, đường phẳng lại; (2) tuần không cân mang số cũ
+tới lần cân sau (bậc thang); (3) chỉ lấy lần cân đầu tuần (nhiễu dao động ngày). Sửa: `weekBodyWeight` (TB tuần →
+nội suy tuyến tính giữa 2 lần cân tại giữa tuần → giữ lần cuối → lần cân đầu tiên cho tuần trước đó → hồ sơ chỉ khi
+chưa cân lần nào) + `bodyWeightSource`; `bodyWeightOn` (sao ⭐, Excel) dùng chung. Readout ghi nguồn cân (vàng khi chỉ
+ước tạm). `liftChanges` → dòng "So với tuần đầu: S +x%" theo chế độ (mỗi chế độ tự co giãn trục nên đường trông giống
+nhau). Còn thiếu: không có cách ghi cân cho ngày cũ (WeightLogCard chỉ ghi lúc này; 📄 Trang báo `weightNotSynced`).
+`npm run verify` xanh 85 suite / 1121 test. **EAS:** working tree, group `1ad5714c-55df-4d08-a69d-45f735fa5e14`.
+**Chưa có xác nhận test máy thật.**
+
+**Đợt 6 (ghi cân cho ngày cũ — làm cả 2 cách):** (a) `WeightLogCard`: ô ngày cạnh ô cân (trống = hôm nay,
+`parseDayMonthInput`, nút đổi thành "Ghi cho dd/mm", báo lỗi ngày tương lai/sai) → `logWeightAt(weighInTimestamp())`.
+(b) 📄 Trang: `14.09(79.5kg):` → change `target: 'weight'` → writer `setDayWeight` = `setWeightForDay` (sửa lần cân đầu
+của ngày nếu có, không thì thêm — áp dụng 2 lần không ghi đúp); ngoài 20–300 kg → `weightInvalid`; xoá số cân khỏi
+dòng vẫn `weightNotSynced` (Trang không xoá lần cân). `domain/health/weighIn.ts`: hôm nay = lúc này, ngày cũ = 07:00.
+Lưu ý: ✎ sửa lần cân trong WeightLogCard vẫn chỉ cho vài ngày gần (`WEIGHT_EDIT_MAX_DAYS_BACK`); ngày cũ nhập sai
+thì sửa lại qua Trang. `npm run verify` xanh 86 suite / 1126 test. **EAS:** working tree, group
+`c0fe293a-3b62-4023-9897-90120f22883b`. **Chưa có xác nhận test máy thật.**
+
+**Đợt 7 (feedback: sửa 76.3→80kg ở tiêu đề tuần không có tác dụng):** parser trước đây bỏ qua cân ở tiêu đề tuần
+(Session 38, tránh lần cân giả vì tiêu đề mang cân tuần trước sang). Giờ: `PageWeek.weightKg` = số tiêu đề đã in;
+`weekHeadingPattern` bắt nhóm cân; `PageEditDiff.weekWeights` chỉ khi số gõ KHÁC số đã in (so tới 2 số lẻ; xoá số = không
+đổi) → change `weekWeight` → writer `setWeekWeight` = `setFirstWeightInRange` (sửa lần cân đầu tuần, không có thì thêm
+07:00 thứ Hai). Người dùng xác nhận (a) ghi cân ngày 14.09 chạy trên máy. `npm run verify` xanh 86 suite / 1130 test.
+**EAS:** working tree, group `7c37138e-dbb0-4c78-9311-f1e6c15288c8`.
+
+**Session tiếp theo phải làm:**
+1. Người dùng test máy thật: dòng có warm-up hiện `S 3x100 + 130 …` với prime nghiêng; sửa số volume trong 📄 Trang
+   → Xả cập nhật, warm-up giữ nguyên; tắt "Hiện prime" → mất prime. Nhấn giữ Block 1 → Xoá → các buổi về tháng 9/10.
+2. **Chưa commit** Session 35–40.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

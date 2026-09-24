@@ -292,6 +292,11 @@ describe('energyStore — removeFoodForPastDate (S-S4)', () => {
   });
 
   it('round-trips a fully-past backfill: the day\'s rows return to their original levels', async () => {
+    // Pin the clock: the store stamps lastSatietySyncAt with Date.now(), and a
+    // millisecond ticking over mid-test used to make the "today untouched"
+    // comparison below flaky under a loaded full-suite run.
+    const now = Date.now();
+    jest.spyOn(Date, 'now').mockReturnValue(now);
     const ts = pastNoonTimestamp(3);
     const pastDay = dateString(new Date(ts));
     const original = pastDayRows(pastDay);

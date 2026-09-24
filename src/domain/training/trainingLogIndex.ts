@@ -18,6 +18,10 @@ export interface TrainingLogIndexInput {
   weekNoteStarts: string[];
   blocks: GeneratedBlockPlan[];
   today: string; // YYYY-MM-DD
+  // The user's own week labels ("B3W3"), keyed by the week's start.
+  weekLabels?: { weekStart: string; label: string }[];
+  // The user's own names for free months ("Power Lifting"), keyed YYYY-MM.
+  monthNames?: { monthKey: string; name: string }[];
 }
 
 interface NumberedBlock {
@@ -33,6 +37,9 @@ function weekOfDate(weeks: TrainingLogWeek[], date: string): number {
 
 export function buildTrainingLogIndex(input: TrainingLogIndexInput): TrainingLogPeriod[] {
   const { trainingDays, logDates, weekNoteStarts, blocks, today } = input;
+  const labelByWeek = new Map((input.weekLabels ?? []).map((w) => [w.weekStart, w.label.trim()]));
+  const nameByMonth = new Map((input.monthNames ?? []).map((m) => [m.monthKey, m.name.trim()]));
+  const customLabel = (weekStart: string) => labelByWeek.get(weekStart) || undefined;
 
   // One count per content day. A day known only from the log (hand-written /
   // note) counts as one entry.
@@ -66,6 +73,7 @@ export function buildTrainingLogIndex(input: TrainingLogIndexInput): TrainingLog
       isDeload: w.isDeload,
       sessions: 0,
       dates: [],
+      customLabel: customLabel(w.startDate),
     }))
   );
   const freeByMonday = new Map<string, string[]>();
@@ -133,6 +141,7 @@ export function buildTrainingLogIndex(input: TrainingLogIndexInput): TrainingLog
       weekEnd: addDaysToDateString(monday, 6),
       sessions: dates.reduce((sum, d) => sum + (sessionsByDate.get(d) ?? 0), 0),
       dates,
+      customLabel: customLabel(monday),
     };
     const monthKey = monday.slice(0, 7);
     freeByMonth.set(monthKey, [...(freeByMonth.get(monthKey) ?? []), week]);
@@ -142,6 +151,7 @@ export function buildTrainingLogIndex(input: TrainingLogIndexInput): TrainingLog
       key: `free:${monthKey}`,
       kind: 'free',
       monthKey,
+      monthName: nameByMonth.get(monthKey) || undefined,
       startDate: weeks[0].weekStart,
       endDate: weeks[weeks.length - 1].weekEnd,
       sessions: weeks.reduce((sum, w) => sum + w.sessions, 0),

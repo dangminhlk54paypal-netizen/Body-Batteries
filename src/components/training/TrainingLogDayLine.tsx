@@ -4,6 +4,7 @@ import { useTrainingLogStore } from '../../store/trainingLogStore';
 import {
   detectDayConflict,
   formatDayLine,
+  splitDayBody,
   trainingDaySignature,
 } from '../../domain/training/trainingLogFormatter';
 import type { ActivityLogEntry } from '../../types/energy';
@@ -16,25 +17,27 @@ interface Props {
   date: string; // YYYY-MM-DD
   entries: ActivityLogEntry[]; // that day's Xả entries
   record: TrainingLogDayRecord | undefined; // the user's own line / note, if any
-  weightKg: number | null;
   format: TrainingLogFormat;
   // Tap on the line (opens the editor). Omitted = plain, non-tappable text.
   onPress?: () => void;
 }
 
-// One day of the notebook: "26.08(77.7kg): S 130 4x3x115+3x100 PD 4x3x100".
+// One day of the notebook: "26.08: S 130 4x3x115+3x100 PD 4x3x100" — date
+// purple italic, movement labels (S, PD) bold grey, the prime ("95" in
+// "B 95 + 4x6x72.5") italic.
 // The text is either the auto-generated line (from Xả) or what the user wrote
 // over it / by hand — shown identically, with a faint ✎ (edited) or ✍ (hand-
 // written) at the end. If the Xả entries behind a user-written line changed
 // since, a small banner asks what to do; nothing is ever overwritten silently.
-export function TrainingLogDayLine({ date, entries, record, weightKg, format, onPress }: Props) {
+export function TrainingLogDayLine({ date, entries, record, format, onPress }: Props) {
   const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
   const clearDayOverride = useTrainingLogStore((s) => s.clearDayOverride);
   const acceptCurrentSignature = useTrainingLogStore((s) => s.acceptCurrentSignature);
   const mergeAutoIntoOverride = useTrainingLogStore((s) => s.mergeAutoIntoOverride);
 
-  const line = formatDayLine({ date, entries, bodyWeightKg: weightKg, format, language });
+  // No weight in the prefix: the week heading already shows it.
+  const line = formatDayLine({ date, entries, format, language });
   const override = record?.overrideText ?? null;
   const body = override ?? line.body;
   const conflict = detectDayConflict({ record, entries });
@@ -66,7 +69,20 @@ export function TrainingLogDayLine({ date, entries, record, weightKg, format, on
       <Pressable disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined}>
         <Text selectable style={styles.line}>
           <Text style={styles.prefix}>{line.prefix}</Text>
-          {body ? ` ${body}` : ''}
+          {body ? ' ' : ''}
+          {splitDayBody(body).map((part, i) =>
+            part.kind === 'text' ? (
+              part.text
+            ) : (
+              <Text
+                key={i}
+                testID={part.kind === 'label' ? 'lift-label' : 'prime'}
+                style={part.kind === 'label' ? styles.liftLabel : styles.prime}
+              >
+                {part.text}
+              </Text>
+            )
+          )}
           {marker ? (
             <Text
               style={styles.marker}
@@ -115,10 +131,12 @@ export function TrainingLogDayLine({ date, entries, record, weightKg, format, on
 const createStyles = (c: ThemeColors) =>
   StyleSheet.create({
     container: { gap: 2, paddingVertical: 3 },
-    line: { color: c.textPrimary, fontSize: 15, lineHeight: 22 },
-    prefix: { fontWeight: '700' },
-    marker: { color: c.textMuted, fontSize: 13 },
-    note: { color: c.textTertiary, fontSize: 14, lineHeight: 20 },
+    line: { color: c.textPrimary, fontSize: 14, lineHeight: 20 },
+    prefix: { fontWeight: '700', fontStyle: 'italic', color: c.notebookDate },
+    liftLabel: { fontWeight: '700', color: c.notebookLift },
+    prime: { fontStyle: 'italic' },
+    marker: { color: c.textMuted, fontSize: 12 },
+    note: { color: c.textTertiary, fontSize: 13, lineHeight: 18 },
     banner: {
       marginTop: 4,
       gap: 6,

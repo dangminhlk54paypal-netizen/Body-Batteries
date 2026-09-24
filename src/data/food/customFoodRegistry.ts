@@ -1,4 +1,5 @@
 import type { FoodItem } from '../../types/food';
+import { repairEncodedFoodNames } from '../../domain/food/foodNameText';
 
 // In-memory mirror of the `custom_foods` table.
 //
@@ -56,10 +57,32 @@ export async function deleteCustomFoodAndUnregister(id: string): Promise<void> {
 // initDatabase(). Defensive: custom foods are an enhancement, not core data —
 // a failure here must not block startup, so it just leaves the registry
 // empty and logs a warning.
+//
+// Also self-heals names that the auto-translate feature stored URL-encoded
+// ("Fischst%C3%A4bchen%20Berida", see foodNameText.ts): the registry gets the
+// decoded names right away, and the fix is written back to SQLite so it only
+// ever happens once per food.
 export async function loadCustomFoodsIntoRegistry(): Promise<void> {
   try {
-    const { getAllCustomFoods } = await import('../repositories/customFoodsRepository');
-    setCustomFoods(await getAllCustomFoods());
+    const { getAllCustomFoods, updateCustomFoodNames } = await import(
+      '../repositories/customFoodsRepository'
+    );
+    const repaired: FoodItem[] = [];
+    const items = (await getAllCustomFoods()).map((item) => {
+      const fixed = repairEncodedFoodNames(item);
+      if (!fixed) return item;
+      repaired.push(fixed);
+      return fixed;
+    });
+    setCustomFoods(items);
+    for (const item of repaired) {
+      try {
+        await updateCustomFoodNames(item.id, item.nameVi, item.nameEn);
+      } catch (e) {
+        // Registry already shows the decoded name; next startup retries.
+        console.warn('Failed to persist repaired custom food name:', e);
+      }
+    }
   } catch (e) {
     console.warn('Failed to load custom foods into registry:', e);
   }

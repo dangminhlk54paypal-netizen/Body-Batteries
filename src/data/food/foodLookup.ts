@@ -4,6 +4,7 @@ import { getFoodById } from './foodDatabase';
 import { getUsdaFoodById } from './usdaFoods';
 import { getCustomFoodByIdSync } from './customFoodRegistry';
 import { getOverrideByIdSync } from './foodOverrideRegistry';
+import { decodePercentEncodedText } from '../../domain/food/foodNameText';
 
 // Resolves a logged foodId no matter which catalog it came from: the
 // Vietnamese CSV ("rice_white_cooked"), the USDA lookup ("usda_2727589"), or
@@ -99,5 +100,7 @@ export function foodLogEntryDisplayName(
   language: Language
 ): string {
   const item = getAnyFoodById(entry.foodId);
-  return item ? foodDisplayName(item, language) : entry.foodNameVi;
+  // The snapshot may have been taken from an auto-translated name that was
+  // stored URL-encoded (see foodNameText.ts) — decode it for display.
+  return item ? foodDisplayName(item, language) : decodePercentEncodedText(entry.foodNameVi);
 }

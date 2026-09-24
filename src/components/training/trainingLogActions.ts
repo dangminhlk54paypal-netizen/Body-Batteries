@@ -10,8 +10,9 @@ export interface TrainingLogActions {
   addDay: (suggestedDate: string) => void;
   // Edit a week's note. `label` is the week's heading without weight ("W4", "07.09–13.09").
   editWeekNote: (weekStart: string, label: string) => void;
-  // Long-press on a block heading.
-  renameBlock: (period: TrainingLogPeriod) => void;
-  // "📄 Trang": the whole period as one text block, to read or share.
+  // Long-press on a period heading: a block offers rename / delete, a free
+  // month goes straight to giving it its own name.
+  periodMenu: (period: TrainingLogPeriod) => void;
+  // ✎ at a period heading ("📄 Trang"): the whole period as one text block, to edit or share.
   openPage: (period: TrainingLogPeriod) => void;
 }

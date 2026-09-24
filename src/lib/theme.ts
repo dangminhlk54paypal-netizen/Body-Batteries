@@ -70,6 +70,19 @@ export const darkColors = {
   liftBench: '#d95926',
   liftDeadlift: '#199e70',
 
+  // Weight-over-time chart reference lines (History → weight card): healthy
+  // upper bound (BMI 24.9) and +10 / +20 / +35 kg above it, plus the soft
+  // fill behind the whole healthy range (BMI 18.5–24.9).
+  weightRefHealthy: '#7ED957',
+  weightRefPlus10: '#FFD93D',
+  weightRefPlus20: '#FF9F43',
+  weightRefPlus35: '#FF4757',
+  weightHealthyBand: '#7ED9571A',
+  weightLine: '#54A0FF',
+  // Weight list ▲/▼ versus ~7 days earlier: toward vs away from the healthy range.
+  weightTrendToward: '#7ED957',
+  weightTrendAway: '#FF6B6B',
+
   // ── Semantic status ──────────────────────────────────────────────────────
   danger: '#FF6B6B', // soft/warm — deletions, over-burn move action
   dangerStrong: '#FF4757', // hard error — validation errors, destructive settings
@@ -87,6 +100,16 @@ export const darkColors = {
   overdoseBorder: '#5a4030',
   overdoseTitle: '#E17055',
   overdoseText: '#c9a892',
+
+  // ── Training log (Sổ tập) ───────────────────────────────────────────────
+  // Month/block title (blue italic), week-heading weight (green italic), each
+  // day's date (purple italic), movement labels S/B/D (bold grey). Dark mode
+  // uses light, saturated stops so the four stay apart on #0d0d1a; the grey
+  // sits well below the white body text so labels still read as labels.
+  notebookPeriod: '#7DB3FF',
+  notebookWeight: '#6FE3A0',
+  notebookDate: '#CDB0FF',
+  notebookLift: '#9A9AB5',
 } as const;
 
 // Widened to `string` per key (not the literal hex-union `typeof darkColors`
@@ -142,6 +165,16 @@ export const lightColors: ThemeColors = {
   liftBench: '#eb6834',
   liftDeadlift: '#1baf7a',
 
+  // Darker stops than dark mode so thin dashed lines still read on white.
+  weightRefHealthy: '#2E9E44',
+  weightRefPlus10: '#C99A00',
+  weightRefPlus20: '#E07B00',
+  weightRefPlus35: '#D63031',
+  weightHealthyBand: '#2E9E4414',
+  weightLine: '#2E7FE0',
+  weightTrendToward: '#2E9E44',
+  weightTrendAway: '#D63031',
+
   // ── Semantic status ──────────────────────────────────────────────────────
   danger: '#FF6B6B',
   dangerStrong: '#FF4757',
@@ -162,4 +195,9 @@ export const lightColors: ThemeColors = {
   overdoseBorder: '#E0B79E',
   overdoseTitle: '#C05621',
   overdoseText: '#8A5A3B',
+
+  notebookPeriod: '#1A4DB3',
+  notebookWeight: '#1B8A4B',
+  notebookDate: '#7A3DC8',
+  notebookLift: '#6E6E82',
 };

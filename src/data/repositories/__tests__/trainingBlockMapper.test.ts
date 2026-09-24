@@ -47,4 +47,24 @@ describe('rowToPlan', () => {
     expect(typeof plan.config.weekStartDate).toBe('string');
     expect(plan.config.weekStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
+
+  it('fills missing week dates as consecutive Mon–Sun weeks (blocks created before Session 27)', () => {
+    const row = makeRow({});
+    row.created_at = new Date('2026-09-03T10:00:00').getTime(); // a Thursday
+    row.weeks = JSON.stringify([
+      { weekNumber: 1, isDeload: false, days: [], totalKcal: 0, weeklyDeficitTargetKcal: null },
+      { weekNumber: 2, isDeload: true, days: [], totalKcal: 0, weeklyDeficitTargetKcal: null },
+    ]);
+    const plan = rowToPlan(row);
+    expect(plan.config.weekStartDate).toBe('2026-08-31');
+    expect(plan.weeks.map((w) => [w.startDate, w.endDate])).toEqual([
+      ['2026-08-31', '2026-09-06'],
+      ['2026-09-07', '2026-09-13'],
+    ]);
+  });
+
+  it('leaves weeks that already have dates untouched', () => {
+    const plan = rowToPlan(makeRow({ weekStartDate: '2026-08-24' }));
+    expect(plan.weeks[0]).toMatchObject({ startDate: '2026-08-24', endDate: '2026-08-30' });
+  });
 });

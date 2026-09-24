@@ -201,15 +201,40 @@ describe('BlockWeekDatesSheet', () => {
 });
 
 describe('BlockPlanView', () => {
-  it('shows the plan, the app suggestion with its RPE, and real dates for each day', async () => {
+  it('shows the plan and real dates, keeping the app suggestion behind the ⓘ', async () => {
     jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
     const tree = await mount(<BlockPlanView />);
     const text = textOf(tree.root);
     expect(text).toContain('Kế hoạch: ');
-    expect(text).toContain('Gợi ý của app:');
-    expect(text).toContain('RPE 6.5 ở set cuối');
     expect(text).toMatch(/Thứ Hai · .*07\/09/); // week 1's Monday
     expect(text).not.toContain('công thức cũ');
+    expect(text).not.toContain('Gợi ý của app:');
+    expect(text).not.toContain('EPOC');
+  });
+
+  it('opens the ⓘ popup with the rationale, the suggestion with its RPE, and the math', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    const badge = tree.root.findAll(
+      (n) => typeof n.props.onPress === 'function' && n.props.accessibilityLabel === 'Giải thích: Bench chạm ngực-đẩy liên tục (Touch-and-go)'
+    )[0];
+    expect(badge).toBeDefined();
+    await act(async () => {
+      badge.props.onPress();
+    });
+    const text = textOf(tree.root);
+    expect(text).toContain('Gợi ý của app:');
+    expect(text).toContain('RPE 6.5 ở set cuối');
+    expect(text).toContain('Cách app tính');
+  });
+
+  it('puts the EPOC note behind the title ⓘ', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    await act(async () => {
+      tree.root.findAll((n) => typeof n.props.onPress === 'function' && /^Giải thích: /.test(n.props.accessibilityLabel ?? ''))[0].props.onPress();
+    });
+    expect(textOf(tree.root)).toContain('EPOC');
   });
 
   it('offers to recalculate an old-model block, keeping it until the user taps', async () => {

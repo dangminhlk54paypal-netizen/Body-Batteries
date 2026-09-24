@@ -169,7 +169,9 @@ Tab này trả lời câu "mấy hôm nay mình sống thế nào":
 - **Ghi cân nặng**: một ô nhập nhanh để log cân nặng theo ngày, xem lại lịch
   sử cân — tách biệt với hồ sơ cơ thể (hồ sơ dùng để tính TDEE, còn đây là
   nhật ký cân nặng thực tế theo thời gian). Form nhập nhận cả dấu phẩy (`,`)
-  lẫn dấu chấm (`.`) — gõ "78,5" hoặc "78.5" đều được.
+  lẫn dấu chấm (`.`) — gõ "78,5" hoặc "78.5" đều được. Ô ngày bên cạnh để trống là
+  hôm nay; gõ `14.09` (hoặc `14.09.2025`) để ghi cân cho một ngày đã qua — ví dụ chép
+  lại số cân từ ghi chú cũ để biểu đồ × cân nặng tính đúng.
 - **Thẻ từng ngày**: mỗi ngày một thẻ, hiện % dinh dưỡng trung bình + % pin
   Năng lượng hôm đó, cùng các cột nhỏ cho từng pin. Biểu tượng/viền badge cũng
   dùng màu xanh dương (Dinh dưỡng) và cam (Năng lượng) để khớp với biểu đồ.
@@ -191,9 +193,17 @@ buổi đó tự hiện trong sổ, ví dụ:
   `6x4(+3)x75` = 6 set × 4 rep, set cuối làm thêm 3 rep · `110x(4+5+5+4+8)` = các set rep khác nhau.
   `S B D` = Squat / Bench / Deadlift; `PS PD` = Pause; `iC` = Incline; `LG` = grip hẹp. Số thập phân ghi
   bằng dấu chấm; khi gõ bằng bàn phím điện thoại, dấu phẩy (`72,5`) vẫn được nhận.
-- **Bấm block** → hiện các tuần; **bấm tuần** → hiện các ngày. Chỉ block và tuần mới nhất mở sẵn.
-  **Nhấn giữ** tên block để đặt tên riêng (vd. "Block2 Accumulation"); nhấn giữ tuần (hoặc nút
-  **✎ Ghi chú tuần**) để ghi chú tuần ("nghỉ lễ", "ngủ ít"…).
+- **Prime:** set khởi động nặng nhất của bài được ghi trước phần volume, chữ nghiêng: `B 95 + 4x6x72.5`. Khi tự gõ,
+  viết `95 + 4x6x72.5` hoặc `95+ 4x6x72.5` (có dấu cách sau dấu +) để app hiểu đó là prime (set khởi động), không
+  phải set chính; `140+2x3x100` (không cách) vẫn là các set chính. Tắt được trong ⚙︎ Định dạng sổ → "Hiện prime".
+- **Bấm block/tháng** (chữ xanh dương, nghiêng) → hiện luôn các tuần kèm các ngày trong một khung cao khoảng 2 tuần,
+  cuộn bên trong khung; bấm tuần để thu gọn. Chỉ block/tháng mới nhất mở sẵn và luôn giữ mở; các tháng khác tự thu
+  lại sau 2 phút không chạm vào. Tiêu đề tuần: nhãn **B3W1** in đậm, ngày chữ thường, cân nặng tuần màu xanh lá nghiêng. Dòng
+  ngày không ghi cân; ngày đầu dòng màu tím nghiêng, ký hiệu bài (S, B, D, PD…) in đậm màu xám.
+  **Nhấn giữ** tên block → **Đổi tên** (vd. "Block2 Accumulation") hoặc **Xoá block này** (xoá kế hoạch block, kể cả
+  trong 📋 Kế hoạch block; các buổi đã ghi không mất mà về lại tháng tập tự do).
+- **Bút chì ✎ cạnh tiêu đề tháng/block** → mở trang của cả tháng/block: sửa mọi dòng một lần hoặc chia sẻ.
+  **Bút chì ✎ cạnh tiêu đề tuần** → chọn **＋ Ghi buổi** hoặc **✎ Ghi chú tuần** ("nghỉ lễ", "ngủ ít"…).
 - **Sửa dòng:** bấm vào một dòng ngày. Bạn viết đè cả dòng (thêm `(95 ❌)`, `(rpe9.2)`, `(test)`…) và ghi chú
   dưới ngày. **Sửa chữ chỉ đổi chữ trong sổ, không đổi kcal hay pin.** Muốn đổi số liệu buổi tập, bấm
   **Sửa số liệu** trong cùng cửa sổ (pin của ngày đó được tính lại). Nếu sau khi bạn sửa tay mà buổi tập của
@@ -203,22 +213,44 @@ buổi đó tự hiện trong sổ, ví dụ:
   trong Notes. Nút **📋 Chép buổi gần nhất** điền sẵn buổi trước để bạn chỉ sửa số. Dòng ghi tay chỉ lưu trong
   sổ, **không tính vào pin năng lượng**.
 - **⚙︎** đổi cách sổ viết (viết tắt hay tên đầy đủ, dấu chấm/dấu phẩy, hiện set khởi động, kg, cân nặng, thứ
-  trong tuần, kcal) và đổi chữ viết tắt từng bài. **📄 Trang / Chia sẻ** (trong mỗi block đang mở) gộp cả block
+  trong tuần, kcal) và đổi chữ viết tắt từng bài. **📄 Trang** (bút chì ✎ cạnh tiêu đề block/tháng) gộp cả block
   thành một trang chữ để chia sẻ hoặc dán sang Ghi chú.
 - **Tiêu đề tuần** cho biết ngay tuần đó là tuần nào: `B2W1: 07.09–13.09 76.3kg` = Block 2, tuần 1, từ ngày
   đến ngày, cân nặng lần cân đầu tiên trong tuần. Tuần tập tự do (ngoài block) chỉ có ngày và cân nặng.
+  Muốn tự đặt tên tuần: trong ✎ Sửa trang, gõ tên trước ngày của tuần, ví dụ `B3W3: 21.09–27.09 75kg`. Tên đó
+  hiện ngay trên tiêu đề tuần. Xoá tên (chỉ để lại ngày) là quay về như cũ.
+- **Đổi tên tháng tập tự do** (ví dụ "Tập tự do · tháng 9 năm 2026" thành "Power Lifting"): nhấn giữ tiêu đề
+  tháng, hoặc sửa dòng đầu tiên trong ✎ Sửa trang. Để trống là quay về tên mặc định.
 - **Sửa ngược từ Trang:** trong 📄 Trang, bấm **✎ Sửa trang**, sửa thẳng trên chữ (ví dụ đổi `S 130` thành
   `S 132.5`, thêm bài bị thiếu, sửa ghi chú). Bấm **Xem thay đổi**: app liệt kê từng mục sẽ cập nhật và cập nhật
   thế nào (buổi Xả được tính lại kcal & pin, hay chỉ đổi chữ trong sổ). Bấm **Áp dụng**, app báo lại đã cập nhật
-  mục nào, trước → sau, kcal buổi tập trước → sau. App **không xoá buổi Xả** từ Trang, không đổi cân nặng từ
-  Trang, và nếu có chỗ nó không hiểu thì chỉ lưu chữ và nói rõ lý do.
+  mục nào, trước → sau, kcal buổi tập trước → sau. App **không xoá buổi Xả** từ Trang, và nếu có chỗ nó không
+  hiểu thì chỉ lưu chữ và nói rõ lý do.
+- **Cân nặng trong Trang:** gõ cân ở đầu dòng ngày, ví dụ `14.09(79.5kg): S 135 + 4x6x100` (hoặc chỉ
+  `14.09(79.5kg):`), là lưu thành lần cân của ngày đó trong mục Cân nặng; ngày đã có lần cân thì số đó được sửa lại,
+  không ghi đúp. Sửa số cân ở **tiêu đề tuần** (vd. `B1W1: 01.09–07.09 76.3kg` → `80kg`) thì lần cân đầu tiên của
+  tuần đó được sửa; tuần chưa có lần cân thì thêm một lần vào sáng thứ Hai. Trang không xoá lần cân nào.
 - **📈 Tiến độ sức mạnh** (ngay dưới sổ): mỗi tuần một điểm là mức tạ nặng nhất bạn làm ở Squat / Bench /
   Deadlift (bài chuẩn). Nút **kg** / **× cân nặng** đổi sang tỉ lệ so với cân nặng tuần đó. Chạm vào biểu đồ để
   xem số của từng tuần. Buổi bạn ghi tay trong sổ cũng được tính.
+  - **Cân nặng của tuần** (dùng cho tỉ lệ): trung bình các lần cân trong tuần; tuần không cân thì ước tính trên
+    đường thẳng giữa lần cân trước và sau; sau lần cân cuối thì giữ số đó. Tuần trước lần cân đầu tiên chỉ ước tạm
+    (hiện chữ vàng khi chạm vào tuần đó) — cân thường xuyên thì tỉ lệ mới chính xác.
+  - Dòng **So với tuần đầu** dưới biểu đồ cho biết mỗi bài tăng bao nhiêu % theo chế độ đang xem: khi giảm cân, %
+    ở **× cân nặng** sẽ cao hơn % ở **kg**.
+  - **⭐ Ghi 1RM**: ghi mức tạ tối đa 1 lần bạn đạt được (bài, kg, ngày). Mỗi 1RM hiện thành một **ngôi sao** màu
+    của bài trên biểu đồ, đúng ngày đạt, không nối vào đường tập. Xoá bằng nút ✕ trong danh sách.
+  - **📤 Chia sẻ ảnh**: xuất biểu đồ (kèm mức nặng nhất và 1RM) thành ảnh để gửi bạn bè; màu theo chủ đề sáng/tối.
+- **Viết bù buổi quên Xả** (kể cả tháng trước): ở **＋ Ghi buổi**, nhập ngày và dòng tập (vd. `S 120 5x4x100`).
+  Nếu app đọc được cả dòng, công tắc **⚡ Tạo buổi Xả** (bật sẵn) sẽ tạo buổi Xả thật cho ngày đó: tính kcal, pin,
+  hiện trong Lịch sử, biểu đồ và Excel. Tắt công tắc nếu chỉ muốn lưu chữ. Những dòng ghi tay cũ: mở **📄 Trang**
+  → **⚡ Ghi N dòng tay vào Xả** → xem trước → Áp dụng.
+- **Excel** có thêm sheet **Tiến độ sức mạnh** (mỗi tuần S/B/D nặng nhất, cân nặng, × cân nặng) và **1RM**.
 
 **Kế hoạch block — sửa theo ý bạn.** Kế hoạch app lập chỉ là gợi ý. Trong chế độ **📋 Kế hoạch block**:
-- Mỗi bài có dòng **Kế hoạch** (kế hoạch thật của bạn) và bên dưới là **Gợi ý của app** kèm RPE ở set cuối; bấm ⓘ
-  **Cách app tính** để xem phép tính. Bấm **✎ Sửa** để gõ kế hoạch của bạn theo kiểu Notes (`110x1 5x5x95`,
+- Mỗi bài có dòng **Kế hoạch** (kế hoạch thật của bạn). Bấm nút **i** cạnh tên bài để xem giải thích bài, **Gợi ý của
+  app** (kèm RPE ở set cuối) và **Cách app tính**. Nút **i** cạnh tiêu đề chứa ghi chú về kcal (EPOC) và đạm.
+  Bấm nút bút chì **✎** để gõ kế hoạch của bạn theo kiểu Notes (`110x1 5x5x95`,
   `6x4(+3)x75`…); app hiện lại từng set nó hiểu trước khi lưu. **Khôi phục gợi ý của app** để quay lại.
 - Mỗi tuần có nút **✎ Ngày**: nhập tuần đó từ ngày nào đến ngày nào (vd. lùi một tuần vì đi nghỉ). Các tuần sau tự dời
   theo; mỗi buổi hiện kèm ngày thật.

@@ -6,6 +6,7 @@ import {
   FOOD_OVERRIDES_MIGRATION_COLUMNS,
   FOOD_LOG_MIGRATION_COLUMNS,
   ACTIVITY_LOG_MIGRATION_COLUMNS,
+  TRAINING_LOG_WEEKS_MIGRATION_COLUMNS,
 } from './schema';
 import { DEFAULT_BATTERIES } from '../../lib/constants';
 
@@ -32,6 +33,7 @@ export async function initDatabase(): Promise<void> {
   await migrateColumns(_db, 'food_overrides', FOOD_OVERRIDES_MIGRATION_COLUMNS);
   await migrateColumns(_db, 'food_log', FOOD_LOG_MIGRATION_COLUMNS);
   await migrateColumns(_db, 'activity_log', ACTIVITY_LOG_MIGRATION_COLUMNS);
+  await migrateColumns(_db, 'training_log_weeks', TRAINING_LOG_WEEKS_MIGRATION_COLUMNS);
   await seedDefaultBatteries(_db);
 }
 

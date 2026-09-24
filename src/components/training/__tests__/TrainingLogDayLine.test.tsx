@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Text } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
 import { TrainingLogDayLine } from '../TrainingLogDayLine';
 import { useTrainingLogStore } from '../../../store/trainingLogStore';
@@ -62,7 +62,6 @@ function render(props: Partial<React.ComponentProps<typeof TrainingLogDayLine>> 
         date="2026-08-26"
         entries={[entry]}
         record={undefined}
-        weightKg={null}
         format={DEFAULT_TRAINING_LOG_FORMAT}
         {...props}
       />
@@ -114,8 +113,16 @@ describe('TrainingLogDayLine', () => {
     expect(textOf(render())).toBe('26.08: S 130 2x3x115');
   });
 
-  it('adds the body weight to the prefix when there is a reading', () => {
-    expect(textOf(render({ weightKg: 77.7 }))).toBe('26.08(77.7kg): S 130 2x3x115');
+  it('draws a written prime as its own (italic) piece', () => {
+    const rec = record({ overrideText: 'B 95+ 4x6x72.5' });
+    const primes = render({ record: rec }).root.findAll((n) => n.type === Text && n.props.testID === 'prime');
+    expect(primes.map((n) => instanceText(n))).toEqual(['95']);
+  });
+
+    it('draws the movement labels as their own (bold grey) pieces', () => {
+    const tree = render();
+    const labels = tree.root.findAll((n) => n.type === Text && n.props.testID === 'lift-label');
+    expect(labels.map((n) => instanceText(n))).toEqual(['S']);
   });
 
   it('shows the user’s override instead, with ✎, when it matches the entries', () => {

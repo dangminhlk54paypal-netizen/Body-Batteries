@@ -178,7 +178,8 @@ Dieser Reiter beantwortet "Wie habe ich die letzten Tage gelebt":
 - **Gewicht protokollieren**: ein schnelles Eingabefeld zum Gewichtseintrag nach Datum, sehen Sie
   die Gewichtsgeschichte – getrennt vom Körperprofil (Profil zum Berechnen des TDEE, dies ist
   für Ihr echtes Gewicht über Zeit). Das Formular akzeptiert Komma (`,`) und Punkt (`.`) —
-  "78,5" oder "78.5" funktionieren beide.
+  "78,5" oder "78.5" funktionieren beide. Das Datumsfeld daneben leer = heute; `14.09` (oder `14.09.2025`)
+  trägt eine Wiegung für einen vergangenen Tag ein — etwa Werte aus alten Notizen, damit × Körpergewicht stimmt.
 - **Tägliche Karten**: eine Karte pro Tag mit durchschnittlicher Nährstoffebene + Energie-Batterieebene
   dieses Tages, plus kleine Spalten für jede Batterie. Die Symbole/Rahmen der Badge verwenden
   auch Blau (Nährstoff) und Orange (Energie) zur Konsistenz mit dem Diagramm. Tippen Sie auf
@@ -201,9 +202,17 @@ hinzufügen“ für Pause, Schrägbank …). Die Einheit erscheint automatisch i
   unterschiedlichen Wdh. `S B D` = Kniebeuge / Bankdrücken / Kreuzheben; `PS PD` = Pause; `iC` = Schrägbank;
   `LG` = enger Griff. Dezimalzahlen mit Punkt; beim Tippen auf dem Handy wird auch das Komma (`72,5`)
   akzeptiert.
-- **Block antippen** → Wochen; **Woche antippen** → Tage. Nur der neueste Block und die neueste Woche sind
-  offen. Einen Block **lang drücken**, um ihn umzubenennen; eine Woche lang drücken (oder **✎ Wochennotiz**)
-  für eine Notiz („Urlaub“, „wenig geschlafen“ …).
+- **Prime:** der schwerste Aufwärmsatz steht kursiv vor dem Volumen: `B 95 + 4x6x72.5`. Selbst getippt:
+  `95 + 4x6x72.5` oder `95+ 4x6x72.5` (Leerzeichen nach dem +) — dann gilt er als Aufwärmsatz; `140+2x3x100`
+  (ohne Leerzeichen) bleiben Arbeitssätze. Abschaltbar unter ⚙︎ Format → „Prime anzeigen“.
+- **Block/Monat antippen** (blau, kursiv) → Wochen samt Tagen in einem Fenster von etwa 2 Wochen Höhe, darin
+  scrollen; eine Woche antippen klappt sie zu. Nur der neueste Block/Monat ist offen und bleibt offen; andere
+  klappen nach 2 Minuten ohne Berührung wieder zu. Wochentitel: Label **B3W1** fett, Datum normal, Wochengewicht grün kursiv. Tageszeilen ohne
+  Gewicht; das Datum am Zeilenanfang ist lila kursiv, Übungskürzel (S, B, D, PD …) fett grau.
+  Einen Block **lang drücken** → **Umbenennen** oder **Diesen Block löschen** (löscht den Blockplan, auch unter
+  📋 Blockplan; eingetragene Einheiten bleiben und wandern zurück in die freien Monate).
+- **Stift ✎ neben dem Monats-/Blocktitel** → die Seite des ganzen Zeitraums: alle Zeilen auf einmal bearbeiten oder
+  teilen. **Stift ✎ neben dem Wochentitel** → **＋ Eintrag** oder **✎ Wochennotiz** („Urlaub“, „wenig geschlafen“ …).
 - **Zeile bearbeiten:** Tippen Sie auf eine Tageszeile. Sie können die ganze Zeile überschreiben (z. B.
   `(95 ❌)`, `(rpe9.2)`, `(test)`) und eine Notiz unter dem Tag speichern. **Textänderungen ändern nur den
   Text im Tagebuch, nicht kcal oder Akku.** Für die Zahlen tippen Sie im selben Fenster auf **Zahlen
@@ -215,24 +224,47 @@ hinzufügen“ für Pause, Schrägbank …). Die Einheit erscheint automatisch i
   Sie ändern nur die Zahlen. Eine handgeschriebene Zeile bleibt nur im Tagebuch und **zählt nicht für den
   Energie-Akku**.
 - **⚙︎** ändert die Schreibweise (abgekürzt oder ausgeschrieben, Punkt/Komma, Aufwärmsätze, kg, Körpergewicht,
-  Wochentag, kcal) und die Abkürzung jeder Übung. **📄 Seite / Teilen** (in jedem geöffneten Block) fasst den
+  Wochentag, kcal) und die Abkürzung jeder Übung. **📄 Seite** (Stift ✎ neben dem Block-/Monatstitel) fasst den
   ganzen Block als Text zusammen zum Teilen oder Einfügen in Notizen.
 - **Wochenüberschrift** zeigt sofort, welche Woche es ist: `B2W1: 07.09–13.09 76.3kg` = Block 2, Woche 1,
   Zeitraum, erstes Wiegen der Woche. Wochen mit freiem Training (außerhalb eines Blocks) zeigen nur Zeitraum
-  und Gewicht.
+  und Gewicht. Eigener Wochenname: in ✎ Seite bearbeiten den Namen vor den Zeitraum schreiben, z. B.
+  `B3W3: 21.09–27.09 75kg` — er erscheint sofort in der Wochenüberschrift. Namen löschen = wieder Standard.
+- **Monat mit freiem Training umbenennen** (z. B. in „Powerlifting“): Monatsüberschrift lange drücken oder die
+  erste Zeile in ✎ Seite bearbeiten ändern. Leer lassen = wieder Standardtitel.
 - **Von der Seite aus korrigieren:** In 📄 Seite auf **✎ Seite bearbeiten** tippen und direkt im Text
   korrigieren (z. B. `S 130` → `S 132.5`, fehlende Übung ergänzen, Notiz ändern). **Änderungen prüfen** listet
   jeden Punkt und wie er übernommen wird (Xả-Einheit mit neu berechneten kcal & Batterien, oder nur Text im
   Tagebuch). Nach **Übernehmen** zeigt die App, was wo geändert wurde, vorher → nachher und die Trainings-kcal
-  vorher → nachher. Xả-Einheiten und das Körpergewicht werden von der Seite aus nie gelöscht bzw. geändert; was
-  die App nicht versteht, speichert sie nur als Text und sagt warum.
+  vorher → nachher. Xả-Einheiten werden von der Seite aus nie gelöscht; was die App nicht versteht, speichert sie
+  nur als Text und sagt warum.
+- **Gewicht in der Seite:** ein Gewicht am Zeilenanfang, z. B. `14.09(79.5kg): S 135 + 4x6x100` (oder nur
+  `14.09(79.5kg):`), wird als Wiegung dieses Tages unter Gewicht gespeichert; gibt es an dem Tag schon eine, wird
+  sie korrigiert statt verdoppelt. Ein geändertes Gewicht im **Wochentitel** (z. B. `B1W1: 01.09–07.09 76.3kg` →
+  `80kg`) korrigiert die erste Wiegung dieser Woche; ohne Wiegung wird eine am Montagmorgen angelegt. Die Seite
+  löscht keine Wiegung.
 - **📈 Kraftentwicklung** (direkt unter dem Tagebuch): pro Woche der schwerste Satz in Kniebeuge / Bankdrücken /
   Kreuzheben (Wettkampfform). **kg** / **× Körpergewicht** wechselt zum Verhältnis zum Körpergewicht dieser
   Woche. Auf das Diagramm tippen, um eine Woche anzusehen. Handschriftliche Einträge zählen mit.
+  - **Körpergewicht der Woche** (für das Verhältnis): Durchschnitt der Wiegungen dieser Woche; ohne Wiegung auf der
+    Geraden zwischen der Wiegung davor und danach; nach der letzten Wiegung bleibt dieser Wert. Wochen vor der ersten
+    Wiegung sind nur geschätzt (gelb markiert) — regelmäßig wiegen macht das Verhältnis genau.
+  - **Seit der ersten Woche** unter dem Diagramm zeigt, um wie viel % jede Übung im gewählten Modus gestiegen ist:
+    beim Abnehmen ist der %-Wert bei **× Körpergewicht** höher als bei **kg**.
+  - **⭐ 1RM eintragen**: dein schwerstes Einzelgewicht (Übung, kg, Tag). Jedes 1RM erscheint als **Stern** in der
+    Farbe der Übung am richtigen Tag, nicht mit der Wochenlinie verbunden. Löschen mit ✕ in der Liste.
+  - **📤 Als Bild teilen**: das Diagramm (mit Bestwerten und 1RM) als Bild teilen; Farben folgen dem hellen/dunklen Design.
+- **Vergessene Einheiten nachtragen** (auch vom Vormonat): in **＋ Eintrag** Tag und Zeile eingeben
+  (z. B. `S 120 5x4x100`). Ist die ganze Zeile lesbar, legt der Schalter **⚡ Xả-Einheit anlegen** (standardmäßig an)
+  eine echte Xả-Einheit für diesen Tag an: kcal, Batterien, Verlauf, Diagramm und Excel. Ältere handschriftliche
+  Zeilen: **📄 Seite** → **⚡ N handschriftliche Zeile(n) in Xả eintragen** → prüfen → Übernehmen.
+- **Excel** hat zusätzlich die Blätter **Kraftentwicklung** (pro Woche schwerster S/B/D-Satz, Körpergewicht,
+  × Körpergewicht) und **1RM**.
 
 **Blockplan — nach Ihren Vorstellungen.** Der Plan der App ist nur ein Vorschlag. In **📋 Blockplan**:
-- Jede Übung zeigt **Plan** (Ihr tatsächlicher Plan) und darunter den **Vorschlag der App** mit RPE im letzten Satz;
-  ⓘ **So rechnet die App** zeigt die Rechnung. Mit **✎ Bearbeiten** tippen Sie Ihren Plan wie in Notizen
+- Jede Übung zeigt **Plan** (Ihr tatsächlicher Plan). Das **i** neben dem Namen zeigt die Erklärung der Übung, den
+  **Vorschlag der App** (mit RPE im letzten Satz) und **So rechnet die App**; das **i** neben dem Titel enthält die
+  Hinweise zu kcal (EPOC) und Protein. Mit dem Stift **✎** tippen Sie Ihren Plan wie in Notizen
   (`110x1 5x5x95`, `6x4(+3)x75` …); die App zeigt jeden gelesenen Satz vor dem Speichern.
   **Vorschlag der App wiederherstellen** stellt ihn wieder her.
 - Jede Woche hat **✎ Datum**: von wann bis wann sie läuft (z. B. eine Woche später wegen Urlaub). Die folgenden

@@ -8,8 +8,15 @@ import type {
   TrainingLogPeriod,
   TrainingLogWeekRecord,
 } from '../../types/trainingLog';
-import { formatDayLine, formatPeriodTitle, formatWeekHeading, formatWeekLabel } from './trainingLogFormatter';
-import { firstWeightInRange, weightRecordedOn } from './trainingLogWeights';
+import {
+  formatDayLine,
+  formatDefaultWeekLabel,
+  formatPeriodTitle,
+  formatWeekHeading,
+  formatWeekLabel,
+  formatWeekRange,
+} from './trainingLogFormatter';
+import { weekHeadingWeight } from './trainingLogWeights';
 import type { WeightPoint } from './trainingLogWeights';
 
 export interface PeriodPageInput {
@@ -32,9 +39,14 @@ export interface PageDay {
 
 export interface PageWeek {
   weekStart: string;
-  label: string; // "B2W1" / "07.09–13.09"
+  label: string; // "B2W1" / "07.09–13.09" / the user's own "B3W3"
   heading: string; // the whole heading line
   note: string;
+  range: string; // "21.09–27.09" — how the page editor finds the heading
+  defaultLabel: string; // the label without the user's ("B2W1"; '' in a free week)
+  customLabel: string; // the user's label, '' = none
+  weekEnd: string;
+  weightKg: number | null; // the weight its heading prints (weekHeadingWeight), null = none
 }
 
 // The page as data: what every line of the text stands for. The page editor
@@ -44,6 +56,9 @@ export interface PeriodPage {
   weeks: PageWeek[];
   days: PageDay[];
   text: string;
+  // Days whose line is hand-written (no Xả session behind it) — what
+  // "Ghi dòng tay vào Xả" can turn into sessions.
+  manualDates: string[];
 }
 
 // The whole period as ONE block of plain text, laid out exactly like the
@@ -76,21 +91,27 @@ export function buildPeriodPage(input: PeriodPageInput): PeriodPage {
   const lines: string[] = [title];
   const weeks: PageWeek[] = [];
   const days: PageDay[] = [];
+  const manualDates: string[] = [];
 
   period.weeks.forEach((week, i) => {
     if (i > 0) lines.push('');
-    const heading = formatWeekHeading(
-      week,
-      period,
-      firstWeightInRange(week.weekStart, week.weekEnd, weights),
-      format,
-      language
-    );
+    const headingWeight = format.showBodyWeight ? weekHeadingWeight(week.weekStart, week.weekEnd, weights) : null;
+    const heading = formatWeekHeading(week, period, headingWeight, format, language);
     lines.push(heading);
 
     let written = 0;
     const weekNote = notesByWeek.get(week.weekStart) ?? '';
-    weeks.push({ weekStart: week.weekStart, label: formatWeekLabel(week, period, language), heading, note: weekNote });
+    weeks.push({
+      weekStart: week.weekStart,
+      label: formatWeekLabel(week, period, language),
+      heading,
+      note: weekNote,
+      range: formatWeekRange(week, language),
+      defaultLabel: period.kind === 'block' ? formatDefaultWeekLabel(week, period, language) : '',
+      customLabel: week.customLabel ?? '',
+      weekEnd: week.weekEnd,
+      weightKg: headingWeight,
+    });
     if (weekNote) {
       lines.push(weekNote);
       written++;
@@ -98,7 +119,9 @@ export function buildPeriodPage(input: PeriodPageInput): PeriodPage {
 
     for (const date of week.dates) {
       const record = recordsByDate.get(date);
-      const weightKg = format.showBodyWeight ? weightRecordedOn(date, weights) : null;
+      // Day lines carry no weight — the week heading already shows it. A
+      // weigh-in typed into a day prefix is still read back (parsePageText).
+      const weightKg = null;
       const { prefix, body: autoBody } = formatDayLine({
         date,
         entries: entriesByDate.get(date) ?? [],
@@ -110,6 +133,8 @@ export function buildPeriodPage(input: PeriodPageInput): PeriodPage {
       const note = record?.note?.trim() ?? '';
       if (!body && !note) continue; // nothing to say for this day
       days.push({ date, prefix, body, note, weightKg });
+      const hasXa = (entriesByDate.get(date) ?? []).some((e) => e.workouts.length > 0);
+      if (!hasXa && record?.overrideText && record.overrideText.trim() !== '') manualDates.push(date);
       lines.push(body ? `${prefix} ${body}` : prefix);
       if (note) lines.push(note);
       written++;
@@ -118,7 +143,7 @@ export function buildPeriodPage(input: PeriodPageInput): PeriodPage {
     if (written === 0) lines.push(translate(language, 'trainingLog.emptyWeek'));
   });
 
-  return { title, weeks, days, text: lines.join('\n') };
+  return { title, weeks, days, text: lines.join('\n'), manualDates };
 }
 
 export function buildPeriodText(input: PeriodPageInput): string {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { TrainingNotebookSection } from './TrainingNotebookSection';
 import { TrainingLogDayLine } from './TrainingLogDayLine';
 import type { TrainingLogActions } from './trainingLogActions';
@@ -9,9 +9,9 @@ import {
   getTrainingLogDaysInRange,
   getTrainingLogWeeksInRange,
 } from '../../data/repositories/trainingLogRepository';
-import { formatWeekHeading, formatWeekLabel } from '../../domain/training/trainingLogFormatter';
+import { formatWeekHeadingParts, formatWeekLabel } from '../../domain/training/trainingLogFormatter';
 import { suggestEntryDate } from '../../domain/training/trainingLogIndex';
-import { firstWeightInRange, weightRecordedOn } from '../../domain/training/trainingLogWeights';
+import { weekHeadingWeight } from '../../domain/training/trainingLogWeights';
 import type { WeightPoint } from '../../domain/training/trainingLogWeights';
 import { dateString, todayString } from '../../lib/dateUtils';
 import type { ActivityLogEntry } from '../../types/energy';
@@ -41,22 +41,36 @@ function getTodayString(): string {
 }
 
 // "B2W4: 07.09–13.09 77.5kg" inside a block; "07.09–13.09 77.5kg" for a free week.
+// The ✎ beside the heading replaces the old "+ Ghi buổi" / "✎ Ghi chú tuần"
+// buttons under every week: one tap asks which of the two to do.
 export function TrainingLogWeekSection({ week, period, weights, format, defaultExpanded, actions }: Props) {
-  const { language } = useT();
+  const { t, language } = useT();
 
-  const weight = firstWeightInRange(week.weekStart, week.weekEnd, weights);
+  const weight = weekHeadingWeight(week.weekStart, week.weekEnd, weights);
   const label = formatWeekLabel(week, period, language);
-  const title = formatWeekHeading(week, period, weight, format, language);
+  const heading = formatWeekHeadingParts(week, period, weight, format, language);
+
+  function openEditMenu() {
+    Alert.alert(label, undefined, [
+      { text: t('trainingLog.addEntryButton'), onPress: () => actions.addDay(suggestEntryDate(week, getTodayString())) },
+      { text: t('trainingLog.editWeekNoteButton'), onPress: () => actions.editWeekNote(week.weekStart, label) },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  }
 
   return (
     <TrainingNotebookSection
-      title={title}
+      title={heading.range}
+      titleLead={heading.lead}
+      titleTail={heading.weight}
       variant="week"
       dimmed={week.dates.length === 0}
       defaultExpanded={defaultExpanded}
       onLongPress={() => actions.editWeekNote(week.weekStart, label)}
+      onEdit={openEditMenu}
+      editLabel={t('trainingLog.weekEditA11y', { label })}
     >
-      <TrainingLogWeekBody week={week} label={label} weights={weights} format={format} actions={actions} />
+      <TrainingLogWeekBody week={week} format={format} actions={actions} />
     </TrainingNotebookSection>
   );
 }
@@ -72,14 +86,10 @@ interface WeekData {
 // never shows text older than what is in the database.
 function TrainingLogWeekBody({
   week,
-  label,
-  weights,
   format,
   actions,
 }: {
   week: TrainingLogWeek;
-  label: string;
-  weights: WeightPoint[];
   format: TrainingLogFormat;
   actions: TrainingLogActions;
 }) {
@@ -136,25 +146,10 @@ function TrainingLogWeekBody({
           date={date}
           entries={entriesByDate.get(date) ?? []}
           record={recordsByDate.get(date)}
-          weightKg={format.showBodyWeight ? weightRecordedOn(date, weights) : null}
           format={format}
           onPress={() => actions.editDay(date)}
         />
       ))}
-      <View style={styles.actionsRow}>
-        <Pressable
-          style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-          onPress={() => actions.addDay(suggestEntryDate(week, getTodayString()))}
-        >
-          <Text style={styles.actionText}>{t('trainingLog.addEntryButton')}</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-          onPress={() => actions.editWeekNote(week.weekStart, label)}
-        >
-          <Text style={styles.actionText}>{t('trainingLog.editWeekNoteButton')}</Text>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -164,16 +159,5 @@ const createStyles = (c: ThemeColors) =>
     body: { gap: 2 },
     loading: { alignSelf: 'flex-start', marginVertical: 8 },
     weekNote: { color: c.textTertiary, fontSize: 14, lineHeight: 20, fontStyle: 'italic' },
-    empty: { color: c.textMuted, fontSize: 15, lineHeight: 22 },
-    actionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-    actionBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 12,
-      backgroundColor: c.bgElevated,
-      borderWidth: 1,
-      borderColor: c.borderSubtle,
-    },
-    actionText: { color: c.accent, fontSize: 12, fontWeight: '700' },
-    pressed: { opacity: 0.6 },
+    empty: { color: c.textMuted, fontSize: 14, lineHeight: 20 },
   });

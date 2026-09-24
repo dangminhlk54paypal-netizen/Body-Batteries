@@ -1,3 +1,5 @@
+import type { LiftingExercise } from './energy';
+
 // Types for the "Sổ tập luyện" (training log): a Notes-style notebook derived
 // from activity_log, plus the few things only the user can add (hand-written
 // lines, notes). See .ai/plans/2026-09-23-training-log-notebook.md.
@@ -13,6 +15,10 @@ export interface TrainingLogFormat {
   // app language (72,5 in vi/de).
   decimal: 'dot' | 'locale';
   showWarmups: boolean;
+  // The prime — the heaviest warm-up set — written in front of the working
+  // sets: "B 95 + 4x6x72.5" (drawn italic). Ignored while showWarmups prints
+  // the whole ramp anyway.
+  showPrime: boolean;
   showUnit: boolean;
   showBodyWeight: boolean;
   showWeekday: boolean;
@@ -27,6 +33,7 @@ export const DEFAULT_TRAINING_LOG_FORMAT: TrainingLogFormat = {
   labelStyle: 'short',
   decimal: 'dot',
   showWarmups: false,
+  showPrime: true,
   showUnit: false,
   showBodyWeight: true,
   showWeekday: false,
@@ -62,7 +69,18 @@ export interface TrainingLogDayRecord {
 export interface TrainingLogWeekRecord {
   weekStart: string; // Monday, YYYY-MM-DD
   note: string | null;
+  // The user's own name for the week ("B3W3", "Deload") typed in front of the
+  // dates on the 📄 page. Replaces the default label in the heading; null /
+  // absent = the default ("B2W1" in a block, just the dates in a free week).
+  label?: string | null;
   updatedAt: number;
+}
+
+// One row of training_log_months: the user's own name for a free-training
+// month ("Power Lifting") shown instead of "Tập tự do · tháng 9 năm 2026".
+export interface TrainingLogMonthRecord {
+  monthKey: string; // YYYY-MM
+  name: string;
 }
 
 export type DayConflict = 'none' | 'sourceChanged' | 'xaAddedToManual' | 'sourceGone';
@@ -77,6 +95,7 @@ export interface TrainingLogWeek {
   isDeload?: boolean;
   sessions: number;
   dates: string[]; // content days of this week, ascending
+  customLabel?: string; // the user's label (TrainingLogWeekRecord.label)
 }
 
 export interface TrainingLogPeriod {
@@ -87,8 +106,21 @@ export interface TrainingLogPeriod {
   blockName?: string; // user-chosen name; absent = "Block <n>"
   focus?: string; // TrainingFocus, for the subtitle
   monthKey?: string; // free periods: YYYY-MM of the Monday that starts the week
+  monthName?: string; // free periods: user-chosen name; absent = "Tập tự do · <month>"
   startDate: string;
   endDate: string;
   sessions: number;
   weeks: TrainingLogWeek[]; // ascending — read like a notebook
+}
+
+// One row of lift_maxes: a one-rep max the user hit on a day ("S 180 kg on
+// 12.08"). Shown as a star on the strength chart — a milestone, not part of
+// the weekly training line — and listed in the Excel export.
+export interface LiftMaxRecord {
+  id: string;
+  lift: LiftingExercise;
+  weightKg: number;
+  date: string; // YYYY-MM-DD
+  note: string | null;
+  createdAt: number;
 }
