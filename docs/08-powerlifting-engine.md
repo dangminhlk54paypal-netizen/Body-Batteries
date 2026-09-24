@@ -20,6 +20,33 @@ Dựa trên "repetition continuum" đã được y văn hiện đại xác nhậ
 | **Normal** (Cân bằng, kiểu DUP) | Luân phiên trong TUẦN: 1 buổi nặng (80-85%×3-5), 1 buổi vừa (70-75%×6-8), 1 buổi nhẹ/kỹ thuật (60-70%×8-10) | Tổng tấn số tăng nhẹ theo tuần, vẫn giữ luân phiên 3 mức | Buổi nặng nhất trong tuần nhích lên 85-88% | Daily Undulating Periodization — nghiên cứu cho thấy DUP/RPE-autoregulation cho tăng sức mạnh ngang bằng hoặc nhỉnh hơn periodization tuyến tính cố định [8][9] |
 | **Peaking** (Thi đấu) | 80-85% × 3 set × 3 rep | 85-90% × 2-3 set × 1-3 rep | 90-97% × 1-2 set × 1 rep, giảm mạnh volume tuần cuối | Loại mệt mỏi tích luỹ, giữ đỉnh thần kinh — mô hình "daily max" volume rất thấp trước thi đấu [4][10] |
 
+> **Cập nhật 2026-09-24 (phản hồi người dùng, Session 33) — engine KHÔNG còn tra %1RM cố định từ bảng trên.**
+> Bảng trên vẫn là *vùng tham chiếu*; con số cụ thể nay được **suy ra** từ số set × số rep × **RPE mục tiêu của set
+> cuối**, có tính độ mỏi tích luỹ qua các set. Lý do: bản cũ cho ví dụ "4 set × 7 rep × 73% 1RM" giữa block Volume,
+> áp nguyên cho **mọi bài trong buổi** (kể cả bài phụ — trường `role: 'secondary'` có nhưng không được dùng), và bỏ qua
+> việc sức giảm dần sau mỗi set → người dùng đánh giá là phi thực tế trong một buổi nặng.
+>
+> **Mô hình (`blockEngine.ts`, mục 2):**
+> - RIR của set cuối = 10 − RPE mục tiêu (thang RIR-RPE của Zourdos [14]).
+> - Mệt tích luỹ = (số set − 1) × 0,15 × số rep mỗi set, kẹp 0,5–1,5 RIR/set (set nhiều rep để lại nhiều mệt hơn).
+>   **Đây là quy tắc kinh nghiệm huấn luyện, không phải hằng số từ RCT.**
+> - Rep "tới hạn" R = rep + RIR + mệt tích luỹ (+ 1,5 RIR nếu là bài phụ, vì tập sau bài chính).
+> - %1RM = 1 / (1 + R/30): nghịch đảo đúng công thức Epley mà app dùng để tính e1RM (`liftingEngine.estimatedOneRepMax`),
+>   nên con số kế hoạch và e1RM hiển thị lúc tập nhất quán với nhau. Rồi × `loadFactor` của biến thể, làm tròn 2,5 kg.
+> - **Bài phụ (secondary):** bớt 1 set (tối thiểu 2), RPE thấp hơn 1, cộng 1,5 RIR "đã mỏi".
+> - **Deload:** giữ quy tắc cũ (%1RM tuần cuối − 10 điểm, ½ số set); RPE chỉ tính ngược để hiển thị.
+>
+> | Phong cách | Đầu block | Giữa block | Cuối block |
+> |---|---|---|---|
+> | **Volume** (tăng cơ + sức bền cơ, tăng volume) | 4×10, RPE 6,5 ≈ 63% | 5×10, RPE 7 ≈ 61% | 6×8, RPE 7,5 ≈ 65% |
+> | **Intensity** | 4×5, RPE 7,5 ≈ 75% | 4×4, RPE 8 ≈ 79% | 3×3, RPE 8,5 ≈ 85% |
+> | **Peaking** | 3×3, RPE 8 ≈ 83% | 3×2, RPE 8,5 ≈ 87% | 2×1, RPE 9 ≈ 92% |
+> | **Normal** (DUP) | nặng 4×4 RPE 8 ≈ 79% (lên RPE 9 ≈ 82% cuối block) · vừa 4×7 RPE 6,5 ≈ 69% · nhẹ 4×8 RPE 6 ≈ 66% | | |
+>
+> Volume giờ **tăng số set qua các tuần** ở tải vừa (60–70% 1RM, vùng 8–12 rep của Schoenfeld [5]), đúng mục tiêu tăng
+> cơ + sức bền; Intensity/Peaking vẫn nằm trong dải %1RM của bảng trên. Mỗi gợi ý lưu kèm phép tính
+> (`ResolvedVariationPlan.reference`) để màn Kế hoạch hiện "Gợi ý của app … · RPE x ở set cuối" và nút ⓘ "Cách app tính".
+
 **Bảng Prilepin (constraint bổ trợ, không phải nguồn chính):** rút ra từ nhật ký huấn luyện hàng nghìn VĐV cử tạ Olympic Liên Xô, là một khung tham khảo phổ biến để giới hạn tổng số rep hợp lý ở mỗi vùng %1RM — engine dùng nó như **giới hạn kiểm tra** (không cho tổng rep/tuần vượt quá "phạm vi cho phép"), KHÔNG dùng để thay thế bảng phong cách ở trên vì nguồn gốc là cử tạ Olympic chứ không phải powerlifting thuần [24]:
 
 | %1RM | Rep/set khuyến nghị | Tổng rep tối ưu | Phạm vi cho phép |
@@ -111,4 +138,22 @@ Engine block ở trên **lập kế hoạch**; phần này là phía **ghi lại
   mục "Sổ tập luyện".
 - **Ký hiệu** người dùng đang dùng (`5x5x72.5`, `6x4(+3)x75`, `110x(4+5+5+4+8)`) khác ký hiệu `5x5@95` trong
   file Excel block mẫu; sổ theo sổ Notes thật của người dùng.
+
+## 10. Người dùng tự sửa kế hoạch (Session 33, 2026-09-24)
+
+Kế hoạch app lập chỉ là **tham chiếu**; người dùng sửa thành kế hoạch thật của mình ngay trong app (tab Tập luyện →
+📋 Kế hoạch block):
+
+- **Sửa bài của một tuần:** nút "✎ Sửa" ở mỗi bài → gõ theo ký hiệu Notes của người dùng (`110x1 5x5x95`,
+  `6x4(+3)x75`, `110x(4+5+5)`, `5x5@95` kiểu bảng tính, `(4x2+5)x90`), có xem trước từng set trước khi lưu
+  (`domain/training/setNotation.ts`). Lưu vào `sets` của biến thể đó (`userEdited = true`); gợi ý của app vẫn nằm ở
+  `reference` và luôn hiện bên dưới kèm ⓘ "Cách app tính". "Khôi phục gợi ý của app" đưa về đúng số cũ. kcal ngày/tuần
+  tính lại theo set của người dùng (`liftingSessionKcal`, không công thức thứ hai). Bản in Excel và Sổ tập đọc `sets`,
+  nên dùng kế hoạch của người dùng.
+- **Ngày thật của từng tuần:** nút "✎ Ngày" trong mỗi tuần → nhập từ ngày / đến ngày (1–14 ngày). Các tuần **sau**
+  tự dời nối tiếp, mỗi tuần giữ số ngày của nó; các tuần trước không đổi; được phép có khoảng trống (tuần nghỉ), không
+  được chồng lên tuần trước (`blockPlanEdits.setWeekDates`). Mỗi buổi hiện kèm ngày thật (`dateForWeekday`). Bước tóm
+  tắt của wizard liệt kê ngày từng tuần.
+- **Block tạo trước công thức mới:** màn Kế hoạch hiện nút "Cập nhật gợi ý" — tính lại các bài chưa sửa, giữ nguyên bài
+  người dùng đã sửa và ngày của mọi tuần (`refreshSuggestions`). Không tự đổi khi người dùng chưa bấm.
 

@@ -112,7 +112,12 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-09-23 (Session 32, xem `.ai/SESSION_LOG.md`).** **Sổ tập luyện** — nhật ký bài tập kiểu
+**Cập nhật lần cuối: 2026-09-24 (Session 33).** Kế hoạch block: người dùng sửa kế hoạch thật trong app (gõ ký hiệu Notes,
+gợi ý + "Cách app tính" vẫn hiện), đặt ngày từng tuần (tuần sau tự dời), engine tính tải theo **set × rep × RPE + mệt tích
+luỹ** thay bảng %1RM cố định, bài phụ nhẹ hơn (trước đây bị bỏ qua). 967 test xanh. Chưa commit, chưa test máy thật.
+Chi tiết: `docs/08-powerlifting-engine.md` mục 2.1 + 10.
+
+**Trước đó — Session 32 (2026-09-23, xem `.ai/SESSION_LOG.md`).** **Sổ tập luyện** — nhật ký bài tập kiểu
 Apple Notes trong tab Tập luyện (📓 Sổ tập | 📋 Kế hoạch block): các buổi ghi ở Xả tự hiện thành dòng
 `26.08(77.7kg): S 130 4x3x115+3x100 PD 4x3x100`, gom **block → tuần → ngày** (gập/mở), sửa được (viết đè dòng,
 ghi chú, ghi tay buổi quên Xả — không chạm pin; "Sửa số liệu" tính lại pin qua `updateActivityForPastDate`), tuỳ chọn

@@ -54,3 +54,28 @@ export function formatDayMonthInput(date: string, order: 'dm' | 'md' = 'dm'): st
   const [, mm, dd] = date.split('-');
   return order === 'dm' ? `${dd}.${mm}` : `${mm}/${dd}`;
 }
+
+// For dates that can be in the FUTURE (a training plan): "12.07" means the
+// 12 July closest to `near` (YYYY-MM-DD, e.g. the date the field showed
+// before) — last year, this year or next year. An explicit year is taken as
+// typed, with no "not in the future" rule.
+export function parseDayMonthNear(input: string, near: string, order: 'dm' | 'md' = 'dm'): string | null {
+  const hasYear = /^\s*\d{1,2}[/.,-]\d{1,2}[/.,-]\d{2,4}\s*$/.test(input);
+  if (hasYear) return parseDayMonthInput(input, '9999-12-31', order);
+  const nearYear = parseInt(near.slice(0, 4), 10);
+  const nearMs = new Date(near + 'T00:00:00').getTime();
+  let best: string | null = null;
+  let bestDistance = Infinity;
+  for (const year of [nearYear - 1, nearYear, nearYear + 1]) {
+    // parseDayMonthInput with "today" = 31 Dec of `year` picks `year` itself
+    // whenever that day exists.
+    const candidate = parseDayMonthInput(input, `${year}-12-31`, order);
+    if (!candidate || !candidate.startsWith(String(year))) continue;
+    const distance = Math.abs(new Date(candidate + 'T00:00:00').getTime() - nearMs);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}

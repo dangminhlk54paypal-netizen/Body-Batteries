@@ -1,6 +1,8 @@
 import { create } from 'zustand';
-import type { UserProfile } from '../types/energy';
+import type { LiftingSet, UserProfile } from '../types/energy';
 import type { GeneratedBlockPlan, NewTrainingBlockConfig } from '../types/powerliftingBlock';
+import { refreshSuggestions, setVariationSets, setWeekDates } from '../domain/energy/blockPlanEdits';
+import type { VariationAddress, WeekDatesError } from '../domain/energy/blockPlanEdits';
 import { generateBlockPlan } from '../domain/energy/blockEngine';
 import {
   addTrainingBlock,
@@ -27,9 +29,28 @@ interface BlockState {
   // the log falls back to "Block <n>"). Works on any stored block, active or
   // not — the log lists every block, not just the active one.
   renameBlock: (id: string, name: string) => Promise<void>;
+  // The user's own plan for one variation-week of the ACTIVE block (`sets` =
+  // null restores the app's suggestion). Needs the lifter's height for kcal.
+  editVariationSets: (at: VariationAddress, sets: LiftingSet[] | null, heightCm: number) => Promise<void>;
+  // Real dates for one week of the active block; later weeks follow. Returns
+  // the validation error instead of saving when the dates don't fit.
+  editWeekDates: (weekIndex: number, start: string, end: string) => Promise<WeekDatesError | null>;
+  // Recalculate the active block's suggestions with the current engine,
+  // keeping the user's own sets and every week's dates.
+  refreshActiveSuggestions: (profile: UserProfile) => Promise<void>;
 }
 
-export const useBlockStore = create<BlockState>((set, get) => ({
+export const useBlockStore = create<BlockState>((set, get) => {
+  // Persists an edited version of the active block and mirrors it into state.
+  async function saveActive(plan: GeneratedBlockPlan) {
+    await updateTrainingBlock(plan);
+    set((s) => ({
+      activeBlock: plan,
+      blocks: s.blocks.map((b) => (b.config.id === plan.config.id ? plan : b)),
+    }));
+  }
+
+  return {
   activeBlock: null,
   blocks: [],
   loading: false,
@@ -78,4 +99,26 @@ export const useBlockStore = create<BlockState>((set, get) => ({
       blocks: s.blocks.map((b) => (b.config.id === id ? updated : b)),
     }));
   },
-}));
+
+  editVariationSets: async (at, sets, heightCm) => {
+    const block = get().activeBlock;
+    if (!block) return;
+    await saveActive(setVariationSets(block, at, sets, heightCm));
+  },
+
+  editWeekDates: async (weekIndex, start, end) => {
+    const block = get().activeBlock;
+    if (!block) return null;
+    const result = setWeekDates(block, weekIndex, start, end);
+    if (!result.ok) return result.error;
+    await saveActive(result.plan);
+    return null;
+  },
+
+  refreshActiveSuggestions: async (profile) => {
+    const block = get().activeBlock;
+    if (!block) return;
+    await saveActive(refreshSuggestions(block, profile));
+  },
+};
+});

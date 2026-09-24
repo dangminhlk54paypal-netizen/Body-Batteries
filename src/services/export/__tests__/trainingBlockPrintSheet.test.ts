@@ -1,6 +1,9 @@
 import { utils } from 'xlsx';
 import { buildPlanCrosstab } from '../trainingBlockPrintSheet';
 import { generateBlockPlan } from '../../../domain/energy/blockEngine';
+import { setVariationSets } from '../../../domain/energy/blockPlanEdits';
+import { formatSetSequence } from '../../../domain/training/trainingLogFormatter';
+import { DEFAULT_TRAINING_LOG_FORMAT } from '../../../types/trainingLog';
 import type { UserProfile } from '../../../types/energy';
 import type { BlockDayPlan, TrainingBlockConfig } from '../../../types/powerliftingBlock';
 
@@ -72,7 +75,8 @@ describe('buildPlanCrosstab', () => {
     const plannedBench = aoa[3];
     expect(plannedBench[0]).toContain('Kế hoạch:');
     expect(plannedBench[0]).toContain('Bench');
-    expect(plannedBench[1]).toMatch(/^\d+x\d+ @ .+kg \(~\d+%\)$/);
+    expect(plannedBench[1]).toMatch(/^\d+x\d+x[\d.]+ \(~\d+%\)$/); // "4x5x75 (~75%)" — the log's notation
+    expect(plannedBench[1]).toBe(`${formatSetSequence(plan.weeks[0].days[0].variations[0].sets, DEFAULT_TRAINING_LOG_FORMAT, 'vi')} (~${plan.weeks[0].days[0].variations[0].pct1rm}%)`);
     expect(styledCells).toContainEqual({ sheet: 1, ref: 'A4', tier: 3 });
 
     const actualBench = aoa[4];
@@ -110,5 +114,19 @@ describe('buildPlanCrosstab', () => {
     const noAccPlan = generateBlockPlan(noAccConfig, profile);
     const { aoa: noAccAoa } = buildPlanCrosstab(noAccPlan, 'vi');
     expect(noAccAoa.some((row) => row[0] === 'Bài phụ trợ')).toBe(false);
+  });
+
+  it("prints the user's own plan when they edited a week (every set, not just the first)", () => {
+    const edited = setVariationSets(
+      plan,
+      { weekIndex: 1, dayIndex: 0, variationIndex: 0 },
+      [
+        { kind: 'working', weightKg: 110, reps: 1 },
+        ...Array.from({ length: 5 }, () => ({ kind: 'working' as const, weightKg: 95, reps: 5 })),
+      ],
+      175
+    );
+    const { aoa: editedAoa } = buildPlanCrosstab(edited, 'vi');
+    expect(editedAoa[3][2]).toBe('110 5x5x95 (~110%)');
   });
 });

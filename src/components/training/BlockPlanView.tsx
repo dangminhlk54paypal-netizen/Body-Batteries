@@ -4,13 +4,47 @@ import { useFocusEffect } from '@react-navigation/native';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
 import { InfoPopover } from '../ui/InfoPopover';
 import { BlockBuilderWizard } from '../BlockBuilderWizard';
+import { BlockVariationEditSheet } from './BlockVariationEditSheet';
+import { BlockWeekDatesSheet } from './BlockWeekDatesSheet';
 import { useBlockStore } from '../../store/blockStore';
+import { useSettingsStore } from '../../store/settingsStore';
+import { useTrainingLogFormat } from '../../hooks/useTrainingLogFormat';
 import { exportTrainingBlockToExcel } from '../../services/export/trainingBlockExportService';
+import { dateForWeekday, hasLegacySuggestions, referenceOf } from '../../domain/energy/blockPlanEdits';
+import type { VariationAddress } from '../../domain/energy/blockPlanEdits';
+import { formatSetSequence } from '../../domain/training/trainingLogFormatter';
 import { weekdayLabel, formatDisplayDate } from '../../lib/dateUtils';
 import { useT } from '../../i18n/useT';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
-import type { ResolvedDayPlan, ResolvedVariationPlan, BlockWeekPlan } from '../../types/powerliftingBlock';
+import type {
+  ResolvedDayPlan,
+  ResolvedVariationPlan,
+  BlockWeekPlan,
+  VariationReference,
+} from '../../types/powerliftingBlock';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+// "How the app calculated it": the arithmetic behind one suggestion, in words.
+function explainReference(ref: VariationReference, t: TFn): string {
+  if (ref.method === 'legacy') return t('planAppendix.calcLegacy');
+  if (ref.method === 'deload') return t('planAppendix.calcDeload', { pct: ref.pct1rm });
+  const first = ref.sets[0];
+  return t('planAppendix.calcRpe', {
+    reps: first?.reps ?? 0,
+    rpe: ref.targetRpe,
+    rir: Math.round((10 - ref.targetRpe) * 10) / 10,
+    sets: ref.sets.length,
+    fatigue: ref.fatigueRir,
+    extra: ref.extraRir > 0 ? t('planAppendix.calcExtra', { extra: ref.extraRir }) : '',
+    rtf: ref.repsToFailure,
+    pct: ref.pct1rm,
+    oneRm: ref.oneRepMaxKg,
+    factor: ref.loadFactor !== 1 ? t('planAppendix.calcFactor', { factor: ref.loadFactor }) : '',
+    weight: first?.weightKg ?? 0,
+  });
+}
 
 // S-PL Block Builder's plan view — the "Kế hoạch block" mode of the Tập luyện
 // tab (moved out of TrainingScreen unchanged when the training log became the
@@ -23,10 +57,18 @@ export function BlockPlanView() {
   const activeBlock = useBlockStore((s) => s.activeBlock);
   const loadActiveBlock = useBlockStore((s) => s.loadActiveBlock);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
+  const editVariationSets = useBlockStore((s) => s.editVariationSets);
+  const editWeekDates = useBlockStore((s) => s.editWeekDates);
+  const refreshActiveSuggestions = useBlockStore((s) => s.refreshActiveSuggestions);
+  const profile = useSettingsStore((s) => s.userProfile);
+  const format = useTrainingLogFormat();
 
   const [loading, setLoading] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  // `key` bumps per opening so each sheet starts from fresh values.
+  const [editing, setEditing] = useState<{ key: number; visible: boolean; at: VariationAddress } | null>(null);
+  const [datesFor, setDatesFor] = useState<{ key: number; visible: boolean; weekIndex: number } | null>(null);
 
   // Reload every time the tab gains focus (bottom-tab screens stay mounted,
   // so a one-shot mount effect would miss a block just created in the
@@ -58,36 +100,62 @@ export function BlockPlanView() {
     }
   }
 
-  function renderVariation(variation: ResolvedVariationPlan, index: number) {
-    const working = variation.sets[0];
-    if (!working) return null;
+  function weekLabelOf(weekIndex: number): string {
+    const week = activeBlock?.weeks[weekIndex];
+    if (!week) return '';
+    return week.isDeload ? t('planAppendix.deloadBadge') : t('planAppendix.weekLabel', { number: week.weekNumber });
+  }
+
+  function renderVariation(variation: ResolvedVariationPlan, at: VariationAddress) {
+    if (!activeBlock || variation.sets.length === 0) return null;
+    const label = t(`blockVariations.${variation.variation.variationId}.label`);
+    const ref = referenceOf(activeBlock, variation);
+    const refSets = formatSetSequence(ref.sets, format, language);
+    const refLine =
+      ref.method === 'rpe'
+        ? t('planAppendix.referenceLineRpe', { sets: refSets, pct: ref.pct1rm, rpe: ref.targetRpe })
+        : ref.method === 'deload'
+          ? t('planAppendix.referenceLineDeload', { sets: refSets, pct: ref.pct1rm })
+          : t('planAppendix.referenceLineLegacy', { sets: refSets, pct: ref.pct1rm });
     return (
-      <View key={index} style={[styles.variationRow, index > 0 && styles.rowDivider]}>
+      <View key={at.variationIndex} style={[styles.variationRow, at.variationIndex > 0 && styles.rowDivider]}>
         <View style={styles.variationHeaderRow}>
-          <Text style={styles.variationLabel}>{t(`blockVariations.${variation.variation.variationId}.label`)}</Text>
-          <InfoPopover
-            title={t(`blockVariations.${variation.variation.variationId}.label`)}
-            body={t(`blockVariations.${variation.variation.variationId}.rationale`)}
-          />
+          <Text style={styles.variationLabel}>{label}</Text>
+          <InfoPopover title={label} body={t(`blockVariations.${variation.variation.variationId}.rationale`)} />
+          <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+            onPress={() => setEditing((prev) => ({ key: (prev?.key ?? 0) + 1, visible: true, at }))}
+          >
+            <Text style={styles.editBtnText}>{t('planAppendix.editButton')}</Text>
+          </Pressable>
         </View>
-        <Text style={styles.variationDetail}>
-          {t('planAppendix.variationSetsLine', {
-            sets: variation.sets.length,
-            reps: working.reps,
-            weight: working.weightKg,
-            pct: variation.pct1rm,
-          })}
+        {/* The plan — the user's own sets once edited, else the suggestion. */}
+        <Text style={styles.planLine}>
+          <Text style={styles.planLabel}>{t('planAppendix.planLabel')}: </Text>
+          {formatSetSequence(variation.sets, format, language)}
+          {variation.userEdited ? <Text style={styles.editedBadge}>  {t('planAppendix.editedBadge')}</Text> : null}
         </Text>
+        {/* The info column: the app's suggestion and how it was calculated. */}
+        <View style={styles.variationHeaderRow}>
+          <Text style={styles.referenceLine}>{refLine}</Text>
+          <InfoPopover title={t('planAppendix.howCalcTitle')} body={explainReference(ref, t)} />
+        </View>
         <Text style={styles.variationKcal}>{t('planAppendix.kcalLine', { kcal: variation.estimatedKcal })}</Text>
       </View>
     );
   }
 
-  function renderDay(day: ResolvedDayPlan, index: number) {
+  function renderDay(week: BlockWeekPlan, weekIndex: number, day: ResolvedDayPlan, dayIndex: number) {
+    const date = dateForWeekday(week, day.dayOfWeek);
+    const weekday = weekdayLabel(day.dayOfWeek, language, 'long');
     return (
-      <View key={index} style={styles.dayCard}>
-        <Text style={styles.dayTitle}>{weekdayLabel(day.dayOfWeek, language, 'long')}</Text>
-        {day.variations.map(renderVariation)}
+      <View key={dayIndex} style={styles.dayCard}>
+        <Text style={styles.dayTitle}>
+          {date ? t('planAppendix.dayWithDate', { weekday, date: formatDisplayDate(date, language) }) : weekday}
+        </Text>
+        {day.variations.map((v, variationIndex) => renderVariation(v, { weekIndex, dayIndex, variationIndex }))}
         {day.accessories.length > 0 && (
           <View style={styles.accessoriesBlock}>
             <Text style={styles.sectionTitle}>{t('planAppendix.accessoriesSectionTitle')}</Text>
@@ -103,7 +171,7 @@ export function BlockPlanView() {
     );
   }
 
-  function renderWeek(week: BlockWeekPlan) {
+  function renderWeek(week: BlockWeekPlan, weekIndex: number) {
     const dateRange = t('planAppendix.dateRangeSuffix', {
       start: formatDisplayDate(week.startDate, language),
       end: formatDisplayDate(week.endDate, language),
@@ -113,7 +181,13 @@ export function BlockPlanView() {
       : `${t('planAppendix.weekLabel', { number: week.weekNumber })} (${dateRange})`;
     return (
       <CollapsibleSection key={week.weekNumber} title={title} defaultExpanded={week.weekNumber === 1}>
-        {week.days.map(renderDay)}
+        <Pressable
+          style={({ pressed }) => [styles.editBtn, styles.datesBtn, pressed && styles.pressed]}
+          onPress={() => setDatesFor((prev) => ({ key: (prev?.key ?? 0) + 1, visible: true, weekIndex }))}
+        >
+          <Text style={styles.editBtnText}>{t('planAppendix.weekDatesButton')}</Text>
+        </Pressable>
+        {week.days.map((day, dayIndex) => renderDay(week, weekIndex, day, dayIndex))}
         <Text style={styles.weekTotal}>{t('planAppendix.weekTotalLabel', { kcal: week.totalKcal })}</Text>
         {week.weeklyDeficitTargetKcal != null && (
           <Text style={styles.weekTotal}>
@@ -123,6 +197,11 @@ export function BlockPlanView() {
       </CollapsibleSection>
     );
   }
+
+  const editingVariation =
+    editing && activeBlock
+      ? activeBlock.weeks[editing.at.weekIndex]?.days[editing.at.dayIndex]?.variations[editing.at.variationIndex]
+      : undefined;
 
   if (loading) {
     return (
@@ -170,6 +249,18 @@ export function BlockPlanView() {
               </Pressable>
             </View>
 
+            {hasLegacySuggestions(activeBlock) && (
+              <View style={styles.legacyBanner}>
+                <Text style={styles.legacyText}>{t('planAppendix.legacyBanner')}</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                  onPress={() => refreshActiveSuggestions(profile)}
+                >
+                  <Text style={styles.editBtnText}>{t('planAppendix.refreshButton')}</Text>
+                </Pressable>
+              </View>
+            )}
+
             {activeBlock.weeks.map(renderWeek)}
             <Pressable style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]} onPress={handleDelete}>
               <Text style={styles.deleteBtnText}>{t('planAppendix.deleteBlockButton')}</Text>
@@ -177,6 +268,36 @@ export function BlockPlanView() {
           </>
         )}
       </ScrollView>
+
+      {editing && editingVariation && activeBlock && (
+        <BlockVariationEditSheet
+          key={`variation-${editing.key}`}
+          visible={editing.visible}
+          title={t('planAppendix.editSheet.title', {
+            label: t(`blockVariations.${editingVariation.variation.variationId}.label`),
+            week: weekLabelOf(editing.at.weekIndex),
+          })}
+          variation={editingVariation}
+          reference={referenceOf(activeBlock, editingVariation)}
+          bodyWeightKg={activeBlock.config.bodyWeightKg}
+          heightCm={profile.heightCm}
+          onSave={(sets) => editVariationSets(editing.at, sets, profile.heightCm)}
+          onRestore={() => editVariationSets(editing.at, null, profile.heightCm)}
+          onClose={() => setEditing((e) => (e ? { ...e, visible: false } : e))}
+        />
+      )}
+
+      {datesFor && activeBlock && activeBlock.weeks[datesFor.weekIndex] && (
+        <BlockWeekDatesSheet
+          key={`dates-${datesFor.key}`}
+          visible={datesFor.visible}
+          plan={activeBlock}
+          weekIndex={datesFor.weekIndex}
+          weekLabel={weekLabelOf}
+          onSave={(start, end) => editWeekDates(datesFor.weekIndex, start, end)}
+          onClose={() => setDatesFor((d) => (d ? { ...d, visible: false } : d))}
+        />
+      )}
 
       <BlockBuilderWizard
         visible={wizardOpen}
@@ -222,7 +343,29 @@ const createStyles = (c: ThemeColors) =>
     rowDivider: { borderTopWidth: 1, borderTopColor: c.divider, paddingTop: 6, marginTop: 4 },
     variationHeaderRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
     variationLabel: { color: c.textSoft, fontSize: 13, fontWeight: '600', flexShrink: 1 },
-    variationDetail: { color: c.textSecondary, fontSize: 12 },
+    planLine: { color: c.textPrimary, fontSize: 14, lineHeight: 20 },
+    planLabel: { color: c.textSecondary, fontWeight: '600' },
+    editedBadge: { color: c.accent, fontSize: 12, fontWeight: '700' },
+    referenceLine: { color: c.textTertiary, fontSize: 12, lineHeight: 17, flexShrink: 1 },
+    editBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 12,
+      backgroundColor: c.bgElevated,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+    },
+    editBtnText: { color: c.accent, fontSize: 12, fontWeight: '700' },
+    datesBtn: { alignSelf: 'flex-start' },
+    legacyBanner: {
+      gap: 8,
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: c.bgHighlight,
+      borderLeftWidth: 3,
+      borderLeftColor: c.warning,
+    },
+    legacyText: { color: c.textSecondary, fontSize: 12, lineHeight: 17 },
     variationKcal: { color: c.mint, fontSize: 12, fontWeight: '600' },
     accessoriesBlock: { gap: 2 },
     accessoryLine: { color: c.textTertiary, fontSize: 12 },

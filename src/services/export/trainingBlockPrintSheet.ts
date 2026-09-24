@@ -4,6 +4,8 @@ import { weekdayLabel, formatDisplayDate } from '../../lib/dateUtils';
 import { translate } from '../../i18n/translate';
 import type { Language } from '../../i18n/types';
 import type { GeneratedBlockPlan } from '../../types/powerliftingBlock';
+import { formatSetSequence } from '../../domain/training/trainingLogFormatter';
+import { DEFAULT_TRAINING_LOG_FORMAT } from '../../types/trainingLog';
 
 export interface PlanCrosstab {
   aoa: (string | number)[][];
@@ -67,13 +69,13 @@ export function buildPlanCrosstab(plan: GeneratedBlockPlan, language: Language):
       const plannedRow: (string | number)[] = [t('export.trainingBlock.plannedRowLabel', { label })];
       for (const week of weeks) {
         const weekVariation = week.days[dayIdx]?.variations[varIdx];
-        const working = weekVariation?.sets[0];
+        // The plan in the user's own notation ("110 5x5x95") — it can be
+        // uneven once they edited it (a top single + back-offs), so print every
+        // set rather than "sets × reps of the first set".
         plannedRow.push(
-          weekVariation && working
+          weekVariation && weekVariation.sets.length > 0
             ? t('export.trainingBlock.cellLine', {
-                sets: weekVariation.sets.length,
-                reps: working.reps,
-                weight: working.weightKg,
+                sets: formatSetSequence(weekVariation.sets, DEFAULT_TRAINING_LOG_FORMAT, language),
                 pct: weekVariation.pct1rm,
               })
             : ''

@@ -1,4 +1,4 @@
-import { parseDayMonthInput, formatDayMonthInput } from '../dateInput';
+import { parseDayMonthInput, parseDayMonthNear, formatDayMonthInput } from '../dateInput';
 
 const TODAY = '2026-09-23';
 
@@ -64,5 +64,28 @@ describe('formatDayMonthInput', () => {
     expect(formatDayMonthInput('2026-07-12', 'md')).toBe('07/12');
     expect(parseDayMonthInput(formatDayMonthInput('2026-07-12'), '2026-09-23')).toBe('2026-07-12');
     expect(parseDayMonthInput(formatDayMonthInput('2026-07-12', 'md'), '2026-09-23', 'md')).toBe('2026-07-12');
+  });
+});
+
+describe('parseDayMonthNear (dates that may be in the future)', () => {
+  it('picks the year that lands closest to the reference date', () => {
+    expect(parseDayMonthNear('21.09', '2026-09-14')).toBe('2026-09-21');
+    expect(parseDayMonthNear('05.01', '2026-12-28')).toBe('2027-01-05'); // across new year, forward
+    expect(parseDayMonthNear('28.12', '2027-01-04')).toBe('2026-12-28'); // across new year, backward
+  });
+
+  it('takes an explicit year as typed, even in the future', () => {
+    expect(parseDayMonthNear('21.09.2030', '2026-09-14')).toBe('2030-09-21');
+  });
+
+  it('month-first for English, and rejects nonsense', () => {
+    expect(parseDayMonthNear('09/21', '2026-09-14', 'md')).toBe('2026-09-21');
+    expect(parseDayMonthNear('31.02', '2026-09-14')).toBeNull();
+    expect(parseDayMonthNear('abc', '2026-09-14')).toBeNull();
+  });
+
+  it('29.02 finds the nearest leap year within one year, else null', () => {
+    expect(parseDayMonthNear('29.02', '2027-06-01')).toBe('2028-02-29');
+    expect(parseDayMonthNear('29.02', '2026-01-01')).toBeNull();
   });
 });

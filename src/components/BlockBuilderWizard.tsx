@@ -5,7 +5,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useBlockStore } from '../store/blockStore';
 import { estimateBeginnerOneRepMax } from '../domain/energy/blockEngine';
 import { variationsForExercise } from '../lib/powerliftingVariations';
-import { weekdayLabel, formatDisplayDate, mondayFirstRank, upcomingMondays } from '../lib/dateUtils';
+import { weekdayLabel, formatDisplayDate, mondayFirstRank, upcomingMondays, addDaysToDateString } from '../lib/dateUtils';
 import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import * as haptics from '../lib/haptics';
@@ -564,6 +564,24 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
         <Text style={styles.summaryLine}>
           {deficitModeEnabled ? t('blockBuilder.summaryDeficitOnLine') : t('blockBuilder.summaryDeficitOffLine')}
         </Text>
+
+        {/* Every week's real dates up front (same arithmetic as blockEngine:
+            7-day weeks back to back from weekStartDate); each one can be moved
+            later in the plan, and the weeks after it follow. */}
+        <Text style={styles.description}>{t('blockBuilder.summaryWeekDatesTitle')}</Text>
+        {Array.from({ length: progressiveWeeks + (hasDeload ? 1 : 0) }, (_, i) => {
+          const start = addDaysToDateString(weekStartDate, i * 7);
+          const isDeload = hasDeload && i === progressiveWeeks;
+          return (
+            <Text key={i} style={styles.description}>
+              {t('blockBuilder.summaryWeekDatesLine', {
+                week: isDeload ? t('planAppendix.deloadBadge') : t('planAppendix.weekLabel', { number: i + 1 }),
+                start: formatDisplayDate(start, language),
+                end: formatDisplayDate(addDaysToDateString(start, 6), language),
+              })}
+            </Text>
+          );
+        })}
       </View>
     );
   }

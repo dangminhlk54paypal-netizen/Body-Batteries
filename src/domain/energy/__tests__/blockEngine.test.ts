@@ -2,7 +2,13 @@ import {
   estimateBeginnerOneRepMax,
   resolveOneRepMax,
   focusCurvePoint,
+  secondaryCurvePoint,
   deloadCurvePoint,
+  loadPct,
+  pctForRepsToFailure,
+  repsToFailureFor,
+  fatigueRir,
+  rpeForLoad,
   applyDeficitMode,
   generateBlockPlan,
 } from '../blockEngine';
@@ -45,12 +51,64 @@ describe('resolveOneRepMax', () => {
   });
 });
 
+describe('load model (reps + target RPE + per-set fatigue → %1RM)', () => {
+  it('reads %1RM from reps-to-failure with the inverse of the app’s Epley e1RM', () => {
+    expect(pctForRepsToFailure(1)).toBe(100);
+    expect(pctForRepsToFailure(10)).toBeCloseTo(75, 5); // Epley: 10 reps to failure = 75%
+    expect(pctForRepsToFailure(30)).toBeCloseTo(50, 5);
+  });
+
+  it('adds fatigue per extra set, more for higher-rep sets (0.15 × reps, 0.5..1.5)', () => {
+    expect(fatigueRir(1, 5)).toBe(0); // a single set carries no across-set fatigue
+    expect(fatigueRir(4, 5)).toBeCloseTo(2.3, 5); // 3 × 0.75
+    expect(fatigueRir(5, 10)).toBe(6); // 4 × 1.5
+    expect(fatigueRir(3, 1)).toBe(1); // 2 × floor 0.5
+  });
+
+  it('4 × 7 at RPE 7 is loaded well below the old fixed 73%', () => {
+    // 7 reps + 3 RIR + 3 × 1.05 fatigue (→ 3.2) = 13.2 → 1/(1+13.2/30) ≈ 69%
+    expect(repsToFailureFor({ sets: 4, reps: 7, rpe: 7 })).toBeCloseTo(13.2, 5);
+    expect(loadPct({ sets: 4, reps: 7, rpe: 7 })).toBe(69);
+    expect(loadPct({ sets: 4, reps: 7, rpe: 7 })).toBeLessThan(73);
+  });
+
+  it('more sets at the same reps/RPE means a lighter load', () => {
+    expect(loadPct({ sets: 6, reps: 8, rpe: 7.5 })).toBeLessThan(loadPct({ sets: 3, reps: 8, rpe: 7.5 }));
+  });
+
+  it('rpeForLoad is the inverse (display only), never below 5', () => {
+    const p = { sets: 4, reps: 5, rpe: 8 };
+    expect(rpeForLoad(loadPct(p), p.sets, p.reps)).toBeCloseTo(8, 0);
+    expect(rpeForLoad(40, 3, 5)).toBe(5);
+  });
+});
+
 describe('focusCurvePoint', () => {
-  it('volume: ramps from the early anchor to the late anchor across the block', () => {
-    expect(focusCurvePoint('volume', 0, 5, 0)).toEqual({ pct: 68, sets: 5, reps: 9 });
-    expect(focusCurvePoint('volume', 4, 5, 0)).toEqual({ pct: 78, sets: 4, reps: 5 });
-    // week 2 of 5 (0-based index 2) sits exactly at t=0.5 → the mid anchor
-    expect(focusCurvePoint('volume', 2, 5, 0)).toEqual({ pct: 73, sets: 4, reps: 7 });
+  it('volume = hypertrophy/endurance: moderate loads, sets added over the block, last set ≤ RPE 7.5', () => {
+    const weeks = [0, 1, 2, 3, 4].map((w) => focusCurvePoint('volume', w, 5, 0));
+    expect(weeks[0]).toMatchObject({ sets: 4, reps: 10, rpe: 6.5 });
+    expect(weeks[4]).toMatchObject({ sets: 6, reps: 8, rpe: 7.5 });
+    for (const w of weeks) {
+      expect(w.pct).toBeGreaterThanOrEqual(58);
+      expect(w.pct).toBeLessThanOrEqual(70);
+      expect(w.rpe).toBeLessThanOrEqual(7.5);
+    }
+    // weekly volume (sets × reps) never goes down
+    const volume = weeks.map((w) => w.sets * w.reps);
+    for (let i = 1; i < volume.length; i++) expect(volume[i]).toBeGreaterThanOrEqual(volume[i - 1] - 6);
+    expect(volume[4]).toBeGreaterThan(volume[0]);
+  });
+
+  it('week 2 of 5 (t = 0.5) sits exactly on the middle anchor', () => {
+    expect(focusCurvePoint('volume', 2, 5, 0)).toMatchObject({ sets: 5, reps: 10, rpe: 7 });
+  });
+
+  it('intensity climbs in load as reps drop, and stays inside docs/08 §2.1 (75-90%)', () => {
+    const early = focusCurvePoint('intensity', 0, 5, 0);
+    const late = focusCurvePoint('intensity', 4, 5, 0);
+    expect(late.pct).toBeGreaterThan(early.pct);
+    expect(early.pct).toBeGreaterThanOrEqual(75);
+    expect(late.pct).toBeLessThanOrEqual(90);
   });
 
   it('peaking: ends near a single near-max rep with very low volume', () => {
@@ -68,22 +126,42 @@ describe('focusCurvePoint', () => {
     expect(heavyEarly.pct).toBeGreaterThan(moderate.pct);
     expect(moderate.pct).toBeGreaterThan(light.pct);
     expect(heavyLate.pct).toBeGreaterThan(heavyEarly.pct);
+    expect(heavyLate.rpe).toBe(heavyEarly.rpe + 1);
     // moderate/light days don't drift across weeks
     expect(focusCurvePoint('normal', 4, 5, 1)).toEqual(moderate);
   });
 
   it('a single-week block (no ramp room) resolves to the late anchor', () => {
-    expect(focusCurvePoint('intensity', 0, 1, 0)).toEqual({ pct: 88, sets: 3, reps: 3 });
+    expect(focusCurvePoint('intensity', 0, 1, 0)).toMatchObject({ sets: 3, reps: 3, rpe: 8.5 });
+  });
+});
+
+describe('secondaryCurvePoint', () => {
+  it('one set fewer, one RPE easier, and lighter than the main movement', () => {
+    const main = focusCurvePoint('intensity', 2, 5, 0);
+    const sec = secondaryCurvePoint(main);
+    expect(sec.sets).toBe(main.sets - 1);
+    expect(sec.rpe).toBe(main.rpe - 1);
+    expect(sec.pct).toBeLessThan(main.pct);
+  });
+
+  it('keeps at least 2 sets', () => {
+    expect(secondaryCurvePoint(focusCurvePoint('peaking', 4, 5, 0)).sets).toBe(2);
   });
 });
 
 describe('deloadCurvePoint', () => {
   it('drops %1RM by 10 points and roughly halves the sets, keeping reps', () => {
-    expect(deloadCurvePoint({ pct: 78, sets: 4, reps: 5 })).toEqual({ pct: 68, sets: 2, reps: 5 });
+    expect(deloadCurvePoint({ pct: 78, sets: 4, reps: 5, rpe: 8 })).toMatchObject({ pct: 68, sets: 2, reps: 5 });
   });
 
   it('never drops below 1 set or a negative %1RM', () => {
-    expect(deloadCurvePoint({ pct: 5, sets: 1, reps: 5 })).toEqual({ pct: 0, sets: 1, reps: 5 });
+    expect(deloadCurvePoint({ pct: 5, sets: 1, reps: 5, rpe: 8 })).toMatchObject({ pct: 0, sets: 1, reps: 5 });
+  });
+
+  it('reads as light (RPE ≤ 6)', () => {
+    const d = deloadCurvePoint(focusCurvePoint('intensity', 4, 5, 0));
+    expect(d.rpe).toBeLessThanOrEqual(6);
   });
 });
 
@@ -155,6 +233,39 @@ describe('generateBlockPlan (integration)', () => {
     expect(week1Squat.sets[0].weightKg).toBeGreaterThan(0);
     expect(week1Squat.estimatedKcal).toBeGreaterThan(0);
     expect(plan.weeks[0].totalKcal).toBe(week1Squat.estimatedKcal);
+  });
+
+  it('every variation carries the app suggestion + its arithmetic as `reference`', () => {
+    const plan = generateBlockPlan(config, profile);
+    const v = plan.weeks[0].days[0].variations[0];
+    expect(v.reference).toMatchObject({ method: 'rpe', oneRepMaxKg: 140, loadFactor: 1 });
+    expect(v.reference?.sets).toEqual(v.sets);
+    expect(v.reference?.pct1rm).toBe(v.pct1rm);
+    expect(v.reference?.repsToFailure).toBeGreaterThan(v.sets[0].reps);
+    expect(v.userEdited).toBeUndefined();
+    expect(plan.weeks[3].days[0].variations[0].reference?.method).toBe('deload');
+  });
+
+  it('a secondary movement is resolved lighter and with fewer sets than the main one', () => {
+    const twoLiftConfig: TrainingBlockConfig = {
+      ...config,
+      oneRepMax: { squat: 140, deadlift: 180 },
+      schedule: [
+        {
+          dayOfWeek: 3,
+          variations: [
+            { exercise: 'deadlift', variationId: 'deadlift_standard', role: 'main' },
+            { exercise: 'squat', variationId: 'squat_standard', role: 'secondary' },
+          ],
+          accessories: [],
+        },
+      ],
+    };
+    const [main, secondary] = generateBlockPlan(twoLiftConfig, profile).weeks[0].days[0].variations;
+    expect(secondary.sets.length).toBe(main.sets.length - 1);
+    expect(secondary.pct1rm).toBeLessThan(main.pct1rm);
+    expect(secondary.reference?.extraRir).toBeGreaterThan(0);
+    expect(main.reference?.extraRir).toBe(0);
   });
 
   it('the deload week loads noticeably lighter than the last progressive week', () => {

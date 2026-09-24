@@ -61,11 +61,40 @@ export interface BlockDayPlan {
 
 // One resolved (concrete weight/reps) variation after the engine applies
 // the focus curve + 1RM + deload/deficit adjustments for a specific week.
+// How the app arrived at its SUGGESTION for one variation-week — kept next to
+// the user's own plan so the plan view can always show "app suggested X, and
+// here is the arithmetic" (the user edits the plan; the reference stays).
+// All numbers are inputs/outputs of blockEngine.loadPct — see docs/08 §2.1.
+export interface VariationReference {
+  sets: LiftingSet[]; // the suggested sets (what `sets` was before any user edit)
+  pct1rm: number; // %1RM of the lift's own max, BEFORE the variation's loadFactor
+  estimatedKcal: number;
+  // 'rpe' = built from reps + target RPE + per-set fatigue; 'deload' = derived
+  // from the last progressive week (%1RM −10 points, half the sets); 'legacy' =
+  // a block made before the RPE model — only `sets`/`pct1rm` are meaningful.
+  method: 'rpe' | 'deload' | 'legacy';
+  targetRpe: number; // RPE the LAST set should feel like (10 = no reps left)
+  fatigueRir: number; // reps in reserve added to the FIRST set for fatigue across sets
+  extraRir: number; // secondary movements: extra reps in reserve for being done after the main lift
+  repsToFailure: number; // reps + (10 − RPE) + fatigue — what the %1RM is read from
+  oneRepMaxKg: number; // the lift's 1RM used (declared or beginner estimate)
+  loadFactor: number; // the variation's load factor (paused/incline… lighter)
+}
+
 export interface ResolvedVariationPlan {
   variation: BlockDayVariation;
-  pct1rm: number; // 0-100 — the %1RM this week's curve landed on, BEFORE the variation's own loadFactor
-  sets: LiftingSet[]; // concrete weight/reps, rounded to 2.5kg plates
-  estimatedKcal: number; // liftingSessionKcal() for these sets alone — no second kcal formula
+  // 0-100. Engine suggestion: the %1RM the curve landed on, BEFORE loadFactor.
+  // After a user edit: the heaviest planned working weight as a % of
+  // (1RM × loadFactor) — same meaning, so the two stay comparable.
+  pct1rm: number;
+  // THE PLAN — what the plan view, the Excel print and the training log use:
+  // the engine's suggestion, or the user's own sets once they edited it.
+  sets: LiftingSet[];
+  estimatedKcal: number; // liftingSessionKcal() for `sets` — no second kcal formula
+  // The engine's suggestion + its arithmetic. Absent on blocks created before
+  // the RPE model existed (their `sets` came from the old fixed-%1RM curve).
+  reference?: VariationReference;
+  userEdited?: boolean; // true once the user replaced `sets` with their own
 }
 
 export interface ResolvedDayPlan {
