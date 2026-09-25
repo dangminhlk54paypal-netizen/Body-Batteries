@@ -21,6 +21,7 @@ import {
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../data/food/foodOverrideRegistry';
 import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
+import { namesAfterRename } from '../domain/food/foodNameText';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import type { FoodItem } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
@@ -101,7 +102,9 @@ export function FoodNutritionEditModal({
         // the edited nameVi/category/serving/per100g take effect.
         const edited: FoodItem = {
           ...initialFood,
-          nameVi: built.nameVi,
+          // A renamed custom food drops its old machine translations: the new
+          // name shows in every language (see namesAfterRename).
+          ...namesAfterRename(initialFood, built.nameVi),
           category: built.category,
           defaultServingG: built.defaultServingG,
           per100g: built.per100g,

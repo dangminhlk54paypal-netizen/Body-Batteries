@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, FlatList, ScrollView, StyleSheet } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
-import { searchAllFoods } from '../data/food/foodSearch';
+import { searchFoods } from '../data/food/foodSearch';
 import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
 import { getAnyFoodById, foodDisplayName, foodLogEntryDisplayName } from '../data/food/foodLookup';
@@ -50,6 +50,10 @@ interface Props {
   // to today when omitted (unchanged behaviour for every existing caller).
   initialDate?: string;
 }
+
+// One row of the search list: a food, or the small heading above the
+// near-miss ("similar") results.
+type ResultRow = { kind: 'food'; item: FoodItem } | { kind: 'similarHeader'; noExact: boolean };
 
 // The current language's name is the main line (foodDisplayName owns the
 // fallback chain), with the English name underneath as the small second line
@@ -196,7 +200,23 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     [recentLog, suggestHour]
   );
 
-  const results = useMemo(() => searchAllFoods(query), [query]);
+  // Exact matches, then — under a small heading, only when exact ones are few —
+  // near-misses (typos, words run together, foreign names; see searchFoods).
+  // Foods logged recently win ties.
+  const recentIds = useMemo(() => recentLog.map((e) => e.foodId), [recentLog]);
+  const search = useMemo(() => searchFoods(query, { preferIds: recentIds }), [query, recentIds]);
+  const rows = useMemo<ResultRow[]>(
+    () => [
+      ...search.matches.map((item) => ({ kind: 'food' as const, item })),
+      ...(search.similar.length > 0
+        ? [
+            { kind: 'similarHeader' as const, noExact: search.matches.length === 0 },
+            ...search.similar.map((item) => ({ kind: 'food' as const, item })),
+          ]
+        : []),
+    ],
+    [search]
+  );
 
   function reset() {
     setQuery('');
@@ -222,7 +242,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
 
   function pickFood(item: FoodItem) {
     const now = new Date();
-    // searchAllFoods returns the raw catalog/custom item — resolve it through
+    // searchFoods returns the raw catalog/custom item — resolve it through
     // getAnyFoodById so any user "Sửa thành phần" override applies to the
     // preview AND to logFood (which snapshots the nutrition at log time).
     const resolved = getAnyFoodById(item.id) ?? item;
@@ -489,25 +509,21 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
               )}
               <FlatList
                 style={styles.list}
-                data={results}
-                keyExtractor={(item) => item.id}
+                data={rows}
+                keyExtractor={(row) => (row.kind === 'food' ? row.item.id : 'similar-header')}
                 keyboardShouldPersistTaps="handled"
-                ListEmptyComponent={
-                  <View>
-                    <Text style={styles.empty}>{t('components.foodLogModal.emptyResults')}</Text>
-                    {query.trim().length > 0 && (
-                      <Pressable
-                        style={({ pressed }) => [styles.addNewBtn, pressed && styles.pressed]}
-                        onPress={startAddingCustomFood}
-                      >
-                        <Text style={styles.addNewText}>
-                          {t('components.foodLogModal.addNewFoodButton', { query: query.trim() })}
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
-                }
-                renderItem={({ item }) => {
+                ListEmptyComponent={<Text style={styles.empty}>{t('components.foodLogModal.emptyResults')}</Text>}
+                renderItem={({ item: row }) => {
+                  if (row.kind === 'similarHeader') {
+                    return (
+                      <Text style={styles.similarHeader}>
+                        {row.noExact
+                          ? t('components.foodLogModal.similarHeaderNoExact')
+                          : t('components.foodLogModal.similarHeader')}
+                      </Text>
+                    );
+                  }
+                  const item = row.item;
                   const { main, sub } = displayNames(item, language);
                   const badge = sourceBadge(item, t);
                   return (
@@ -541,6 +557,18 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                   );
                 }}
               />
+              {/* Always reachable, even when the list shows near-misses: the food
+                  may simply not be in any catalog yet. */}
+              {query.trim().length > 0 && (
+                <Pressable
+                  style={({ pressed }) => [styles.addNewBtn, pressed && styles.pressed]}
+                  onPress={startAddingCustomFood}
+                >
+                  <Text style={styles.addNewText} numberOfLines={1}>
+                    {t('components.foodLogModal.addNewFoodButton', { query: query.trim() })}
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
                 style={({ pressed }) => [styles.modalBtn, styles.cancel, pressed && styles.pressed]}
                 onPress={handleClose}
@@ -824,10 +852,18 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     maxWidth: 160,
   },
   suggestChipText: { color: c.textPrimary, fontSize: 13, fontWeight: '600' },
+  similarHeader: {
+    color: c.textTertiary,
+    fontSize: 12,
+    fontWeight: '600',
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: c.divider,
+  },
   addNewBtn: {
-    marginTop: 4,
-    marginHorizontal: 16,
-    padding: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 12,
     alignItems: 'center',
     backgroundColor: c.bgElevated,

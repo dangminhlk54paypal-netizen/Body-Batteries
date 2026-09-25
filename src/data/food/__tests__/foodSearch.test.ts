@@ -1,4 +1,4 @@
-import { ALL_FOODS, searchAllFoods } from '../foodSearch';
+import { ALL_FOODS, searchAllFoods, searchFoods } from '../foodSearch';
 import { FOOD_ITEMS } from '../foodDatabase';
 import { USDA_FOODS } from '../usdaFoods';
 import { setCustomFoods } from '../customFoodRegistry';
@@ -230,5 +230,60 @@ describe('foodSearch', () => {
       expect(results[0].id).toBe('custom_snack_bar');
       expect(results.length).toBe(ALL_FOODS.length + 1);
     });
+  });
+});
+
+describe('searchFoods — forgiving search (typos, run-together words, foreign names)', () => {
+  const namesOf = (items: FoodItem[]) => items.map((f) => f.nameVi);
+  const first = (q: string) => {
+    const r = searchFoods(q);
+    return (r.matches[0] ?? r.similar[0])?.nameVi;
+  };
+
+  it('finds phở bò however a visitor types it', () => {
+    for (const q of ['Pho Bo', 'pho bo', 'phobo', 'Phở bò', 'pho boo', 'phoo']) {
+      expect([q, first(q)]).toEqual([q, 'Phở bò']);
+    }
+  });
+
+  it('"pho" ranks the phở dishes above phô mai (cheese)', () => {
+    expect(namesOf(searchFoods('pho').matches).slice(0, 2)).toEqual(['Phở bò', 'Phở gà']);
+  });
+
+  it('describing the dish in English or German finds it', () => {
+    expect(namesOf(searchFoods('beef noodle soup').matches)[0]).toBe('Phở bò');
+    expect(namesOf(searchFoods('Frühlingsrolle').matches)).toEqual(expect.arrayContaining(['Chả giò / nem rán']));
+    expect(namesOf(searchFoods('sticky rice').matches)).toEqual(['Xôi']);
+  });
+
+  it('typos come back as "similar", never as exact matches', () => {
+    for (const [q, name] of [
+      ['chiken', 'Ức gà'],
+      ['bahn mi', 'Bánh mì thịt'],
+      ['youghurt', 'Sữa chua'],
+      ['salmn', 'Cá hồi'],
+    ]) {
+      const r = searchFoods(q);
+      expect([q, r.matches.length]).toEqual([q, 0]);
+      expect([q, r.similar[0]?.nameVi]).toEqual([q, name]);
+    }
+  });
+
+  it('keeps "similar" short and out of the way when there are exact matches', () => {
+    expect(searchFoods('chicken').similar).toEqual([]); // plenty of exact matches
+    expect(searchFoods('chiken').similar.length).toBeLessThanOrEqual(6);
+    // A partial match (only "ca") is not offered next to real "cá hồi" matches.
+    expect(namesOf(searchFoods('ca hoi').similar)).not.toContain('Cà rốt');
+    expect(searchFoods('xyzqw')).toEqual({ matches: [], similar: [] });
+  });
+
+  it('a food the user logged recently wins a tie', () => {
+    const phoGa = ALL_FOODS.find((f) => f.nameVi === 'Phở gà')!;
+    expect(searchFoods('pho', { preferIds: [phoGa.id] }).matches[0].nameVi).toBe('Phở gà');
+  });
+
+  it('searchAllFoods stays the exact-only list', () => {
+    expect(searchAllFoods('chiken')).toEqual([]);
+    expect(searchAllFoods('pho bo').map((f) => f.nameVi)[0]).toBe('Phở bò');
   });
 });

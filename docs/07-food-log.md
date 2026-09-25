@@ -179,6 +179,45 @@ một người là những món **chính họ nhập**, và phần đó chỉ s�
 - Kết quả tìm kiếm có huy hiệu nguồn: **Của tôi / Catalog VN / USDA** (+ "đã sửa"),
   phân loại bởi `src/domain/food/foodSource.ts`.
 
+## 4b-2. Tên món tự thêm & tự dịch (Session 38)
+
+Bật "Tự dịch tên món tự chế" thì món tự thêm được dịch nền qua MyMemory (miễn phí, dịch máy). Dịch máy tên món
+thường sai kiểu dịch từng chữ ("Bánh nướng tàu" → "Train pies", "Canh chua cá" → "howler sour soup"), nên
+**một tên sai tệ hơn không dịch**: món tự thêm giữ **một tên thống nhất** (tên người dùng gõ) ở mọi ngôn ngữ, trừ
+khi bản dịch qua được kiểm tra (`domain/food/foodNameText.ts`, `services/translation/foodNameTranslationService.ts`):
+- **Nhận diện ngôn ngữ của chính tên gõ** (`detectNameLanguage`: chữ chỉ tiếng Việt có → vi, ä/ö/ü/ß → de, còn lại
+  theo ngôn ngữ app), không lấy mù quáng ngôn ngữ app.
+- **Món Việt gọi theo tên riêng** (`isKeepAsIsName`: bắt đầu bằng bánh, bún, phở, chè, xôi, nem, chả, gỏi, hủ tiếu,
+  bò bía, cao lầu, mì quảng, bột chiên, cơm tấm) → không gửi dịch.
+- **Dịch ngược** (`translateFoodName` + `acceptNameTranslation`): bản dịch được dịch lại về ngôn ngữ gốc, phải ra
+  đúng tên cũ (bỏ qua hoa/thường, dấu câu, số); echo hoặc còn chữ tiếng Việt trong kết quả EN/DE → bỏ.
+- **Sửa dữ liệu cũ**: lúc mở app, `repairStoredTranslations` (offline) xoá `nameEn` của món giữ tên riêng hoặc
+  `nameEn` còn chữ tiếng Việt — cho cả món tự thêm và override của món tự thêm (không đụng món catalog).
+  `recheckStoredFoodTranslations` (một lần, chỉ khi bật tự dịch, cờ `foodNameTranslationsCheckedV1`) dịch ngược
+  từng `nameEn` đã lưu và xoá cái không khớp; mất mạng thì dừng, lần mở sau làm tiếp.
+- **Đổi tên món tự thêm** (✎ sửa) → bỏ bản dịch cũ (`namesAfterRename`), tên mới hiện ở mọi ngôn ngữ.
+Không thêm chữ UI mới (i18n không đổi).
+
+## 4b-3. Tìm món thông minh (Session 39)
+
+Ô tìm ở màn Nạp (`searchFoods` trong `src/data/food/foodSearch.ts`, so khớp ở `src/domain/food/fuzzyMatch.ts`)
+chịu được cách gõ của người không nhớ đúng tên:
+- **Chấm điểm theo từng chữ** của tên VI/EN/DE (bỏ dấu, không phân biệt hoa thường, không cần đúng thứ tự):
+  trùng chữ 1.0 › đầu chữ 0.85–1 › nằm trong chữ (≥4 ký tự) 0.55 › **gõ sai** (khoảng cách OSA: thêm/bớt/sai/đảo
+  hai chữ cạnh nhau; ≤3 ký tự không cho sai trừ gõ lặp chữ cuối "boo"; 4 ký tự 1 lỗi, 5–8 ký tự 2 lỗi; chỉ khi chữ
+  đầu trùng) › gõ sai trong phần đầu 0.6.
+- **Gõ dính liền / tách khác** (`scoreCompact`): "phobo" = "Phở bò", "banhmi" = "Bánh mì…".
+- **Từ khoá mô tả chỉ để tìm** cho món Việt (`foodSearchAliases.ts`, không hiển thị): "beef noodle soup",
+  "Frühlingsrolle", "sticky rice"…
+- Hai nhóm kết quả: **khớp đúng** (mọi chữ gõ đều có, không cần sửa lỗi — y như trước; `searchAllFoods` vẫn chỉ trả
+  nhóm này) rồi **Gần giống** (gõ sai, dính liền, hoặc chỉ một phần chữ khi không có gì khớp đúng), dưới một dòng
+  tiêu đề nhỏ, tối đa 6 món, chỉ hiện khi khớp đúng < 5 món; khi đã có khớp đúng thì "gần giống" chỉ gồm món có đủ
+  mọi chữ. Hoà điểm → món đã ghi gần đây (`preferIds`) › catalog VN › tên ngắn hơn ("pho" → Phở bò trước Phô mai).
+- Nút **➕ Thêm món mới: '…'** luôn hiện dưới danh sách khi có chữ gõ (trước chỉ hiện khi 0 kết quả) — gợi ý gần
+  giống không bao giờ che mất đường nhập món mới.
+- Nhanh: trung bình ~2,7 ms/lần gõ trên máy dev (453 món + món tự thêm).
+- i18n vi/en/de: `components.foodLogModal.similarHeader`, `similarHeaderNoExact`.
+
 ## 4c. Minh bạch công thức (Session 24)
 Người dùng phải kiểm tra được mọi con số, không phải tin suông:
 - **Pin vi chất** — chạm ô pin (có glyph ⓘ) → `MicroBatterySourceSheet`. Các dòng

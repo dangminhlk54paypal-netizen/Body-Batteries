@@ -1,4 +1,6 @@
 import type { FoodItem } from '../../types/food';
+import { getCustomFoodByIdSync } from './customFoodRegistry';
+import { repairStoredTranslations } from '../../domain/food/foodNameText';
 
 // In-memory mirror of the `food_overrides` table.
 //
@@ -53,10 +55,31 @@ export async function deleteOverrideAndUnregister(id: string): Promise<void> {
 // loadCustomFoodsIntoRegistry(). Defensive: overrides are an enhancement, not
 // core data — a failure here must not block startup, so it just leaves the
 // registry empty and logs a warning.
+//
+// An override of a CUSTOM food copied that food's machine-translated nameEn
+// when it was edited, and the override's name wins at lookup — so the same
+// clean-up loadCustomFoodsIntoRegistry does runs here too (never for catalog
+// foods, whose English names are real). Needs the custom registry loaded first.
 export async function loadOverridesIntoRegistry(): Promise<void> {
   try {
-    const { getAllOverrides } = await import('../repositories/foodOverridesRepository');
-    setOverrides(await getAllOverrides());
+    const { getAllOverrides, upsertOverride } = await import('../repositories/foodOverridesRepository');
+    const repaired: FoodItem[] = [];
+    const items = (await getAllOverrides()).map((item) => {
+      if (!getCustomFoodByIdSync(item.id)) return item;
+      const fixed = repairStoredTranslations(item);
+      if (!fixed) return item;
+      repaired.push(fixed);
+      return fixed;
+    });
+    setOverrides(items);
+    for (const item of repaired) {
+      try {
+        await upsertOverride(item);
+      } catch (e) {
+        // Registry already shows the fixed name; next startup retries.
+        console.warn('Failed to persist repaired override name:', e);
+      }
+    }
   } catch (e) {
     console.warn('Failed to load food overrides into registry:', e);
   }

@@ -1,5 +1,5 @@
 import type { FoodItem } from '../../types/food';
-import { repairEncodedFoodNames } from '../../domain/food/foodNameText';
+import { repairEncodedFoodNames, repairStoredTranslations } from '../../domain/food/foodNameText';
 
 // In-memory mirror of the `custom_foods` table.
 //
@@ -53,15 +53,25 @@ export async function deleteCustomFoodAndUnregister(id: string): Promise<void> {
   customFoods = customFoods.filter((f) => f.id !== id);
 }
 
+// Rewrites only a custom food's two stored names (no created_at reset, so the
+// "Mine" list keeps its order) and updates the registry in place.
+export async function updateCustomFoodNamesAndRegister(id: string, nameVi: string, nameEn: string): Promise<void> {
+  const { updateCustomFoodNames } = await import('../repositories/customFoodsRepository');
+  await updateCustomFoodNames(id, nameVi, nameEn);
+  customFoods = customFoods.map((f) => (f.id === id ? { ...f, nameVi, nameEn, nameDe: undefined } : f));
+}
+
 // Hydrates the registry from the DB. Call once at app startup, right after
 // initDatabase(). Defensive: custom foods are an enhancement, not core data —
 // a failure here must not block startup, so it just leaves the registry
 // empty and logs a warning.
 //
-// Also self-heals names that the auto-translate feature stored URL-encoded
-// ("Fischst%C3%A4bchen%20Berida", see foodNameText.ts): the registry gets the
-// decoded names right away, and the fix is written back to SQLite so it only
-// ever happens once per food.
+// Also self-heals names the auto-translate feature stored badly (see
+// foodNameText.ts): URL-encoded ones ("Fischst%C3%A4bchen%20Berida"), and
+// machine translations of a dish known by its own name ("Bánh nướng tàu" →
+// "Train pies") or full of Vietnamese letters — those go back to the one typed
+// name. The registry gets the fixed names right away, and the fix is written
+// back to SQLite so it only ever happens once per food.
 export async function loadCustomFoodsIntoRegistry(): Promise<void> {
   try {
     const { getAllCustomFoods, updateCustomFoodNames } = await import(
@@ -69,7 +79,8 @@ export async function loadCustomFoodsIntoRegistry(): Promise<void> {
     );
     const repaired: FoodItem[] = [];
     const items = (await getAllCustomFoods()).map((item) => {
-      const fixed = repairEncodedFoodNames(item);
+      const decoded = repairEncodedFoodNames(item) ?? item;
+      const fixed = repairStoredTranslations(decoded) ?? (decoded === item ? null : decoded);
       if (!fixed) return item;
       repaired.push(fixed);
       return fixed;

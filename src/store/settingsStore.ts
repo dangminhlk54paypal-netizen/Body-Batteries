@@ -62,6 +62,9 @@ interface SettingsState {
   // blocks the save — a failed/offline call just leaves names blank as
   // before.
   autoTranslateCustomFoodNames: boolean;
+  // Set once recheckStoredFoodTranslations (foodNameTranslationService.ts)
+  // has re-checked every stored machine-translated food name — never reset.
+  foodNameTranslationsCheckedV1: boolean;
   // Display theme — drives useThemeColors()/getCurrentThemeColors() (see
   // src/hooks/useThemeColors.ts). Defaults to 'dark' so existing users see no
   // visual change until they explicitly opt into the light palette.
@@ -113,6 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
       language: 'vi',
       themeMode: 'dark',
       autoTranslateCustomFoodNames: false,
+      foodNameTranslationsCheckedV1: false,
       trainingLogFormat: DEFAULT_TRAINING_LOG_FORMAT,
 
       setMode: (mode) => set({ currentMode: mode }),
