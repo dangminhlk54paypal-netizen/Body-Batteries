@@ -2,7 +2,7 @@ import { getActivityLogForDate } from '../../data/repositories/activityLogReposi
 import { getTrainingLogDay } from '../../data/repositories/trainingLogRepository';
 import { planDaySync } from '../../domain/training/trainingLogDaySync';
 import type { DaySyncPlan, EntryUpdate } from '../../domain/training/trainingLogDaySync';
-import { formatDefaultFreeTitle, trainingDaySignature } from '../../domain/training/trainingLogFormatter';
+import { formatDefaultMonthTitle, trainingDaySignature } from '../../domain/training/trainingLogFormatter';
 import { parsePageText } from '../../domain/training/trainingLogPageEdit';
 import { isValidBodyWeight } from '../../domain/health/weighIn';
 import type { DayEdit, WeekLabelEdit, WeekNoteEdit, WeekWeightEdit } from '../../domain/training/trainingLogPageEdit';
@@ -31,7 +31,6 @@ export type PageChangeTarget =
   | 'weekWeight' // "07.09–13.09 80kg" — the week's (first) weigh-in
   | 'weekNote'
   | 'weekLabel' // the user's own week name ("B3W3") in front of the dates
-  | 'blockName'
   | 'monthName' // a free month's own name ("Power Lifting")
   | 'skipped'; // understood, but deliberately not applied (see reason)
 
@@ -71,9 +70,11 @@ interface PlannedDay {
   changeKeys: string[]; // the PageChange rows this day produced
 }
 
-export type PeriodRename =
-  | { kind: 'block'; blockId: string; name: string }
-  | { kind: 'month'; monthKey: string; name: string }; // '' = back to the default title
+// The month's own name typed as the page's first line; '' = back to the default title.
+export interface PeriodRename {
+  monthKey: string;
+  name: string;
+}
 
 export interface PageEditPlan {
   changes: PageChange[];
@@ -101,7 +102,6 @@ export interface PageEditWriters {
     // Only the fields given change; the other one keeps what is stored.
     weeks: { weekStart: string; note?: string; label?: string }[];
   }) => Promise<void>;
-  renameBlock: (blockId: string, name: string) => Promise<void>;
   renameMonth: (monthKey: string, name: string) => Promise<void>;
   // The day's weigh-in (healthSignalsRepository.setWeightForDay).
   setDayWeight: (date: string, kg: number) => Promise<void>;
@@ -158,15 +158,10 @@ export async function planPageEdit(input: {
 
   let rename: PeriodRename | null = null;
   if (diff.title && diff.title.after) {
-    if (period.kind === 'block' && period.blockId) {
-      rename = { kind: 'block', blockId: period.blockId, name: diff.title.after };
-      push({ target: 'blockName', before: diff.title.before, after: diff.title.after });
-    } else if (period.kind === 'free' && period.monthKey) {
-      // Typing the default title back ("Tập tự do · tháng 9 năm 2026") clears the name.
-      const isDefault = collapse(diff.title.after) === collapse(formatDefaultFreeTitle(period, language));
-      rename = { kind: 'month', monthKey: period.monthKey, name: isDefault ? '' : diff.title.after };
-      push({ target: 'monthName', before: diff.title.before, after: diff.title.after });
-    }
+    // Typing the default title back ("Tháng 9 năm 2026") clears the name.
+    const isDefault = collapse(diff.title.after) === collapse(formatDefaultMonthTitle(period, language));
+    rename = { monthKey: period.monthKey, name: isDefault ? '' : diff.title.after };
+    push({ target: 'monthName', before: diff.title.before, after: diff.title.after });
   }
 
   const edits: (DayEdit & { backfill?: boolean })[] = [...diff.days];
@@ -387,8 +382,7 @@ export async function applyPageEdit(plan: PageEditPlan, writers: PageEditWriters
     if (changed) notebookDays.push({ date: day.date, overrideText, note, sourceSignature });
   }
 
-  if (plan.rename?.kind === 'block') await writers.renameBlock(plan.rename.blockId, plan.rename.name);
-  if (plan.rename?.kind === 'month') await writers.renameMonth(plan.rename.monthKey, plan.rename.name);
+  if (plan.rename) await writers.renameMonth(plan.rename.monthKey, plan.rename.name);
 
   // A week can get a new note and a new label in the same edit: one write each.
   const weeks = new Map<string, { weekStart: string; note?: string; label?: string }>();

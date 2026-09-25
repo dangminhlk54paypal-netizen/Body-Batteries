@@ -221,27 +221,19 @@ export function formatBodyWeight(kg: number, format: TrainingLogFormat, language
   return t(language, 'trainingLog.format.weightPlain', { kg: formatNumber(kg, format, language) });
 }
 
-// A week's label: "B2W4" / "B2 DELOAD" inside a block (block number + week, so
-// the week reads on its own), "07.09–13.09" for a free week.
-export function formatWeekLabel(
-  week: TrainingLogWeek,
-  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
-  language: Language
-): string {
+// A week's label: "B2W4" / "B2 DELOAD" for a week of a block plan (block number
+// + week, so the week reads on its own), "07.09–13.09" for any other week.
+export function formatWeekLabel(week: TrainingLogWeek, language: Language): string {
   if (week.customLabel) return week.customLabel;
-  return formatDefaultWeekLabel(week, period, language);
+  return formatDefaultWeekLabel(week, language);
 }
 
 // The label the app gives a week on its own, ignoring the user's customLabel:
-// "B2W1" / "B2 DELOAD" in a block, the dates in a free week. The page editor
+// "B2W1" / "B2 DELOAD" in a block, the dates otherwise. The page editor
 // compares against it to tell "the user typed the default back" from a label.
-export function formatDefaultWeekLabel(
-  week: TrainingLogWeek,
-  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
-  language: Language
-): string {
-  if (period.kind === 'block') {
-    const b = period.blockNumber ?? 0;
+export function formatDefaultWeekLabel(week: TrainingLogWeek, language: Language): string {
+  if (week.block) {
+    const b = week.block.number;
     return week.isDeload
       ? t(language, 'trainingLog.deloadLabel', { b })
       : t(language, 'trainingLog.weekLabel', { b, n: week.weekNumber ?? 0 });
@@ -261,12 +253,11 @@ export function formatWeekRange(week: TrainingLogWeek, language: Language): stri
 // when the user weighed in that week and `showBodyWeight` is on.
 export function formatWeekHeading(
   week: TrainingLogWeek,
-  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
   weekWeightKg: number | null,
   format: TrainingLogFormat,
   language: Language
 ): string {
-  const { lead, range, weight } = formatWeekHeadingParts(week, period, weekWeightKg, format, language);
+  const { lead, range, weight } = formatWeekHeadingParts(week, weekWeightKg, format, language);
   const rest = weight ? `${range} ${weight}` : range;
   return lead ? `${lead}: ${rest}` : rest;
 }
@@ -277,13 +268,12 @@ export function formatWeekHeading(
 // italic) — null when there is none or `showBodyWeight` is off.
 export function formatWeekHeadingParts(
   week: TrainingLogWeek,
-  period: Pick<TrainingLogPeriod, 'kind' | 'blockNumber'>,
   weekWeightKg: number | null,
   format: TrainingLogFormat,
   language: Language
 ): { lead: string | null; range: string; weight: string | null } {
   return {
-    lead: period.kind === 'block' || week.customLabel ? formatWeekLabel(week, period, language) : null,
+    lead: week.block || week.customLabel ? formatWeekLabel(week, language) : null,
     range: formatWeekRange(week, language),
     weight: format.showBodyWeight && weekWeightKg != null ? formatBodyWeight(weekWeightKg, format, language) : null,
   };
@@ -346,22 +336,31 @@ export function splitDayBody(body: string): DayBodyPart[] {
   return out;
 }
 
-// "Block 2" / the user's own name, or "Free training · September 2026" / the
-// user's own name for that month ("Power Lifting").
+// "Tháng 9 năm 2026", or the user's own name for that month ("Power Lifting").
 export function formatPeriodTitle(period: TrainingLogPeriod, language: Language): string {
-  if (period.kind === 'block') {
-    return period.blockName ?? t(language, 'trainingLog.blockTitle', { n: period.blockNumber ?? 0 });
-  }
-  return period.monthName ?? formatDefaultFreeTitle(period, language);
+  return period.monthName ?? formatDefaultMonthTitle(period, language);
 }
 
-// "Free training · September 2026" — a free month's title when it has no name.
-export function formatDefaultFreeTitle(period: Pick<TrainingLogPeriod, 'monthKey'>, language: Language): string {
+// "Tháng 9 năm 2026" / "September 2026" — a month's title when it has no name.
+export function formatDefaultMonthTitle(period: Pick<TrainingLogPeriod, 'monthKey'>, language: Language): string {
   const month = new Date(`${period.monthKey}-01T00:00:00`).toLocaleDateString(LOCALE_TAGS[language], {
     month: 'long',
     year: 'numeric',
   });
-  return t(language, 'trainingLog.freePeriodTitle', { month });
+  const title = t(language, 'trainingLog.monthTitle', { month });
+  return title.charAt(0).toLocaleUpperCase(LOCALE_TAGS[language]) + title.slice(1);
+}
+
+// What a month holds of each block plan: "Block 3 · W1–W4", "Accumulation ·
+// W5–Deload" (a named block shows its name).
+export function formatPeriodBlocks(period: TrainingLogPeriod, language: Language): string[] {
+  return period.blocks.map((b) => {
+    const name = b.name ?? t(language, 'trainingLog.blockTitle', { n: b.number });
+    const last = b.lastIsDeload ? t(language, 'trainingLog.deloadShort') : t(language, 'trainingLog.weekShort', { n: b.lastWeek });
+    const weeks =
+      b.firstWeek === b.lastWeek ? last : `${t(language, 'trainingLog.weekShort', { n: b.firstWeek })}–${last}`;
+    return t(language, 'trainingLog.blockSpan', { block: name, weeks });
+  });
 }
 
 export interface DayLine {

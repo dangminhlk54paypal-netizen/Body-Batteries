@@ -74,7 +74,7 @@ describe('parsePageText — what the user changed on the page', () => {
   it('the page itself is B2W1-style and unchanged text means no change', () => {
     const page = pageFor();
     expect(page.text.split('\n').slice(0, 3)).toEqual([
-      'Block 1',
+      'Tháng 9 năm 2026',
       'B1W1: 07.09–13.09 76.3kg',
       '08.09: S 130 4x3x115',
     ]);
@@ -102,11 +102,11 @@ describe('parsePageText — what the user changed on the page', () => {
   it('a new day line, a deleted day line, a future date and a new title', () => {
     const d = diffOf((t) =>
       t
-        .replace('Block 1', 'Block2 Peak')
+        .replace('Tháng 9 năm 2026', 'Peak')
         .replace('08.09: S 130 4x3x115', '10.09: D 150\n25.09: S 200')
         .replace('15.09: B 5x5x90', '')
     );
-    expect(d.title).toEqual({ before: 'Block 1', after: 'Block2 Peak' });
+    expect(d.title).toEqual({ before: 'Tháng 9 năm 2026', after: 'Peak' });
     expect(d.invalidDates).toEqual(['25.09: S 200']);
     expect(d.days.map((x) => [x.date, x.before?.body ?? null, x.after?.body ?? null])).toEqual([
       ['2026-09-08', 'S 130 4x3x115', null],

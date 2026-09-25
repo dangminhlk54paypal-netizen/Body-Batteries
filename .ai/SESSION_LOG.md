@@ -2327,6 +2327,230 @@ thì sửa lại qua Trang. `npm run verify` xanh 86 suite / 1126 test. **EAS:**
 
 ---
 
+## Session 41 — 2026-09-25 (Cân nặng: sửa/xoá mọi lần cân cũ, đánh dấu số đáng ngờ)
+
+**Làm gì:** Người dùng ghi nhầm 79.5 kg ngày 14.09 (trước đó 76, sau đó 75.8) và cần sửa lại số cũ.
+
+**Kết quả:**
+- Bỏ `WEIGHT_EDIT_MAX_DAYS_BACK` (3 ngày): mọi lần cân có ✎; khung sửa ghi rõ ngày + nút **Xoá lần cân này**
+  (hỏi xác nhận) → `deleteWeight(id)` mới trong `healthSignalsRepository`.
+- `domain/health/weightOutliers.ts` `suspiciousWeightIds`: lệch ≥ 2 kg so với CẢ lần trước và sau, cùng chiều, hai
+  hàng xóm trong 10 ngày → "⚠︎ kiểm tra lại?" vàng trong danh sách (không tự sửa). Test 3 case.
+- i18n vi/en/de; docs hai hướng dẫn. `npm run verify` xanh 87 suite / 1133 test. **EAS:** working tree, group
+  `01bee6c9-88f7-4b24-9425-6f8761e64e04`. **Chưa có xác nhận test máy thật.** Chưa commit.
+
+---
+
+## Session 38 — 2026-09-25 (Tên món tự thêm bị dịch sai sang tiếng Anh — "Bánh nướng tàu")
+
+**Làm gì:** Món gõ tiếng Việt hiện tên tiếng Anh sai. Kiểm tra MyMemory: "Bánh nướng tàu" → "Train pies" (vi→en),
+"zugkuchen" (vi→de), "bánh n Schöpng tàu" khi nguồn bị coi là tiếng Anh. Yêu cầu: không dịch được thì giữ tên gõ,
+thống nhất mọi ngôn ngữ; tên món riêng không cần dịch.
+
+**Kết quả:**
+- `foodNameText.ts`: `detectNameLanguage`, `isKeepAsIsName`, `acceptNameTranslation` (kiểm tra dịch ngược),
+  `repairStoredTranslations`, `namesAfterRename`. Service: `translateFoodName`, `recheckStoredFoodTranslations`
+  (một lần, cờ `settingsStore.foodNameTranslationsCheckedV1`, gọi từ App.tsx). Dọn tên sai lúc nạp registry (món tự
+  thêm + override của món tự thêm). Sửa tên món tự thêm → bỏ bản dịch cũ.
+- Thử thật MyMemory (dịch → dịch ngược): Chuối chiên/Trứng gà/Sữa chua/Phở bò/Gà rán qua; Bánh nướng tàu, Bánh mì
+  thịt ("loaf"), Canh chua cá ("howler sour soup"), Thịt bò xào bị chặn. Hạn chế đã biết: "Cơm gà" → "Arroz con
+  pollo" vẫn qua dịch ngược.
+- Không thêm chữ UI. Test mới: foodNameText 5, service 6. Docs: `07-food-log.md` §4b-2.
+- `npm run verify` xanh ở thư mục chung (87 suite / 1144 test) và ở bản cô lập (86 / 1141).
+- **EAS Update:** `preview`, update group `023e2eeb-35ef-41fb-a993-4290963ca78a`, publish từ **bản cô lập** (HEAD + 9
+  file của session này; phiên song song đang làm cân nặng — `WeightLogCard`, `weightOutliers`, locale — không đụng).
+  **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test: mở app (tắt hẳn rồi mở lại) → chuyển EN → "Bánh nướng tàu" hiện đúng tên tiếng Việt.
+2. **Chưa commit** — chỉ add 9 file trên + 2 file docs/log (không `git add -A`).
+
+---
+
+## Session 39 — 2026-09-25 (Tìm món thông minh: gõ sai, không dấu, dính liền, tên tiếng Anh/Đức)
+
+**Làm gì:** Người nước ngoài / người không nhớ đúng tên ("Pho Bo", "pho", "phobo", "beef noodle soup", "chiken")
+phải tìm ra món; giao diện gọn, không nhầm với "Thêm món mới".
+
+**Kết quả:**
+- Đo trước: `phoo`/`pho boo`/`phobo`/`banhmi`/`bahn mi`/`chiken`/`youghurt`/`beef noodle soup` → 0 kết quả; "pho" xếp
+  Phô mai trước Phở bò. Sau: tất cả ra đúng món (khớp đúng hoặc "Gần giống").
+- Mới: `domain/food/fuzzyMatch.ts` (OSA + chấm điểm chữ), `data/food/foodSearchAliases.ts`; viết lại
+  `foodSearch.ts` → `searchFoods(query, { preferIds })` = `{ matches, similar }`, `searchAllFoods` giữ nghĩa cũ.
+  `FoodLogModal`: dòng tiêu đề "Gần giống" / "Không có món khớp đúng. Có phải bạn tìm:", nút Thêm món mới luôn hiện.
+- Test mới: fuzzyMatch 5, foodSearch 7. Docs `07-food-log.md` §4b-3.
+- **EAS Update:** `preview`, update group `a120043e-bfb1-46d5-ab21-eaced10957fa`, từ **bản cô lập** (HEAD + file Session
+  38 + 39, locale chỉ hunk `similarHeader`); `npm run verify` xanh 87 suite / 1153 test. Thư mục chung: một phiên khác
+  đang sửa Sổ tập/loại Block (tsc đỏ ở file training của họ) và cân nặng — không đụng. **Chưa test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Test máy thật: EN → Log a food → gõ "Pho Bo", "phobo", "chiken", "beef noodle soup"; gõ tên lạ → nút "➕ Add new
+   food" vẫn ở dưới danh sách.
+2. **Chưa commit** Session 38 + 39 — chỉ add đúng file của mình.
+
+---
+
+## Session 42 — 2026-09-25 (Sổ tập chia theo tháng; block chỉ là nhãn tuần; tạo block đang chạy dở)
+
+**Làm gì:** Người dùng: người mới vào app thường đã tập lâu, chỉ muốn tiếp tục theo dõi block hiện tại theo ngày;
+Sổ tập không nên có mục "Block 1" tự đánh số — cứ theo tháng. Chọn qua câu hỏi: nhập **số block + đang ở tuần mấy**;
+tháng hiện **nhãn tuần + 1 dòng "Block 3 · W1–W4"**.
+
+**Kết quả:**
+- `TrainingLogPeriod` giờ chỉ là tháng: `{ key 'month:YYYY-MM', monthKey, monthName?, blocks[], … }` (bỏ kind/blockId/
+  blockNumber/blockName/focus). `TrainingLogWeek.block?: { id, number, name? }`. `buildTrainingLogIndex`: tuần block
+  (quy tắc hiện/ẩn cũ giữ nguyên) + tuần thường gom theo tháng của ngày bắt đầu tuần; `blocksOf` tóm tắt W đầu–cuối.
+- Formatter: `formatWeekLabel/formatDefaultWeekLabel/formatWeekHeading(Parts)` bỏ tham số period (dùng `week.block`);
+  `formatDefaultMonthTitle` ("Tháng 9 năm 2026", key `monthTitle` thay `freePeriodTitle`); `formatPeriodBlocks`.
+- `TrainingBlockConfig.blockNumber?` (số của người dùng, không có thì theo thứ tự tạo). Wizard: "Đây là block số"
+  (gợi ý `nextBlockNumber`), "Bạn đang ở tuần thứ" → `blockStartForCurrentWeek` (tuần > 1 thì ẩn chip thứ Hai).
+  `domain/energy/blockStart.ts` + test.
+- Sổ tập: nhấn giữ tháng → Đổi tên tháng / Xoá Block n (`monthMenu.*` thay `blockMenu.*`); bỏ đổi tên block trong
+  sổ và trong 📄 Trang (`PeriodRename` chỉ còn tháng; writer `renameBlock` bỏ). `blockStore.renameBlock` vẫn còn (không
+  UI gọi). BlockPlanView: nhãn B3W4 khi có blockNumber, mở sẵn **tuần này** (badge).
+- Test cập nhật: index (viết lại theo tháng), formatter, page (dời ngày +7 để block nằm gọn tháng 8), pageEdit,
+  pageSync, store, PageSheet, PeriodSection. `npm run verify` xanh 89 suite / 1161 test.
+- **EAS:** working tree (gồm cả việc đang làm của phiên "tìm món" Session 38/39 và Session 41 cân nặng — phiên kia
+  từng publish bản cô lập thiếu Session 41), group `3523857c-4c40-4565-8271-5aca5e3a810b`. **Chưa test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng test: Sổ tập chỉ còn các tháng; tạo block "số 3, đang ở tuần 4" → các tuần cũ hiện B3W1…B3W4 đúng tháng;
+   Kế hoạch block mở sẵn tuần này.
+2. **Chưa commit** Session 41 + 42 (phiên tìm món cũng chưa commit — chỉ add đúng file của mình).
+
+
+## Session 43 — 2026-09-25 (Wizard tạo block: chọn tuần kèm ngày; Lịch tuần gọn một khung, vuốt qua các ngày)
+
+**Làm gì:** Người dùng: "đang ở tuần mấy" không hiện ngày nên không biết tuần nào; bước Lịch tuần dài, rối mắt — muốn
+chọn bài bằng gõ tên hoặc cuộn, gọn trong một cửa sổ, chuyển ngày kiểu trượt.
+
+**Kết quả:**
+- Bước Độ dài: số block / số tuần thành hàng gọn (nhãn trái, ô nhỏ phải); "Bạn đang ở tuần thứ" = chip W1…Deload
+  (state số, tự kẹp khi block ngắn lại — bỏ `currentWeekInvalid`, `midBlockStartLine`); bảng ngày thật từng tuần
+  (B3W1: T2 01/09 – CN 07/09), tô + badge "tuần này". Tóm tắt dùng chung `blockWeekDates`.
+- `domain/energy/blockSchedule.ts` (+ test): `WEEK_ORDER`, `mergeSameWeekday` (block cũ có 2 thẻ cùng thứ → gộp),
+  `setScheduleDay`, `foldSearchText`/`matchesSearch` (bỏ dấu, đ→d, mọi từ, không cần thứ tự), `blockWeekDates`.
+- `components/training/BlockScheduleEditor.tsx` (+ test): dải T2…CN (chấm = có buổi, đỏ = buổi chưa có bài), khung cao
+  300 với ScrollView ngang `pagingEnabled` 7 trang (vuốt đổi ngày, bấm dải → scrollTo), mỗi trang cuộn dọc riêng; bài =
+  1 dòng (nút Chính/Phụ bấm để đổi, bấm tên → picker, ✕); picker thay khung: ô tìm + danh sách theo S/B/D. Mỗi thứ tối
+  đa 1 buổi. Wizard bỏ toàn bộ handler/style thẻ ngày cũ.
+- `BottomSheet`: pan chỉ nhận kéo dọc (`activeOffsetY ±10`, `failOffsetX ±15`) để vuốt ngang không kéo sheet.
+- i18n vi/en/de: thêm `scheduleSwipeHint`, `scheduleRoleToggleA11y`, `variationPickerTitle`,
+  `variationSearchPlaceholder`, `variationSearchEmpty`; `scheduleRoleMain/Secondary` rút gọn (Chính/Phụ);
+  `scheduleEmptyText` = "Ngày nghỉ…"; bỏ `scheduleDayLabel`, `scheduleVariationSectionTitle`, `currentWeekInvalid`,
+  `midBlockStartLine`. Docs hướng dẫn vi/de cập nhật. `npm run verify` xanh 91 suite / 1169 test.
+
+**Session tiếp theo phải làm:**
+1. Test máy thật: vuốt ngang trong khung Lịch tuần (sheet không bị kéo), gõ tìm bài, bàn phím khi nhập phụ trợ.
+2. **Chưa commit** Session 41–43 (phiên tìm món cũng chưa commit — chỉ add đúng file của mình).
+
+
+## Session 44 — 2026-09-25 (Phụ lục Kế hoạch: tiêu đề BxWy, bảng mỗi buổi, cuộn trong khung, tự thu gọn kiểu cầu trượt)
+
+**Làm gì:** Người dùng: tiêu đề tuần chỉ cần "BxWy"; bài tập dạng bảng/dòng; tuần dài thì gói trong một cửa sổ cuộn;
+cuộn qua 2–3 tuần thì tuần đã qua tự thu gọn ("hiệu ứng trượt nước").
+
+**Kết quả:**
+- `BlockPlanView`: thẻ tuần tự viết (bỏ CollapsibleSection) — tiêu đề `B{b}W{n}` / `B{b} DELOAD` (`blockNumberOf`: số
+  của user, không có thì thứ tự tạo như Sổ tập; load `blocks` qua `loadAllBlocks`), tuần này màu nhấn + chấm; thân tuần
+  là ScrollView `maxHeight 380`; ngày = `formatDisplayDate` + kcal; mỗi bài 1 dòng bảng: `movementLabel` (viết tắt Sổ
+  tập) | set | ⓘ (thêm kcal, "theo ý bạn") | ✎; phụ trợ dòng xám. Bỏ dòng "Kế hoạch:", kcal từng bài, tổng buổi riêng.
+- Gập kiểu cầu trượt: `domain/training/scrollFold.ts` `sectionsScrolledPast(layouts, scrollY, margin 40)` (+ test);
+  onLayout từng tuần vào ref, onScroll (throttle 48) cập nhật khi tập thay đổi; tuần trước tuần hiện tại gập sẵn; bấm
+  tiêu đề = override tới lần gập/mở tiếp theo; `maintainVisibleContentPosition` để gập phía trên không làm giật.
+- `domain/energy/blockStart.ts` thêm `blockNumberOf` (+ test).
+- i18n: thêm `planAppendix.accessorySets`, `planAppendix.sessionsCount`; bỏ `dayWithDate`, `dayTotalLabel`, `planLabel`,
+  `noAccessories`, `variationSetsLine`. Test BlockPlanEditing: cố định ngày (fake Date), mock `listTrainingBlocks`, test
+  tiêu đề B1W1 + gập khi cuộn. `npm run verify` xanh 92 suite / 1173 test.
+
+**Session tiếp theo phải làm:**
+1. Test máy thật: cuộn Phụ lục — tuần trôi qua tự gập, không giật (maintainVisibleContentPosition), cuộn trong khung tuần.
+2. **Chưa commit** Session 41–44.
+
+
+## Session 45 — 2026-09-25 (Kế hoạch: nhớ thao tác mở/thu; Prime cho bài chính; xác nhận buổi → tự ghi Xả + Sổ tập)
+
+**Làm gì:** Người dùng: (1) tuần tự thu gọn bị tự mở lại khi cuộn — thao tác tay phải được nhớ, tự mở chỉ cho tuần mới;
+(2) thêm prime cạnh bài chính, gợi ý theo lượng tập hôm đó, sửa được; (3) xác nhận buổi trong kế hoạch → tự tính Xả vào
+ngày đó (chiều tối) và ghi vào Sổ tập, kể cả hẹn trước (CN tuần này); dời/huỷ qua Sổ tập thì hệ thống theo.
+
+**Kết quả:**
+- `store/planFoldStore.ts` (persist AsyncStorage `plan-fold-storage`): `key = blockId|startDate tuần hiện tại`,
+  `weeks[weekIndex] = open`. BlockPlanView: lựa chọn tay thắng gập-theo-cuộn, không còn bị xoá khi cuộn; sang tuần
+  mới key đổi → bỏ lựa chọn cũ, tuần hiện tại tự mở.
+- Prime: `blockEngine.primePctFor/primeSetFor` (pct+20, kẹp 82–92, chỉ main + tuần rpe, chỉ khi > tạ set chính), lưu
+  như set `'warmup'` 1 rep đầu `sets`; `VariationReference.primePct`. `setNotation` đọc "95 + …"/"95+ …" thành warmup.
+  `setVariationSets` giữ warmup; `refreshSuggestions` thêm prime vào bài đã sửa chưa có; `hasMissingPrimes` + banner
+  "Thêm prime". Plan view/ô sửa ép `showPrime: true, showWarmups: false`; prime in nghiêng; ⓘ giải thích prime.
+- Xác nhận buổi: `types` `PlannedSessionConfirmation` (`ResolvedDayPlan.session`), `domain/energy/blockSessions.ts`
+  (`workoutsForDay`, `dueSessions`, `daySessionStatus`, `confirmTiming`, `liftingDates`, `setDaySession`,
+  `SESSION_HOUR = 18`), `services/training/blockSessionService.ts` (`logPlanDay`, `logDueSessions`, deps tiêm vào; không
+  ghi trùng ngày đã có Xả nâng tạ), blockStore `confirmSession/rescheduleSession/cancelSession/runDueSessions` (một lượt
+  chạy mỗi lúc), `hooks/useBlockSessionAutoLog` gắn trong App.tsx (khởi động, foreground, 10 phút) + chạy khi mở Kế
+  hoạch. UI: nút ✓ Sẽ tập / ✓ Đã tập, ⏰ 18:00 (menu Ghi ngay/Đổi ngày/Huỷ), ✓ Đã ghi vào Xả, "Đã dời/xoá trong Sổ tập"
+  (Ghi lại/Bỏ), ✓ Có trong Sổ tập. `BlockSessionDateSheet` (dd.mm). i18n vi/en/de `planAppendix.session.*`, `calcPrime`,
+  `primeBanner/Button`, `editSheet.previewPrimeLine`, hint thêm prime. Docs: 08 §11, hướng dẫn vi/de.
+- Test: blockSessions (+service), engine prime, setNotation prime, blockPlanEdits, print sheet, BlockPlanEditing (gập tay
+  giữ khi cuộn; xác nhận ngày tới/ngày qua). `npm run verify` xanh 93 suite / 1188 test.
+
+**Giới hạn đã biết:** buổi đã hẹn giữ ngày lúc xác nhận — dời tuần bằng ✎ Ngày sau đó thì buổi hiện "⏰ <ngày cũ>" (đổi
+bằng Đổi ngày). Ghi tự động chỉ chạy khi app được mở (không có background task). Phụ trợ không vào Xả.
+
+**Session tiếp theo phải làm:**
+1. Test máy thật cả 3 phần; kiểm tra Xả/pin ngày được ghi và Sổ tập hiện dòng có prime nghiêng.
+2. **Chưa commit** Session 41–45.
+
+
+## Session 46 — 2026-09-25 (Sửa chữ "trainingLog.progress.changeTitle…" hiện thô dưới biểu đồ sức mạnh)
+
+**Làm gì:** Ảnh chụp: dưới biểu đồ Tiến độ sức mạnh hiện khoá thô `trainingLog.progress.changeTitle/changeValue` và
+`…bodyWeightSource.measured`. Nguyên nhân: Session 41 thêm các khoá này nhầm vào `export.strength` (Excel) trong cả 3
+file ngôn ngữ; tsc không bắt được vì `t()` nhận chuỗi bất kỳ.
+
+**Kết quả:** Chuyển `changeTitle`, `changeValue`, `bodyWeightSource.*` về `trainingLog.progress` (vi/en/de). Thêm
+`src/i18n/__tests__/usedKeys.test.ts`: quét mọi `t('a.b')` / `t(language, 'a.b')` literal trong src và đòi có chữ ở cả
+3 ngôn ngữ (đã thử xoá một khoá → test đỏ đúng chỗ). `npm run verify` xanh.
+
+**Session tiếp theo phải làm:** Chưa commit Session 41–46.
+
+
+## Session 47 — 2026-09-25 (Cài đặt: thẻ thu gọn một dòng tóm tắt, chữ dài vào ⓘ, bố cục cân đối)
+
+**Làm gì:** Người dùng: màn Cài đặt quá dài, dễ ngợp — thu gọn thành tiêu đề, ô cân bằng/đối xứng, chữ dài viết ngắn
+hoặc để sau chữ i.
+
+**Kết quả:**
+- `components/ui/SettingsSection.tsx`: thẻ gập (icon trong ô vuông, tiêu đề, 1 dòng tóm tắt giá trị hiện tại, ⓘ,
+  chevron). SettingsScreen viết lại: accordion (một thẻ mở, `LayoutAnimation`), tóm tắt từng mục (`settings.summary.*`),
+  mọi dòng dạng `SettingRow` (nhãn trái, điều khiển phải, cao ≥ 52), `Segmented` bằng nhau cho ngôn ngữ/chủ đề/ngưỡng
+  pin, stepper nhỏ gọn cùng hàng (phút nhảy 15), Dữ liệu = lưới 2×2 ô vuông, Health = trạng thái + nút Làm mới cùng
+  hàng. Mô tả dài chuyển vào ⓘ; disclaimer ngắn + ⓘ bản đầy đủ.
+- `BodyProfileCard embedded` (Settings): bỏ khung riêng và đoạn giải thích (vào ⓘ); ô nhập trong một hàng canh đáy
+  cho thẳng nhau; rút ngắn nhãn bước chân / số tuần mục tiêu (vi/en/de).
+- i18n: thêm `settings.summary.*`, `notifications.reminderLabel/thresholdLabel`, `health.refreshShort`,
+  `data.tileWeekly/tileMonthly/tileCleanup/cleanupInfo`, `settings.disclaimerShort`; bỏ `health.syncing`,
+  `data.exportWeekly/exportMonthly/cleanupButton`. Test `screens/__tests__/SettingsScreen.test.tsx`. Verify xanh.
+
+**Session tiếp theo phải làm:** Test máy thật (độ rộng hàng stepper với tiếng Đức); chưa commit Session 41–47.
+
+
+## Session 48 — 2026-09-25 (Skill giao diện gọn + cập nhật skill sau mỗi phiên)
+
+**Làm gì:** Người dùng: đưa vào kỹ năng của agent: nội dung dài vào cửa sổ nhỏ cuộn được hoặc gập theo tầng
+(Tháng › Tuần › Ngày); thông tin phụ qua biểu tượng (i, +, bút chì…); mục tương đương viết tắt (T2/Mon…) + trượt
+ngang; và cập nhật skill đã tinh chỉnh sau mỗi lần làm việc.
+
+**Kết quả:**
+- `.ai/skills/mobile-ui-density.md` (8 mục + checklist, kèm component mẫu: InfoPopover, SettingsSection, SettingRow/
+  Segmented/Tile, BlockScheduleEditor, TrainingLogPeriodSection, scrollFold, planFoldStore, matchesSearch) +
+  `.claude/skills/mobile-ui-density/SKILL.md` (để Claude Code tự nạp khi làm UI).
+- AGENTS.md: luật bắt buộc "compact UI" + "sau mỗi session, điều được duyệt thành skill". Agent `mobile-frontend` phải
+  đọc skill; `qa-reviewer` soát theo checklist. `session-wrapup` thêm Bước 5b (cập nhật skills). README skills thêm dòng.
+- `learned/`: 3 bài học (khoá i18n nhầm mục, Modal/inline ⓘ không hiện, tự động không đè lựa chọn tay) + mục lục.
+- Chỉ tài liệu → không đẩy EAS.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

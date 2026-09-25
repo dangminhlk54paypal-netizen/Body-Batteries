@@ -87,9 +87,9 @@ export async function getWeightsInRange(fromDate: string, toDate: string): Promi
 }
 
 // Corrects a manually-logged weight entry in place (e.g. a mistyped value) —
-// the row's own `timestamp`/day stays untouched, only `value` changes.
-// Callers (WeightLogCard) restrict this to entries within the last few days
-// (WEIGHT_EDIT_MAX_DAYS_BACK) so older history stays an untouched record.
+// the row's own `timestamp`/day stays untouched, only `value` changes. Any
+// reading can be corrected: a typo from weeks ago skews the strength chart's
+// × body weight as much as yesterday's.
 export async function updateWeight(id: number, kg: number): Promise<void> {
   const db = getDb();
   await db.runAsync(
@@ -97,6 +97,12 @@ export async function updateWeight(id: number, kg: number): Promise<void> {
     kg,
     id
   );
+}
+
+// Removes a manually-logged weight reading (one logged by mistake).
+export async function deleteWeight(id: number): Promise<void> {
+  const db = getDb();
+  await db.runAsync(`DELETE FROM health_signals WHERE id = ? AND source = 'manual' AND type = 'weight_kg'`, id);
 }
 
 // --- Apple Health burned-kcal sync (Phases 1-3) ---

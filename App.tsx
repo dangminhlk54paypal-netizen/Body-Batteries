@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { useDrainTick } from './src/hooks/useDrainTick';
+import { useBlockSessionAutoLog } from './src/hooks/useBlockSessionAutoLog';
 import { useEnergyStore } from './src/store/energyStore';
 import { useSettingsStore } from './src/store/settingsStore';
 import { todayString, energyDayString } from './src/lib/dateUtils';
@@ -41,6 +42,11 @@ export default function App() {
           // shadows the catalog at lookup time — see foodOverrideRegistry.ts).
           // Defensive internally — never throws.
           await loadOverridesIntoRegistry();
+          // One-time online re-check of old machine-translated food names
+          // (no-op unless auto-translate is on). Not awaited: never delays startup.
+          import('./src/services/translation/foodNameTranslationService').then((m) =>
+            m.recheckStoredFoodTranslations()
+          );
         }
         setReady(true);
       } catch (e) {
@@ -52,6 +58,8 @@ export default function App() {
 
   // Phase 2: apply foreground battery drain over elapsed time.
   useDrainTick(currentMode, ready);
+  // Confirmed block sessions go into Xả when their time comes.
+  useBlockSessionAutoLog(ready);
 
   // Detect a day rollover while the app stays open (e.g. left running
   // overnight) and reload the battery readings. Two independent boundaries:

@@ -25,7 +25,7 @@ function interpolate(template: string, vars?: Vars): string {
   );
 }
 
-// Dot-path lookup (e.g. 'settings.data.exportWeekly') against the current
+// Dot-path lookup (e.g. 'settings.data.tileWeekly') against the current
 // language's dictionary. Falls back to Vietnamese (the app's original,
 // always-complete language) and finally to the raw key, so a missing
 // translation degrades gracefully instead of crashing the UI.

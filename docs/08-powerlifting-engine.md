@@ -159,3 +159,20 @@ Kế hoạch app lập chỉ là **tham chiếu**; người dùng sửa thành k
 - **Block tạo trước công thức mới:** màn Kế hoạch hiện nút "Cập nhật gợi ý" — tính lại các bài chưa sửa, giữ nguyên bài
   người dùng đã sửa và ngày của mọi tuần (`refreshSuggestions`). Không tự đổi khi người dùng chưa bấm.
 
+
+## 11. Prime & xác nhận buổi tập (Session 45, 2026-09-25)
+
+- **Prime** = lần đơn nặng nhất khi khởi động, trước set chính ("B 95 + 4x6x72.5"). Engine gợi ý cho **bài chính của
+  tuần tịnh tiến** (bài phụ và tuần deload không có): `primePctFor(pct) = clamp(pct + 20, 82, 92)` %1RM × loadFactor,
+  làm tròn 2,5 kg, chỉ khi nặng hơn tạ set chính. Là heuristic huấn luyện (một single ≈ RPE 7–8 để "mồi" hệ thần kinh
+  mà không gây mỏi), không phải hằng số nghiên cứu; người dùng sửa theo thực tế. Lưu trong `sets` như một set
+  `'warmup'` 1 rep — cùng quy ước với Sổ tập (`primeSet`, `PRIME_JOIN`), nên kcal, Excel, Sổ tập và ô sửa
+  (`parseSetNotation` đọc "95 + …" / "95+ …") đều hiểu. `%1RM` của bài chỉ tính set chính. Block cũ: banner "Thêm
+  prime" → `refreshSuggestions` (bài đã sửa được thêm prime phía trước nếu chưa có).
+- **Xác nhận buổi tập** (`domain/energy/blockSessions.ts`, `services/training/blockSessionService.ts`): mỗi buổi trong
+  Kế hoạch có nút "Sẽ tập"/"Đã tập". Ngày đã qua → ghi ngay vào Xả lúc 18:00 ngày đó; hôm nay → hỏi "ghi ngay" hay
+  "18:00"; ngày tới → lưu `day.session = { status: 'planned', date }`, và `useBlockSessionAutoLog` (khởi động, quay lại
+  app, mỗi 10 phút, mở Kế hoạch) ghi vào Xả khi tới 18:00 ngày đó qua `energyStore.logActivityForPastDate`. Ngày đã
+  có Xả nâng tạ thì không ghi thêm (không trùng). Sau khi ghi, buổi Xả là của người dùng: dời/xoá trong Sổ tập như
+  thường; Kế hoạch chỉ nhận ra ("Đã dời/xoá trong Sổ tập" → Ghi lại / Bỏ). Buổi đã hẹn có thể Đổi ngày (dd.mm), Ghi
+  ngay, hoặc Huỷ. Phụ trợ (chữ tự do, không có mô hình kcal) không ghi vào Xả.

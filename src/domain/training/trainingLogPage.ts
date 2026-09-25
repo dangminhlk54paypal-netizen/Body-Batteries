@@ -96,18 +96,18 @@ export function buildPeriodPage(input: PeriodPageInput): PeriodPage {
   period.weeks.forEach((week, i) => {
     if (i > 0) lines.push('');
     const headingWeight = format.showBodyWeight ? weekHeadingWeight(week.weekStart, week.weekEnd, weights) : null;
-    const heading = formatWeekHeading(week, period, headingWeight, format, language);
+    const heading = formatWeekHeading(week, headingWeight, format, language);
     lines.push(heading);
 
     let written = 0;
     const weekNote = notesByWeek.get(week.weekStart) ?? '';
     weeks.push({
       weekStart: week.weekStart,
-      label: formatWeekLabel(week, period, language),
+      label: formatWeekLabel(week, language),
       heading,
       note: weekNote,
       range: formatWeekRange(week, language),
-      defaultLabel: period.kind === 'block' ? formatDefaultWeekLabel(week, period, language) : '',
+      defaultLabel: week.block ? formatDefaultWeekLabel(week, language) : '',
       customLabel: week.customLabel ?? '',
       weekEnd: week.weekEnd,
       weightKg: headingWeight,

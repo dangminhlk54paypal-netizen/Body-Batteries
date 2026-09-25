@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
+  Alert,
   TextInput,
   Pressable,
   Modal,
@@ -16,9 +17,10 @@ import {
   logWeightAt,
   getWeightHistory,
   updateWeight,
+  deleteWeight,
   type WeightEntry,
 } from '../data/repositories/healthSignalsRepository';
-import { todayString, daysBetween, formatDisplayDate, formatMonthYear } from '../lib/dateUtils';
+import { todayString, dateString, formatDisplayDate, formatMonthYear } from '../lib/dateUtils';
 import {
   groupWeightHistoryByMonth,
   isTrendTowardGoal,
@@ -28,7 +30,7 @@ import {
 import { useSettingsStore } from '../store/settingsStore';
 import { WeightTrendChart } from './WeightTrendChart';
 import { PROFILE_LIMITS } from '../lib/metabolicConstants';
-import { WEIGHT_EDIT_MAX_DAYS_BACK } from '../lib/constants';
+import { suspiciousWeightIds } from '../domain/health/weightOutliers';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
@@ -115,7 +117,34 @@ export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
     onChanged?.();
   }
 
+  function confirmDelete() {
+    const entry = editingEntry;
+    if (!entry) return;
+    Alert.alert(
+      t('components.weightLogCard.deleteConfirmTitle'),
+      t('components.weightLogCard.deleteConfirmMessage', {
+        kg: entry.value.toFixed(1),
+        date: formatDisplayDate(dateString(new Date(entry.timestamp)), language),
+      }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            await deleteWeight(entry.id);
+            setEditingEntry(null);
+            await loadEntries();
+            onChanged?.();
+          },
+        },
+      ]
+    );
+  }
+
   const groups = groupWeightHistoryByMonth(entries);
+  // Readings that jump away from both neighbours — likely typos, worth a look.
+  const suspicious = suspiciousWeightIds(entries);
   // One direction for the whole list, from the NEWEST reading: above the
   // healthy range losing is green, below it gaining is, inside it neutral.
   const goal = entries.length > 0 ? weightGoalDirection(entries[0].value, heightCm) : 'maintain';
@@ -197,7 +226,7 @@ export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
                 </Text>
               </View>,
               ...g.rows.map(({ entry: e, dayKey, trend, weekBreakAbove }) => {
-                const canEdit = daysBetween(dayKey, todayString()) <= WEIGHT_EDIT_MAX_DAYS_BACK;
+                const isSuspicious = suspicious.has(e.id);
                 return (
                   <View key={e.id} style={styles.entryRow}>
                     {/* Light dashed line between Mon–Sun weeks (an SVG line:
@@ -215,7 +244,15 @@ export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
                         />
                       </Svg>
                     )}
-                    <Text style={styles.entryDate}>{formatDisplayDate(dayKey, language)}</Text>
+                    <Text style={styles.entryDate}>
+                      {formatDisplayDate(dayKey, language)}
+                      {isSuspicious ? (
+                        <Text style={styles.suspicious} accessibilityLabel={t('components.weightLogCard.suspiciousA11y')}>
+                          {'  '}
+                          {t('components.weightLogCard.suspiciousBadge')}
+                        </Text>
+                      ) : null}
+                    </Text>
                     <View style={styles.entryRight}>
                       <Text style={[styles.entryArrow, { color: trendColor(trend) }]}>
                         {trend ? TREND_ARROW[trend] : ''}
@@ -224,22 +261,19 @@ export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
                         style={[
                           styles.entryValue,
                           isTrendTowardGoal(trend, goal) != null && { color: trendColor(trend) },
+                          isSuspicious && styles.suspicious,
                         ]}
                       >
                         {e.value.toFixed(1)} kg
                       </Text>
-                      <View style={styles.editSlot}>
-                        {canEdit && (
-                          <Pressable
-                            hitSlop={10}
-                            style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
-                            onPress={() => startEdit(e)}
-                            accessibilityLabel={t('common.edit')}
-                          >
-                            <Text style={styles.editText}>✎</Text>
-                          </Pressable>
-                        )}
-                      </View>
+                      <Pressable
+                        hitSlop={10}
+                        style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                        onPress={() => startEdit(e)}
+                        accessibilityLabel={t('common.edit')}
+                      >
+                        <Text style={styles.editText}>✎</Text>
+                      </Pressable>
                     </View>
                   </View>
                 );
@@ -260,7 +294,13 @@ export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
           style={styles.overlay}
         >
           <View style={styles.sheet}>
-            <Text style={styles.modalTitle}>{t('components.weightLogCard.editModalTitle')}</Text>
+            <Text style={styles.modalTitle}>
+              {editingEntry
+                ? t('components.weightLogCard.editModalTitleDate', {
+                    date: formatDisplayDate(dateString(new Date(editingEntry.timestamp)), language),
+                  })
+                : t('components.weightLogCard.editModalTitle')}
+            </Text>
             <TextInput
               style={styles.input}
               placeholder={t('components.weightLogCard.weightPlaceholder')}
@@ -284,6 +324,12 @@ export function WeightLogCard({ onChanged, dismissKey = 0 }: Props = {}) {
                 <Text style={styles.saveText}>{t('common.save')}</Text>
               </Pressable>
             </View>
+            <Pressable
+              style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]}
+              onPress={confirmDelete}
+            >
+              <Text style={styles.deleteText}>{t('components.weightLogCard.deleteButton')}</Text>
+            </Pressable>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -362,9 +408,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
-  // Fixed-width slot so values stay column-aligned whether or not the row
-  // is still editable (older than WEIGHT_EDIT_MAX_DAYS_BACK).
-  editSlot: { width: 24, height: 24 },
+  suspicious: { color: c.warning },
   editBtn: {
     width: 24,
     height: 24,
@@ -389,4 +433,6 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   cancelText: { color: c.textSecondary, fontSize: 15, fontWeight: '600' },
   save: { backgroundColor: c.infoAlt },
   saveText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+  deleteBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
+  deleteText: { color: c.dangerStrong, fontSize: 14, fontWeight: '600' },
 });

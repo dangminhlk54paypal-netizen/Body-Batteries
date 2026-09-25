@@ -87,3 +87,26 @@ describe('round trip with formatSetSequence', () => {
     expect(formatSetSequence(parse(line), DEFAULT_TRAINING_LOG_FORMAT, 'vi')).toBe(line);
   });
 });
+
+describe('parseSetNotation — the prime', () => {
+  const warm = (weightKg: number) => ({ kind: 'warmup', weightKg, reps: 1 });
+
+  it('a single set apart by a spaced "+" is the prime (a warm-up single)', () => {
+    for (const text of ['95 + 4x6x72.5', '95+ 4x6x72.5', '95 +4x6x72.5', '95kg + 4x6x72,5']) {
+      const r = parseSetNotation(text);
+      expect(r.ok && r.sets[0]).toEqual(warm(95));
+      expect(r.ok && r.sets.slice(1).every((s) => s.kind === 'working' && s.weightKg === 72.5)).toBe(true);
+    }
+  });
+
+  it('a top single or a glued cluster is still a working set', () => {
+    const top = parseSetNotation('130 4x3x115');
+    expect(top.ok && top.sets[0].kind).toBe('working');
+    const cluster = parseSetNotation('90+97.5+100');
+    expect(cluster.ok && cluster.sets.every((s) => s.kind === 'working')).toBe(true);
+  });
+
+  it('a prime with nothing readable after it is an error on the rest', () => {
+    expect(parseSetNotation('95 + abc')).toEqual({ ok: false, badToken: 'abc' });
+  });
+});

@@ -54,6 +54,23 @@ text, you MUST work WITH this system — never around it:
 Adding a NEW language later: follow `.ai/skills/add-language.md` (≈4 small
 steps, no library needed).
 
+# MANDATORY RULE: compact UI (no information overload)
+
+The owner reads this app on a phone; a wall of text overwhelms. Before creating
+or changing anything the user sees, follow `.ai/skills/mobile-ui-density.md`:
+long content scrolls inside a small fixed-height window; layered content folds
+level by level (Month › Week › Day, one card open at a time, the current item
+open, the user's own open/fold choice never overridden by automation);
+secondary text hides behind a symbol that fits its job (ⓘ explain, ✎ edit,
+＋ add); repeated equivalent labels are abbreviated (Mon/Tue…, B3W4) with
+horizontal swipe between them; rows and buttons are balanced and symmetric.
+Any subagent prompt that touches UI must include this rule next to the i18n
+rule.
+
+After every session, whatever the owner approved or refined becomes a skill
+for next time (`.ai/skills/session-wrapup.md` step 5b) — new UI patterns go
+into `mobile-ui-density.md`, hard bugs into `.ai/skills/learned/`.
+
 # Expo SDK version
 
 This project is pinned to **Expo SDK 57** (see `package.json`: `expo` ^57,

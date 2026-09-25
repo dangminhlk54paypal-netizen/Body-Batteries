@@ -18,7 +18,6 @@ import type { ActivityLogEntry } from '../../types/energy';
 import type {
   TrainingLogDayRecord,
   TrainingLogFormat,
-  TrainingLogPeriod,
   TrainingLogWeek,
 } from '../../types/trainingLog';
 import type { ThemeColors } from '../../lib/theme';
@@ -27,7 +26,6 @@ import { useT } from '../../i18n/useT';
 
 interface Props {
   week: TrainingLogWeek;
-  period: TrainingLogPeriod;
   weights: WeightPoint[]; // manual weigh-ins of the whole period
   format: TrainingLogFormat;
   defaultExpanded: boolean;
@@ -43,12 +41,12 @@ function getTodayString(): string {
 // "B2W4: 07.09–13.09 77.5kg" inside a block; "07.09–13.09 77.5kg" for a free week.
 // The ✎ beside the heading replaces the old "+ Ghi buổi" / "✎ Ghi chú tuần"
 // buttons under every week: one tap asks which of the two to do.
-export function TrainingLogWeekSection({ week, period, weights, format, defaultExpanded, actions }: Props) {
+export function TrainingLogWeekSection({ week, weights, format, defaultExpanded, actions }: Props) {
   const { t, language } = useT();
 
   const weight = weekHeadingWeight(week.weekStart, week.weekEnd, weights);
-  const label = formatWeekLabel(week, period, language);
-  const heading = formatWeekHeadingParts(week, period, weight, format, language);
+  const label = formatWeekLabel(week, language);
+  const heading = formatWeekHeadingParts(week, weight, format, language);
 
   function openEditMenu() {
     Alert.alert(label, undefined, [

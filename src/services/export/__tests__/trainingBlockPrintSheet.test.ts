@@ -75,7 +75,7 @@ describe('buildPlanCrosstab', () => {
     const plannedBench = aoa[3];
     expect(plannedBench[0]).toContain('Kế hoạch:');
     expect(plannedBench[0]).toContain('Bench');
-    expect(plannedBench[1]).toMatch(/^\d+x\d+x[\d.]+ \(~\d+%\)$/); // "4x5x75 (~75%)" — the log's notation
+    expect(plannedBench[1]).toMatch(/^(?:[\d.]+ \+ )?\d+x\d+x[\d.]+ \(~\d+%\)$/); // "92.5 + 4x5x75 (~75%)" — the log's notation, prime first
     expect(plannedBench[1]).toBe(`${formatSetSequence(plan.weeks[0].days[0].variations[0].sets, DEFAULT_TRAINING_LOG_FORMAT, 'vi')} (~${plan.weeks[0].days[0].variations[0].pct1rm}%)`);
     expect(styledCells).toContainEqual({ sheet: 1, ref: 'A4', tier: 3 });
 

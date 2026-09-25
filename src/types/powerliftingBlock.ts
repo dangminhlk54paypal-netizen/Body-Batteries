@@ -79,6 +79,9 @@ export interface VariationReference {
   repsToFailure: number; // reps + (10 − RPE) + fatigue — what the %1RM is read from
   oneRepMaxKg: number; // the lift's 1RM used (declared or beginner estimate)
   loadFactor: number; // the variation's load factor (paused/incline… lighter)
+  // The prime's %1RM (before loadFactor) — the heaviest single of the warm-up,
+  // main lifts of a progressive week only. Absent = no prime suggested.
+  primePct?: number;
 }
 
 export interface ResolvedVariationPlan {
@@ -88,7 +91,8 @@ export interface ResolvedVariationPlan {
   // (1RM × loadFactor) — same meaning, so the two stay comparable.
   pct1rm: number;
   // THE PLAN — what the plan view, the Excel print and the training log use:
-  // the engine's suggestion, or the user's own sets once they edited it.
+  // the engine's suggestion, or the user's own sets once they edited it. A
+  // main lift may open with one 'warmup' single: the prime ("95 + 4x6x72.5").
   sets: LiftingSet[];
   estimatedKcal: number; // liftingSessionKcal() for `sets` — no second kcal formula
   // The engine's suggestion + its arithmetic. Absent on blocks created before
@@ -97,12 +101,24 @@ export interface ResolvedVariationPlan {
   userEdited?: boolean; // true once the user replaced `sets` with their own
 }
 
+// "I'll train this": the lifter confirmed one planned day. At `date` 18:00
+// (evening, when most people train) the day's lifts go into Xả by themselves —
+// kcal, batteries and the training log — then it is 'logged' and the Xả entry
+// is the user's to move or delete from the log like any other.
+export interface PlannedSessionConfirmation {
+  status: 'planned' | 'logged';
+  date: string; // YYYY-MM-DD it is done on: the plan's day, or another after a delay
+  confirmedAt: number;
+  loggedAt?: number;
+}
+
 export interface ResolvedDayPlan {
   dayOfWeek: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   variations: ResolvedVariationPlan[];
   accessories: AccessoryLineItem[]; // set counts already Deficit-Mode-adjusted if applicable
   totalKcal: number;
   totalMinutes: number;
+  session?: PlannedSessionConfirmation;
 }
 
 export interface BlockWeekPlan {
@@ -128,6 +144,9 @@ export interface TrainingBlockConfig {
   // the log numbers the block itself ("Block 2"). Lives in the config JSON column, so
   // no migration.
   name?: string;
+  // The user's own number for this block ("Block 3" — they may have trained
+  // blocks long before the app). Absent = numbered by creation order.
+  blockNumber?: number;
   // Monday (YYYY-MM-DD) week 1 starts on — a block is anchored to whichever
   // calendar week the user picks to begin training, not just "week 1/2/3".
   weekStartDate: string;

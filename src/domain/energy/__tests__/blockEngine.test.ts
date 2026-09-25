@@ -11,6 +11,7 @@ import {
   rpeForLoad,
   applyDeficitMode,
   generateBlockPlan,
+  primePctFor,
 } from '../blockEngine';
 import type { UserProfile } from '../../../types/energy';
 import type { BlockDayPlan, BlockWeekPlan, TrainingBlockConfig } from '../../../types/powerliftingBlock';
@@ -262,10 +263,45 @@ describe('generateBlockPlan (integration)', () => {
       ],
     };
     const [main, secondary] = generateBlockPlan(twoLiftConfig, profile).weeks[0].days[0].variations;
-    expect(secondary.sets.length).toBe(main.sets.length - 1);
+    const working = (v: typeof main) => v.sets.filter((s) => s.kind === 'working');
+    expect(working(secondary).length).toBe(working(main).length - 1);
     expect(secondary.pct1rm).toBeLessThan(main.pct1rm);
     expect(secondary.reference?.extraRir).toBeGreaterThan(0);
     expect(main.reference?.extraRir).toBe(0);
+  });
+
+  it('a main lift opens with a prime single ~20 points heavier; secondaries and deloads have none', () => {
+    const cfg: TrainingBlockConfig = {
+      ...config,
+      oneRepMax: { bench_press: 110 },
+      hasDeload: true,
+      schedule: [
+        {
+          dayOfWeek: 1,
+          variations: [
+            { exercise: 'bench_press', variationId: 'bench_touch_and_go', role: 'main' },
+            { exercise: 'bench_press', variationId: 'bench_incline', role: 'secondary' },
+          ],
+          accessories: [],
+        },
+      ],
+    };
+    const blockPlan = generateBlockPlan(cfg, profile);
+    const [main, secondary] = blockPlan.weeks[0].days[0].variations;
+    const [prime, firstWorking] = main.sets;
+    expect(prime).toMatchObject({ kind: 'warmup', reps: 1 });
+    expect(prime.weightKg).toBeGreaterThan(firstWorking.weightKg);
+    expect(main.reference?.primePct).toBe(primePctFor(main.pct1rm));
+    expect(secondary.sets.some((s) => s.kind === 'warmup')).toBe(false);
+    const deload = blockPlan.weeks[blockPlan.weeks.length - 1];
+    expect(deload.isDeload).toBe(true);
+    expect(deload.days[0].variations[0].sets.some((s) => s.kind === 'warmup')).toBe(false);
+  });
+
+  it('primePctFor: working %1RM + 20, kept within 82–92', () => {
+    expect(primePctFor(66)).toBe(86);
+    expect(primePctFor(50)).toBe(82);
+    expect(primePctFor(85)).toBe(92);
   });
 
   it('the deload week loads noticeably lighter than the last progressive week', () => {

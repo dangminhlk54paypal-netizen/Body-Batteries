@@ -274,6 +274,31 @@ function resolveVariationSets(
   }));
 }
 
+// ---- 3b. The prime --------------------------------------------------------
+
+// The prime: the heaviest single of the warm-up before a main lift's working
+// sets ("B 95 + 4x6x72.5"). It follows the day's load — about 20 points of
+// %1RM above the working sets, kept to 82–92% so it primes without tiring
+// (≈ RPE 7–8 for a single). A coaching heuristic (docs/08 §11), not a study
+// constant; the user types their real prime into the plan or the log.
+export function primePctFor(workingPct: number): number {
+  return Math.min(92, Math.max(82, Math.round(workingPct + 20)));
+}
+
+// The prime single for a main lift at `workingPct`, or null when it would not
+// be heavier than the working weight.
+export function primeSetFor(
+  variationId: string,
+  exercise: LiftingExercise,
+  workingPct: number,
+  workingKg: number,
+  oneRepMaxByExercise: Record<LiftingExercise, ResolvedOneRepMax>
+): LiftingSet | null {
+  const loadFactor = findVariation(variationId)?.loadFactor ?? 1;
+  const weightKg = roundToPlate(oneRepMaxByExercise[exercise].value * (primePctFor(workingPct) / 100) * loadFactor);
+  return weightKg > workingKg ? { kind: 'warmup', weightKg, reps: 1 } : null;
+}
+
 function resolveDayWithPoint(
   day: BlockDayPlan,
   mainPoint: CurvePoint,
@@ -286,7 +311,13 @@ function resolveDayWithPoint(
     // A deload keeps every movement on the (already light) deload point.
     const isSecondary = variation.role === 'secondary' && method === 'rpe';
     const point = isSecondary ? secondaryCurvePoint(mainPoint) : mainPoint;
-    const sets = resolveVariationSets(variation.variationId, variation.exercise, point, oneRepMaxByExercise);
+    const working = resolveVariationSets(variation.variationId, variation.exercise, point, oneRepMaxByExercise);
+    // Main lifts of a progressive week open with a prime; deloads stay light.
+    const prime =
+      variation.role === 'main' && method === 'rpe' && working.length > 0
+        ? primeSetFor(variation.variationId, variation.exercise, point.pct, working[0].weightKg, oneRepMaxByExercise)
+        : null;
+    const sets = prime ? [prime, ...working] : working;
     const estimatedKcal = liftingSessionKcal(variation.exercise, sets, bodyWeightKg, heightCm);
     const reference: VariationReference = {
       sets,
@@ -300,6 +331,7 @@ function resolveDayWithPoint(
       extraRir: isSecondary ? SECONDARY_PRE_FATIGUE_RIR : 0,
       oneRepMaxKg: oneRepMaxByExercise[variation.exercise].value,
       loadFactor: findVariation(variation.variationId)?.loadFactor ?? 1,
+      ...(prime ? { primePct: primePctFor(point.pct) } : {}),
     };
     return { variation, pct1rm: point.pct, sets, estimatedKcal, reference };
   });

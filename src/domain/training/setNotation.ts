@@ -12,11 +12,15 @@ import type { LiftingSet } from '../../types/energy';
 //   6x4(+3)x75    6 sets of 4, the last one +3 reps
 //   110x(4+5+5)   sets of 4, 5, 5 reps at 110 kg
 //   (4x2+5)x90    4 sets of 2 then a set of 5 at 90 kg
+//   95 + 4x6x72.5 a prime (the warm-up's heaviest single, 95 kg) before the
+//                 working sets — "95+ 4x6x72.5" too; the spaced "+" is what
+//                 tells it apart from a top single or a cluster (PRIME_JOIN)
 //
 // Tokens are separated by spaces, "+", "-" or "," (outside parentheses), so
 // "110x1 - 5x5@95", "130 4x3x115+3x100" and "8x20+6x60" all read. "×", "X"
 // and "*" count as "x"; a decimal comma (72,5 — phone keypads in vi/de) counts
-// as a dot; a trailing "kg" is ignored. Every set comes back as a WORKING set.
+// as a dot; a trailing "kg" is ignored. Every set comes back as a WORKING set,
+// except the prime, which is a 'warmup' single.
 
 export type SetNotationResult =
   | { ok: true; sets: LiftingSet[] }
@@ -107,8 +111,19 @@ function plausible(sets: LiftingSet[]): boolean {
   );
 }
 
+const PRIME = new RegExp(`^${W}(?:\\s+\\+\\s*|\\+\\s+)(?=\\S)`);
+
 export function parseSetNotation(text: string): SetNotationResult {
-  const tokens = tokenize(normalize(text));
+  const normalized = normalize(text);
+  const prime = PRIME.exec(normalized);
+  if (prime) {
+    const primeKg = +prime[1];
+    const rest = parseSetNotation(normalized.slice(prime[0].length));
+    if (!rest.ok) return rest;
+    if (!plausible([working(primeKg, 1)])) return { ok: false, badToken: prime[1] };
+    return { ok: true, sets: [{ kind: 'warmup', weightKg: primeKg, reps: 1 }, ...rest.sets] };
+  }
+  const tokens = tokenize(normalized);
   if (tokens.length === 0) return { ok: false, badToken: '' };
   const sets: LiftingSet[] = [];
   for (const token of tokens) {

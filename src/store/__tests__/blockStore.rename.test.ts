@@ -3,6 +3,10 @@ import * as trainingBlockRepository from '../../data/repositories/trainingBlockR
 import type { GeneratedBlockPlan } from '../../types/powerliftingBlock';
 
 jest.mock('../../data/db/database', () => ({ getDb: jest.fn() }));
+jest.mock('@react-native-async-storage/async-storage', () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
 jest.mock('../../data/repositories/trainingBlockRepository');
 
 const repo = jest.mocked(trainingBlockRepository);

@@ -9,10 +9,13 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  LayoutAnimation,
 } from 'react-native';
 import { useSettingsStore } from '../store/settingsStore';
 import { useEnergyStore } from '../store/energyStore';
 import { BodyProfileCard } from '../components/BodyProfileCard';
+import { SettingsSection } from '../components/ui/SettingsSection';
+import { InfoPopover } from '../components/ui/InfoPopover';
 import { appleHealthStatusMeta } from '../components/AppleHealthStatusBadge';
 import { exportWeeklyData, exportMonthlyData } from '../services/export/excelExportService';
 import { runWeeklyCleanup } from '../services/cleanup/cleanupService';
@@ -21,7 +24,6 @@ import {
   scheduleDailyReminder,
   cancelAllNotifications,
 } from '../services/notifications/notificationService';
-import type { MealWindow } from '../lib/constants';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { formatRelativeTime } from '../lib/relativeTime';
@@ -34,29 +36,62 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-// ─── Section header ────────────────────────────────────────────────────────────
-function SectionHeader({ icon, label }: { icon: string; label: string }) {
+// ─── Small building blocks ─────────────────────────────────────────────────────
+// Every control sits in the same row shape — label left, control right, same
+// height — so the cards read as one even grid.
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionIcon}>{icon}</Text>
-      <Text style={styles.sectionTitle}>{label}</Text>
+    <View style={styles.row}>
+      <Text style={styles.rowLabel} numberOfLines={2}>
+        {label}
+      </Text>
+      {children}
     </View>
   );
 }
 
-// ─── Hour stepper (shared between reminder time & meal windows) ────────────────
-function HourStepper({
+// Equal-width segments (language, theme, threshold) instead of ragged chips.
+function Segmented<T extends string | number>({
+  options,
   value,
   onChange,
+  compact = false,
 }: {
-  value: number;
-  onChange: (delta: number) => void;
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  compact?: boolean;
 }) {
+  const styles = useThemedStyles(createStyles);
+  return (
+    <View style={[styles.segmented, compact && styles.segmentedCompact]}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <Pressable
+            key={String(o.value)}
+            onPress={() => onChange(o.value)}
+            style={({ pressed }) => [styles.segment, active && styles.segmentActive, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={[styles.segmentText, active && styles.segmentTextActive]} numberOfLines={1}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function Stepper({ value, onChange }: { value: number; onChange: (delta: number) => void }) {
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.stepperGroup}>
       <Pressable
+        hitSlop={4}
         style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
         onPress={() => onChange(-1)}
       >
@@ -64,6 +99,7 @@ function HourStepper({
       </Pressable>
       <Text style={styles.timeValue}>{pad(value)}</Text>
       <Pressable
+        hitSlop={4}
         style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
         onPress={() => onChange(1)}
       >
@@ -73,40 +109,38 @@ function HourStepper({
   );
 }
 
-// ─── Meal window row ──────────────────────────────────────────────────────────
-function MealWindowRow({
+// A square tile of the data grid: icon over a short label.
+function Tile({
+  icon,
   label,
-  color,
-  window,
-  overlapWarning,
-  onChangeStart,
-  onChangeEnd,
+  onPress,
+  disabled,
+  danger,
 }: {
+  icon: string;
   label: string;
-  color: string;
-  window: MealWindow;
-  overlapWarning: string;
-  onChangeStart: (delta: number) => void;
-  onChangeEnd: (delta: number) => void;
+  onPress: () => void;
+  disabled?: boolean;
+  danger?: boolean;
 }) {
   const styles = useThemedStyles(createStyles);
-  const overlapping = window.startHour >= window.endHour;
   return (
-    <View style={styles.mealRow}>
-      <View style={styles.mealLabelWrap}>
-        <View style={[styles.mealDot, { backgroundColor: color }]} />
-        <Text style={styles.mealLabel}>{label}</Text>
-      </View>
-      <View style={styles.mealSteppers}>
-        <HourStepper value={window.startHour} onChange={onChangeStart} />
-        <Text style={styles.mealArrow}>→</Text>
-        <HourStepper value={window.endHour} onChange={onChangeEnd} />
-        <Text style={styles.mealUnit}>h</Text>
-      </View>
-      {overlapping && <Text style={styles.mealWarning}>{overlapWarning}</Text>}
-    </View>
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.tile, danger && styles.tileDanger, (pressed || disabled) && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <Text style={styles.tileIcon}>{icon}</Text>
+      <Text style={[styles.tileLabel, danger && styles.dangerText]} numberOfLines={2}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
+
+type SectionKey = 'language' | 'body' | 'health' | 'notifications' | 'meals' | 'data' | 'interface';
 
 // ─── Main screen ───────────────────────────────────────────────────────────────
 export function SettingsScreen() {
@@ -128,12 +162,19 @@ export function SettingsScreen() {
     setThemeMode,
     autoTranslateCustomFoodNames,
     setAutoTranslateCustomFoodNames,
+    userProfile,
   } = useSettingsStore();
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
 
   const [exporting, setExporting] = useState(false);
+  // One card open at a time — the screen stays a short list of headings.
+  const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  function toggle(key: SectionKey) {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenSection((cur) => (cur === key ? null : key));
+  }
 
   // "Món của tôi" — the manage/export/import sheet for the user's own food list.
 
@@ -183,8 +224,9 @@ export function SettingsScreen() {
     }
   }
 
-  async function handleReminderMinuteChange(delta: number) {
-    const newMinute = (reminderMinute + delta + 60) % 60;
+  // The minute stepper moves in quarter hours.
+  async function handleReminderMinuteChange(step: number) {
+    const newMinute = (reminderMinute + step * 15 + 60) % 60;
     setReminderTime(reminderHour, newMinute);
     if (notificationsEnabled) {
       await applyReminderSchedule(reminderHour, newMinute);
@@ -250,6 +292,49 @@ export function SettingsScreen() {
     { key: 'dinner', label: t('meals.dinner'), color: c.accentAlt },
   ];
 
+  const onOff = (v: boolean) => (v ? t('settings.summary.on') : t('settings.summary.off'));
+  const healthMeta = appleHealthStatusMeta(appleHealthStatus, language, c);
+  const healthStatusText = {
+    synced: t('settings.health.statusSynced'),
+    estimated: t('settings.health.statusEstimated'),
+    syncing: t('settings.health.statusSyncing'),
+    idle: t('settings.health.statusIdle'),
+  }[appleHealthStatus];
+  const lastSyncText =
+    lastAppleHealthSync != null ? formatRelativeTime(lastAppleHealthSync, nowMs, language) : t('settings.health.neverSynced');
+
+  // What each folded card says about itself.
+  const summaries: Record<SectionKey, string> = {
+    language: t('settings.summary.language', {
+      name: LANGUAGE_NAMES[language],
+      auto: onOff(autoTranslateCustomFoodNames),
+    }),
+    body:
+      t('settings.summary.body', { weight: userProfile.weightKg, height: userProfile.heightCm, age: userProfile.age }) +
+      (userProfile.goalWeightKg != null ? t('settings.summary.bodyGoal', { goal: userProfile.goalWeightKg }) : ''),
+    health: `${healthStatusText} · ${lastSyncText}`,
+    notifications: notificationsEnabled
+      ? t('settings.summary.notificationsOn', {
+          time: `${pad(reminderHour)}:${pad(reminderMinute)}`,
+          pct: Math.round(lowBatteryThreshold * 100),
+        })
+      : t('settings.summary.notificationsOff'),
+    meals: mealConfig
+      .map((m) =>
+        t('settings.summary.mealRange', {
+          label: m.label,
+          start: mealWindows[m.key].startHour,
+          end: mealWindows[m.key].endHour,
+        })
+      )
+      .join(' · '),
+    data: t('settings.summary.data'),
+    interface: t('settings.summary.interface', {
+      theme: themeMode === 'dark' ? t('settings.interface.themeDark') : t('settings.interface.themeLight'),
+      fx: onOff(particleEffectsEnabled),
+    }),
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -259,270 +344,201 @@ export function SettingsScreen() {
           <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
         </View>
 
-        <View style={styles.divider} />
-
         {/* ── Language ─────────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="🌐" label={t('settings.language.sectionTitle')} />
-          <Text style={styles.sectionDesc}>{t('settings.language.sectionDesc')}</Text>
-          <View style={styles.chipRow}>
-            {LANGUAGES.map((lang: Language) => (
-              <Pressable
-                key={lang}
-                onPress={() => setLanguage(lang)}
-                style={({ pressed }) => [
-                  styles.chip,
-                  language === lang && styles.chipActive,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={[styles.chipText, language === lang && styles.chipTextActive]}>
-                  {LANGUAGE_NAMES[lang]}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('settings.language.autoTranslateLabel')}</Text>
+        <SettingsSection
+          icon="🌐"
+          title={t('settings.language.sectionTitle')}
+          summary={summaries.language}
+          info={[
+            { body: t('settings.language.sectionDesc') },
+            { heading: t('settings.language.autoTranslateLabel'), body: t('settings.language.autoTranslateDesc') },
+          ]}
+          open={openSection === 'language'}
+          onToggle={() => toggle('language')}
+        >
+          <Segmented
+            options={LANGUAGES.map((lang: Language) => ({ value: lang, label: LANGUAGE_NAMES[lang] }))}
+            value={language}
+            onChange={setLanguage}
+          />
+          <SettingRow label={t('settings.language.autoTranslateLabel')}>
             <Switch
               value={autoTranslateCustomFoodNames}
               onValueChange={setAutoTranslateCustomFoodNames}
               trackColor={{ true: c.accent }}
             />
-          </View>
-          <Text style={styles.sectionDesc}>{t('settings.language.autoTranslateDesc')}</Text>
-        </View>
-
-        <View style={styles.divider} />
+          </SettingRow>
+        </SettingsSection>
 
         {/* ── Body profile ────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="🧬" label={t('settings.bodyProfile.sectionTitle')} />
-          <Text style={styles.sectionDesc}>{t('settings.bodyProfile.sectionDesc')}</Text>
-          <BodyProfileCard />
-        </View>
-
-        <View style={styles.divider} />
+        <SettingsSection
+          icon="🧬"
+          title={t('settings.bodyProfile.sectionTitle')}
+          summary={summaries.body}
+          info={[
+            { body: t('settings.bodyProfile.sectionDesc') },
+            { body: t('components.bodyProfileCard.explainer') },
+          ]}
+          open={openSection === 'body'}
+          onToggle={() => toggle('body')}
+        >
+          <BodyProfileCard embedded />
+        </SettingsSection>
 
         {/* ── Health (Apple Health) ───────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="🏥" label={t('settings.health.sectionTitle')} />
-          <Text style={styles.sectionDesc}>{t('settings.health.sectionDesc')}</Text>
-
-          <Pressable
-            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-            onPress={handleRefreshHealth}
-            disabled={appleHealthStatus === 'syncing'}
-          >
-            {appleHealthStatus === 'syncing' ? (
-              <View style={styles.healthRefreshRow}>
+        <SettingsSection
+          icon="🏥"
+          title={t('settings.health.sectionTitle')}
+          summary={summaries.health}
+          info={[{ body: t('settings.health.sectionDesc') }]}
+          open={openSection === 'health'}
+          onToggle={() => toggle('health')}
+        >
+          <View style={styles.row}>
+            <View style={styles.healthStatus}>
+              <Text style={[styles.healthStatusText, { color: healthMeta.color }]} numberOfLines={2}>
+                {healthStatusText}
+              </Text>
+              <Text style={styles.rowHint}>{t('settings.health.lastSync', { time: lastSyncText })}</Text>
+            </View>
+            <Pressable
+              style={({ pressed }) => [styles.smallBtn, pressed && styles.pressed]}
+              onPress={handleRefreshHealth}
+              disabled={appleHealthStatus === 'syncing'}
+              accessibilityLabel={t('settings.health.refreshButton')}
+            >
+              {appleHealthStatus === 'syncing' ? (
                 <ActivityIndicator size="small" color={c.textPrimary} />
-                <Text style={styles.actionBtnText}>{t('settings.health.syncing')}</Text>
-              </View>
-            ) : (
-              <Text style={styles.actionBtnText}>{t('settings.health.refreshButton')}</Text>
-            )}
-          </Pressable>
-
-          <Text style={styles.sectionDesc}>
-            {t('settings.health.lastSync', {
-              time:
-                lastAppleHealthSync != null
-                  ? formatRelativeTime(lastAppleHealthSync, nowMs, language)
-                  : t('settings.health.neverSynced'),
-            })}
-          </Text>
-
-          <Text
-            style={[styles.healthStatusText, { color: appleHealthStatusMeta(appleHealthStatus, language, c).color }]}
-          >
-            {appleHealthStatus === 'synced' && t('settings.health.statusSynced')}
-            {appleHealthStatus === 'estimated' && t('settings.health.statusEstimated')}
-            {appleHealthStatus === 'syncing' && t('settings.health.statusSyncing')}
-            {appleHealthStatus === 'idle' && t('settings.health.statusIdle')}
-          </Text>
-        </View>
-
-        <View style={styles.divider} />
+              ) : (
+                <Text style={styles.smallBtnText}>{t('settings.health.refreshShort')}</Text>
+              )}
+            </Pressable>
+          </View>
+        </SettingsSection>
 
         {/* ── Notifications ────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="🔔" label={t('settings.notifications.sectionTitle')} />
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('settings.notifications.enableLabel')}</Text>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={handleToggleNotifications}
-              trackColor={{ true: c.accent }}
-            />
-          </View>
-
-          <Text style={styles.sectionDesc}>{t('settings.notifications.reminderDesc')}</Text>
-          <View style={styles.timeRow}>
-            <HourStepper
-              value={reminderHour}
-              onChange={handleReminderHourChange}
-            />
-            <Text style={styles.timeColon}>:</Text>
-            <View style={styles.stepperGroup}>
-              <Pressable
-                style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
-                onPress={() => handleReminderMinuteChange(-15)}
-              >
-                <Text style={styles.stepperBtnText}>−</Text>
-              </Pressable>
-              <Text style={styles.timeValue}>{pad(reminderMinute)}</Text>
-              <Pressable
-                style={({ pressed }) => [styles.stepperBtn, pressed && styles.pressed]}
-                onPress={() => handleReminderMinuteChange(15)}
-              >
-                <Text style={styles.stepperBtnText}>+</Text>
-              </Pressable>
+        <SettingsSection
+          icon="🔔"
+          title={t('settings.notifications.sectionTitle')}
+          summary={summaries.notifications}
+          info={[
+            { heading: t('settings.notifications.reminderLabel'), body: t('settings.notifications.reminderDesc') },
+            { heading: t('settings.notifications.thresholdLabel'), body: t('settings.notifications.thresholdDesc') },
+          ]}
+          open={openSection === 'notifications'}
+          onToggle={() => toggle('notifications')}
+        >
+          <SettingRow label={t('settings.notifications.enableLabel')}>
+            <Switch value={notificationsEnabled} onValueChange={handleToggleNotifications} trackColor={{ true: c.accent }} />
+          </SettingRow>
+          <SettingRow label={t('settings.notifications.reminderLabel')}>
+            <View style={styles.timeGroup}>
+              <Stepper value={reminderHour} onChange={handleReminderHourChange} />
+              <Text style={styles.timeColon}>:</Text>
+              <Stepper value={reminderMinute} onChange={handleReminderMinuteChange} />
             </View>
-          </View>
-
-          {/* Low battery threshold moved here — logically related to notifications */}
-          <Text style={[styles.sectionDesc, { marginTop: 8 }]}>
-            {t('settings.notifications.thresholdDesc')}
-          </Text>
-          <View style={styles.chipRow}>
-            {thresholdOptions.map((th) => (
-              <Pressable
-                key={th}
-                onPress={() => setLowBatteryThreshold(th)}
-                style={({ pressed }) => [
-                  styles.chip,
-                  lowBatteryThreshold === th && styles.chipActive,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    lowBatteryThreshold === th && styles.chipTextActive,
-                  ]}
-                >
-                  {Math.round(th * 100)}%
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.divider} />
+          </SettingRow>
+          <SettingRow label={t('settings.notifications.thresholdLabel')}>
+            <Segmented
+              compact
+              options={thresholdOptions.map((th) => ({ value: th, label: `${Math.round(th * 100)}%` }))}
+              value={lowBatteryThreshold}
+              onChange={setLowBatteryThreshold}
+            />
+          </SettingRow>
+        </SettingsSection>
 
         {/* ── Meal windows ─────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="🕐" label={t('settings.mealWindows.sectionTitle')} />
-          <Text style={styles.sectionDesc}>{t('settings.mealWindows.sectionDesc')}</Text>
-          <View style={styles.mealWindowCard}>
-            {mealConfig.map(({ key, label, color }, idx) => (
-              <View key={key}>
-                {idx > 0 && <View style={styles.mealDivider} />}
-                <MealWindowRow
-                  label={label}
-                  color={color}
-                  window={mealWindows[key]}
-                  overlapWarning={t('settings.mealWindows.overlapWarning')}
-                  onChangeStart={(d) => handleMealWindowChange(key, 'startHour', d)}
-                  onChangeEnd={(d) => handleMealWindowChange(key, 'endHour', d)}
-                />
+        <SettingsSection
+          icon="🕐"
+          title={t('settings.mealWindows.sectionTitle')}
+          summary={summaries.meals}
+          info={[{ body: t('settings.mealWindows.sectionDesc') }]}
+          open={openSection === 'meals'}
+          onToggle={() => toggle('meals')}
+        >
+          {mealConfig.map(({ key, label, color }) => {
+            const w = mealWindows[key];
+            return (
+              <View key={key} style={styles.row}>
+                <View style={styles.mealLabelWrap}>
+                  <View style={[styles.mealDot, { backgroundColor: color }]} />
+                  <Text style={styles.rowLabel} numberOfLines={1}>
+                    {label}
+                  </Text>
+                </View>
+                <View style={styles.timeGroup}>
+                  <Stepper value={w.startHour} onChange={(d) => handleMealWindowChange(key, 'startHour', d)} />
+                  <Text style={styles.mealArrow}>→</Text>
+                  <Stepper value={w.endHour} onChange={(d) => handleMealWindowChange(key, 'endHour', d)} />
+                </View>
+                {w.startHour >= w.endHour && (
+                  <Text style={styles.mealWarning}>{t('settings.mealWindows.overlapWarning')}</Text>
+                )}
               </View>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.divider} />
+            );
+          })}
+        </SettingsSection>
 
         {/* ── Data actions ─────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="💾" label={t('settings.data.sectionTitle')} />
-
-          <Pressable
-            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-            onPress={() => setMyFoodsVisible(true)}
-          >
-            <Text style={styles.actionBtnText}>{t('myFoods.openButton')}</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-            onPress={handleExport}
-            disabled={exporting}
-          >
-            <Text style={styles.actionBtnText}>
-              {exporting ? t('settings.data.exporting') : t('settings.data.exportWeekly')}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-            onPress={handleExportMonthly}
-            disabled={exporting}
-          >
-            <Text style={styles.actionBtnText}>
-              {exporting ? t('settings.data.exporting') : t('settings.data.exportMonthly')}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.actionBtn, styles.dangerBtn, pressed && styles.pressed]}
-            onPress={handleCleanup}
-          >
-            <Text style={[styles.actionBtnText, styles.dangerText]}>
-              {t('settings.data.cleanupButton')}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* ── Interface effects ────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader icon="✨" label={t('settings.interface.sectionTitle')} />
-
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('settings.interface.particleEffectsLabel')}</Text>
-            <Switch
-              value={particleEffectsEnabled}
-              onValueChange={setParticleEffectsEnabled}
-              trackColor={{ true: c.accent }}
+        <SettingsSection
+          icon="💾"
+          title={t('settings.data.sectionTitle')}
+          summary={summaries.data}
+          info={[
+            { heading: t('myFoods.openButton'), body: t('myFoods.subtitle') },
+            { heading: t('settings.data.cleanupTitle'), body: t('settings.data.cleanupInfo') },
+          ]}
+          open={openSection === 'data'}
+          onToggle={() => toggle('data')}
+        >
+          <View style={styles.tileGrid}>
+            <Tile icon="🍽️" label={t('myFoods.openButton')} onPress={() => setMyFoodsVisible(true)} />
+            <Tile
+              icon="📊"
+              label={exporting ? t('settings.data.exporting') : t('settings.data.tileWeekly')}
+              onPress={handleExport}
+              disabled={exporting}
             />
+            <Tile
+              icon="📊"
+              label={exporting ? t('settings.data.exporting') : t('settings.data.tileMonthly')}
+              onPress={handleExportMonthly}
+              disabled={exporting}
+            />
+            <Tile icon="🗑️" label={t('settings.data.tileCleanup')} onPress={handleCleanup} danger />
           </View>
-          <Text style={styles.sectionDesc}>{t('settings.interface.particleEffectsDesc')}</Text>
+        </SettingsSection>
 
-          <Text style={styles.rowLabel}>{t('settings.interface.themeSectionLabel')}</Text>
-          <View style={styles.chipRow}>
-            <Pressable
-              onPress={() => setThemeMode('dark')}
-              style={({ pressed }) => [
-                styles.chip,
-                themeMode === 'dark' && styles.chipActive,
-                pressed && styles.pressed,
+        {/* ── Interface ────────────────────────────────────────────────── */}
+        <SettingsSection
+          icon="✨"
+          title={t('settings.interface.sectionTitle')}
+          summary={summaries.interface}
+          info={[{ heading: t('settings.interface.particleEffectsLabel'), body: t('settings.interface.particleEffectsDesc') }]}
+          open={openSection === 'interface'}
+          onToggle={() => toggle('interface')}
+        >
+          <SettingRow label={t('settings.interface.themeSectionLabel')}>
+            <Segmented
+              compact
+              options={[
+                { value: 'dark' as const, label: `🌙 ${t('settings.interface.themeDark')}` },
+                { value: 'light' as const, label: `☀️ ${t('settings.interface.themeLight')}` },
               ]}
-            >
-              <Text style={[styles.chipText, themeMode === 'dark' && styles.chipTextActive]}>
-                🌙 {t('settings.interface.themeDark')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setThemeMode('light')}
-              style={({ pressed }) => [
-                styles.chip,
-                themeMode === 'light' && styles.chipActive,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.chipText, themeMode === 'light' && styles.chipTextActive]}>
-                ☀️ {t('settings.interface.themeLight')}
-              </Text>
-            </Pressable>
-          </View>
+              value={themeMode}
+              onChange={setThemeMode}
+            />
+          </SettingRow>
+          <SettingRow label={t('settings.interface.particleEffectsLabel')}>
+            <Switch value={particleEffectsEnabled} onValueChange={setParticleEffectsEnabled} trackColor={{ true: c.accent }} />
+          </SettingRow>
+        </SettingsSection>
+
+        <View style={styles.disclaimerRow}>
+          <Text style={styles.disclaimer}>{t('settings.disclaimerShort')}</Text>
+          <InfoPopover title={t('settings.title')} sections={[{ body: t('settings.disclaimer') }]} />
         </View>
-
-        <Text style={styles.disclaimer}>{t('settings.disclaimer')}</Text>
       </ScrollView>
 
       <MyFoodsSheet visible={myFoodsVisible} onClose={() => setMyFoodsVisible(false)} />
@@ -532,117 +548,102 @@ export function SettingsScreen() {
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg },
-  scroll: { padding: 20, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 48, gap: 10 },
 
   // ── Title ──────────────────────────────────────────────────────────────────
-  titleWrap: { marginBottom: 20 },
+  titleWrap: { marginBottom: 6, paddingHorizontal: 4 },
   title: { fontSize: 26, fontWeight: '800', color: c.textPrimary },
   subtitle: { fontSize: 13, color: c.textFaint, marginTop: 2 },
 
-  // ── Divider ────────────────────────────────────────────────────────────────
-  divider: { height: 1, backgroundColor: c.divider, marginVertical: 20 },
-
-  // ── Section ────────────────────────────────────────────────────────────────
-  section: { gap: 12 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sectionIcon: { fontSize: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: c.textPrimary, letterSpacing: 0.5 },
-  sectionDesc: { fontSize: 13, color: c.textMuted, lineHeight: 18 },
-
-  // ── Switch row ─────────────────────────────────────────────────────────────
+  // ── Rows (label left, control right, one height) ──────────────────────────
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: c.bgCard,
-    padding: 14,
-    borderRadius: 12,
-  },
-  rowLabel: { fontSize: 15, color: c.textPrimary },
-
-  // ── Chips ──────────────────────────────────────────────────────────────────
-  chipRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  chip: {
-    paddingHorizontal: 20,
+    gap: 10,
+    backgroundColor: c.bgElevated,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: c.bgCard,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: c.borderSubtle,
-  },
-  chipActive: { backgroundColor: c.accent, borderColor: c.accent },
-  chipText: { color: c.textSecondary, fontWeight: '600' },
-  chipTextActive: { color: c.textPrimary },
-
-  // ── Reminder time row ──────────────────────────────────────────────────────
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: c.bgCard,
-    padding: 14,
+    minHeight: 52,
     borderRadius: 12,
   },
-  timeColon: { color: c.textPrimary, fontSize: 20, fontWeight: '700' },
+  rowLabel: { flexShrink: 1, fontSize: 14, color: c.textPrimary, fontWeight: '600' },
+  rowHint: { fontSize: 12, color: c.textMuted },
 
-  // ── Stepper (shared) ───────────────────────────────────────────────────────
-  stepperGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // ── Segmented control ──────────────────────────────────────────────────────
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: c.bgElevated,
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+  },
+  segmentedCompact: { minWidth: 150 },
+  segment: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, paddingHorizontal: 8, borderRadius: 9 },
+  segmentActive: { backgroundColor: c.accent },
+  segmentText: { color: c.textSecondary, fontWeight: '600', fontSize: 13 },
+  segmentTextActive: { color: c.textPrimary },
+
+  // ── Steppers ───────────────────────────────────────────────────────────────
+  timeGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  timeColon: { color: c.textPrimary, fontSize: 17, fontWeight: '700' },
+  stepperGroup: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   stepperBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: c.bgAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperBtnText: { color: c.textPrimary, fontSize: 18, fontWeight: '700' },
-  timeValue: { color: c.textPrimary, fontSize: 20, fontWeight: '700', minWidth: 28, textAlign: 'center' },
+  stepperBtnText: { color: c.textPrimary, fontSize: 16, fontWeight: '700' },
+  timeValue: { color: c.textPrimary, fontSize: 17, fontWeight: '700', minWidth: 24, textAlign: 'center' },
 
-  // ── Meal window card ───────────────────────────────────────────────────────
-  mealWindowCard: {
-    backgroundColor: c.bgCard,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: c.borderAlt,
-    overflow: 'hidden',
-  },
-  mealRow: { paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
-  mealDivider: { height: 1, backgroundColor: c.bgAlt },
-  mealLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // ── Meal windows ───────────────────────────────────────────────────────────
+  mealLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   mealDot: { width: 8, height: 8, borderRadius: 4 },
-  mealLabel: { fontSize: 14, color: c.textSoft, fontWeight: '600' },
-  mealSteppers: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  mealArrow: { color: c.textFaint, fontSize: 16, marginHorizontal: 2 },
-  mealUnit: { color: c.textFaint, fontSize: 13 },
-  mealWarning: { fontSize: 11, color: c.danger, marginTop: 2 },
+  mealArrow: { color: c.textFaint, fontSize: 14 },
+  mealWarning: { width: '100%', fontSize: 11, color: c.danger },
 
-  // ── Action buttons ────────────────────────────────────────────────────────
-  actionBtn: {
+  // ── Health ─────────────────────────────────────────────────────────────────
+  healthStatus: { flex: 1, gap: 2 },
+  healthStatusText: { fontSize: 13, fontWeight: '700' },
+  smallBtn: {
+    minWidth: 96,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     backgroundColor: c.bgCard,
-    padding: 14,
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: c.borderSubtle,
   },
-  dangerBtn: { borderColor: c.dangerStrong },
-  actionBtnText: { color: c.textPrimary, fontSize: 14 },
+  smallBtnText: { color: c.textPrimary, fontSize: 13, fontWeight: '600' },
+
+  // ── Data tiles (2 × 2) ─────────────────────────────────────────────────────
+  tileGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  tile: {
+    flexBasis: '47%',
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 84,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: c.bgElevated,
+    borderWidth: 1,
+    borderColor: c.borderSubtle,
+  },
+  tileDanger: { borderColor: c.dangerStrong },
+  tileIcon: { fontSize: 22 },
+  tileLabel: { color: c.textPrimary, fontSize: 13, fontWeight: '600', textAlign: 'center' },
   dangerText: { color: c.dangerStrong },
-  healthRefreshRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  healthStatusText: { fontSize: 13, fontWeight: '600' },
 
   // ── Disclaimer ────────────────────────────────────────────────────────────
-  disclaimer: {
-    fontSize: 12,
-    color: c.textFaint,
-    lineHeight: 18,
-    marginTop: 16,
-  },
+  disclaimerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 4 },
+  disclaimer: { flex: 1, fontSize: 12, color: c.textFaint, lineHeight: 17 },
 
   pressed: { opacity: 0.6 },
 });

@@ -9,6 +9,8 @@ import {
   abbreviationKeyOf,
   formatWeekHeading,
   formatWeekHeadingParts,
+  formatPeriodBlocks,
+  formatPeriodTitle,
   splitDayBody,
 } from '../trainingLogFormatter';
 import { translate } from '../../../i18n/translate';
@@ -406,28 +408,47 @@ describe('normalizeDecimalCommas / normalizeManualBody', () => {
 });
 
 describe('formatWeekHeading — which block/week, its dates, its weight', () => {
-  const week = { weekStart: '2026-09-07', weekEnd: '2026-09-13', weekNumber: 1, sessions: 3, dates: [] };
-  const block = { kind: 'block' as const, blockNumber: 2 };
+  const plain = { weekStart: '2026-09-07', weekEnd: '2026-09-13', sessions: 3, dates: [] };
+  const week = { ...plain, weekNumber: 1, block: { id: 'b', number: 2 } };
 
   it('block week: "B2W1: 07.09–13.09 76.3kg"', () => {
-    expect(formatWeekHeading(week, block, 76.3, FMT, 'vi')).toBe('B2W1: 07.09–13.09 76.3kg');
-    expect(formatWeekHeading(week, block, null, FMT, 'vi')).toBe('B2W1: 07.09–13.09');
-    expect(formatWeekHeading(week, block, 76.3, fmt({ showBodyWeight: false }), 'vi')).toBe('B2W1: 07.09–13.09');
+    expect(formatWeekHeading(week, 76.3, FMT, 'vi')).toBe('B2W1: 07.09–13.09 76.3kg');
+    expect(formatWeekHeading(week, null, FMT, 'vi')).toBe('B2W1: 07.09–13.09');
+    expect(formatWeekHeading(week, 76.3, fmt({ showBodyWeight: false }), 'vi')).toBe('B2W1: 07.09–13.09');
   });
 
-  it('deload week and a free week', () => {
-    expect(formatWeekHeading({ ...week, isDeload: true }, block, null, FMT, 'vi')).toBe('B2 DELOAD: 07.09–13.09');
-    expect(formatWeekHeading(week, { kind: 'free' }, 76.3, FMT, 'vi')).toBe('07.09–13.09 76.3kg');
-    expect(formatWeekHeading(week, block, null, FMT, 'en')).toBe('B2W1: 09/07–09/13');
+  it('deload week and a plain week', () => {
+    expect(formatWeekHeading({ ...week, isDeload: true }, null, FMT, 'vi')).toBe('B2 DELOAD: 07.09–13.09');
+    expect(formatWeekHeading(plain, 76.3, FMT, 'vi')).toBe('07.09–13.09 76.3kg');
+    expect(formatWeekHeading(week, null, FMT, 'en')).toBe('B2W1: 09/07–09/13');
   });
   it('splits into the bold label, the plain dates and the weight', () => {
-    expect(formatWeekHeadingParts(week, block, 76.3, FMT, 'vi')).toEqual({ lead: 'B2W1', range: '07.09–13.09', weight: '76.3kg' });
-    expect(formatWeekHeadingParts(week, { kind: 'free' }, null, FMT, 'vi')).toEqual({ lead: null, range: '07.09–13.09', weight: null });
-    expect(formatWeekHeadingParts({ ...week, customLabel: 'B3W3' }, { kind: 'free' }, 75, fmt({ showBodyWeight: false }), 'vi')).toEqual({
+    expect(formatWeekHeadingParts(week, 76.3, FMT, 'vi')).toEqual({ lead: 'B2W1', range: '07.09–13.09', weight: '76.3kg' });
+    expect(formatWeekHeadingParts(plain, null, FMT, 'vi')).toEqual({ lead: null, range: '07.09–13.09', weight: null });
+    expect(formatWeekHeadingParts({ ...plain, customLabel: 'B3W3' }, 75, fmt({ showBodyWeight: false }), 'vi')).toEqual({
       lead: 'B3W3',
       range: '07.09–13.09',
       weight: null,
     });
+  });
+});
+
+describe('formatPeriodTitle / formatPeriodBlocks — the month heading', () => {
+  const month = { key: 'month:2026-09', monthKey: '2026-09', startDate: '2026-09-07', endDate: '2026-09-27', sessions: 0, weeks: [] };
+
+  it('the month itself, capitalised, unless the user named it', () => {
+    expect(formatPeriodTitle({ ...month, blocks: [] }, 'vi')).toBe('Tháng 9 năm 2026');
+    expect(formatPeriodTitle({ ...month, blocks: [] }, 'en')).toBe('September 2026');
+    expect(formatPeriodTitle({ ...month, blocks: [], monthName: 'Power Lifting' }, 'vi')).toBe('Power Lifting');
+  });
+
+  it('which block weeks it holds: "Block 3 · W1–W4", a deload, a named block', () => {
+    const b = { id: 'b', number: 3, firstWeek: 1, lastWeek: 4, lastIsDeload: false };
+    expect(formatPeriodBlocks({ ...month, blocks: [b] }, 'vi')).toEqual(['Block 3 · W1–W4']);
+    expect(formatPeriodBlocks({ ...month, blocks: [{ ...b, firstWeek: 5, lastWeek: 6, lastIsDeload: true }] }, 'vi')).toEqual([
+      'Block 3 · W5–Deload',
+    ]);
+    expect(formatPeriodBlocks({ ...month, blocks: [{ ...b, name: 'Peak', firstWeek: 2, lastWeek: 2 }] }, 'vi')).toEqual(['Peak · W2']);
   });
 });
 

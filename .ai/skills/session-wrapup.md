@@ -83,6 +83,17 @@ Dựa vào những gì vừa làm:
 - Cập nhật bảng tổng quan (cột "Code" và "Test thật")
 - Đổi icon Phase header nếu xong: `🔄` → `✅`
 
+### Bước 5b — Cập nhật skills (bắt buộc, không cần xin phép)
+Mỗi session người dùng đều tinh chỉnh cách làm. Những gì đã được **duyệt hoặc sửa lại** phải thành kỹ năng cho lần sau,
+không chỉ nằm trong SESSION_LOG:
+- **Kiểu hiển thị / tương tác mới** (gập tầng, cửa sổ cuộn, biểu tượng ⓘ ✎ ＋, viết tắt, trượt ngang, cân đối…) → thêm
+  vào mục tương ứng của `.ai/skills/mobile-ui-density.md`, kèm tên component mẫu.
+- **Pattern Expo/RN hay SQLite** → `expo-react-native-dev.md` / `sqlite-expo-patterns.md`.
+- **Bug khó, mất > 2 lần thử** → một file trong `.ai/skills/learned/` (skill `learn-pattern`).
+- **Quy trình lặp lại mới** → tạo skill mới và thêm vào bảng trong `.ai/skills/README.md`.
+- Người dùng nói rõ "từ nay / luôn / nhớ nhé" → ghi thêm vào memory của agent (nếu có).
+Chỉ ghi điều **dùng lại được**, ngắn gọn, có ví dụ. Không chép lại diff.
+
 ### Bước 6 — Báo cáo cho người dùng
 Sau khi cập nhật xong, tóm tắt ngắn gọn bằng tiếng Việt:
 

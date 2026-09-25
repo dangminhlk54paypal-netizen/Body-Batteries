@@ -82,12 +82,13 @@ export function setVariationSets(
         if (sets == null) {
           return { ...v, sets: reference.sets, pct1rm: reference.pct1rm, estimatedKcal: reference.estimatedKcal, reference, userEdited: false };
         }
-        const working = sets.map((s) => ({ ...s, kind: 'working' as const }));
+        // The prime stays a warm-up; everything else is a working set.
+        const planned = sets.map((s) => ({ ...s, kind: s.kind === 'warmup' ? ('warmup' as const) : ('working' as const) }));
         return {
           ...v,
-          sets: working,
-          pct1rm: pctOfMax(working, reference),
-          estimatedKcal: liftingSessionKcal(v.variation.exercise, working, plan.config.bodyWeightKg, heightCm),
+          sets: planned,
+          pct1rm: pctOfMax(planned, reference),
+          estimatedKcal: liftingSessionKcal(v.variation.exercise, planned, plan.config.bodyWeightKg, heightCm),
           reference,
           userEdited: true,
         };
@@ -155,9 +156,22 @@ export function hasLegacySuggestions(plan: GeneratedBlockPlan): boolean {
   return plan.weeks.some((w) => w.days.some((d) => d.variations.some((v) => !v.reference || v.reference.method === 'legacy')));
 }
 
+// True when a main lift of a progressive week has no prime suggestion yet (a
+// block made before primes existed) — the plan view offers to add them.
+export function hasMissingPrimes(plan: GeneratedBlockPlan): boolean {
+  return plan.weeks.some(
+    (w) =>
+      !w.isDeload &&
+      w.days.some((d) =>
+        d.variations.some((v) => v.variation.role === 'main' && v.reference?.method === 'rpe' && v.reference.primePct == null)
+      )
+  );
+}
+
 // Recalculates every suggestion with the current engine. What the user wrote
-// stays: an edited variation keeps its sets (only its reference is replaced),
-// and every week keeps its dates. Untouched variations take the new suggestion.
+// stays: an edited variation keeps its sets (only its reference is replaced;
+// it gains the suggested prime if it had none), and every week keeps its
+// dates. Untouched variations take the new suggestion.
 export function refreshSuggestions(plan: GeneratedBlockPlan, profile: UserProfile): GeneratedBlockPlan {
   const fresh = generateBlockPlan(plan.config, profile);
   const weeks = plan.weeks.map((week, wi) => {
@@ -169,7 +183,12 @@ export function refreshSuggestions(plan: GeneratedBlockPlan, profile: UserProfil
       const variations = day.variations.map((v, vi) => {
         const next = freshDay.variations[vi];
         if (!next) return v;
-        return v.userEdited ? { ...v, reference: next.reference } : next;
+        if (!v.userEdited) return next;
+        const prime = next.sets[0]?.kind === 'warmup' ? next.sets[0] : null;
+        if (!prime || v.sets.some((s) => s.kind === 'warmup')) return { ...v, reference: next.reference };
+        const sets = [prime, ...v.sets];
+        const estimatedKcal = liftingSessionKcal(v.variation.exercise, sets, plan.config.bodyWeightKg, profile.heightCm);
+        return { ...v, sets, estimatedKcal, reference: next.reference };
       });
       return withDayTotals({ ...day, variations, accessories: freshDay.accessories });
     });

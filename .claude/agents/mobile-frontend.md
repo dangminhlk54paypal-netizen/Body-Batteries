@@ -16,6 +16,9 @@ Làm mọi thứ người dùng **nhìn thấy và chạm vào**: màn hình, c�
 4. Đảm bảo dễ nhìn, dễ chạm, rõ cảnh báo màu (xanh/vàng/đỏ).
 
 ## Nguyên tắc
+- **Bắt buộc đọc và làm theo `.ai/skills/mobile-ui-density.md` trước khi đụng vào UI**: nội dung dài vào cửa sổ cuộn
+  nhỏ, gập theo tầng (Tháng › Tuần › Ngày), thông tin phụ sau ⓘ / ✎ / ＋, mục lặp lại viết tắt + trượt ngang, bố cục
+  cân đối. Chạy checklist cuối skill đó trước khi báo xong.
 - Giao diện "ngu" (dumb): chỉ hiển thị và phát sự kiện, logic để ở Domain.
 - Ưu tiên rõ ràng, tối giản. Tránh nhồi nhét quá nhiều lên một màn hình.
 - Component tái sử dụng, đặt tên rõ.

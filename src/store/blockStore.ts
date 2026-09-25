@@ -4,6 +4,12 @@ import type { GeneratedBlockPlan, NewTrainingBlockConfig } from '../types/powerl
 import { refreshSuggestions, setVariationSets, setWeekDates } from '../domain/energy/blockPlanEdits';
 import type { VariationAddress, WeekDatesError } from '../domain/energy/blockPlanEdits';
 import { generateBlockPlan } from '../domain/energy/blockEngine';
+import { setDaySession } from '../domain/energy/blockSessions';
+import type { DayAddress } from '../domain/energy/blockSessions';
+import { logDueSessions, logPlanDay } from '../services/training/blockSessionService';
+import type { BlockSessionDeps } from '../services/training/blockSessionService';
+import { getActivityLogInRange } from '../data/repositories/activityLogRepository';
+import { useEnergyStore } from './energyStore';
 import {
   addTrainingBlock,
   getActiveTrainingBlock,
@@ -38,7 +44,25 @@ interface BlockState {
   // Recalculate the active block's suggestions with the current engine,
   // keeping the user's own sets and every week's dates.
   refreshActiveSuggestions: (profile: UserProfile) => Promise<void>;
+  // "I'll train this" for one day of the active block, done on `date`:
+  // 'now' logs it into Xả at once (a day behind you, or trained earlier
+  // today); 'evening' remembers it and logs it at 18:00 of `date`.
+  confirmSession: (at: DayAddress, date: string, when: 'now' | 'evening') => Promise<void>;
+  // A confirmed day moved to another date (a delay); logged when that day comes.
+  rescheduleSession: (at: DayAddress, date: string) => Promise<void>;
+  cancelSession: (at: DayAddress) => Promise<void>;
+  // Logs every confirmed session whose time has come — run on app start, on
+  // return to the foreground, and while the plan is open.
+  runDueSessions: () => Promise<void>;
 }
+
+const sessionDeps: BlockSessionDeps = {
+  entriesInRange: getActivityLogInRange,
+  logWorkouts: (workouts, timestamp) => useEnergyStore.getState().logActivityForPastDate({ workouts }, timestamp),
+};
+
+// One run at a time: a foreground event during a run must not log a day twice.
+let dueRunInFlight: Promise<void> | null = null;
 
 export const useBlockStore = create<BlockState>((set, get) => {
   // Persists an edited version of the active block and mirrors it into state.
@@ -119,6 +143,46 @@ export const useBlockStore = create<BlockState>((set, get) => {
     const block = get().activeBlock;
     if (!block) return;
     await saveActive(refreshSuggestions(block, profile));
+  },
+
+  confirmSession: async (at, date, when) => {
+    const block = get().activeBlock;
+    if (!block) return;
+    const now = Date.now();
+    await saveActive(
+      when === 'now'
+        ? await logPlanDay(block, at, date, now, sessionDeps)
+        : setDaySession(block, at, { status: 'planned', date, confirmedAt: now })
+    );
+    // A day already past its 18:00 goes in right away.
+    await get().runDueSessions();
+  },
+
+  rescheduleSession: async (at, date) => {
+    const block = get().activeBlock;
+    const current = block?.weeks[at.weekIndex]?.days[at.dayIndex]?.session;
+    if (!block) return;
+    await saveActive(setDaySession(block, at, { status: 'planned', date, confirmedAt: current?.confirmedAt ?? Date.now() }));
+    await get().runDueSessions();
+  },
+
+  cancelSession: async (at) => {
+    const block = get().activeBlock;
+    if (!block) return;
+    await saveActive(setDaySession(block, at, null));
+  },
+
+  runDueSessions: async () => {
+    if (dueRunInFlight) return dueRunInFlight;
+    dueRunInFlight = (async () => {
+      const block = get().activeBlock ?? (await getActiveTrainingBlock());
+      if (!block) return;
+      const next = await logDueSessions(block, Date.now(), sessionDeps);
+      if (next) await saveActive(next);
+    })().finally(() => {
+      dueRunInFlight = null;
+    });
+    return dueRunInFlight;
   },
 };
 });

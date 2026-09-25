@@ -30,7 +30,9 @@ const OCCUPATION_OPTIONS: { value: OccupationLevel; labelKey: string }[] = [
 ];
 
 // Lets the user enter their body profile (used to size the energy battery).
-export function BodyProfileCard() {
+// `embedded`: shown inside a Settings card — no card of its own and no
+// explainer paragraph (Settings puts that behind its ⓘ).
+export function BodyProfileCard({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useT();
   const styles = useThemedStyles(createStyles);
   const { userProfile, setUserProfile, currentMode } = useSettingsStore();
@@ -114,8 +116,8 @@ export function BodyProfileCard() {
   }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.explainer}>{t('components.bodyProfileCard.explainer')}</Text>
+    <View style={embedded ? styles.embedded : styles.card}>
+      {!embedded && <Text style={styles.explainer}>{t('components.bodyProfileCard.explainer')}</Text>}
 
       <View style={styles.fieldRow}>
         <Field
@@ -456,8 +458,10 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
   card: { backgroundColor: c.bgCard, borderRadius: 12, padding: 14, gap: 12 },
+  embedded: { gap: 12 },
   fieldRow: { flexDirection: 'row', gap: 10 },
-  field: { flex: 1, gap: 6 },
+  // Inputs line up at the bottom even when one label wraps to two lines.
+  field: { flex: 1, gap: 6, justifyContent: 'flex-end' },
   fieldLabel: { fontSize: 12, color: c.textTertiary },
   input: {
     backgroundColor: c.bgElevated,

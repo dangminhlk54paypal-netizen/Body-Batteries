@@ -3,7 +3,6 @@ import { View, Text, Pressable, ScrollView, ActivityIndicator, Share, TextInput,
 import { BottomSheet } from '../ui/BottomSheet';
 import { useTrainingLogStore } from '../../store/trainingLogStore';
 import { useEnergyStore } from '../../store/energyStore';
-import { useBlockStore } from '../../store/blockStore';
 import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
 import {
   getWeightsInRange,
@@ -61,7 +60,6 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
   const renameMonth = useTrainingLogStore((s) => s.renameMonth);
   const updateActivityForPastDate = useEnergyStore((s) => s.updateActivityForPastDate);
   const logActivityForPastDate = useEnergyStore((s) => s.logActivityForPastDate);
-  const renameBlock = useBlockStore((s) => s.renameBlock);
 
   const [page, setPage] = useState<PeriodPage | null>(null);
   const [mode, setMode] = useState<Mode>('view');
@@ -154,9 +152,6 @@ export function TrainingLogPageSheet({ visible, onClose, period, format }: Props
         updateEntry: (entry, workouts) => updateActivityForPastDate(entry, { workouts }),
         createEntry: (date, workouts) => logActivityForPastDate({ workouts }, backfillTimestamp(date, Date.now())),
         writeNotebook,
-        renameBlock: async (blockId, name) => {
-          await renameBlock(blockId, name);
-        },
         renameMonth,
         setDayWeight: (date, kg) => setWeightForDay(date, kg, weighInTimestamp(date, Date.now())),
         // No reading that week yet → one on its Monday morning.

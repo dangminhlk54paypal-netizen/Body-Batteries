@@ -20,3 +20,9 @@ Thư mục này chứa các "bài học" mà AI ghi lại khi gặp **lỗi/khó
 ```
 
 > Liên quan: cơ chế memory của Claude Code và skill `systematic-debugging` (native) cũng phục vụ mục tiêu tương tự — dùng file ở đây cho bài học **riêng của dự án** này.
+
+## Danh sách bài học
+- [undo-reversal-must-be-delta-not-absolute-recompute](undo-reversal-must-be-delta-not-absolute-recompute.md)
+- [i18n-key-in-wrong-section-shows-raw-key](i18n-key-in-wrong-section-shows-raw-key.md)
+- [modal-inside-bottomsheet-and-inline-expansion](modal-inside-bottomsheet-and-inline-expansion.md)
+- [automation-must-not-override-user-choice](automation-must-not-override-user-choice.md)

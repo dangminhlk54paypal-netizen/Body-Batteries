@@ -26,9 +26,9 @@ jest.mock('../../../data/repositories/trainingBlockRepository');
 jest.mock('../../../data/repositories/trainingLogRepository');
 
 const period: TrainingLogPeriod = {
-  key: 'free:2026-08',
-  kind: 'free',
+  key: 'month:2026-08',
   monthKey: '2026-08',
+  blocks: [],
   startDate: '2026-08-24',
   endDate: '2026-08-30',
   sessions: 1,
@@ -94,7 +94,7 @@ describe('TrainingLogPageSheet', () => {
     expect(shareSpy).toHaveBeenCalledTimes(1);
     const message = shareSpy.mock.calls[0][0].message ?? '';
     expect(message).toContain('26.08: D 5x120');
-    expect(message.split('\n')[0]).toMatch(/^Tập tự do/);
+    expect(message.split('\n')[0]).toBe('Tháng 8 năm 2026');
     shareSpy.mockRestore();
   });
 });

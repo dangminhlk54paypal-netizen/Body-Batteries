@@ -81,9 +81,6 @@ function writers(): PageEditWriters & { calls: string[] } {
     writeNotebook: jest.fn(async () => {
       calls.push('notebook');
     }),
-    renameBlock: jest.fn(async (id: string, name: string) => {
-      calls.push(`rename ${id} ${name}`);
-    }),
     renameMonth: jest.fn(async (monthKey: string, name: string) => {
       calls.push(`month ${monthKey} ${name}`);
     }),
@@ -201,11 +198,11 @@ describe('page edit → Xả + notebook', () => {
     expect(w.calls.filter((c) => c.startsWith('weight'))).toHaveLength(1);
   });
 
-  it('renames the block from the page title', async () => {
-    const plan = await planFor((t) => t.replace('Block 1', 'Block2 Peak'));
+  it('the page title names the month (a block has no section of its own any more)', async () => {
+    const plan = await planFor((t) => t.replace('Tháng 9 năm 2026', 'Peak'));
     const w = writers();
     await applyPageEdit(plan, w);
-    expect(w.calls[0]).toBe('rename b1 Block2 Peak');
+    expect(w.calls[0]).toBe('month 2026-09 Peak');
   });
 
   it('"Ghi dòng tay vào Xả": unchanged hand-written lines become sessions; Xả days are left alone', async () => {
@@ -292,7 +289,7 @@ describe('page edit → Xả + notebook', () => {
     expect(renamed.w.calls[0]).toBe('month 2026-09 Power Lifting');
 
     const named = { ...free, monthName: 'Power Lifting' };
-    const cleared = await run(named, 'Tập tự do · tháng 9 năm 2026');
+    const cleared = await run(named, 'Tháng 9 năm 2026');
     expect(cleared.w.calls[0]).toBe('month 2026-09 ');
   });
 

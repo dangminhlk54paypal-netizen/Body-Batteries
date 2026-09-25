@@ -11,6 +11,9 @@ import { DEFAULT_TRAINING_LOG_FORMAT } from '../../../types/trainingLog';
 import type { UserProfile } from '../../../types/energy';
 import type { GeneratedBlockPlan, TrainingBlockConfig } from '../../../types/powerliftingBlock';
 import * as trainingBlockRepository from '../../../data/repositories/trainingBlockRepository';
+import { getActivityLogInRange } from '../../../data/repositories/activityLogRepository';
+import { useEnergyStore } from '../../../store/energyStore';
+import { usePlanFoldStore } from '../../../store/planFoldStore';
 
 // Render-level tests for editing a block plan in the app (feedback 2026-09-24):
 // the user's own sets in their Notes shorthand, real week dates that move the
@@ -43,6 +46,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 jest.mock('../../../data/repositories/trainingBlockRepository');
+jest.mock('../../../data/repositories/activityLogRepository');
 jest.mock('../../../services/export/trainingBlockExportService', () => ({ exportTrainingBlockToExcel: jest.fn() }));
 
 const profile: UserProfile = { weightKg: 80, heightCm: 175, age: 28, sex: 'male', occupation: 'sedentary' };
@@ -133,7 +137,8 @@ describe('BlockVariationEditSheet', () => {
 
   it('starts with the current plan written in the Notes shorthand', async () => {
     const tree = await render();
-    expect(input(tree, 'Kế hoạch của bạn').props.value).toMatch(/^\d+x\d+x[\d.]+$/);
+    // A main lift's plan opens with its prime: "92.5 + 4x5x75".
+    expect(input(tree, 'Kế hoạch của bạn').props.value).toMatch(/^[\d.]+ \+ \d+x\d+x[\d.]+$/);
   });
 
   it('reads "110x1 5x5x95" as 6 sets, previews them, and saves exactly those sets', async () => {
@@ -201,12 +206,26 @@ describe('BlockWeekDatesSheet', () => {
 });
 
 describe('BlockPlanView', () => {
-  it('shows the plan and real dates, keeping the app suggestion behind the ⓘ', async () => {
+  // Pin "today" inside week 1 (Date only — promises and timers stay real).
+  beforeEach(() => {
+    jest.useFakeTimers({ now: new Date('2026-09-08T10:00:00'), doNotFake: ['nextTick', 'setImmediate', 'setTimeout', 'setInterval', 'queueMicrotask'] });
+    jest.mocked(trainingBlockRepository.listTrainingBlocks).mockResolvedValue([]);
+    jest.mocked(trainingBlockRepository.updateTrainingBlock).mockResolvedValue(undefined);
+    jest.mocked(getActivityLogInRange).mockResolvedValue([]);
+    usePlanFoldStore.setState({ key: null, weeks: {} });
+    useBlockStore.setState({ activeBlock: null, blocks: [] });
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('titles weeks "B1W1" only and lists each session as table rows', async () => {
     jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
     const tree = await mount(<BlockPlanView />);
     const text = textOf(tree.root);
-    expect(text).toContain('Kế hoạch: ');
-    expect(text).toMatch(/Thứ Hai · .*07\/09/); // week 1's Monday
+    expect(text).toContain('B1W1');
+    expect(text).toContain('B1W2');
+    expect(text).toContain('B1 DELOAD');
+    expect(text).toMatch(/07\/09/); // week 1's Monday heads its session
+    expect(text).not.toContain('Kế hoạch: ');
     expect(text).not.toContain('công thức cũ');
     expect(text).not.toContain('Gợi ý của app:');
     expect(text).not.toContain('EPOC');
@@ -235,6 +254,77 @@ describe('BlockPlanView', () => {
       tree.root.findAll((n) => typeof n.props.onPress === 'function' && /^Giải thích: /.test(n.props.accessibilityLabel ?? ''))[0].props.onPress();
     });
     expect(textOf(tree.root)).toContain('EPOC');
+  });
+
+  it('a week folds once scrolled past, and unfolds when scrolled back', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    const cards = tree.root.findAll((n) => typeof n.props.onLayout === 'function' && n.props.accessibilityLabel === undefined);
+    await act(async () => {
+      cards[0].props.onLayout({ nativeEvent: { layout: { x: 0, y: 100, width: 300, height: 400 } } });
+    });
+    const scroller = tree.root.findAll((n) => typeof n.props.onScroll === 'function')[0];
+    const scrollTo = async (y: number) =>
+      act(async () => {
+        scroller.props.onScroll({ nativeEvent: { contentOffset: { x: 0, y } } });
+      });
+    const openWeeks = () =>
+      new Set(
+        tree.root
+          .findAll((n) => n.props.accessibilityState?.expanded === true && n.props.accessibilityLabel != null)
+          .map((n) => n.props.accessibilityLabel)
+      ).size;
+    expect(openWeeks()).toBe(3);
+    await scrollTo(600);
+    expect(openWeeks()).toBe(2);
+    cards[0].props.onLayout({ nativeEvent: { layout: { x: 0, y: 100, width: 300, height: 44 } } }); // folded: header only
+    await scrollTo(120);
+    expect(openWeeks()).toBe(3);
+  });
+
+  it('a week folded by hand stays folded while scrolling', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    await press(tree, 'B1W2');
+    const isOpen = (label: string) =>
+      tree.root.findAll((n) => n.props.accessibilityLabel === label && n.props.accessibilityState?.expanded === true).length > 0;
+    expect(isOpen('B1W2')).toBe(false);
+    // Week 1 slides past the top (the scroll-based fold kicks in), then back.
+    const cards = tree.root.findAll((n) => typeof n.props.onLayout === 'function' && n.props.accessibilityLabel === undefined);
+    await act(async () => {
+      cards[0].props.onLayout({ nativeEvent: { layout: { x: 0, y: 100, width: 300, height: 400 } } });
+    });
+    const scroller = tree.root.findAll((n) => typeof n.props.onScroll === 'function')[0];
+    for (const y of [600, 0]) {
+      await act(async () => {
+        scroller.props.onScroll({ nativeEvent: { contentOffset: { x: 0, y } } });
+      });
+    }
+    expect(isOpen('B1W2')).toBe(false);
+    expect(isOpen('B1W1')).toBe(true);
+  });
+
+  it('a day ahead is confirmed for 18:00; a day behind goes straight into Xả with its prime', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const logPast = jest.fn().mockResolvedValue(undefined);
+    useEnergyStore.setState({ logActivityForPastDate: logPast });
+    const tree = await mount(<BlockPlanView />);
+
+    await press(tree, '✓ Sẽ tập'); // Monday 14.09 — ahead of "today" (08.09)
+    expect(useBlockStore.getState().activeBlock?.weeks[1].days[0].session).toMatchObject({
+      status: 'planned',
+      date: '2026-09-14',
+    });
+    expect(textOf(tree.root)).toContain('⏰ 18:00');
+    expect(logPast).not.toHaveBeenCalled();
+
+    await press(tree, '✓ Đã tập'); // Monday 07.09 — already behind
+    expect(logPast).toHaveBeenCalledTimes(1);
+    const [{ workouts }, timestamp] = logPast.mock.calls[0];
+    expect(timestamp).toBe(new Date('2026-09-07T18:00:00').getTime());
+    expect(workouts[0].type).toBe('bench_press');
+    expect(workouts[0].sets[0].kind).toBe('warmup');
+    expect(useBlockStore.getState().activeBlock?.weeks[0].days[0].session?.status).toBe('logged');
   });
 
   it('offers to recalculate an old-model block, keeping it until the user taps', async () => {

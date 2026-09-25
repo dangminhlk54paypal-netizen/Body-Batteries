@@ -171,7 +171,9 @@ Tab này trả lời câu "mấy hôm nay mình sống thế nào":
   nhật ký cân nặng thực tế theo thời gian). Form nhập nhận cả dấu phẩy (`,`)
   lẫn dấu chấm (`.`) — gõ "78,5" hoặc "78.5" đều được. Ô ngày bên cạnh để trống là
   hôm nay; gõ `14.09` (hoặc `14.09.2025`) để ghi cân cho một ngày đã qua — ví dụ chép
-  lại số cân từ ghi chú cũ để biểu đồ × cân nặng tính đúng.
+  lại số cân từ ghi chú cũ để biểu đồ × cân nặng tính đúng. Mỗi lần cân (kể cả ngày cũ) có nút **✎** để sửa số hoặc
+  **Xoá lần cân này**. Lần cân lệch hẳn so với cả lần trước và lần sau (≥ 2 kg, cùng chiều, vd. 76 → 79.5 → 75.8)
+  hiện **⚠︎ kiểm tra lại?** màu vàng — app không tự sửa, bạn tự quyết.
 - **Thẻ từng ngày**: mỗi ngày một thẻ, hiện % dinh dưỡng trung bình + % pin
   Năng lượng hôm đó, cùng các cột nhỏ cho từng pin. Biểu tượng/viền badge cũng
   dùng màu xanh dương (Dinh dưỡng) và cam (Năng lượng) để khớp với biểu đồ.
@@ -196,13 +198,16 @@ buổi đó tự hiện trong sổ, ví dụ:
 - **Prime:** set khởi động nặng nhất của bài được ghi trước phần volume, chữ nghiêng: `B 95 + 4x6x72.5`. Khi tự gõ,
   viết `95 + 4x6x72.5` hoặc `95+ 4x6x72.5` (có dấu cách sau dấu +) để app hiểu đó là prime (set khởi động), không
   phải set chính; `140+2x3x100` (không cách) vẫn là các set chính. Tắt được trong ⚙︎ Định dạng sổ → "Hiện prime".
-- **Bấm block/tháng** (chữ xanh dương, nghiêng) → hiện luôn các tuần kèm các ngày trong một khung cao khoảng 2 tuần,
-  cuộn bên trong khung; bấm tuần để thu gọn. Chỉ block/tháng mới nhất mở sẵn và luôn giữ mở; các tháng khác tự thu
+- **Sổ tập luôn chia theo tháng** ("Tháng 9 năm 2026"). Kế hoạch block không tạo mục riêng: các tuần của block nằm
+  trong tháng của chúng với nhãn **B3W1, B3W2…**, và dưới tên tháng có dòng nhỏ "Block 3 · W1–W4" (block vắt qua 2
+  tháng thì mỗi tháng ghi phần của nó).
+- **Bấm tháng** (chữ xanh dương, nghiêng) → hiện luôn các tuần kèm các ngày trong một khung cao khoảng 2 tuần,
+  cuộn bên trong khung; bấm tuần để thu gọn. Chỉ tháng mới nhất mở sẵn và luôn giữ mở; các tháng khác tự thu
   lại sau 2 phút không chạm vào. Tiêu đề tuần: nhãn **B3W1** in đậm, ngày chữ thường, cân nặng tuần màu xanh lá nghiêng. Dòng
   ngày không ghi cân; ngày đầu dòng màu tím nghiêng, ký hiệu bài (S, B, D, PD…) in đậm màu xám.
-  **Nhấn giữ** tên block → **Đổi tên** (vd. "Block2 Accumulation") hoặc **Xoá block này** (xoá kế hoạch block, kể cả
-  trong 📋 Kế hoạch block; các buổi đã ghi không mất mà về lại tháng tập tự do).
-- **Bút chì ✎ cạnh tiêu đề tháng/block** → mở trang của cả tháng/block: sửa mọi dòng một lần hoặc chia sẻ.
+  **Nhấn giữ** tên tháng → **Đổi tên tháng** (vd. "Power Lifting") và, nếu tháng có tuần của block, **Xoá Block 3**
+  (xoá kế hoạch block, kể cả trong 📋 Kế hoạch block; các buổi đã ghi vẫn ở nguyên trong tháng, chỉ mất nhãn B·W).
+- **Bút chì ✎ cạnh tiêu đề tháng** → mở trang của cả tháng: sửa mọi dòng một lần hoặc chia sẻ.
   **Bút chì ✎ cạnh tiêu đề tuần** → chọn **＋ Ghi buổi** hoặc **✎ Ghi chú tuần** ("nghỉ lễ", "ngủ ít"…).
 - **Sửa dòng:** bấm vào một dòng ngày. Bạn viết đè cả dòng (thêm `(95 ❌)`, `(rpe9.2)`, `(test)`…) và ghi chú
   dưới ngày. **Sửa chữ chỉ đổi chữ trong sổ, không đổi kcal hay pin.** Muốn đổi số liệu buổi tập, bấm
@@ -247,9 +252,36 @@ buổi đó tự hiện trong sổ, ví dụ:
   → **⚡ Ghi N dòng tay vào Xả** → xem trước → Áp dụng.
 - **Excel** có thêm sheet **Tiến độ sức mạnh** (mỗi tuần S/B/D nặng nhất, cân nặng, × cân nặng) và **1RM**.
 
+**Đang tập dở một block trước khi dùng app?** Khi tạo block, nhập **Đây là block số** (vd. 3) rồi bấm tuần bạn đang
+tập ở **Bạn đang ở tuần thứ** (W1, W2, …, Deload). Bảng ngay bên dưới hiện ngày thật của từng tuần (B3W1: T2 01/09 –
+CN 07/09 …) và đánh dấu **tuần này**, nên bạn nhìn ngày là biết mình ở tuần mấy. App tự lùi ngày bắt đầu, và các tuần đã
+qua hiện luôn trong Sổ tập với nhãn B3W1…B3W4. W1 = block mới, chọn thứ Hai bắt đầu như bình thường. Trong 📋 Kế hoạch
+block, **tuần này** được mở sẵn.
+
+**Lịch tuần khi tạo block** nằm gọn trong một khung:
+- Hàng **T2 … CN** ở trên: chấm màu = ngày có buổi tập (chấm đỏ = buổi chưa có bài). Bấm một ngày, hoặc **vuốt ngang**
+  trong khung, để chuyển ngày.
+- Ngày nghỉ: bấm **+ Thêm buổi tập** → mở danh sách bài; **gõ tên** (vd. "bench dung", không cần dấu) hoặc cuộn để chọn.
+- Mỗi bài là một dòng: nút **Chính/Phụ** bên trái (bấm để đổi), bấm tên bài để đổi bài, ✕ để xoá. Bài phụ trợ ghi tên,
+  số set × số rep ngay bên dưới.
+
 **Kế hoạch block — sửa theo ý bạn.** Kế hoạch app lập chỉ là gợi ý. Trong chế độ **📋 Kế hoạch block**:
-- Mỗi bài có dòng **Kế hoạch** (kế hoạch thật của bạn). Bấm nút **i** cạnh tên bài để xem giải thích bài, **Gợi ý của
-  app** (kèm RPE ở set cuối) và **Cách app tính**. Nút **i** cạnh tiêu đề chứa ghi chú về kcal (EPOC) và đạm.
+- Mỗi tuần chỉ ghi **B3W4** (số block và số tuần của bạn); tuần này có màu nhấn và chấm. Bấm tiêu đề để mở/thu.
+- Mỗi buổi là một bảng gọn: ngày ở trên (kcal bên phải), mỗi dòng **bài (viết tắt như Sổ tập) | set | i | ✎**, bài phụ
+  trợ ở dòng dưới. Tuần dài thì cuộn bên trong khung của tuần đó.
+- **Trượt như cầu trượt nước:** các tuần đã qua (theo ngày) thu gọn sẵn; khi bạn cuộn xuống, tuần nào trôi hết lên trên
+  màn hình sẽ tự thu gọn, cuộn ngược lên thì tự mở lại.
+- Tuần bạn tự bấm mở/thu sẽ **được giữ nguyên** (kể cả khi cuộn, kể cả mở lại app) cho tới khi sang tuần mới; khi đó
+  tuần mới tự mở.
+- **Prime:** bài chính có mức prime (lần đơn nặng nhất khi khởi động) in nghiêng trước set chính, vd. *95* + 4x6x72.5.
+  App gợi ý theo lượng tập hôm đó (khoảng 82–92% 1RM); bấm ✎ để sửa, gõ `95 + 4x6x72.5`. Block cũ có nút **Thêm prime**.
+- **Xác nhận buổi tập → tự vào Xả và Sổ tập:** mỗi buổi có nút **✓ Sẽ tập** (ngày tới) hoặc **✓ Đã tập** (ngày đã qua).
+  Ngày đã qua: ghi ngay (lúc 18:00 ngày đó). Hôm nay: chọn **Đã tập xong — ghi ngay** hoặc **Tự ghi lúc 18:00**. Ngày
+  tới: hiện **⏰ 18:00**, app tự ghi vào Xả đúng 18:00 ngày đó (khi bạn mở app). Bấm ⏰ để **Ghi ngay**, **Đổi ngày**
+  (bận việc, dời buổi) hoặc **Huỷ xác nhận**. Ngày đã có Xả nâng tạ thì app không ghi trùng. Sau khi ghi, sửa/dời/xoá
+  trong Sổ tập như thường — Kế hoạch sẽ báo "Đã dời/xoá trong Sổ tập" và cho **Ghi lại** nếu cần.
+- Bấm nút **i** ở mỗi dòng để xem tên đầy đủ, giải thích bài, **Gợi ý của app** (kèm RPE ở set cuối), **Cách app tính**
+  và kcal của bài. Nút **i** cạnh tiêu đề chứa ghi chú về kcal (EPOC) và đạm.
   Bấm nút bút chì **✎** để gõ kế hoạch của bạn theo kiểu Notes (`110x1 5x5x95`,
   `6x4(+3)x75`…); app hiện lại từng set nó hiểu trước khi lưu. **Khôi phục gợi ý của app** để quay lại.
 - Mỗi tuần có nút **✎ Ngày**: nhập tuần đó từ ngày nào đến ngày nào (vd. lùi một tuần vì đi nghỉ). Các tuần sau tự dời
@@ -267,6 +299,10 @@ quen của bạn, mà là một cuốn sổ khoá riêng bạn tự giữ chìa 
 thể viết thêm nhiều lần (ghi nối vào, kèm giờ viết).
 
 ## 6. Tab ⚙️ Cài đặt — tuỳ chỉnh theo bạn
+
+Màn Cài đặt là **một danh sách thẻ gọn**: mỗi thẻ ghi tên mục và một dòng giá trị hiện tại (vd. "Nhắc 20:00 · báo pin
+< 20%"). Bấm thẻ để mở — mỗi lần chỉ mở một thẻ. Giải thích dài nằm sau nút **i** cạnh tên thẻ. Mục Dữ liệu là 4 ô
+vuông: Món của tôi, Excel 7 ngày, Excel 30 ngày, Xoá dữ liệu > 35 ngày.
 
 Cuộn từ trên xuống:
 

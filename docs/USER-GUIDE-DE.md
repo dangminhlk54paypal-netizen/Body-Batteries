@@ -180,6 +180,9 @@ Dieser Reiter beantwortet "Wie habe ich die letzten Tage gelebt":
   für Ihr echtes Gewicht über Zeit). Das Formular akzeptiert Komma (`,`) und Punkt (`.`) —
   "78,5" oder "78.5" funktionieren beide. Das Datumsfeld daneben leer = heute; `14.09` (oder `14.09.2025`)
   trägt eine Wiegung für einen vergangenen Tag ein — etwa Werte aus alten Notizen, damit × Körpergewicht stimmt.
+  Jede Wiegung (auch alte) hat **✎** zum Korrigieren oder **Diese Wiegung löschen**. Ein Wert, der deutlich von der
+  Wiegung davor und danach abweicht (≥ 2 kg, gleiche Richtung, z. B. 76 → 79.5 → 75.8), zeigt gelb **⚠︎ prüfen?** —
+  die App ändert nichts selbst.
 - **Tägliche Karten**: eine Karte pro Tag mit durchschnittlicher Nährstoffebene + Energie-Batterieebene
   dieses Tages, plus kleine Spalten für jede Batterie. Die Symbole/Rahmen der Badge verwenden
   auch Blau (Nährstoff) und Orange (Energie) zur Konsistenz mit dem Diagramm. Tippen Sie auf
@@ -205,13 +208,17 @@ hinzufügen“ für Pause, Schrägbank …). Die Einheit erscheint automatisch i
 - **Prime:** der schwerste Aufwärmsatz steht kursiv vor dem Volumen: `B 95 + 4x6x72.5`. Selbst getippt:
   `95 + 4x6x72.5` oder `95+ 4x6x72.5` (Leerzeichen nach dem +) — dann gilt er als Aufwärmsatz; `140+2x3x100`
   (ohne Leerzeichen) bleiben Arbeitssätze. Abschaltbar unter ⚙︎ Format → „Prime anzeigen“.
-- **Block/Monat antippen** (blau, kursiv) → Wochen samt Tagen in einem Fenster von etwa 2 Wochen Höhe, darin
-  scrollen; eine Woche antippen klappt sie zu. Nur der neueste Block/Monat ist offen und bleibt offen; andere
+- **Das Tagebuch ist immer nach Monaten gegliedert** („September 2026“). Ein Blockplan bildet keinen eigenen
+  Abschnitt: seine Wochen stehen in ihrem Monat mit den Labels **B3W1, B3W2 …**, und unter dem Monatsnamen steht
+  klein „Block 3 · W1–W4“ (läuft ein Block über zwei Monate, zeigt jeder Monat seinen Teil).
+- **Monat antippen** (blau, kursiv) → Wochen samt Tagen in einem Fenster von etwa 2 Wochen Höhe, darin
+  scrollen; eine Woche antippen klappt sie zu. Nur der neueste Monat ist offen und bleibt offen; andere
   klappen nach 2 Minuten ohne Berührung wieder zu. Wochentitel: Label **B3W1** fett, Datum normal, Wochengewicht grün kursiv. Tageszeilen ohne
   Gewicht; das Datum am Zeilenanfang ist lila kursiv, Übungskürzel (S, B, D, PD …) fett grau.
-  Einen Block **lang drücken** → **Umbenennen** oder **Diesen Block löschen** (löscht den Blockplan, auch unter
-  📋 Blockplan; eingetragene Einheiten bleiben und wandern zurück in die freien Monate).
-- **Stift ✎ neben dem Monats-/Blocktitel** → die Seite des ganzen Zeitraums: alle Zeilen auf einmal bearbeiten oder
+  Einen Monat **lang drücken** → **Monat umbenennen** (z. B. „Power Lifting“) und, wenn Blockwochen darin liegen,
+  **Block 3 löschen** (löscht den Blockplan, auch unter 📋 Blockplan; eingetragene Einheiten bleiben im Monat, nur
+  ohne B·W-Labels).
+- **Stift ✎ neben dem Monatstitel** → die Seite des ganzen Monats: alle Zeilen auf einmal bearbeiten oder
   teilen. **Stift ✎ neben dem Wochentitel** → **＋ Eintrag** oder **✎ Wochennotiz** („Urlaub“, „wenig geschlafen“ …).
 - **Zeile bearbeiten:** Tippen Sie auf eine Tageszeile. Sie können die ganze Zeile überschreiben (z. B.
   `(95 ❌)`, `(rpe9.2)`, `(test)`) und eine Notiz unter dem Tag speichern. **Textänderungen ändern nur den
@@ -261,7 +268,35 @@ hinzufügen“ für Pause, Schrägbank …). Die Einheit erscheint automatisch i
 - **Excel** hat zusätzlich die Blätter **Kraftentwicklung** (pro Woche schwerster S/B/D-Satz, Körpergewicht,
   × Körpergewicht) und **1RM**.
 
+**Schon mitten in einem Block, bevor du die App nutzt?** Beim Erstellen **Das ist Block Nummer** (z. B. 3) eingeben
+und unter **Du bist in Woche** die aktuelle Woche antippen (W1, W2, …, Deload). Die Tabelle darunter zeigt die echten
+Daten jeder Woche und markiert **diese Woche** — so erkennst du am Datum, in welcher Woche du bist. Die App legt den
+Start zurück, und die vergangenen Wochen erscheinen sofort im Tagebuch als B3W1 … B3W4. W1 = neuer Block, Startmontag
+wie gewohnt wählen. Im 📋 Blockplan ist **diese Woche** schon aufgeklappt.
+
+**Wochenplan beim Erstellen** passt in ein Fenster:
+- Leiste **Mo … So** oben: Punkt = Trainingstag (roter Punkt = Einheit ohne Übung). Tag antippen oder im Fenster
+  **seitlich wischen**, um den Tag zu wechseln.
+- Ruhetag: **+ Tag hinzufügen** → Übungsliste; **Namen eingeben** (z. B. „pause bank") oder scrollen und wählen.
+- Jede Übung ist eine Zeile: **Haupt/Neben** links (antippen zum Wechseln), Name antippen zum Ändern, ✕ zum Löschen.
+  Zusatzübungen mit Name, Sätze × Wdh. darunter.
+
 **Blockplan — nach Ihren Vorstellungen.** Der Plan der App ist nur ein Vorschlag. In **📋 Blockplan**:
+- Jede Woche heißt nur **B3W4** (deine Block- und Wochennummer); die aktuelle Woche ist farbig mit Punkt. Überschrift
+  antippen zum Auf-/Zuklappen.
+- Jede Einheit ist eine kompakte Tabelle: Datum oben (kcal rechts), je Zeile **Übung (Kürzel wie im Tagebuch) | Sätze |
+  i | ✎**, Zusatzübungen darunter. Lange Wochen scrollen in ihrem eigenen Fenster.
+- **Wie eine Wasserrutsche:** vergangene Wochen sind eingeklappt; beim Scrollen klappt jede Woche zu, sobald sie oben
+  aus dem Bild gerutscht ist, und beim Zurückscrollen wieder auf.
+- Von Hand auf-/zugeklappte Wochen **bleiben so** (auch beim Scrollen und nach Neustart), bis eine neue Woche beginnt.
+- **Prime:** Hauptübungen zeigen ihren Prime (schwerstes Aufwärm-Single) kursiv vor den Arbeitssätzen, z. B. *95* +
+  4x6x72.5 — vorgeschlagen nach der Tageslast (~82–92% 1RM); mit ✎ ändern (`95 + 4x6x72.5`). Alte Blöcke: **Primes
+  hinzufügen**.
+- **Einheit bestätigen → automatisch in Xả und ins Tagebuch:** **✓ Ich trainiere** (kommender Tag) oder **✓ Trainiert**
+  (vergangener Tag). Vergangen: sofort (18:00 an dem Tag). Heute: **jetzt eintragen** oder **um 18:00**. Kommend: **⏰
+  18:00**, die App trägt sie an dem Tag um 18:00 ein (beim Öffnen der App). ⏰ antippen: **Jetzt eintragen**, **Tag
+  ändern** oder **Bestätigung entfernen**. Gibt es an dem Tag schon eine Kraft-Einheit, wird nichts doppelt eingetragen.
+  Danach im Tagebuch frei ändern/verschieben/löschen — der Plan zeigt das an und bietet **Erneut eintragen**.
 - Jede Übung zeigt **Plan** (Ihr tatsächlicher Plan). Das **i** neben dem Namen zeigt die Erklärung der Übung, den
   **Vorschlag der App** (mit RPE im letzten Satz) und **So rechnet die App**; das **i** neben dem Titel enthält die
   Hinweise zu kcal (EPOC) und Protein. Mit dem Stift **✎** tippen Sie Ihren Plan wie in Notizen
@@ -282,6 +317,11 @@ Gewohnheiten, sondern ein gesperrtes Notizbuch, das nur Sie öffnen können. Sie
 Tag mehrmals schreiben (anhängen mit Uhrzeit).
 
 ## 6. Reiter ⚙️ Einstellungen — passen Sie es Ihnen an
+
+Die Einstellungen sind **eine Liste kompakter Karten**: jede zeigt ihren Namen und in einer Zeile die aktuellen Werte
+(z. B. „Erinnerung 20:00 · Akku < 20%“). Karte antippen zum Öffnen — immer nur eine offen. Längere Erklärungen stehen
+hinter dem **i** neben dem Namen. Daten sind 4 Kacheln: Meine Speisen, Excel 7 Tage, Excel 30 Tage, Daten > 35 Tage
+löschen.
 
 Scrollen Sie von oben nach unten:
 

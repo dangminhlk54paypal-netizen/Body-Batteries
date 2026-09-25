@@ -41,7 +41,9 @@ export function BlockVariationEditSheet({
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
-  const format = useTrainingLogFormat();
+  // The plan always writes its prime ("95 + 4x6x72.5") and never the ramp.
+  const userFormat = useTrainingLogFormat();
+  const format = useMemo(() => ({ ...userFormat, showPrime: true, showWarmups: false }), [userFormat]);
   const exercise: LiftingExercise = variation.variation.exercise;
 
   const [text, setText] = useState(() => formatSetSequence(variation.sets, format, language));
@@ -49,7 +51,7 @@ export function BlockVariationEditSheet({
 
   const preview = useMemo(() => {
     if (!parsed.ok) return null;
-    const heaviest = Math.max(...parsed.sets.map((s) => s.weightKg));
+    const heaviest = Math.max(0, ...parsed.sets.filter((s) => s.kind === 'working').map((s) => s.weightKg));
     const max = reference.oneRepMaxKg * reference.loadFactor;
     return {
       kcal: liftingSessionKcal(exercise, parsed.sets, bodyWeightKg, heightCm),
@@ -97,7 +99,11 @@ export function BlockVariationEditSheet({
             <Text style={styles.label}>{t('planAppendix.editSheet.previewTitle', { count: parsed.sets.length })}</Text>
             <Text style={styles.previewSets}>
               {parsed.sets
-                .map((s) => t('planAppendix.editSheet.previewLine', { weight: s.weightKg, reps: s.reps }))
+                .map((s) =>
+                  s.kind === 'warmup'
+                    ? t('planAppendix.editSheet.previewPrimeLine', { weight: s.weightKg })
+                    : t('planAppendix.editSheet.previewLine', { weight: s.weightKg, reps: s.reps })
+                )
                 .join(' · ')}
             </Text>
             <Text style={styles.hint}>{t('planAppendix.editSheet.previewSummary', preview)}</Text>

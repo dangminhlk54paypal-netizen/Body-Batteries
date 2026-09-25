@@ -133,10 +133,10 @@ export function TrainingProgressChart({ format }: Props) {
   }
 
   const weekTitle = (w: LiftProgressWeek): string => {
-    const period = periods.find((p) => p.kind === 'block' && p.weeks.some((pw) => pw.weekStart === w.weekStart));
-    const pw = period?.weeks.find((x) => x.weekStart === w.weekStart);
+    // A block week ("B3W2") or a week the user labelled reads by its label too.
+    const pw = periods.flatMap((p) => p.weeks).find((x) => x.weekStart === w.weekStart);
     const range = formatWeekRange({ weekStart: w.weekStart, weekEnd: w.weekEnd, sessions: 0, dates: [] }, language);
-    return period && pw ? `${formatWeekLabel(pw, period, language)} · ${range}` : range;
+    return pw && (pw.block || pw.customLabel) ? `${formatWeekLabel(pw, language)} · ${range}` : range;
   };
 
   const kgText = (kg: number) => t('trainingLog.progress.valueKg', { kg: formatChartValue(kg, 1, format, language) });

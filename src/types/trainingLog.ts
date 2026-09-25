@@ -85,12 +85,21 @@ export interface TrainingLogMonthRecord {
 
 export type DayConflict = 'none' | 'sourceChanged' | 'xaAddedToManual' | 'sourceGone';
 
-// --- Index (block → week → day) ------------------------------------------
+// --- Index (month → week → day) ------------------------------------------
 // Data only; every label is built by the UI with t() (see trainingLogIndex.ts).
+
+// The block plan a week belongs to. Blocks do not group the notebook — months
+// do; a block only labels its weeks ("B3W2") and is summed up under the month.
+export interface TrainingLogWeekBlock {
+  id: string;
+  number: number; // the user's own block number, else creation order
+  name?: string; // user-chosen title
+}
 
 export interface TrainingLogWeek {
   weekStart: string; // Monday (block weeks: the block week's own start)
   weekEnd: string; // Sunday
+  block?: TrainingLogWeekBlock; // set = a week of a block plan
   weekNumber?: number; // block weeks only (1-based; deload is the last number)
   isDeload?: boolean;
   sessions: number;
@@ -98,15 +107,19 @@ export interface TrainingLogWeek {
   customLabel?: string; // the user's label (TrainingLogWeekRecord.label)
 }
 
+// A block's part of one month: "Block 3 · W1–W4".
+export interface TrainingLogPeriodBlock extends TrainingLogWeekBlock {
+  firstWeek: number;
+  lastWeek: number;
+  lastIsDeload: boolean;
+}
+
+// One calendar month of the notebook (weeks by the month of their start).
 export interface TrainingLogPeriod {
-  key: string; // `block:<id>` | `free:<YYYY-MM>`
-  kind: 'block' | 'free';
-  blockId?: string;
-  blockNumber?: number; // 1-based by createdAt among the blocks that still exist
-  blockName?: string; // user-chosen name; absent = "Block <n>"
-  focus?: string; // TrainingFocus, for the subtitle
-  monthKey?: string; // free periods: YYYY-MM of the Monday that starts the week
-  monthName?: string; // free periods: user-chosen name; absent = "Tập tự do · <month>"
+  key: string; // `month:<YYYY-MM>`
+  monthKey: string; // YYYY-MM
+  monthName?: string; // user-chosen name; absent = "Tháng 9 năm 2026"
+  blocks: TrainingLogPeriodBlock[]; // block plans with weeks in this month, in order
   startDate: string;
   endDate: string;
   sessions: number;

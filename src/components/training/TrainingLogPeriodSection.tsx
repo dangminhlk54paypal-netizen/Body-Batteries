@@ -5,7 +5,7 @@ import { TrainingLogWeekSection } from './TrainingLogWeekSection';
 import type { TrainingLogActions } from './trainingLogActions';
 import { useTrainingLogStore } from '../../store/trainingLogStore';
 import { getWeightsInRange } from '../../data/repositories/healthSignalsRepository';
-import { formatDayDate, formatPeriodTitle } from '../../domain/training/trainingLogFormatter';
+import { formatDayDate, formatPeriodBlocks, formatPeriodTitle } from '../../domain/training/trainingLogFormatter';
 import { WEEK_WEIGHT_LOOKBACK_DAYS, type WeightPoint } from '../../domain/training/trainingLogWeights';
 import { addDaysToDateString } from '../../lib/dateUtils';
 import type { TrainingLogFormat, TrainingLogPeriod } from '../../types/trainingLog';
@@ -26,8 +26,8 @@ const BODY_MAX_HEIGHT = 320;
 // A period other than the newest closes itself after this long untouched.
 const IDLE_COLLAPSE_MS = 2 * 60 * 1000;
 
-// One block ("Block 2") or one month of free training. Collapsed it is a
-// heading + a one-line summary; open it lists its weeks (W1 → W5). The ✎ at
+// One calendar month of the notebook. Collapsed it is a heading + a one-line
+// summary (its block weeks, sessions); open it lists its weeks. The ✎ at
 // the heading opens the period's 📄 page — edit every line at once, or share.
 export function TrainingLogPeriodSection({ period, format, isLatest, actions }: Props) {
   const { t, language } = useT();
@@ -55,13 +55,11 @@ export function TrainingLogPeriodSection({ period, format, isLatest, actions }: 
     else clearIdleTimer();
   }
 
-  const parts: string[] = [];
-  if (period.kind === 'block' && period.focus) {
-    parts.push(t(`blockBuilder.focus${period.focus.charAt(0).toUpperCase()}${period.focus.slice(1)}Label`));
-  }
-  // A renamed free month ("Power Lifting") no longer says which month it is in
-  // its title, so the dates move to the subtitle — same as a block.
-  if (period.kind === 'block' || period.monthName) {
+  // Which block weeks this month holds ("Block 3 · W1–W4"), then — for a
+  // renamed month ("Power Lifting"), whose title no longer says which month
+  // it is — its dates, then the session count.
+  const parts: string[] = [...formatPeriodBlocks(period, language)];
+  if (period.monthName) {
     parts.push(`${formatDayDate(period.startDate, language)}–${formatDayDate(period.endDate, language)}`);
   }
   parts.push(t('trainingLog.sessionsCount', { count: period.sessions }));
@@ -113,7 +111,6 @@ function TrainingLogPeriodBody({ period, format, actions }: Omit<Props, 'isLates
         <TrainingLogWeekSection
           key={week.weekStart}
           week={week}
-          period={period}
           weights={weights}
           format={format}
           defaultExpanded

@@ -30,7 +30,11 @@ export function BottomSheet({ visible, onClose, children, sheetOffset = 500 }: B
   const styles = useThemedStyles(createStyles);
   const translateY = useSharedValue(sheetOffset);
 
+  // Vertical drags only: a sideways swipe inside the sheet (e.g. the Block
+  // Builder's day pager) must page the content, not tug the sheet.
   const pan = Gesture.Pan()
+    .activeOffsetY([-10, 10])
+    .failOffsetX([-15, 15])
     .onUpdate((event) => {
       translateY.value = Math.max(0, event.translationY);
     })

@@ -65,7 +65,7 @@ describe('loadIndex', () => {
     expect(s.loaded).toBe(true);
     expect(s.revision).toBe(1);
     expect(s.periods).toHaveLength(1);
-    expect(s.periods[0]).toMatchObject({ kind: 'free', monthKey: '2026-08', sessions: 3 });
+    expect(s.periods[0]).toMatchObject({ key: 'month:2026-08', monthKey: '2026-08', sessions: 3 });
   });
 
   it('bumps revision on every load, so an already-open week reloads after a focus', async () => {

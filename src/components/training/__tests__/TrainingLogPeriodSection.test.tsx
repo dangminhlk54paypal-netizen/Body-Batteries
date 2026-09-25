@@ -26,9 +26,9 @@ jest.mock('../../../data/repositories/trainingBlockRepository');
 jest.mock('../../../data/repositories/trainingLogRepository');
 
 const period: TrainingLogPeriod = {
-  key: 'free:2026-08',
-  kind: 'free',
+  key: 'month:2026-08',
   monthKey: '2026-08',
+  blocks: [],
   startDate: '2026-08-03',
   endDate: '2026-08-09',
   sessions: 0,

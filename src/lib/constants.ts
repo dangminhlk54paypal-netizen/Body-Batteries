@@ -146,11 +146,6 @@ export const BACKFILL_MAX_DAYS_BACK = 3;
 // it never touches a battery, so there is nothing to keep consistent.
 export const TRAINING_LOG_MAX_DAYS_BACK = 730;
 
-// How far back a manually-logged weight entry can be corrected (fixing a
-// mistyped value) — separate from BACKFILL_MAX_DAYS_BACK above since this
-// gates EDITING an already-logged entry, not backfilling a new one.
-export const WEIGHT_EDIT_MAX_DAYS_BACK = 3;
-
 export const DRAIN_TICK_INTERVAL_MS = 30 * 60 * 1000; // every 30 min
 
 export const BACKGROUND_TASK_NAME = 'BATTERY_DRAIN_TASK';

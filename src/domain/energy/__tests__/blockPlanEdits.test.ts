@@ -85,9 +85,14 @@ describe('setVariationSets', () => {
     expect(restored.weeks[1].totalKcal).toBe(before.weeks[1].totalKcal);
   });
 
-  it('marks every set as a working set', () => {
-    const mine: LiftingSet[] = [{ kind: 'warmup', weightKg: 60, reps: 5 }];
-    expect(setVariationSets(plan(), at, mine, 175).weeks[1].days[0].variations[0].sets[0].kind).toBe('working');
+  it('keeps the prime a warm-up and everything else a working set', () => {
+    const mine: LiftingSet[] = [
+      { kind: 'warmup', weightKg: 95, reps: 1 },
+      { kind: 'working', weightKg: 72.5, reps: 6 },
+    ];
+    const v = setVariationSets(plan(), at, mine, 175).weeks[1].days[0].variations[0];
+    expect(v.sets.map((s) => s.kind)).toEqual(['warmup', 'working']);
+    expect(v.pct1rm).toBeLessThan(95); // the %1RM reads the working sets only
   });
 
   it('an old block (no reference) keeps its old sets as a “legacy” reference', () => {
@@ -194,7 +199,10 @@ describe('refreshSuggestions / hasLegacySuggestions', () => {
     expect(refreshed.weeks[0].days[0].variations[0].sets).toEqual(fresh.weeks[0].days[0].variations[0].sets);
     // edited → the user's sets stay, with the new reference beside them
     const edited = refreshed.weeks[1].days[0].variations[0];
-    expect(edited.sets).toEqual(sets(95, [5, 5, 5]));
+    // …gaining the new suggestion's prime in front
+    expect(edited.sets.slice(1)).toEqual(sets(95, [5, 5, 5]));
+    expect(edited.sets[0]).toEqual(edited.reference?.sets[0]);
+    expect(edited.sets[0].kind).toBe('warmup');
     expect(edited.reference?.method).toBe('rpe');
     // dates kept
     expect(refreshed.weeks[1].startDate).toBe('2026-09-21');

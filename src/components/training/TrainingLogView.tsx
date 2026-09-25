@@ -17,10 +17,10 @@ import { useTrainingLogFormat } from '../../hooks/useTrainingLogFormat';
 import { getTrainingLogWeek } from '../../data/repositories/trainingLogRepository';
 import { isBodybuildingEntry } from '../../lib/activityLabels';
 import { mergeEditedWorkouts } from '../../domain/training/entryEdit';
-import { formatDayDate, formatDefaultFreeTitle, formatPeriodTitle } from '../../domain/training/trainingLogFormatter';
+import { formatDayDate, formatDefaultMonthTitle, formatPeriodTitle } from '../../domain/training/trainingLogFormatter';
 import { todayString } from '../../lib/dateUtils';
 import type { ActivityLogEntry, WorkoutSession } from '../../types/energy';
-import type { TrainingLogPeriod } from '../../types/trainingLog';
+import type { TrainingLogPeriod, TrainingLogPeriodBlock } from '../../types/trainingLog';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
@@ -42,8 +42,8 @@ interface EditorState {
 interface TextSheetState {
   key: number;
   visible: boolean;
-  kind: 'week' | 'block' | 'month';
-  id: string; // week start (Monday), block id, or free month (YYYY-MM)
+  kind: 'week' | 'month';
+  id: string; // week start (Monday) or month (YYYY-MM)
   title: string;
   hint?: string;
   placeholder: string;
@@ -75,7 +75,6 @@ export function TrainingLogView() {
   const loaded = useTrainingLogStore((s) => s.loaded);
   const loadIndex = useTrainingLogStore((s) => s.loadIndex);
   const saveWeekNote = useTrainingLogStore((s) => s.saveWeekNote);
-  const renameBlock = useBlockStore((s) => s.renameBlock);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
   const renameMonth = useTrainingLogStore((s) => s.renameMonth);
   const updateActivityForPastDate = useEnergyStore((s) => s.updateActivityForPastDate);
@@ -118,50 +117,50 @@ export function TrainingLogView() {
         multiline: true,
       });
     },
+    // Long-press on a month: rename it; when block weeks sit in it, each of
+    // those blocks can also be deleted from here.
     periodMenu: (period) => {
-      if (period.kind === 'free') {
-        if (!period.monthKey) return;
+      const openRenameMonth = () =>
         openTextSheet({
           kind: 'month',
           id: period.monthKey,
           title: t('trainingLog.textSheet.monthNameTitle'),
-          hint: t('trainingLog.textSheet.monthNameHint', { title: formatDefaultFreeTitle(period, language) }),
+          hint: t('trainingLog.textSheet.monthNameHint', { title: formatDefaultMonthTitle(period, language) }),
           placeholder: t('trainingLog.textSheet.monthNamePlaceholder'),
           initialValue: period.monthName ?? '',
           multiline: false,
         });
+      if (period.blocks.length === 0) {
+        openRenameMonth();
         return;
       }
-      const blockId = period.blockId;
-      if (!blockId) return;
       Alert.alert(formatPeriodTitle(period, language), undefined, [
-        {
-          text: t('trainingLog.blockMenu.rename'),
-          onPress: () =>
-            openTextSheet({
-              kind: 'block',
-              id: blockId,
-              title: t('trainingLog.textSheet.blockNameTitle'),
-              hint: t('trainingLog.textSheet.blockNameHint', { n: period.blockNumber ?? 0 }),
-              placeholder: t('trainingLog.textSheet.blockNamePlaceholder'),
-              initialValue: period.blockName ?? '',
-              multiline: false,
-            }),
-        },
-        { text: t('trainingLog.blockMenu.delete'), style: 'destructive', onPress: () => confirmDeleteBlock(period, blockId) },
+        { text: t('trainingLog.monthMenu.rename'), onPress: openRenameMonth },
+        ...period.blocks.map((b) => ({
+          text: t('trainingLog.monthMenu.deleteBlock', { title: blockTitle(b) }),
+          style: 'destructive' as const,
+          onPress: () => confirmDeleteBlock(b),
+        })),
         { text: t('common.cancel'), style: 'cancel' },
       ]);
     },
   };
 
-  // Deletes the block PLAN only: the days logged in it stay and fall back into
-  // their free months (the index places them by date).
-  function confirmDeleteBlock(period: TrainingLogPeriod, blockId: string) {
+  function blockTitle(b: TrainingLogPeriodBlock): string {
+    return b.name ?? t('trainingLog.blockTitle', { n: b.number });
+  }
+
+  // Deletes the block PLAN only: the days logged in it stay in their months,
+  // just without the "B3W2" labels.
+  function confirmDeleteBlock(b: TrainingLogPeriodBlock) {
+    const weeks = periods.flatMap((p) => p.weeks).filter((w) => w.block?.id === b.id);
+    const start = weeks[0]?.weekStart;
+    const end = weeks[weeks.length - 1]?.weekEnd;
     Alert.alert(
-      t('trainingLog.blockMenu.deleteConfirmTitle', { title: formatPeriodTitle(period, language) }),
-      t('trainingLog.blockMenu.deleteConfirmMessage', {
-        start: formatDayDate(period.startDate, language),
-        end: formatDayDate(period.endDate, language),
+      t('trainingLog.monthMenu.deleteConfirmTitle', { title: blockTitle(b) }),
+      t('trainingLog.monthMenu.deleteConfirmMessage', {
+        start: start ? formatDayDate(start, language) : '',
+        end: end ? formatDayDate(end, language) : '',
       }),
       [
         { text: t('common.cancel'), style: 'cancel' },
@@ -169,7 +168,7 @@ export function TrainingLogView() {
           text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
-            await deleteBlock(blockId);
+            await deleteBlock(b.id);
             await loadIndex();
           },
         },
@@ -180,11 +179,8 @@ export function TrainingLogView() {
   async function saveTextSheet(sheet: TextSheetState, text: string) {
     if (sheet.kind === 'week') {
       await saveWeekNote(sheet.id, text);
-    } else if (sheet.kind === 'month') {
-      await renameMonth(sheet.id, text); // reloads the index itself
     } else {
-      await renameBlock(sheet.id, text);
-      await loadIndex(); // block names come from the index
+      await renameMonth(sheet.id, text); // reloads the index itself
     }
   }
 

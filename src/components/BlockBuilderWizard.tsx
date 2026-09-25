@@ -4,19 +4,18 @@ import { BottomSheet } from './ui/BottomSheet';
 import { useSettingsStore } from '../store/settingsStore';
 import { useBlockStore } from '../store/blockStore';
 import { estimateBeginnerOneRepMax } from '../domain/energy/blockEngine';
-import { variationsForExercise } from '../lib/powerliftingVariations';
-import { weekdayLabel, formatDisplayDate, mondayFirstRank, upcomingMondays, addDaysToDateString } from '../lib/dateUtils';
+import { blockStartForCurrentWeek, nextBlockNumber } from '../domain/energy/blockStart';
+import { blockWeekDates, mergeSameWeekday } from '../domain/energy/blockSchedule';
+import { formatDisplayDate, upcomingMondays } from '../lib/dateUtils';
 import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import * as haptics from '../lib/haptics';
 import type { ThemeColors } from '../lib/theme';
-import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
-import type { LiftingExercise } from '../types/energy';
+import { useThemedStyles } from '../hooks/useThemeColors';
 import { LIFTING_EXERCISES } from '../types/energy';
+import { BlockScheduleEditor } from './training/BlockScheduleEditor';
 import type {
-  AccessoryLineItem,
   BlockDayPlan,
-  BlockDayVariation,
   GeneratedBlockPlan,
   NewTrainingBlockConfig,
   OneRepMaxInput,
@@ -27,25 +26,10 @@ import { listTrainingBlocks } from '../data/repositories/trainingBlockRepository
 const STEPS = ['length', 'profile', 'focus', 'schedule', 'deficit', 'summary'] as const;
 type Step = (typeof STEPS)[number];
 
-const WEEKDAYS: (0 | 1 | 2 | 3 | 4 | 5 | 6)[] = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun, more natural for a training week
-
 // How many upcoming Mondays to offer as quick-picks for "which week does
 // this block start" — people typically plan 1-2 weeks ahead, so a handful
 // of choices past that covers the realistic range without a full calendar.
 const MONDAY_QUICK_PICK_COUNT = 5;
-
-function newDay(): BlockDayPlan {
-  return { dayOfWeek: 1, variations: [], accessories: [] };
-}
-
-function newVariation(exercise: LiftingExercise, isFirst: boolean): BlockDayVariation {
-  const first = variationsForExercise(exercise)[0];
-  return { exercise, variationId: first.id, role: isFirst ? 'main' : 'secondary' };
-}
-
-function newAccessory(): AccessoryLineItem {
-  return { customName: '', sets: 3, reps: '8-12' };
-}
 
 // The user's own SBD split (Mon paused bench+incline / Wed main squat+paused
 // deadlift / Fri touch-and-go bench+low grip / Sun main deadlift+paused
@@ -101,7 +85,6 @@ interface Props {
 
 export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   const { t, language } = useT();
-  const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const profile = useSettingsStore((s) => s.userProfile);
   const createBlock = useBlockStore((s) => s.createBlock);
@@ -109,7 +92,11 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   const mondayChoices = useState(() => upcomingMondays(MONDAY_QUICK_PICK_COUNT))[0];
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [weekStartDate, setWeekStartDate] = useState(mondayChoices[1] ?? mondayChoices[0]); // default: next Monday
+  const [pickedStartDate, setWeekStartDate] = useState(mondayChoices[1] ?? mondayChoices[0]); // default: next Monday
+  // "Block số 3, đang ở tuần 4": a lifter joining mid-block. Week 1 = a new
+  // block starting on the picked Monday; week k > 1 = it began k-1 weeks ago.
+  const [blockNumberInput, setBlockNumberInput] = useState('1');
+  const [currentWeekPick, setCurrentWeek] = useState(1);
   const [progressiveWeeksInput, setProgressiveWeeksInput] = useState('5');
   const [hasDeload, setHasDeload] = useState(true);
   const [bodyWeightInput, setBodyWeightInput] = useState(String(profile.weightKg));
@@ -130,7 +117,9 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
     if (!visible) return;
     let cancelled = false;
     listTrainingBlocks().then((blocks) => {
-      if (!cancelled) setPrevBlock(blocks[0] ?? null);
+      if (cancelled) return;
+      setPrevBlock(blocks[0] ?? null);
+      setBlockNumberInput(String(nextBlockNumber(blocks)));
     });
     return () => {
       cancelled = true;
@@ -140,10 +129,21 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   const step: Step = STEPS[stepIndex];
   const bodyWeightKg = parseDecimal(bodyWeightInput) || 0;
   const progressiveWeeks = Math.max(1, Math.round(parseDecimal(progressiveWeeksInput)) || 1);
+  const totalWeeks = progressiveWeeks + (hasDeload ? 1 : 0);
+  const blockNumber = Math.round(parseDecimal(blockNumberInput));
+  const currentWeek = Math.min(currentWeekPick, totalWeeks); // a shorter block pulls the pick back
+  const blockNumberValid = Number.isFinite(blockNumber) && blockNumber >= 1 && blockNumber <= 999;
+  // Mid-block: week 1 began (currentWeek - 1) Mondays before this one.
+  const weekStartDate = currentWeek > 1 ? blockStartForCurrentWeek(mondayChoices[0], currentWeek) : pickedStartDate;
+  const scheduleInvalid = days.length === 0 || days.some((d) => d.variations.length === 0);
+  const weekDates = blockWeekDates(weekStartDate, progressiveWeeks, hasDeload);
+  const weekName = (w: { week: number; isDeload: boolean }) =>
+    w.isDeload ? t('trainingLog.deloadLabel', { b: blockNumber }) : t('trainingLog.weekLabel', { b: blockNumber, n: w.week });
 
   function resetAndClose() {
     setStepIndex(0);
     setWeekStartDate(mondayChoices[1] ?? mondayChoices[0]);
+    setCurrentWeek(1);
     setProgressiveWeeksInput('5');
     setHasDeload(true);
     setBodyWeightInput(String(profile.weightKg));
@@ -166,11 +166,15 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       bench_press: prev.oneRepMax.bench_press ? String(prev.oneRepMax.bench_press) : '',
       deadlift: prev.oneRepMax.deadlift ? String(prev.oneRepMax.deadlift) : '',
     });
-    setDays(prev.schedule.map((d) => ({ ...d, variations: [...d.variations], accessories: [...d.accessories] })));
+    setDays(mergeSameWeekday(prev.schedule));
   }
 
   function goNext() {
-    if (step === 'schedule' && (days.length === 0 || days.some((d) => d.variations.length === 0))) {
+    if (step === 'length' && !blockNumberValid) {
+      haptics.warning();
+      return;
+    }
+    if (step === 'schedule' && scheduleInvalid) {
       haptics.warning();
       return;
     }
@@ -178,46 +182,6 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   }
   function goBack() {
     setStepIndex((i) => Math.max(i - 1, 0));
-  }
-
-  function updateDay(index: number, patch: Partial<BlockDayPlan>) {
-    setDays((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
-  }
-  function addDay() {
-    setDays((prev) => [...prev, newDay()]);
-  }
-  function removeDay(index: number) {
-    setDays((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function addVariation(dayIndex: number) {
-    const day = days[dayIndex];
-    updateDay(dayIndex, { variations: [...day.variations, newVariation('squat', day.variations.length === 0)] });
-  }
-  function updateVariation(dayIndex: number, varIndex: number, patch: Partial<BlockDayVariation>) {
-    const day = days[dayIndex];
-    updateDay(dayIndex, {
-      variations: day.variations.map((v, i) => (i === varIndex ? { ...v, ...patch } : v)),
-    });
-  }
-  function removeVariation(dayIndex: number, varIndex: number) {
-    const day = days[dayIndex];
-    updateDay(dayIndex, { variations: day.variations.filter((_, i) => i !== varIndex) });
-  }
-
-  function addAccessory(dayIndex: number) {
-    const day = days[dayIndex];
-    updateDay(dayIndex, { accessories: [...day.accessories, newAccessory()] });
-  }
-  function updateAccessory(dayIndex: number, accIndex: number, patch: Partial<AccessoryLineItem>) {
-    const day = days[dayIndex];
-    updateDay(dayIndex, {
-      accessories: day.accessories.map((a, i) => (i === accIndex ? { ...a, ...patch } : a)),
-    });
-  }
-  function removeAccessory(dayIndex: number, accIndex: number) {
-    const day = days[dayIndex];
-    updateDay(dayIndex, { accessories: day.accessories.filter((_, i) => i !== accIndex) });
   }
 
   async function handleCreate() {
@@ -228,6 +192,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       deadlift: parseDecimal(oneRm.deadlift) || undefined,
     };
     const config: NewTrainingBlockConfig = {
+      blockNumber,
       weekStartDate,
       progressiveWeeks,
       hasDeload,
@@ -273,27 +238,28 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
           </Pressable>
         )}
 
-        <Text style={styles.fieldLabel}>{t('blockBuilder.weekStartDateLabel')}</Text>
-        <View style={styles.chipRow}>
-          {mondayChoices.map((monday, i) =>
-            renderChip(
-              i === 0
-                ? t('blockBuilder.weekStartThisWeek', { date: formatDisplayDate(monday, language) })
-                : formatDisplayDate(monday, language),
-              weekStartDate === monday,
-              () => setWeekStartDate(monday),
-              monday
-            )
-          )}
+        <View style={styles.inlineRow}>
+          <Text style={[styles.fieldLabel, styles.inlineLabel]}>{t('blockBuilder.blockNumberLabel')}</Text>
+          <TextInput
+            style={[styles.input, styles.inlineInput]}
+            keyboardType="number-pad"
+            value={blockNumberInput}
+            onChangeText={setBlockNumberInput}
+            accessibilityLabel={t('blockBuilder.blockNumberLabel')}
+          />
         </View>
+        {!blockNumberValid && <Text style={styles.errorText}>{t('blockBuilder.blockNumberInvalid')}</Text>}
 
-        <Text style={styles.fieldLabel}>{t('blockBuilder.progressiveWeeksLabel')}</Text>
-        <TextInput
-          style={styles.input}
-          keyboardType="number-pad"
-          value={progressiveWeeksInput}
-          onChangeText={setProgressiveWeeksInput}
-        />
+        <View style={styles.inlineRow}>
+          <Text style={[styles.fieldLabel, styles.inlineLabel]}>{t('blockBuilder.progressiveWeeksLabel')}</Text>
+          <TextInput
+            style={[styles.input, styles.inlineInput]}
+            keyboardType="number-pad"
+            value={progressiveWeeksInput}
+            onChangeText={setProgressiveWeeksInput}
+            accessibilityLabel={t('blockBuilder.progressiveWeeksLabel')}
+          />
+        </View>
         <Pressable
           style={({ pressed }) => [styles.toggleRow, pressed && styles.pressed]}
           onPress={() => setHasDeload((v) => !v)}
@@ -303,6 +269,53 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
             <View style={[styles.switchKnob, hasDeload && styles.switchKnobOn]} />
           </View>
         </Pressable>
+
+        {/* "Which week are you in?" as one tap per week; the table below
+            shows each week's real dates as you pick, this week marked. */}
+        <Text style={styles.fieldLabel}>{t('blockBuilder.currentWeekLabel')}</Text>
+        <View style={styles.chipRow}>
+          {weekDates.map((w) =>
+            renderChip(
+              w.isDeload ? t('trainingLog.deloadShort') : t('trainingLog.weekShort', { n: w.week }),
+              currentWeek === w.week,
+              () => setCurrentWeek(w.week),
+              `w${w.week}`
+            )
+          )}
+        </View>
+        {currentWeek === 1 && (
+          <>
+            <Text style={styles.fieldLabel}>{t('blockBuilder.weekStartDateLabel')}</Text>
+            <View style={styles.chipRow}>
+              {mondayChoices.map((monday, i) =>
+                renderChip(
+                  i === 0
+                    ? t('blockBuilder.weekStartThisWeek', { date: formatDisplayDate(monday, language) })
+                    : formatDisplayDate(monday, language),
+                  weekStartDate === monday,
+                  () => setWeekStartDate(monday),
+                  monday
+                )
+              )}
+            </View>
+          </>
+        )}
+
+        <View style={styles.weekTable}>
+          {weekDates.map((w) => {
+            const now = w.start === mondayChoices[0];
+            return (
+              <View key={w.week} style={[styles.weekRow, now && styles.weekRowNow]}>
+                <Text style={[styles.weekRowLabel, now && styles.weekRowTextNow]}>{weekName(w)}</Text>
+                <Text style={[styles.weekRowDates, now && styles.weekRowTextNow]}>
+                  {formatDisplayDate(w.start, language)} – {formatDisplayDate(w.end, language)}
+                </Text>
+                {now && <Text style={styles.nowBadge}>{t('planAppendix.thisWeekBadge')}</Text>}
+              </View>
+            );
+          })}
+        </View>
+        <Text style={styles.description}>{t('blockBuilder.currentWeekHint')}</Text>
       </View>
     );
   }
@@ -382,138 +395,10 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   }
 
   function renderScheduleStep() {
-    // Display Monday-first (Sunday last) — the underlying `days` state array
-    // keeps whatever order the user added cards in; only the render order is
-    // remapped, so every handler below still addresses the ORIGINAL index.
-    const displayOrder = days
-      .map((_, i) => i)
-      .sort((a, b) => mondayFirstRank(days[a].dayOfWeek) - mondayFirstRank(days[b].dayOfWeek));
-
     return (
       <View style={styles.stepBody}>
-        {days.length === 0 && (
-          <Pressable
-            style={({ pressed }) => [styles.templateBtn, pressed && styles.pressed]}
-            onPress={() => setDays(suggestedTemplateDays())}
-          >
-            <Text style={styles.templateBtnText}>{t('blockBuilder.useSuggestedTemplateButton')}</Text>
-          </Pressable>
-        )}
-        {days.length === 0 && <Text style={styles.emptyText}>{t('blockBuilder.scheduleEmptyText')}</Text>}
-        {displayOrder.map((dayIndex) => {
-          const day = days[dayIndex];
-          return (
-          <View key={dayIndex} style={styles.dayCard}>
-            <View style={styles.dayHeaderRow}>
-              <Text style={styles.fieldLabel}>{t('blockBuilder.scheduleDayLabel')}</Text>
-              <Pressable hitSlop={8} onPress={() => removeDay(dayIndex)}>
-                <Text style={styles.removeText}>{t('blockBuilder.scheduleRemoveDayButton')}</Text>
-              </Pressable>
-            </View>
-            <View style={styles.chipRow}>
-              {WEEKDAYS.map((dow) =>
-                renderChip(
-                  weekdayLabel(dow, language, 'short'),
-                  day.dayOfWeek === dow,
-                  () => updateDay(dayIndex, { dayOfWeek: dow }),
-                  String(dow)
-                )
-              )}
-            </View>
-
-            <Text style={styles.sectionTitle}>{t('blockBuilder.scheduleVariationSectionTitle')}</Text>
-            {day.variations.map((variation, varIndex) => (
-              <View key={varIndex} style={[styles.variationRow, varIndex > 0 && styles.rowDivider]}>
-                <View style={styles.chipRow}>
-                  {LIFTING_EXERCISES.map((ex) =>
-                    renderChip(
-                      t(`activities.${ex}`),
-                      variation.exercise === ex,
-                      () => {
-                        const firstVariation = variationsForExercise(ex)[0];
-                        updateVariation(dayIndex, varIndex, { exercise: ex, variationId: firstVariation.id });
-                      },
-                      ex
-                    )
-                  )}
-                </View>
-                <View style={styles.chipRow}>
-                  {variationsForExercise(variation.exercise).map((v) =>
-                    renderChip(
-                      t(`blockVariations.${v.id}.label`),
-                      variation.variationId === v.id,
-                      () => updateVariation(dayIndex, varIndex, { variationId: v.id }),
-                      v.id
-                    )
-                  )}
-                </View>
-                <View style={styles.chipRow}>
-                  {renderChip(
-                    t('blockBuilder.scheduleRoleMain'),
-                    variation.role === 'main',
-                    () => updateVariation(dayIndex, varIndex, { role: 'main' })
-                  )}
-                  {renderChip(
-                    t('blockBuilder.scheduleRoleSecondary'),
-                    variation.role === 'secondary',
-                    () => updateVariation(dayIndex, varIndex, { role: 'secondary' })
-                  )}
-                  <Pressable hitSlop={8} onPress={() => removeVariation(dayIndex, varIndex)}>
-                    <Text style={styles.removeText}>{t('blockBuilder.scheduleRemoveVariationButton')}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-            <Pressable
-              style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-              onPress={() => addVariation(dayIndex)}
-            >
-              <Text style={styles.addText}>{t('blockBuilder.scheduleAddVariationButton')}</Text>
-            </Pressable>
-
-            <Text style={styles.sectionTitle}>{t('blockBuilder.scheduleAccessorySectionTitle')}</Text>
-            {day.accessories.map((acc, accIndex) => (
-              <View key={accIndex} style={[styles.accessoryRow, accIndex > 0 && styles.rowDivider]}>
-                <TextInput
-                  style={[styles.input, styles.accessoryNameInput]}
-                  placeholder={t('blockBuilder.accessoryNamePlaceholder')}
-                  placeholderTextColor={c.textMuted}
-                  value={acc.customName}
-                  onChangeText={(v) => updateAccessory(dayIndex, accIndex, { customName: v })}
-                />
-                <TextInput
-                  style={[styles.input, styles.accessorySmallInput]}
-                  placeholder={t('blockBuilder.accessorySetsPlaceholder')}
-                  placeholderTextColor={c.textMuted}
-                  keyboardType="number-pad"
-                  value={String(acc.sets)}
-                  onChangeText={(v) => updateAccessory(dayIndex, accIndex, { sets: Math.max(1, Math.round(parseDecimal(v)) || 1) })}
-                />
-                <TextInput
-                  style={[styles.input, styles.accessorySmallInput]}
-                  placeholder={t('blockBuilder.accessoryRepsPlaceholder')}
-                  placeholderTextColor={c.textMuted}
-                  value={acc.reps}
-                  onChangeText={(v) => updateAccessory(dayIndex, accIndex, { reps: v })}
-                />
-                <Pressable hitSlop={8} onPress={() => removeAccessory(dayIndex, accIndex)}>
-                  <Text style={styles.removeText}>✕</Text>
-                </Pressable>
-              </View>
-            ))}
-            <Pressable
-              style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
-              onPress={() => addAccessory(dayIndex)}
-            >
-              <Text style={styles.addText}>{t('blockBuilder.scheduleAddAccessoryButton')}</Text>
-            </Pressable>
-          </View>
-          );
-        })}
-        <Pressable style={({ pressed }) => [styles.addDayBtn, pressed && styles.pressed]} onPress={addDay}>
-          <Text style={styles.addDayText}>{t('blockBuilder.scheduleAddDayButton')}</Text>
-        </Pressable>
-        {(days.length === 0 || days.some((d) => d.variations.length === 0)) && (
+        <BlockScheduleEditor days={days} onChange={setDays} onUseTemplate={() => setDays(suggestedTemplateDays())} />
+        {scheduleInvalid && (
           <Text style={styles.validationText}>
             {days.length === 0 ? t('blockBuilder.validationNeedDay') : t('blockBuilder.validationNeedVariation')}
           </Text>
@@ -548,6 +433,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   function renderSummaryStep() {
     return (
       <View style={styles.stepBody}>
+        <Text style={styles.summaryLine}>{t('blockBuilder.summaryBlockNumberLine', { n: blockNumber })}</Text>
         <Text style={styles.summaryLine}>
           {t('blockBuilder.summaryStartDateLine', { date: formatDisplayDate(weekStartDate, language) })}
         </Text>
@@ -565,23 +451,18 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
           {deficitModeEnabled ? t('blockBuilder.summaryDeficitOnLine') : t('blockBuilder.summaryDeficitOffLine')}
         </Text>
 
-        {/* Every week's real dates up front (same arithmetic as blockEngine:
-            7-day weeks back to back from weekStartDate); each one can be moved
-            later in the plan, and the weeks after it follow. */}
+        {/* Every week's real dates up front; each one can be moved later in
+            the plan, and the weeks after it follow. */}
         <Text style={styles.description}>{t('blockBuilder.summaryWeekDatesTitle')}</Text>
-        {Array.from({ length: progressiveWeeks + (hasDeload ? 1 : 0) }, (_, i) => {
-          const start = addDaysToDateString(weekStartDate, i * 7);
-          const isDeload = hasDeload && i === progressiveWeeks;
-          return (
-            <Text key={i} style={styles.description}>
-              {t('blockBuilder.summaryWeekDatesLine', {
-                week: isDeload ? t('planAppendix.deloadBadge') : t('planAppendix.weekLabel', { number: i + 1 }),
-                start: formatDisplayDate(start, language),
-                end: formatDisplayDate(addDaysToDateString(start, 6), language),
-              })}
-            </Text>
-          );
-        })}
+        {weekDates.map((w) => (
+          <Text key={w.week} style={styles.description}>
+            {t('blockBuilder.summaryWeekDatesLine', {
+              week: weekName(w),
+              start: formatDisplayDate(w.start, language),
+              end: formatDisplayDate(w.end, language),
+            })}
+          </Text>
+        ))}
       </View>
     );
   }
@@ -605,7 +486,6 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   };
 
   const isLastStep = stepIndex === STEPS.length - 1;
-  const scheduleInvalid = days.length === 0 || days.some((d) => d.variations.length === 0);
 
   return (
     <BottomSheet visible={visible} onClose={resetAndClose} sheetOffset={700}>
@@ -675,6 +555,7 @@ const createStyles = (c: ThemeColors) =>
     oneRmRow: { gap: 4 },
     estimateNote: { color: c.textTertiary, fontSize: 12, lineHeight: 16 },
     description: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
+    errorText: { color: c.danger, fontSize: 12, lineHeight: 17 },
     toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     switch: {
       width: 44,
@@ -700,15 +581,6 @@ const createStyles = (c: ThemeColors) =>
     focusCardTitle: { fontSize: 15, fontWeight: '700', color: c.textBright },
     focusCardTitleActive: { color: c.accent },
     focusCardDesc: { fontSize: 12, color: c.textTertiary, lineHeight: 16 },
-    emptyText: { color: c.textMuted, fontSize: 13 },
-    dayCard: {
-      padding: 12,
-      borderRadius: 12,
-      backgroundColor: c.bgHighlight,
-      gap: 8,
-      marginBottom: 4,
-    },
-    dayHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: {
       paddingHorizontal: 10,
@@ -721,27 +593,6 @@ const createStyles = (c: ThemeColors) =>
     chipActive: { backgroundColor: c.accent, borderColor: c.accent },
     chipText: { color: c.textSecondary, fontSize: 12, fontWeight: '600' },
     chipTextActive: { color: c.bg },
-    variationRow: { gap: 6, paddingTop: 4 },
-    removeText: { color: c.danger, fontSize: 12, fontWeight: '700' },
-    addBtn: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 12,
-      backgroundColor: c.bgElevated,
-    },
-    addText: { color: c.infoAlt, fontSize: 12, fontWeight: '700' },
-    // "+ Thêm buổi tập" is the primary action to start the week — a
-    // distinct accent color (vs the neutral blue "+ Thêm bài"/"+ Thêm
-    // accessory") so it doesn't blend in.
-    addDayBtn: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 12,
-      backgroundColor: c.accent,
-    },
-    addDayText: { color: c.bg, fontSize: 13, fontWeight: '700' },
     templateBtn: {
       alignSelf: 'flex-start',
       paddingHorizontal: 12,
@@ -752,11 +603,17 @@ const createStyles = (c: ThemeColors) =>
       borderColor: c.accentAlt,
     },
     templateBtnText: { color: c.accentAltLight, fontSize: 12, fontWeight: '700' },
-    rowDivider: { borderTopWidth: 1, borderTopColor: c.divider, paddingTop: 8, marginTop: 4 },
-    accessoryRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    accessoryNameInput: { flex: 2 },
-    accessorySmallInput: { flex: 1, textAlign: 'center' },
     validationText: { color: c.dangerStrong, fontSize: 12, marginTop: 4 },
+    inlineRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+    inlineLabel: { flex: 1 },
+    inlineInput: { width: 72, textAlign: 'center' },
+    weekTable: { borderRadius: 10, backgroundColor: c.bgElevated, paddingVertical: 4 },
+    weekRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5, paddingHorizontal: 10 },
+    weekRowNow: { backgroundColor: c.bgHighlight },
+    weekRowLabel: { width: 84, fontSize: 12, fontWeight: '700', color: c.textSoft },
+    weekRowDates: { flex: 1, fontSize: 12, color: c.textTertiary },
+    weekRowTextNow: { color: c.accent },
+    nowBadge: { fontSize: 11, fontWeight: '700', fontStyle: 'italic', color: c.accent },
     summaryLine: { color: c.textBright, fontSize: 14, fontWeight: '600' },
     row: { flexDirection: 'row', gap: 12, marginTop: 8 },
     modalBtn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
