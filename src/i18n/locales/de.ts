@@ -254,60 +254,71 @@ export const de: TranslationSchema = {
   nutrients: {
     fiber: {
       name: 'Ballaststoffe',
+      short: 'Ballaststoffe',
       underAdvice: 'Etwas wenig Ballaststoffe — versuche mehr Blattgemüse, Obst, Haferflocken oder Hülsenfrüchte.',
       overAdvice: 'Ballaststoffe liegen über der Empfehlung — das ist gut, iss weiter viel Gemüse.',
     },
     iron: {
       name: 'Eisen',
+      short: 'Eisen',
       underAdvice: 'Etwas wenig Eisen — versuche mehr rotes Fleisch, Leber, Linsen oder Spinat.',
       overAdvice: 'Eisen liegt über der Empfehlung — unbedenklich, solange keine zusätzlichen Präparate eingenommen werden.',
     },
     calcium: {
       name: 'Kalzium',
+      short: 'Kalzium',
       underAdvice: 'Etwas wenig Kalzium — versuche mehr Milch, Joghurt, Tofu oder kleine Fische mit Gräten.',
       overAdvice:
         'Kalzium liegt über der Empfehlung — aus der Nahrung meist unbedenklich, bei zusätzlichen Kalziumpräparaten aufpassen.',
     },
     fat: {
       name: 'Fett',
+      short: 'Fett',
       underAdvice:
         'Etwas wenig Fett — versuche mehr Olivenöl, fettreichen Fisch oder Nüsse (sofern der Tagesenergiebedarf gedeckt ist).',
       overAdvice: 'Fett liegt über der Empfehlung — versuche weniger Frittiertes und tierisches Fett.',
     },
     potassium: {
       name: 'Kalium',
+      short: 'Kalium',
       underAdvice: 'Etwas wenig Kalium — versuche mehr Bananen, Süßkartoffeln, Spinat oder Orangen.',
       overAdvice: 'Kalium liegt über der Empfehlung — aus natürlichen Lebensmitteln meist unbedenklich.',
     },
     magnesium: {
       name: 'Magnesium',
+      short: 'Magnesium',
       underAdvice: 'Etwas wenig Magnesium — versuche mehr Kürbiskerne, Mandeln, Spinat oder schwarze Bohnen.',
       overAdvice:
         'Magnesium liegt über der Empfehlung — aus der Nahrung unbedenklich, bei zusätzlichen Präparaten aufpassen.',
     },
     zinc: {
       name: 'Zink',
+      short: 'Zink',
       underAdvice: 'Etwas wenig Zink — versuche mehr Austern, Rindfleisch, Kürbiskerne oder Kichererbsen.',
       overAdvice: 'Zink liegt über der Empfehlung — unbedenklich, solange keine zusätzlichen Präparate eingenommen werden.',
     },
     omega3: {
       name: 'Omega-3 (EPA+DHA)',
+      short: 'Omega-3',
       underAdvice: 'Etwas wenig Omega-3 — versuche mehr Lachs, Makrele, Chiasamen oder Fischöl.',
       overAdvice:
         'Omega-3 liegt über der Empfehlung — auf diesem Niveau meist unbedenklich, bei hochdosierten Fischölpräparaten aufpassen.',
     },
     sodium: {
       name: 'Natrium (Salz)',
+      short: 'Natrium',
       underAdvice: '',
       overAdvice: 'Natrium liegt über der empfohlenen Obergrenze — versuche weniger Fischsauce, Tunke, Konserven oder Instantnudeln.',
     },
     sugar: {
       name: 'Zucker',
+      short: 'Zucker',
       underAdvice: '',
       overAdvice: 'Zucker liegt über der empfohlenen Obergrenze — versuche weniger Softdrinks, Süßigkeiten oder Bubble Tea.',
     },
     salt: {
       name: 'Salz (NaCl)',
+      short: 'Salz',
       underAdvice: '',
       overAdvice: 'Salz liegt über der empfohlenen Obergrenze — versuche weniger Fischsauce, Tunke, Konserven oder Instantnudeln.',
     },
@@ -663,10 +674,11 @@ export const de: TranslationSchema = {
       metExplainer:
         'MET = Energieverbrauch im Vergleich zum Sitzen. Wähle nach gefühlter Intensität (max. {{max}} — selbst die anstrengendsten untersuchten Aktivitäten liegen etwa in diesem Bereich).',
       saveActivityButton: 'Aktivität speichern',
-      powerliftingChip: '🏋️ Powerlifting (Sätze × Wdh. × Gewicht)',
-      bodybuildingChip: '💪 Bodybuilding (nach Muskelgruppe)',      addActivityChip: '＋ Aktivität hinzufügen',
-      minutesPlaceholder: 'Minuten (z. B. 45)',
-      stepsPlaceholder: 'Schritte (optional)',
+      powerliftingChip: '🏋️ Powerlifting ›',
+      bodybuildingChip: '💪 Bodybuilding ›',
+      addActivityChip: '＋ Aktivität hinzufügen',
+      minutesPlaceholder: 'z. B. 45',
+      stepsPlaceholder: 'z. B. 6000',
       timeRangeSubtitle: 'Zeitraum (optional, leer lassen = jetzt)',
       fromTimePlaceholder: 'Von HH:mm',
       toTimePlaceholder: 'Bis HH:mm',
@@ -675,6 +687,21 @@ export const de: TranslationSchema = {
       deleteCustomMessage: '„{{name}}" aus deinen eigenen Aktivitäten entfernen?',
       logDateFieldLabel: 'Eintragsdatum',
       backfillNotice: '🕓 Eintrag für {{date}}',
+      // Short labels for the four equal-width group tabs (the full group
+      // names in activityCategories are too long for a quarter of the sheet).
+      categoryTabs: {
+        cardio: 'Cardio',
+        sports: 'Sport',
+        gym: 'Gym',
+        other: 'Sonstige',
+      },
+      minutesLabel: 'Minuten',
+      stepsLabel: 'Schritte',
+      timeLabel: '🕐 Uhrzeit (optional)',
+      habitPrefill: '💡 Wie üblich: {{activity}} · {{minutes}} Min.{{time}}',
+      habitPrefillTime: ' · {{start}}–{{end}}',
+      habitClear: 'Vorschlag verwerfen, neu beginnen',
+      draftRestored: '↺ Weiter, wo du aufgehört hast',
     },
     microBatterySourceSheet: {
       title: 'Quellen für {{name}}',

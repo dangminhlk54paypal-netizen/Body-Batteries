@@ -266,62 +266,75 @@ export const vi = {
   // threshold — every id still gets both strings here so the 3 locale files
   // keep one uniform shape (see the file-level comment above).
   nutrients: {
+    // `short`: the one-word label under each micro battery cell (MicroBatteryStack);
+    // `name` stays the full label everywhere else (sheet, a11y, Excel).
     fiber: {
       name: 'Chất xơ',
+      short: 'Xơ',
       underAdvice: 'Hơi ít chất xơ — thử thêm rau xanh, trái cây, yến mạch hoặc các loại đậu.',
       overAdvice: 'Chất xơ đã vượt mức khuyến nghị — vậy là tốt, cứ tiếp tục ăn nhiều rau củ.',
     },
     iron: {
       name: 'Sắt',
+      short: 'Sắt',
       underAdvice: 'Hơi ít sắt — thử thêm thịt đỏ, gan, đậu lăng hoặc rau bina.',
       overAdvice: 'Sắt đã vượt mức khuyến nghị — nếu không dùng thêm viên uống bổ sung thì không đáng lo.',
     },
     calcium: {
       name: 'Canxi',
+      short: 'Canxi',
       underAdvice: 'Hơi ít canxi — thử thêm sữa, sữa chua, đậu phụ hoặc cá nhỏ ăn cả xương.',
       overAdvice:
         'Canxi đã vượt mức khuyến nghị — thường ổn từ thực phẩm, chỉ cần lưu ý nếu có dùng thêm viên canxi.',
     },
     fat: {
       name: 'Chất béo',
+      short: 'Béo',
       underAdvice:
         'Hơi ít chất béo — thử thêm dầu ô liu, cá béo hoặc các loại hạt (miễn đủ năng lượng cả ngày).',
       overAdvice: 'Chất béo đã vượt mức khuyến nghị — thử giảm bớt đồ chiên rán, mỡ động vật.',
     },
     potassium: {
       name: 'Kali',
+      short: 'Kali',
       underAdvice: 'Hơi ít kali — thử thêm chuối, khoai lang, rau bina hoặc cam.',
       overAdvice: 'Kali đã vượt mức khuyến nghị — thường ổn khi đến từ thực phẩm tự nhiên.',
     },
     magnesium: {
       name: 'Magie',
+      short: 'Magie',
       underAdvice: 'Hơi ít magie — thử thêm hạt bí, hạnh nhân, rau bina hoặc đậu đen.',
       overAdvice:
         'Magie đã vượt mức khuyến nghị — từ thực phẩm thì không đáng ngại, chỉ cần chú ý nếu dùng thêm viên uống bổ sung.',
     },
     zinc: {
       name: 'Kẽm',
+      short: 'Kẽm',
       underAdvice: 'Hơi ít kẽm — thử thêm hàu, thịt bò, hạt bí hoặc đậu gà.',
       overAdvice: 'Kẽm đã vượt mức khuyến nghị — nếu không dùng thêm viên uống bổ sung thì không đáng lo.',
     },
     omega3: {
       name: 'Omega-3 (EPA+DHA)',
+      short: 'Omega-3',
       underAdvice: 'Hơi ít omega-3 — thử thêm cá hồi, cá thu, hạt chia hoặc dầu cá.',
       overAdvice:
         'Omega-3 đã vượt mức khuyến nghị — mức này thường an toàn, chỉ cần chú ý nếu dùng viên dầu cá liều cao.',
     },
     sodium: {
       name: 'Natri (muối)',
+      short: 'Natri',
       underAdvice: '',
       overAdvice: 'Natri đã vượt ngưỡng gợi ý — thử giảm nước mắm, muối chấm, đồ hộp hoặc mì gói.',
     },
     sugar: {
       name: 'Đường',
+      short: 'Đường',
       underAdvice: '',
       overAdvice: 'Đường đã vượt ngưỡng gợi ý — thử giảm nước ngọt, bánh kẹo hoặc trà sữa.',
     },
     salt: {
       name: 'Muối (NaCl)',
+      short: 'Muối',
       underAdvice: '',
       overAdvice: 'Muối đã vượt ngưỡng gợi ý — thử giảm nước mắm, muối chấm, đồ hộp hoặc mì gói.',
     },
@@ -698,10 +711,11 @@ export const vi = {
       metExplainer:
         'MET = mức tiêu hao năng lượng so với lúc ngồi yên. Chọn theo cảm nhận độ nặng của môn (tối đa {{max}} — môn nặng nhất trong nghiên cứu cũng chỉ quanh mức này).',
       saveActivityButton: 'Lưu môn',
-      powerliftingChip: '🏋️ Powerlifting (set × rep × tạ)',
-      bodybuildingChip: '💪 Bodybuilding (theo nhóm cơ)',      addActivityChip: '＋ Thêm môn',
-      minutesPlaceholder: 'Số phút tập (ví dụ: 45)',
-      stepsPlaceholder: 'Số bước chân (tuỳ chọn)',
+      powerliftingChip: '🏋️ Powerlifting ›',
+      bodybuildingChip: '💪 Bodybuilding ›',
+      addActivityChip: '＋ Thêm môn',
+      minutesPlaceholder: 'vd. 45',
+      stepsPlaceholder: 'vd. 6000',
       timeRangeSubtitle: 'Khoảng thời gian diễn ra (tuỳ chọn, để trống = bây giờ)',
       fromTimePlaceholder: 'Từ HH:mm',
       toTimePlaceholder: 'Đến HH:mm',
@@ -710,6 +724,21 @@ export const vi = {
       deleteCustomMessage: 'Xoá "{{name}}" khỏi danh sách môn tự thêm?',
       logDateFieldLabel: 'Ngày ghi',
       backfillNotice: '🕓 Ghi cho ngày {{date}}',
+      // Short labels for the four equal-width group tabs (the full group
+      // names in activityCategories are too long for a quarter of the sheet).
+      categoryTabs: {
+        cardio: 'Cardio',
+        sports: 'Thể thao',
+        gym: 'Gym',
+        other: 'Khác',
+      },
+      minutesLabel: 'Phút',
+      stepsLabel: 'Bước chân',
+      timeLabel: '🕐 Giờ (tuỳ chọn)',
+      habitPrefill: '💡 Như thường lệ: {{activity}} · {{minutes}} phút{{time}}',
+      habitPrefillTime: ' · {{start}}–{{end}}',
+      habitClear: 'Bỏ gợi ý, nhập mới',
+      draftRestored: '↺ Tiếp tục phần bạn đang nhập dở',
     },
     microBatterySourceSheet: {
       title: 'Nguồn nạp {{name}}',

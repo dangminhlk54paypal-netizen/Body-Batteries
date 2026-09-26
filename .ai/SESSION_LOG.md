@@ -2783,6 +2783,40 @@ mới `docs/LearnWithAI/`; tạo skill để agent sau viết bài giảng kiể
 
 ---
 
+## Session 58 — 2026-09-26 (Pin Mikros đều hàng ở mọi ngôn ngữ)
+
+**Làm gì:** Chủ dự án: các ô pin vi chất xếp không đều vì chữ dài ngắn theo ngôn ngữ; giữ hình pin chữ nhật, tối ưu
+góc nhìn.
+
+**Kết quả:** `MicroCell`: ô rộng cố định (`CELL_BOX_WIDTH`), hàng căn đỉnh (trước là `flex-end` nên chữ nhiều dòng đẩy
+pin lên), dưới pin còn 3 dòng một dòng tự co chữ: `%`(+⚠️) · tên ngắn · `hiện/mục tiêu+đơn vị`. Bỏ dòng "KN …/ngày" và
+caption dài ("vượt ngưỡng gợi ý"…) khỏi ô → caption vào accessibilityLabel; ⓘ nhỏ ở góc pin báo "chạm để xem cách
+tính". Thêm `nutrients.<id>.short` vi/en/de (dòng "Xem thêm" cũng dùng tên ngắn). Test mới MicroBatteryStack (tiếng
+Đức). Skill mobile-ui-density thêm mẫu "hàng ô lặp lại đều ở mọi ngôn ngữ". `npm run verify` xanh (110 / 1271).
+EAS preview `457dc577-2cdd-4b03-ad35-a8af3bb60d8d`. Chưa commit. **Chưa có xác nhận máy thật.**
+
+---
+
+## Session 59 — 2026-09-26 (Ghi vận động: gọn, điền sẵn theo thói quen, giữ nhập dở 5 phút)
+
+**Làm gì:** Chủ dự án: (1) tối ưu màn Verbrennen → Aktivität eintragen, chữ vừa khung mọi ngôn ngữ; (2) tự điền hoạt
+động hay làm vào khung giờ đó; (3a) lỡ tay thoát thì mở lại vẫn còn, Huỷ ở dưới để thoát thật; (3b) nhập dở quá 5 phút
+thì làm mới.
+
+**Kết quả:**
+- Tách `components/ActivityLogSheet.tsx` khỏi `EnergyActionsBar` (remount bằng `key` mỗi lần mở). Thân cuộn, footer
+  Huỷ | Ghi ghim đáy, nhãn ngắn `categoryTabs`, cặp Phút|Bước và Từ|Đến, chữ một dòng tự co; chạm nền để đóng (giữ nháp).
+- `domain/energy/activityDraft.ts` (nháp, TTL 5 phút, `withTimes` tự tính phút từ Từ–Đến kể cả qua nửa đêm, không đè số
+  gõ tay, `draftFromPrefill`) + `store/activityDraftStore.ts` (persist). `domain/energy/activityHabit.ts`
+  (`suggestActivityPrefill`: 28 ngày, bỏ hôm nay, ±2 giờ quanh khung thường làm, ≥ 2 ngày, trọng số gần đây + cùng thứ,
+  trung vị phút/giờ bắt đầu). `lib/activityCategories.ts` (chuyển ACTIVITY_TYPES/CATEGORIES ra khỏi component).
+- Test: activityDraft, activityHabit, ActivityLogSheet (khôi phục < 5 phút, làm mới > 5 phút, lưu mỗi lần sửa, Huỷ xoá +
+  đóng, điền sẵn "như thường lệ"). Báo cáo `docs/nghien-cuu/2026-09-26-ghi-van-dong-gon-va-dien-san.md`. Skill UI thêm
+  mẫu "form trong sheet". `npm run verify` xanh (113 / 1287). EAS preview `05fc9224-881f-4da5-8f2e-52eca80c3a9a`.
+  Chưa commit (cùng Session 58). **Chưa có xác nhận máy thật.**
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

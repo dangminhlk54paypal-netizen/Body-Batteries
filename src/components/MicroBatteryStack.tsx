@@ -30,6 +30,10 @@ interface Props {
 const CELL_WIDTH = 56;
 const CELL_HEIGHT = 84;
 const BORDER_R = 6;
+// Every cell has the same fixed width so a row reads as an even grid.
+const CELL_BOX_WIDTH = CELL_WIDTH + 12;
+// Cap "larger text" scaling on the three cell lines (same idea as BatteryRing).
+const CELL_FONT_SCALE_CAP = 1.3;
 
 function byIds(states: MicroBatteryState[], ids: string[]): MicroBatteryState[] {
   return ids
@@ -68,47 +72,65 @@ function MicroCell({ state, onPress }: { state: MicroBatteryState; onPress: () =
       onPress={onPress}
       hitSlop={4}
       accessibilityRole="button"
-      accessibilityLabel={t('components.microBatteryStack.cellA11y', {
-        name,
-        percentage: state.percentage,
-      })}
+      accessibilityLabel={
+        t('components.microBatteryStack.cellA11y', { name, percentage: state.percentage }) +
+        (caption ? ` · ${caption}` : '')
+      }
     >
-      <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
-        <Rect
-          x={0}
-          y={0}
-          width={CELL_WIDTH}
-          height={CELL_HEIGHT}
-          rx={BORDER_R}
-          fill={c.bgCard}
-          stroke={state.over ? state.color : c.borderSubtle}
-          strokeWidth={2}
-        />
-        {fillHeight > 0 && (
+      <View>
+        <Svg width={CELL_WIDTH} height={CELL_HEIGHT}>
           <Rect
-            x={2}
-            y={CELL_HEIGHT - fillHeight}
-            width={CELL_WIDTH - 4}
-            height={Math.max(0, fillHeight - 2)}
-            rx={BORDER_R - 2}
-            fill={state.color}
+            x={0}
+            y={0}
+            width={CELL_WIDTH}
+            height={CELL_HEIGHT}
+            rx={BORDER_R}
+            fill={c.bgCard}
+            stroke={state.over ? state.color : c.borderSubtle}
+            strokeWidth={2}
           />
-        )}
-      </Svg>
-      <Text style={styles.cellPct}>
+          {fillHeight > 0 && (
+            <Rect
+              x={2}
+              y={CELL_HEIGHT - fillHeight}
+              width={CELL_WIDTH - 4}
+              height={Math.max(0, fillHeight - 2)}
+              rx={BORDER_R - 2}
+              fill={state.color}
+            />
+          )}
+        </Svg>
+        {/* ⓘ in the corner: tapping the cell explains the number (sources +
+            formula). The long captions ("vượt ngưỡng gợi ý"…) live there and in
+            the a11y label, so every cell below keeps the same three lines. */}
+        <Text style={styles.cellInfo} pointerEvents="none">
+          ⓘ
+        </Text>
+      </View>
+      {/* Three fixed single lines, auto-shrinking when a language's word is
+          long, so every battery in the row sits at the same height. */}
+      <Text style={styles.cellPct} numberOfLines={1} maxFontSizeMultiplier={CELL_FONT_SCALE_CAP}>
         {state.percentage}%{warn ? ' ⚠️' : ''}
       </Text>
-      <Text style={styles.cellName}>{name}</Text>
-      {/* The ⓘ says the number is explainable, not just displayed — tapping
-          the cell opens the source + formula breakdown. */}
-      <Text style={styles.cellAmount}>
-        {state.current}
-        {state.unit} ⓘ
+      <Text
+        style={styles.cellName}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        maxFontSizeMultiplier={CELL_FONT_SCALE_CAP}
+      >
+        {t(`nutrients.${state.id}.short`)}
       </Text>
-      <Text style={styles.cellTarget}>
-        {t('components.microBatteryStack.recommendedPerDay', { target: state.target, unit: state.unit })}
+      <Text
+        style={styles.cellAmount}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        maxFontSizeMultiplier={CELL_FONT_SCALE_CAP}
+      >
+        {state.current}/{state.target}
+        {state.unit}
       </Text>
-      {caption && <Text style={styles.cellCaption}>{caption}</Text>}
     </Pressable>
   );
 }
@@ -205,7 +227,7 @@ export function MicroBatteryStack({
                 {expanded
                   ? t('components.microBatteryStack.hideMore')
                   : t('components.microBatteryStack.seeMoreList', {
-                      list: more.map((s) => t(`nutrients.${s.id}.name`)).join(' · '),
+                      list: more.map((s) => t(`nutrients.${s.id}.short`)).join(' · '),
                     })}
               </Text>
             </Pressable>
@@ -314,42 +336,47 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    gap: 8,
-    alignItems: 'flex-end',
+    gap: 6,
+    // Top-aligned: the batteries line up; nothing below can push one up.
+    alignItems: 'flex-start',
   },
   cell: {
     alignItems: 'center',
-    gap: 4,
-    width: CELL_WIDTH + 8,
+    gap: 2,
+    width: CELL_BOX_WIDTH,
+  },
+  cellInfo: {
+    position: 'absolute',
+    top: 3,
+    right: 5,
+    fontSize: 9,
+    color: c.textMuted,
   },
   cellPct: {
+    marginTop: 2,
     fontSize: 12,
     fontWeight: '700',
     color: c.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   cellName: {
-    fontSize: 10,
+    width: '100%',
+    fontSize: 11,
+    fontWeight: '600',
     color: c.textSecondary,
     textAlign: 'center',
   },
   cellAmount: {
-    fontSize: 9,
+    width: '100%',
+    fontSize: 10,
     color: c.textMuted,
-  },
-  cellTarget: {
-    fontSize: 8,
-    color: c.textCool,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   recommendNote: {
     fontSize: 10,
     color: c.textMuted,
     paddingHorizontal: 20,
-  },
-  cellCaption: {
-    fontSize: 8,
-    color: c.textSubtle,
-    textAlign: 'center',
   },
   moreToggle: {
     paddingHorizontal: 20,

@@ -254,60 +254,71 @@ export const en: TranslationSchema = {
   nutrients: {
     fiber: {
       name: 'Fiber',
+      short: 'Fiber',
       underAdvice: 'Fiber is a bit low — try adding leafy greens, fruit, oats, or beans.',
       overAdvice: "Fiber is above the recommended mark — that's good, keep eating plenty of vegetables.",
     },
     iron: {
       name: 'Iron',
+      short: 'Iron',
       underAdvice: 'Iron is a bit low — try adding red meat, liver, lentils, or spinach.',
       overAdvice: "Iron is above the recommended mark — not a concern unless you're also taking supplements.",
     },
     calcium: {
       name: 'Calcium',
+      short: 'Calcium',
       underAdvice: 'Calcium is a bit low — try adding milk, yogurt, tofu, or small fish eaten with bones.',
       overAdvice:
         "Calcium is above the recommended mark — usually fine from food alone, just keep an eye on it if you're also taking calcium supplements.",
     },
     fat: {
       name: 'Fat',
+      short: 'Fat',
       underAdvice:
         "Fat is a bit low — try adding olive oil, fatty fish, or nuts (as long as your day's energy is met).",
       overAdvice: 'Fat is above the recommended mark — try cutting back on fried food and animal fat.',
     },
     potassium: {
       name: 'Potassium',
+      short: 'Potassium',
       underAdvice: 'Potassium is a bit low — try adding bananas, sweet potatoes, spinach, or oranges.',
       overAdvice: 'Potassium is above the recommended mark — usually fine when it comes from natural food.',
     },
     magnesium: {
       name: 'Magnesium',
+      short: 'Magnesium',
       underAdvice: 'Magnesium is a bit low — try adding pumpkin seeds, almonds, spinach, or black beans.',
       overAdvice:
         "Magnesium is above the recommended mark — not a concern from food alone, just keep an eye on it if you're also taking supplements.",
     },
     zinc: {
       name: 'Zinc',
+      short: 'Zinc',
       underAdvice: 'Zinc is a bit low — try adding oysters, beef, pumpkin seeds, or chickpeas.',
       overAdvice: "Zinc is above the recommended mark — not a concern unless you're also taking supplements.",
     },
     omega3: {
       name: 'Omega-3 (EPA+DHA)',
+      short: 'Omega-3',
       underAdvice: 'Omega-3 is a bit low — try adding salmon, mackerel, chia seeds, or fish oil.',
       overAdvice:
         'Omega-3 is above the recommended mark — usually safe at this level, just watch out for high-dose fish oil supplements.',
     },
     sodium: {
       name: 'Sodium (salt)',
+      short: 'Sodium',
       underAdvice: '',
       overAdvice: 'Sodium is above the suggested cap — try cutting back on fish sauce, dipping salt, canned food, or instant noodles.',
     },
     sugar: {
       name: 'Sugar',
+      short: 'Sugar',
       underAdvice: '',
       overAdvice: 'Sugar is above the suggested cap — try cutting back on soft drinks, sweets, or milk tea.',
     },
     salt: {
       name: 'Salt (NaCl)',
+      short: 'Salt',
       underAdvice: '',
       overAdvice: 'Salt is above the suggested cap — try cutting back on fish sauce, dipping salt, canned food, or instant noodles.',
     },
@@ -661,10 +672,11 @@ export const en: TranslationSchema = {
       metExplainer:
         'MET = how much energy an activity burns compared to sitting still. Pick based on how hard it feels (max {{max}} — even the most intense activities studied land around there).',
       saveActivityButton: 'Save activity',
-      powerliftingChip: '🏋️ Powerlifting (sets × reps × weight)',
-      bodybuildingChip: '💪 Bodybuilding (by muscle group)',      addActivityChip: '＋ Add activity',
-      minutesPlaceholder: 'Minutes (e.g. 45)',
-      stepsPlaceholder: 'Steps (optional)',
+      powerliftingChip: '🏋️ Powerlifting ›',
+      bodybuildingChip: '💪 Bodybuilding ›',
+      addActivityChip: '＋ Add activity',
+      minutesPlaceholder: 'e.g. 45',
+      stepsPlaceholder: 'e.g. 6000',
       timeRangeSubtitle: 'Time range (optional, leave blank = now)',
       fromTimePlaceholder: 'From HH:mm',
       toTimePlaceholder: 'To HH:mm',
@@ -673,6 +685,21 @@ export const en: TranslationSchema = {
       deleteCustomMessage: 'Remove "{{name}}" from your custom activities?',
       logDateFieldLabel: 'Log date',
       backfillNotice: '🕓 Logging for {{date}}',
+      // Short labels for the four equal-width group tabs (the full group
+      // names in activityCategories are too long for a quarter of the sheet).
+      categoryTabs: {
+        cardio: 'Cardio',
+        sports: 'Sports',
+        gym: 'Gym',
+        other: 'Other',
+      },
+      minutesLabel: 'Minutes',
+      stepsLabel: 'Steps',
+      timeLabel: '🕐 Time (optional)',
+      habitPrefill: '💡 As usual: {{activity}} · {{minutes}} min{{time}}',
+      habitPrefillTime: ' · {{start}}–{{end}}',
+      habitClear: 'Clear suggestion, start fresh',
+      draftRestored: '↺ Picking up where you left off',
     },
     microBatterySourceSheet: {
       title: '{{name}} sources',

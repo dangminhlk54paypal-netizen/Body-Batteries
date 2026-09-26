@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, TextInput, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { ACTIVITY_TYPES } from './EnergyActionsBar';
+import { ACTIVITY_TYPES } from '../lib/activityCategories';
 import { PowerliftingSheet, describeLiftingSets } from './PowerliftingSheet';
 import { BodybuildingSheet } from './BodybuildingSheet';
 import { workoutLabel, isLiftingEntry, isBodybuildingEntry } from '../lib/activityLabels';

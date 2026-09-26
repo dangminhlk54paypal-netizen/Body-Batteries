@@ -75,6 +75,16 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
 - **Danh sách thẻ ngang hàng (Cài đặt…) xếp A–Z theo tiêu đề đã dịch**: `sortByLabel(items, labelOf, language)`
   (`lib/sortByLabel.ts`) — không xếp cứng theo tiếng Việt.
 
+- **Hàng ô lặp lại (pin vi chất…) phải đều ở mọi ngôn ngữ:** ô rộng cố định, hàng `alignItems: 'flex-start'` (không
+  `flex-end` — chữ dài bên dưới sẽ đẩy hình lên), dưới hình đúng N dòng `numberOfLines={1}` + `adjustsFontSizeToFit`,
+  dùng **tên ngắn** (`nutrients.<id>.short`), gộp số thành `hiện/mục tiêu + đơn vị`; caption dài vào a11y label và sheet
+  khi chạm. Mẫu: `MicroCell` trong `MicroBatteryStack`. Kiểm tra bằng tiếng Đức.
+
+- **Form trong sheet/Modal:** thân cuộn (`ScrollView` maxHeight ~58% màn, `keyboardShouldPersistTaps="handled"`), nút
+  **Huỷ | Lưu** ghim ở đáy ngoài vùng cuộn; ô nhập đi cặp hai cột với nhãn ngắn phía trên (Phút | Bước, Từ | Đến); chữ
+  một dòng tự co. Nhập dở được giữ (lỡ tay đóng thì mở lại tiếp tục trong 5 phút), Huỷ mới xoá. Mẫu:
+  `ActivityLogSheet` + `store/activityDraftStore.ts`.
+
 ## 5. Bảng / dòng thay vì đoạn văn
 - Mỗi mục một dòng, theo cột: **tên | giá trị | ⓘ | ✎**. Mẫu: hàng bài tập trong `BlockPlanView` (`tableRow`).
 - Không lặp nhãn trên mỗi dòng (bỏ "Kế hoạch:", "Tổng buổi:"…). Số phụ như kcal để nhỏ, bên phải.
