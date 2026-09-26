@@ -25,6 +25,9 @@ interface Props {
     startAt?: number | null;
     endAt?: number | null;
   }) => void;
+  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // block drops its own heading.
+  embedded?: boolean;
 }
 
 // Blank input = user explicitly cleared the field (→ null, drop the stored
@@ -73,7 +76,7 @@ function isCustomEntry(entry: ActivityLogEntry): boolean {
   return entry.workouts.some((w) => w.type === 'custom');
 }
 
-export function TodayActivities({ entries, onDelete, onEdit }: Props) {
+export function TodayActivities({ entries, onDelete, onEdit, embedded = false }: Props) {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -142,10 +145,12 @@ export function TodayActivities({ entries, onDelete, onEdit }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionLabel}>{t('components.todayActivities.sectionLabel')}</Text>
-        {entries.length > 0 && <Text style={styles.totalKcal}>🔥 {Math.round(totalKcal)} kcal</Text>}
-      </View>
+      {!embedded && (
+        <View style={styles.headerRow}>
+          <Text style={styles.sectionLabel}>{t('components.todayActivities.sectionLabel')}</Text>
+          {entries.length > 0 && <Text style={styles.totalKcal}>🔥 {Math.round(totalKcal)} kcal</Text>}
+        </View>
+      )}
 
       {entries.length === 0 ? (
         <View style={styles.card}>

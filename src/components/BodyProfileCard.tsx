@@ -536,6 +536,6 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   errorText: { color: c.dangerStrong, fontSize: 13 },
   savedText: { color: c.accent, fontSize: 13 },
   saveBtn: { backgroundColor: c.accent, padding: 14, borderRadius: 12, alignItems: 'center' },
-  saveText: { color: c.textPrimary, fontSize: 15, fontWeight: '700' },
+  saveText: { color: c.onAccent, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.6 },
 });

@@ -26,11 +26,13 @@ import { useT } from '../i18n/useT';
 
 interface Props {
   todayLog: FoodLogEntry[];
+  // Inside a Home FoldRow: title + long hint move to the row (title, ⓘ).
+  embedded?: boolean;
 }
 
 const BUILT_IN_SUPPLEMENTS = FOOD_ITEMS.filter((f) => f.category === 'supplement');
 
-export function SupplementQuickLog({ todayLog }: Props) {
+export function SupplementQuickLog({ todayLog, embedded = false }: Props) {
   const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
   const logFood = useEnergyStore((s) => s.logFood);
@@ -89,7 +91,7 @@ export function SupplementQuickLog({ todayLog }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('components.supplementQuickLog.title')}</Text>
+      {!embedded && <Text style={styles.title}>{t('components.supplementQuickLog.title')}</Text>}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -136,7 +138,7 @@ export function SupplementQuickLog({ todayLog }: Props) {
           <Text style={styles.chipAddText}>{t('components.supplementQuickLog.addSupplementLabel')}</Text>
         </Pressable>
       </ScrollView>
-      <Text style={styles.hint}>{t('components.supplementQuickLog.hintText')}</Text>
+      {!embedded && <Text style={styles.hint}>{t('components.supplementQuickLog.hintText')}</Text>}
 
       <FoodNutritionEditModal
         visible={adding}

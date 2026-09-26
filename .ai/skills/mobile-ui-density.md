@@ -31,6 +31,10 @@ Ví dụ **Tháng › Tuần › Ngày**: mở tháng mới thấy tuần, mở 
 - **Thao tác tay luôn thắng tự động:** người dùng tự mở hoặc gập thì **nhớ lại**, không để cuộn làm mở lại. Chỉ bỏ
   lựa chọn khi có mốc mới (tuần mới). Mẫu: `store/planFoldStore.ts`, lưu trên máy bằng `persist`.
 - **Mục "hiện tại" mở sẵn:** tuần này, tháng này. Mục quá khứ gập sẵn.
+- **Danh sách khối chi tiết trên một màn tổng quan** → mỗi khối một dòng gập phẳng `components/ui/FoldRow`:
+  icon · keyword · **số chính bên phải** · ⓘ · ⌄, mở một dòng một lúc, `maxBodyHeight` cho danh sách dài. Khối bên
+  trong nhận prop `embedded` để bỏ tiêu đề trùng. Số tóm tắt tính ở domain (mẫu: `HomeScreen` +
+  `domain/battery/homeDetailsSummary.ts`).
 
 ## 3. Thông tin phụ → giấu sau một lớp biểu tượng
 Chọn biểu tượng theo chức năng, không để chữ giải thích nằm sẵn trên màn:
@@ -45,6 +49,8 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
 | **⏰ ✓** | trạng thái (đã hẹn / đã ghi) | chip nhỏ màu; bấm vào để mở menu |
 
 - Chữ in nhỏ (mô tả, công thức, disclaimer) để trong ⓘ. Trên màn chỉ còn một dòng ngắn, nếu thật cần.
+- **Số liệu chính = một dòng số + chip keyword**, câu đầy đủ vào ⓘ. Ví dụ dưới pin tổng: `2.150 / 2.000 kcal` rồi
+  chip `+150 dư` `🏃 +300` `🎯 ↓ 72 kg` ⓘ (mẫu: `MasterBattery`). Chip màu theo nghĩa (dư = warning, vận động = mint).
 - Chữ nào dài quá thì **viết ngắn lại trước**, ví dụ "Xuất Excel 7 ngày gần nhất" thành "Excel 7 ngày". Chỉ khi thật
   sự dài mới đưa vào ⓘ.
 
@@ -57,6 +63,17 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
   `scrollTo`). Mẫu: `BlockScheduleEditor`.
   - ⚠ Trong `BottomSheet`, gesture kéo sheet phải là `activeOffsetY([-10,10]).failOffsetX([-15,15])` (đã có sẵn), nếu
     không vuốt ngang sẽ kéo cả sheet.
+
+- **Chuyển giữa các tab chính:** vuốt dài ngang ở bất kỳ đâu trên màn (vòng tròn, hai chiều, kiểu pager: trang kề
+  thật trượt vào theo tay), bấm tab vẫn giữ nguyên. Mọi lần đổi tab, **các màn trượt qua nhau** (không đổi đột ngột):
+  `navigation/SlideTabNavigator.tsx` (navigator riêng) + `TabSwipe.tsx` (`withTabSwipe`) + `mainTabs.ts`. Dải trượt ngang bên trong màn tự thắng
+  (bắt pan sớm hơn) — không cần làm gì thêm khi thêm `ScrollView horizontal` mới.
+
+- **Thanh tab dưới = "sóng bong bóng":** chạm và lướt ngang trên thanh, icon phồng/nhấc theo đường cong quanh ngón
+  tay, tab dưới ngón tay mở ngay (`navigation/BubbleTabBar.tsx` + `bubbleWave.ts`). Thêm tab mới: thêm vào
+  `MAIN_TABS` / `MAIN_TAB_META` trong `mainTabs.ts`.
+- **Danh sách thẻ ngang hàng (Cài đặt…) xếp A–Z theo tiêu đề đã dịch**: `sortByLabel(items, labelOf, language)`
+  (`lib/sortByLabel.ts`) — không xếp cứng theo tiếng Việt.
 
 ## 5. Bảng / dòng thay vì đoạn văn
 - Mỗi mục một dòng, theo cột: **tên | giá trị | ⓘ | ✎**. Mẫu: hàng bài tập trong `BlockPlanView` (`tableRow`).
@@ -79,6 +96,23 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
 - Chỉ dùng token trong `lib/theme.ts` (`c.accent`, `c.textMuted`…). Màu mới thì thêm cho **cả dark lẫn light** và
   kiểm tra độ tương phản trong dark theme.
 - Phân tầng bằng kiểu chữ trước khi thêm màu: tiêu đề đậm, ngày nghiêng, số phụ nhỏ mờ.
+- **Màu mức độ = 3 vùng, không phán xét:** `c.statusGood` (đủ) / `c.statusMid` (hơi chậm) / `c.statusLow` (chậm rõ —
+  san hô dịu). Không dùng `danger`/`dangerStrong` cho "thiếu" hay "thâm hụt": đỏ chỉ để xoá dữ liệu và cảnh báo an
+  toàn thật. Màu luôn đi kèm chữ/ký hiệu. Cân bằng calo tô theo mục tiêu (`profileGoalDirection` +
+  `isBalanceTowardGoal`), không theo dấu +/−.
+- **Chữ trên nền cam** (`c.accent`, ví dụ segment đang chọn, nút Lưu): dùng `c.onAccent` (tối, ~10:1) — không dùng
+  `textPrimary` (trắng, ~1,6:1) hay `c.bg` (hỏng ở giao diện Sáng).
+- Chữ chính giao diện Tối là trắng dịu `#F0F0F7`, không phải `#fff`.
+
+## 9. Chip keyword "trạng thái + việc nên làm"
+- Tối đa **3 chip**, mỗi chip ≤ 3 từ, có số khi số giúp hành động ("Thiếu 30g đạm", "Uống thêm 2 ly"). Chỉ hiện điều
+  cần chú ý; thứ đúng nhịp thì không hiện. Mẫu: `HomeKeywordChips` + logic thuần `domain/battery/homeKeywords.ts`.
+- Nhắc theo **nhịp trong ngày**, không đòi cả phần còn lại từ sáng sớm; "chưa có dữ liệu" (0 bước, chưa ghi ngủ)
+  ≠ "thiếu" → không hiện chip.
+- Bấm chip = mở đúng chỗ xử lý (dùng lại hành động sẵn có, ví dụ bấm vào pin).
+- Cùng hình dạng chip với `MasterBattery` (cỡ 12, đậm 600, nền `bgElevated`, bo 10) — một kiểu chip cho cả Home.
+- Khoá dịch ghép động (`keywords.${id}Short`) không được `usedKeys.test.ts` bắt → thêm test riêng như
+  `i18n/__tests__/homeKeywordKeys.test.ts`.
 
 ---
 

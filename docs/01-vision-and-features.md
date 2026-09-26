@@ -88,6 +88,26 @@ Mỗi Mode thay đổi *mục tiêu nạp* và *tốc độ xả* của từng p
 - Lựa chọn được ghi nhớ qua lần mở app sau.
 - Đầy đủ i18n — i18n-covered.
 
+### 3.7. Giao diện "Tự động", chữ dịu mắt, màu không phán xét (2026-09-26)
+- Cài đặt → GIAO DIỆN có thêm **"📱 Tự động"**: app theo chế độ Sáng/Tối của iPhone. Chọn Tối/Sáng thủ công thì hộp thoại hệ thống và bàn phím cũng theo app (`app.json` → `userInterfaceStyle: "automatic"` + `Appearance.setColorScheme`).
+- Chữ chính ở giao diện Tối đổi từ trắng tinh sang trắng dịu `#F0F0F7` (bớt loá cho người loạn thị). Chữ trên nút nền cam dùng màu tối `onAccent`.
+- Token trạng thái 3 vùng `statusGood / statusMid / statusLow` (xanh bạc hà / cam / san hô dịu) — "thấp" không bao giờ dùng đỏ báo động.
+- Thẻ Cân bằng năng lượng tô màu theo **mục tiêu cân nặng** (cân nặng mục tiêu tự đặt, không có thì theo BMI WHO) thay vì cứ thâm hụt là đỏ.
+- Đủ 3 ngôn ngữ — i18n-covered. Nguồn nghiên cứu: `docs/nghien-cuu/2026-09-26-trai-nghiem-nguoi-dung.md`.
+
+### 3.8. Chip keyword trên Home (2026-09-26)
+- Dưới tiêu đề "Pin nhỏ": tối đa **3 chip** ngắn "trạng thái + việc nên làm" — ví dụ "Thiếu 30g đạm", "Uống thêm 2 ly", "Ngủ đủ".
+- Tính theo nhịp giờ trong ngày (06:00→22:00): đúng nhịp thì không hiện; chậm = cam, chậm rõ = san hô; số trên chip chỉ là phần cần bù để kịp nhịp. Chưa ghi giấc ngủ / chưa có số bước thì không hiện chip đó.
+- Bấm chip = như bấm vào pin đó (Nước/Ngủ → form ghi; Đạm/Vận động → bảng nguồn). Logic thuần `domain/battery/homeKeywords.ts` (có test). i18n-covered.
+
+### 3.9. "↻ Bữa … hôm qua" — ghi lại cả bữa trong 2 chạm (2026-09-26)
+- Màn ghi món (⚡ Nạp), khi ô tìm kiếm trống: hàng "↻ Bữa trưa hôm qua · 3 món · 650 kcal" → bấm → xác nhận → ghi lại toàn bộ món với đúng khẩu phần.
+- Bữa xác định theo khung giờ bữa ăn trong Cài đặt; ghi cho ngày cũ thì giữ đúng giờ ăn gốc; tự ẩn khi ngày đó đã ghi bữa này (tránh ghi trùng); món không còn trong danh mục bị bỏ qua. i18n-covered.
+- Chưa làm: "bữa mẫu" (cần bảng DB mới).
+
+### 3.10. Apple Health: đọc bước chân + giấc ngủ (2026-09-26, chưa nối vào pin)
+- `services/health/appleHealthSync.ts` → `getTodayStepsAndSleep()`: số bước hôm nay + giờ ngủ đêm qua (gộp khoảng ngủ trùng giữa đồng hồ và điện thoại). **Chỉ phần đọc** — chưa đưa vào pin Vận động/Ngủ để tránh đếm hai lần với số ghi tay (giữ quyết định S-F2). Cần dev-client build để thử; Expo Go trả về "unavailable".
+
 ### 4. Diary (Nhật ký) — chế độ riêng tư
 - Người dùng **ghi đè (write-only)** vào nhật ký.
 - App **không có quyền đọc lại / truy xuất** nội dung này cho mục đích phân tích → đảm bảo riêng tư.

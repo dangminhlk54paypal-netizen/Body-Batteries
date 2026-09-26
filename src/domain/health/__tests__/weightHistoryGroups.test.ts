@@ -1,4 +1,6 @@
 import {
+  isBalanceTowardGoal,
+  profileGoalDirection,
   groupWeightHistoryByMonth,
   isTrendTowardGoal,
   weightGoalDirection,
@@ -94,5 +96,32 @@ describe('isTrendTowardGoal', () => {
     expect(isTrendTowardGoal('down', 'maintain')).toBeNull();
     expect(isTrendTowardGoal('same', 'lose')).toBeNull();
     expect(isTrendTowardGoal(null, 'lose')).toBeNull();
+  });
+});
+
+describe('isBalanceTowardGoal', () => {
+  it('treats a deficit as on track only when the goal is to lose', () => {
+    expect(isBalanceTowardGoal(-300, 'lose')).toBe(true);
+    expect(isBalanceTowardGoal(-300, 'gain')).toBe(false);
+    expect(isBalanceTowardGoal(250, 'gain')).toBe(true);
+    expect(isBalanceTowardGoal(250, 'lose')).toBe(false);
+  });
+
+  it('is neutral with no goal, no balance, or a zero balance', () => {
+    expect(isBalanceTowardGoal(-300, 'maintain')).toBeNull();
+    expect(isBalanceTowardGoal(null, 'lose')).toBeNull();
+    expect(isBalanceTowardGoal(0, 'gain')).toBeNull();
+  });
+});
+
+describe('profileGoalDirection', () => {
+  it("follows the user's own goal weight when set", () => {
+    expect(profileGoalDirection(78, 168, 82)).toBe('gain');
+    expect(profileGoalDirection(78, 168, 72)).toBe('lose');
+  });
+
+  it('falls back to the WHO range with no goal (or a goal equal to today)', () => {
+    expect(profileGoalDirection(78, 168)).toBe('lose');
+    expect(profileGoalDirection(65, 168, 65)).toBe('maintain');
   });
 });

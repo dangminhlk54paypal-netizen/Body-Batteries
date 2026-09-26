@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, ScrollView, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Pressable, TextInput, FlatList, ScrollView, StyleSheet, Alert } from 'react-native';
 import { useEnergyStore } from '../store/energyStore';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { searchFoods } from '../data/food/foodSearch';
@@ -21,7 +21,8 @@ import {
   measureUnitOf,
   portionUnitNoun,
 } from '../domain/food/portionUnits';
-import { suggestFoods, type FoodSuggestion } from '../domain/food/foodSuggestions';
+import { repeatableMeal, suggestFoods, type FoodSuggestion } from '../domain/food/foodSuggestions';
+import { useSettingsStore } from '../store/settingsStore';
 import { mealTimeStatus } from '../domain/food/mealTimeStatus';
 import {
   applyCustomFoodChange,
@@ -199,6 +200,20 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     () => suggestFoods(recentLog, suggestHour),
     [recentLog, suggestHour]
   );
+  // "Lặp lại bữa hôm qua": the same meal (by the hour the sheet opened, in the
+  // user's own meal windows) on the day before the day being logged — works
+  // for backfill days too. Hidden once that day already has the meal, and
+  // foods that no longer resolve are left out of both the row and the log.
+  const mealWindows = useSettingsStore((s) => s.mealWindows);
+  const repeatMealType = mealTypeForHour(suggestHour, mealWindows);
+  const repeatMeal = useMemo(() => {
+    const meal = repeatableMeal(recentLog, logDate, repeatMealType);
+    const items = meal.items.filter((i) => getAnyFoodById(i.foodId));
+    if (items.length === meal.items.length) return meal;
+    return { items, kcal: Math.round(items.reduce((sum, i) => sum + (i.energyKcal ?? 0), 0)) };
+  }, [recentLog, logDate, repeatMealType]);
+  // The confirm is open — a second quick tap mustn't stack another Alert.
+  const repeatPromptOpen = useRef(false);
 
   // Exact matches, then — under a small heading, only when exact ones are few —
   // near-misses (typos, words run together, foreign names; see searchFoods).
@@ -369,9 +384,66 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   // low-friction suggestion.
   async function logSuggestion(suggestion: FoodSuggestion) {
     if (savingFood) return; // BUG-1 guard, same as confirm()
-    const item = getAnyFoodById(suggestion.foodId);
-    if (!item) return; // food removed from the catalog since it was last logged
+    if (!getAnyFoodById(suggestion.foodId)) return; // food removed from the catalog since it was last logged
     setSavingFood(true);
+    await logSuggestedPortion(suggestion);
+    useChargeEffectStore.getState().triggerChargePulse();
+    haptics.success();
+    handleClose();
+  }
+
+  // One tap on "↻ … hôm qua" → confirm → every item of yesterday's meal is
+  // logged with its own portion (2 taps total). Items whose food no longer
+  // resolves are skipped; the confirm names only what will be logged.
+  function repeatYesterdayMeal() {
+    if (savingFood || repeatPromptOpen.current) return;
+    const items = repeatMeal.items;
+    if (items.length === 0) return;
+    repeatPromptOpen.current = true;
+    const meal = mealLabel(repeatMealType, language);
+    Alert.alert(
+      t('components.foodLogModal.repeatConfirmTitle', { meal }),
+      items.map((i) => `• ${foodLogEntryDisplayName(i, language)}`).join('\n'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+          onPress: () => {
+            repeatPromptOpen.current = false;
+          },
+        },
+        {
+          text: t('components.foodLogModal.repeatConfirmAction', { count: items.length }),
+          onPress: async () => {
+            repeatPromptOpen.current = false;
+            setSavingFood(true);
+            try {
+              for (const item of items) await logSuggestedPortion(item);
+            } catch {
+              // Whatever was logged stays; unlock the sheet so it isn't stuck.
+              setSavingFood(false);
+              return;
+            }
+            useChargeEffectStore.getState().triggerChargePulse();
+            haptics.success();
+            handleClose();
+          },
+        },
+      ],
+      {
+        onDismiss: () => {
+          repeatPromptOpen.current = false;
+        },
+      }
+    );
+  }
+
+  // Logs one remembered portion on the selected day: today = now; a backfill
+  // day = the original time of day when known (repeat row — keeps it in the
+  // same meal), else noon. Shared by suggestion chips and the repeat row.
+  async function logSuggestedPortion(suggestion: FoodSuggestion) {
+    const item = getAnyFoodById(suggestion.foodId);
+    if (!item) return;
     const foodToLog = item.nameVi ? item : { ...item, nameVi: item.nameEn };
     if (isToday(logDate)) {
       // Unchanged today-flow (criterion #1 — must never regress).
@@ -386,7 +458,10 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     } else {
       // S-S5 (backfill): a suggestion chip tapped while a past day is
       // selected must land on that day too, never silently on today.
-      const timestamp = buildTimestampForDate(logDate, '', '');
+      const eaten = suggestion.eatenAt != null ? new Date(suggestion.eatenAt) : null;
+      const timestamp = eaten
+        ? buildTimestampForDate(logDate, String(eaten.getHours()), String(eaten.getMinutes()))
+        : buildTimestampForDate(logDate, '', '');
       if (suggestion.portionUnit && suggestion.portionUnit !== 'gram') {
         await logFoodForPastDate(foodToLog, suggestion.grams, timestamp, {
           portionUnit: suggestion.portionUnit,
@@ -396,9 +471,6 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
         await logFoodForPastDate(foodToLog, suggestion.grams, timestamp);
       }
     }
-    useChargeEffectStore.getState().triggerChargePulse();
-    haptics.success();
-    handleClose();
   }
 
   return (
@@ -487,6 +559,21 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                 onChangeText={setQuery}
                 autoFocus
               />
+              {query.trim().length === 0 && repeatMeal.items.length > 0 && (
+                <Pressable
+                  style={({ pressed }) => [styles.repeatRow, pressed && styles.pressed]}
+                  onPress={repeatYesterdayMeal}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.repeatText} numberOfLines={1}>
+                    {t('components.foodLogModal.repeatYesterday', {
+                      meal: mealLabel(repeatMealType, language),
+                      count: repeatMeal.items.length,
+                      kcal: repeatMeal.kcal.toLocaleString(LOCALE_TAGS[language]),
+                    })}
+                  </Text>
+                </Pressable>
+              )}
               {query.trim().length === 0 && suggestions.length > 0 && (
                 <View style={styles.suggestSection}>
                   <Text style={styles.suggestLabel}>{t('components.foodLogModal.suggestLabel')}</Text>
@@ -840,6 +927,15 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   list: { maxHeight: 320, flexShrink: 1 },
   empty: { color: c.textTertiary, textAlign: 'center', paddingVertical: 20 },
   suggestSection: { gap: 6 },
+  repeatRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: c.bgElevated,
+    borderWidth: 1,
+    borderColor: c.borderSubtle,
+  },
+  repeatText: { color: c.textPrimary, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
   suggestLabel: { color: c.textTertiary, fontSize: 12, fontWeight: '600' },
   suggestRow: { flexDirection: 'row', gap: 8, paddingRight: 4 },
   suggestChip: {

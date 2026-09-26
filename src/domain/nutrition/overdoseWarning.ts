@@ -8,6 +8,17 @@ import type { Language } from '../../i18n/types';
 // lib/upperLimits.ts). Deliberately gentle, referential wording only (see
 // .ai/CONTEXT.md §5): never diagnostic, never alarming/medical-claim
 // language — see t('overdose.message') in src/i18n/locales/*.ts.
+// Gentle "past a reference ceiling" flag — deliberately narrower than the
+// existing caption logic (kind==='goal' && over just means "past the daily
+// recommendation", which is fine/neutral and must NOT warn, see CONTEXT.md
+// §5). A goal-type nutrient only warns once it clears the separate Upper
+// Limit table; a limit-type nutrient (sodium/sugar/salt) warns as soon as
+// it's over its own cap, same as `state.over`.
+export function isOverReference(state: MicroBatteryState): boolean {
+  if (state.kind === 'limit') return state.over;
+  return state.current > (UPPER_LIMITS[state.id]?.value ?? Infinity);
+}
+
 export interface OverdoseWarning {
   id: MicroBatteryState['id'];
   name: string;

@@ -15,6 +15,7 @@ import { useSettingsStore } from '../store/settingsStore';
 import { useEnergyStore } from '../store/energyStore';
 import { BodyProfileCard } from '../components/BodyProfileCard';
 import { SettingsSection } from '../components/ui/SettingsSection';
+import { sortByLabel } from '../lib/sortByLabel';
 import { InfoPopover } from '../components/ui/InfoPopover';
 import { appleHealthStatusMeta } from '../components/AppleHealthStatusBadge';
 import { exportWeeklyData, exportMonthlyData } from '../services/export/excelExportService';
@@ -24,7 +25,8 @@ import {
   scheduleDailyReminder,
   cancelAllNotifications,
 } from '../services/notifications/notificationService';
-import type { ThemeColors } from '../lib/theme';
+import type { ThemeColors, ThemeMode } from '../lib/theme';
+import { useReduceMotionSetting } from '../hooks/useReduceMotionSetting';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { useT } from '../i18n/useT';
@@ -142,6 +144,12 @@ function Tile({
 
 type SectionKey = 'language' | 'body' | 'health' | 'notifications' | 'meals' | 'data' | 'interface';
 
+const THEME_LABEL_KEYS: Record<ThemeMode, string> = {
+  dark: 'settings.interface.themeDark',
+  light: 'settings.interface.themeLight',
+  system: 'settings.interface.themeSystem',
+};
+
 // ─── Main screen ───────────────────────────────────────────────────────────────
 export function SettingsScreen() {
   const { t, language } = useT();
@@ -171,8 +179,11 @@ export function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   // One card open at a time — the screen stays a short list of headings.
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  // iOS "Reduce Motion" → cards open/close instantly (LayoutAnimation, unlike
+  // Reanimated, doesn't honor that setting on its own).
+  const reduceMotion = useReduceMotionSetting();
   function toggle(key: SectionKey) {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!reduceMotion) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpenSection((cur) => (cur === key ? null : key));
   }
 
@@ -330,22 +341,20 @@ export function SettingsScreen() {
       .join(' · '),
     data: t('settings.summary.data'),
     interface: t('settings.summary.interface', {
-      theme: themeMode === 'dark' ? t('settings.interface.themeDark') : t('settings.interface.themeLight'),
+      theme: t(THEME_LABEL_KEYS[themeMode]),
       fx: onOff(particleEffectsEnabled),
     }),
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Page title */}
-        <View style={styles.titleWrap}>
-          <Text style={styles.title}>{t('settings.title')}</Text>
-          <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
-        </View>
-
-        {/* ── Language ─────────────────────────────────────────────────── */}
+  // Cards A–Z by their title in the current language (re-sorted when the
+  // language changes), so a heading is easy to find in the list.
+  const cards: { key: SectionKey; title: string; node: React.ReactNode }[] = [
+    {
+      key: 'language',
+      title: t('settings.language.sectionTitle'),
+      node: (
         <SettingsSection
+          key="language"
           icon="🌐"
           title={t('settings.language.sectionTitle')}
           summary={summaries.language}
@@ -369,9 +378,14 @@ export function SettingsScreen() {
             />
           </SettingRow>
         </SettingsSection>
-
-        {/* ── Body profile ────────────────────────────────────────────── */}
+      ),
+    },
+    {
+      key: 'body',
+      title: t('settings.bodyProfile.sectionTitle'),
+      node: (
         <SettingsSection
+          key="body"
           icon="🧬"
           title={t('settings.bodyProfile.sectionTitle')}
           summary={summaries.body}
@@ -384,9 +398,14 @@ export function SettingsScreen() {
         >
           <BodyProfileCard embedded />
         </SettingsSection>
-
-        {/* ── Health (Apple Health) ───────────────────────────────────────── */}
+      ),
+    },
+    {
+      key: 'health',
+      title: t('settings.health.sectionTitle'),
+      node: (
         <SettingsSection
+          key="health"
           icon="🏥"
           title={t('settings.health.sectionTitle')}
           summary={summaries.health}
@@ -415,9 +434,14 @@ export function SettingsScreen() {
             </Pressable>
           </View>
         </SettingsSection>
-
-        {/* ── Notifications ────────────────────────────────────────────── */}
+      ),
+    },
+    {
+      key: 'notifications',
+      title: t('settings.notifications.sectionTitle'),
+      node: (
         <SettingsSection
+          key="notifications"
           icon="🔔"
           title={t('settings.notifications.sectionTitle')}
           summary={summaries.notifications}
@@ -447,9 +471,14 @@ export function SettingsScreen() {
             />
           </SettingRow>
         </SettingsSection>
-
-        {/* ── Meal windows ─────────────────────────────────────────────── */}
+      ),
+    },
+    {
+      key: 'meals',
+      title: t('settings.mealWindows.sectionTitle'),
+      node: (
         <SettingsSection
+          key="meals"
           icon="🕐"
           title={t('settings.mealWindows.sectionTitle')}
           summary={summaries.meals}
@@ -479,9 +508,14 @@ export function SettingsScreen() {
             );
           })}
         </SettingsSection>
-
-        {/* ── Data actions ─────────────────────────────────────────────── */}
+      ),
+    },
+    {
+      key: 'data',
+      title: t('settings.data.sectionTitle'),
+      node: (
         <SettingsSection
+          key="data"
           icon="💾"
           title={t('settings.data.sectionTitle')}
           summary={summaries.data}
@@ -509,9 +543,14 @@ export function SettingsScreen() {
             <Tile icon="🗑️" label={t('settings.data.tileCleanup')} onPress={handleCleanup} danger />
           </View>
         </SettingsSection>
-
-        {/* ── Interface ────────────────────────────────────────────────── */}
+      ),
+    },
+    {
+      key: 'interface',
+      title: t('settings.interface.sectionTitle'),
+      node: (
         <SettingsSection
+          key="interface"
           icon="✨"
           title={t('settings.interface.sectionTitle')}
           summary={summaries.interface}
@@ -525,6 +564,7 @@ export function SettingsScreen() {
               options={[
                 { value: 'dark' as const, label: `🌙 ${t('settings.interface.themeDark')}` },
                 { value: 'light' as const, label: `☀️ ${t('settings.interface.themeLight')}` },
+                { value: 'system' as const, label: `📱 ${t('settings.interface.themeSystem')}` },
               ]}
               value={themeMode}
               onChange={setThemeMode}
@@ -534,6 +574,20 @@ export function SettingsScreen() {
             <Switch value={particleEffectsEnabled} onValueChange={setParticleEffectsEnabled} trackColor={{ true: c.accent }} />
           </SettingRow>
         </SettingsSection>
+      ),
+    },
+  ];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Page title */}
+        <View style={styles.titleWrap}>
+          <Text style={styles.title}>{t('settings.title')}</Text>
+          <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
+        </View>
+
+        {sortByLabel(cards, (card) => card.title, language).map((card) => card.node)}
 
         <View style={styles.disclaimerRow}>
           <Text style={styles.disclaimer}>{t('settings.disclaimerShort')}</Text>
@@ -583,7 +637,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, paddingHorizontal: 8, borderRadius: 9 },
   segmentActive: { backgroundColor: c.accent },
   segmentText: { color: c.textSecondary, fontWeight: '600', fontSize: 13 },
-  segmentTextActive: { color: c.textPrimary },
+  segmentTextActive: { color: c.onAccent },
 
   // ── Steppers ───────────────────────────────────────────────────────────────
   timeGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },

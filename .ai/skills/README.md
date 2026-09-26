@@ -30,6 +30,8 @@ AI mở file skill tương ứng và thực hiện đúng các bước trong đ�
 | [`sqlite-expo-patterns`](sqlite-expo-patterns.md) | Pattern dùng expo-sqlite đúng cách trong dự án | Khi viết/sửa tầng data (db, repositories) |
 | [`mobile-ui-density`](mobile-ui-density.md) | Giao diện gọn, chống ngợp: cửa sổ cuộn, gập theo tầng, ⓘ/✎/＋, viết tắt + trượt ngang, bố cục cân đối | **Mỗi lần** tạo/sửa thứ người dùng nhìn thấy |
 | [`add-language`](add-language.md) | Thêm ngôn ngữ hiển thị mới (ngoài Việt/Anh/Đức) cho UI + Excel | Khi muốn app hỗ trợ thêm 1 ngôn ngữ |
+| [`research-report`](research-report.md) | Nghiên cứu có trích dẫn: kiểm chứng từng thông tin với nguồn gốc, đánh dấu [n]/💡/❓ tại chỗ dùng, link đầy đủ cuối bài, lưu vào `docs/nghien-cuu/` | **Mỗi lần** được nhờ nghiên cứu, khảo sát, so sánh, lập kế hoạch dựa trên thông tin bên ngoài |
+| [`learn-with-ai`](learn-with-ai.md) | Biến tính năng/nghiên cứu AI đã làm thành công trong app thành **bài giảng** cho sinh viên năm nhất: ý tưởng từ đâu, AI biết từ đâu, từng bước, câu chuyện gỡ lỗi, bài tập, nguồn kiểm chứng; lưu vào `docs/LearnWithAI/` | Khi chủ dự án muốn "dạy lại" / "LearnWithAI" một tính năng hay |
 | [`eas-preview-publish`](eas-preview-publish.md) ⏳ *tạm thời* | Đẩy bản mới lên EAS Update (nhánh `preview`) + gửi link để thử trên iPhone | Tự động sau mỗi lượt sửa UI/logic, khi `npm run verify` đã xanh (chỉ khi team có 1 người) |
 
 ## Skills native của Claude Code (có sẵn, không cần file)

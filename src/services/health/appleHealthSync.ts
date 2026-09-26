@@ -169,3 +169,105 @@ export function calculateTotalBurned(active: number, resting: number): number {
   const r = typeof resting === 'number' && Number.isFinite(resting) ? resting : 0;
   return a + r;
 }
+
+// ── Steps + last night's sleep (read-only, not yet fed into any battery) ────
+// Kept separate from the energy request above so the existing kcal sync and
+// its permission prompt behave exactly as before. Like the kcal numbers
+// (roadmap S-F2), these are display/suggestion inputs only for now: feeding
+// them into the movement/sleep batteries would double-count what the user
+// already logs by hand. Needs a dev-client build — in Expo Go the bridge is
+// missing and this returns 'unavailable'.
+
+export interface HealthDayActivityResult {
+  status: HealthSyncStatus;
+  steps: number;
+  sleepHours: number;
+}
+
+// HealthKit sleep sample shape: `value` is a string category despite the
+// library typing it as a number.
+export interface SleepSample {
+  startDate: string;
+  endDate: string;
+  value: unknown;
+}
+
+// Asleep categories (older "ASLEEP" plus the iOS 16+ stages). INBED and
+// AWAKE don't count as sleep.
+const ASLEEP_VALUES = new Set(['ASLEEP', 'CORE', 'DEEP', 'REM']);
+
+// Pure: total hours asleep across the samples, with overlapping intervals
+// merged first — a watch and a phone often both record the same night, and
+// stage samples overlap an ASLEEP sample. Rounded to 0.1 h.
+export function sleepHoursFromSamples(samples: SleepSample[]): number {
+  const intervals = samples
+    .filter((s) => typeof s.value === 'string' && ASLEEP_VALUES.has(s.value.toUpperCase()))
+    .map((s) => [Date.parse(s.startDate), Date.parse(s.endDate)] as const)
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && b > a)
+    .sort((x, y) => x[0] - y[0]);
+  let totalMs = 0;
+  let curStart = -1;
+  let curEnd = -1;
+  for (const [a, b] of intervals) {
+    if (a > curEnd) {
+      if (curEnd > curStart) totalMs += curEnd - curStart;
+      curStart = a;
+      curEnd = b;
+    } else if (b > curEnd) {
+      curEnd = b;
+    }
+  }
+  if (curEnd > curStart) totalMs += curEnd - curStart;
+  return Math.round((totalMs / 3_600_000) * 10) / 10;
+}
+
+// Last night = from 18:00 yesterday until now.
+function lastNightWindow(now: Date): HealthInputOptions {
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 18);
+  return { startDate: start.toISOString(), endDate: now.toISOString() };
+}
+
+function isStepsSleepLinked(): boolean {
+  return (
+    typeof AppleHealthKit?.initHealthKit === 'function' &&
+    typeof AppleHealthKit?.isAvailable === 'function' &&
+    typeof AppleHealthKit?.getStepCount === 'function' &&
+    typeof AppleHealthKit?.getSleepSamples === 'function'
+  );
+}
+
+function requestStepsSleepPermission(): Promise<boolean> {
+  const permissions: HealthKitPermissions = {
+    permissions: {
+      read: [AppleHealthKit.Constants.Permissions.StepCount, AppleHealthKit.Constants.Permissions.SleepAnalysis],
+      write: [],
+    },
+  };
+  return new Promise((resolve) => {
+    AppleHealthKit.initHealthKit(permissions, (error: string) => resolve(!error));
+  });
+}
+
+// Today's step count + hours asleep last night. Never throws.
+export async function getTodayStepsAndSleep(now: Date = new Date()): Promise<HealthDayActivityResult> {
+  if (!isStepsSleepLinked()) return { status: 'unavailable', steps: 0, sleepHours: 0 };
+  if (!(await checkIsAvailable())) return { status: 'unavailable', steps: 0, sleepHours: 0 };
+  if (!(await requestStepsSleepPermission())) return { status: 'permission_denied', steps: 0, sleepHours: 0 };
+
+  try {
+    const [stepResult, sleepSamples] = await Promise.all([
+      new Promise<HealthValue>((resolve, reject) => {
+        AppleHealthKit.getStepCount({ date: now.toISOString() }, (err, result) =>
+          err ? reject(new Error(err)) : resolve(result)
+        );
+      }),
+      querySamples(AppleHealthKit.getSleepSamples.bind(AppleHealthKit), lastNightWindow(now)),
+    ]);
+    const steps = Number.isFinite(stepResult?.value) ? Math.round(stepResult.value) : 0;
+    const sleepHours = sleepHoursFromSamples(sleepSamples as unknown as SleepSample[]);
+    if (steps === 0 && sleepHours === 0) return { status: 'no_data', steps: 0, sleepHours: 0 };
+    return { status: 'success', steps, sleepHours };
+  } catch {
+    return { status: 'error', steps: 0, sleepHours: 0 };
+  }
+}

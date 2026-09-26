@@ -506,6 +506,7 @@ export const vi = {
       themeSectionLabel: 'Chủ đề',
       themeDark: 'Tối',
       themeLight: 'Sáng',
+      themeSystem: 'Tự động',
     },
     disclaimer:
       '⚠️ App này chỉ để tham khảo cá nhân — không phải thiết bị y tế. Hãy gặp chuyên gia y tế trước khi thay đổi chế độ dinh dưỡng.',
@@ -533,7 +534,18 @@ export const vi = {
   screens: {
     home: {
       loading: 'Đang khởi động pin...',
-      subBatteriesLabel: 'Các pin nhỏ — bấm để nạp / xem nguồn ⚡',
+      subBatteriesTitle: 'Pin nhỏ',
+      // Home keyword chips (≤ 3 từ): trạng thái + việc nên làm, không phán xét.
+      keywords: {
+        proteinShort: 'Thiếu {{amount}}g đạm',
+        proteinDone: 'Đủ đạm',
+        waterShort: 'Uống thêm {{amount}} ly',
+        waterDone: 'Đủ nước',
+        sleepShort: 'Thiếu {{amount}}h ngủ',
+        sleepDone: 'Ngủ đủ',
+        movementShort: 'Thêm {{amount}} bước',
+        movementDone: 'Đủ vận động',
+      },
       hint: 'Kéo xuống để làm mới • Nước/Giấc ngủ: bấm để nạp — pin khác: bấm để xem nguồn',
       recommendNoteMale: 'KN = mức khuyến nghị chung cho nam {{age}} tuổi — không phải chỉ định y tế.',
       recommendNoteFemale: 'KN = mức khuyến nghị chung cho nữ {{age}} tuổi — không phải chỉ định y tế.',
@@ -555,6 +567,35 @@ export const vi = {
       // the three today-log lists) — expanded by default, purely a scan-
       // ability aid, never hides data from existing users.
       detailsSectionTitle: 'Chi tiết hôm nay',
+      // One folded row per block below the batteries: keyword title + key
+      // number on the right; the block opens on tap (one at a time).
+      details: {
+        meals: 'Đã ăn',
+        activities: 'Vận động',
+        balance: 'Cân bằng',
+        micro: 'Vi chất',
+        supplements: 'TPCN',
+        intakes: 'Nạp nhanh',
+        empty: 'Chưa ghi',
+        mealsSummary: '{{kcal}} kcal · {{count}} món',
+        activitiesSummary: '{{kcal}} kcal · {{count}} mục',
+        microSummary: '{{count}} vi chất',
+        microWarnSuffix: ' · ⚠️ {{count}}',
+        supplementsSummary: '{{count}} liều',
+        intakesSummary: '{{count}} lần',
+        balanceInfo: 'Đã đốt (Apple Health, hoặc ước tính theo BMR) so với đã ăn hôm nay.',
+        modeSingleA11y: 'Đang xem một mục mỗi lần. Chạm để xem tối đa 3 mục cùng lúc',
+        modeMultiA11y: 'Đang xem tối đa 3 mục cùng lúc. Chạm để về một mục mỗi lần',
+        modeInfoTitle: 'Xem nhiều mục',
+        modeInfo:
+          'Mặc định mỗi lần mở một mục. Bật ⧉ để mở tối đa 3 mục cùng lúc — mở mục thứ 4 thì mục mở lâu nhất tự gập, các khung thu nhỏ để cùng nằm trên một màn.',
+        modeLearnInfo:
+          'App để ý cách bạn xem (chỉ lưu trên máy) và sẽ gợi ý đổi khi thấy hợp. Chỉ đổi khi bạn đồng ý.',
+        suggestMulti: 'Bạn hay mở nhiều mục liền nhau. Xem tối đa 3 mục cùng lúc?',
+        suggestSingle: 'Gần đây bạn chỉ xem một mục mỗi lần. Về lại một mục?',
+        suggestAccept: 'Đổi',
+        suggestLater: 'Để sau',
+      },
     },
     history: {
       title: 'Lịch sử 7 ngày',
@@ -743,6 +784,9 @@ export const vi = {
       searchSubtitle: 'Tìm món trong danh sách rồi chọn',
       searchPlaceholder: 'Tìm món (ví dụ: cơm, gà, cá...)',
       suggestLabel: 'Gợi ý cho bữa này',
+      repeatYesterday: '↻ {{meal}} hôm qua · {{count}} món · {{kcal}} kcal',
+      repeatConfirmTitle: '↻ {{meal}} hôm qua',
+      repeatConfirmAction: 'Ghi {{count}} món',
       emptyResults: 'Không tìm thấy món nào.',
       similarHeader: 'Gần giống:',
       similarHeaderNoExact: 'Không có món khớp đúng. Có phải bạn tìm:',
@@ -1022,6 +1066,12 @@ export const vi = {
       directionUp: 'tăng lên',
       targetLineWithGoal: 'Cần ~{{target}} kcal/ngày để đạt {{weight}} kg · BMR ~{{bmr}}',
       targetLineMaintain: 'Duy trì cân nặng: ~{{maintenance}} kcal/ngày · BMR ~{{bmr}}',
+      kcalStat: '{{eaten}} / {{goal}} kcal',
+      activityChip: '🏃 +{{amount}}',
+      goalChipDown: '🎯 ↓ {{weight}} kg',
+      goalChipUp: '🎯 ↑ {{weight}} kg',
+      overChip: '+{{amount}} dư',
+      tapHint: 'Chạm vào pin để xem khuyến nghị hằng ngày.',
       // VoiceOver/TalkBack summary for the SVG graphic only — the Text
       // elements below it (ledger/goal/disclaimer) are already read normally.
       a11yLabel: 'Biểu đồ pin năng lượng: {{percentage}} phần trăm',

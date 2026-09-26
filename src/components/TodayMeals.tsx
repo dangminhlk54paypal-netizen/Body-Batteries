@@ -35,6 +35,9 @@ interface Props {
   entries: FoodLogEntry[];
   onDelete: (id: string) => void;
   onEdit: (id: string, patch: { grams?: number; count?: number }) => void;
+  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // block drops its own heading.
+  embedded?: boolean;
 }
 
 function timeLabel(timestamp: number): string {
@@ -65,7 +68,7 @@ function countFieldLabel(entry: FoodLogEntry, language: Language, t: TFn): strin
   });
 }
 
-export function TodayMeals({ entries, onDelete, onEdit }: Props) {
+export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Props) {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -128,9 +131,20 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionLabel}>{t('components.todayMeals.sectionLabel')}</Text>
+        {embedded ? (
+          <Text style={styles.macroLineInline} numberOfLines={1}>
+            {entries.length > 0 &&
+              t('components.todayMeals.macroLine', {
+                protein: summary.totalProteinG,
+                carb: summary.totalCarbG,
+                fat: summary.totalFatG,
+              })}
+          </Text>
+        ) : (
+          <Text style={styles.sectionLabel}>{t('components.todayMeals.sectionLabel')}</Text>
+        )}
         <View style={styles.headerRight}>
-          <Text style={styles.totalKcal}>⚡ {summary.totalKcal} kcal</Text>
+          {!embedded && <Text style={styles.totalKcal}>⚡ {summary.totalKcal} kcal</Text>}
           {entries.length > 0 && (
             <Pressable
               onPress={handleShare}
@@ -155,13 +169,15 @@ export function TodayMeals({ entries, onDelete, onEdit }: Props) {
         </View>
       ) : (
         <>
-          <Text style={styles.macroLine}>
-            {t('components.todayMeals.macroLine', {
-              protein: summary.totalProteinG,
-              carb: summary.totalCarbG,
-              fat: summary.totalFatG,
-            })}
-          </Text>
+          {!embedded && (
+            <Text style={styles.macroLine}>
+              {t('components.todayMeals.macroLine', {
+                protein: summary.totalProteinG,
+                carb: summary.totalCarbG,
+                fat: summary.totalFatG,
+              })}
+            </Text>
+          )}
           {summary.groups.map((group) => (
             <View key={group.mealType} style={styles.card}>
               <View style={styles.mealHeader}>
@@ -285,6 +301,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   // Far enough off-canvas that it can never intrude, at any screen size.
   offscreen: { position: 'absolute', top: -100000, left: 0 },
   macroLine: { fontSize: 12, color: c.textSubtle, marginTop: -4 },
+  macroLineInline: { flex: 1, fontSize: 12, color: c.textSubtle },
   card: {
     backgroundColor: c.bgHighlight,
     borderRadius: 14,

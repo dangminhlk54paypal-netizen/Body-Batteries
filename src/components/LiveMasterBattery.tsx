@@ -29,6 +29,15 @@ function goalLabelFor(weightKg: number, goalWeightKg: number | undefined, t: TFn
   return t('components.masterBattery.goalLine', { direction, weight: goalWeightKg });
 }
 
+// Short on-screen chip for the same goal, e.g. "🎯 ↓ 72 kg".
+function goalChipFor(weightKg: number, goalWeightKg: number | undefined, t: TFn): string | undefined {
+  if (goalWeightKg === undefined || goalWeightKg === weightKg) return undefined;
+  return t(
+    goalWeightKg < weightKg ? 'components.masterBattery.goalChipDown' : 'components.masterBattery.goalChipUp',
+    { weight: goalWeightKg }
+  );
+}
+
 // Builds the small estimate line under the goal label, e.g.
 // "Cần ~1800 kcal/ngày để đạt 65 kg · BMR ~1500" (goal set) or
 // "Duy trì cân nặng: ~2100 kcal/ngày · BMR ~1600" (no goal). Pure derivation
@@ -70,6 +79,7 @@ export function LiveMasterBattery() {
           goalLabel={goalLabelFor(profile.weightKg, profile.goalWeightKg, t)}
           activityBonusKcal={activityBonusKcal}
           targetLine={targetLineFor(profile, t, language)}
+          goalChip={goalChipFor(profile.weightKg, profile.goalWeightKg, t)}
         />
       </Pressable>
       <BodyRecommendationsSheet visible={sheetVisible} onClose={() => setSheetVisible(false)} />

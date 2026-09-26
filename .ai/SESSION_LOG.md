@@ -2551,6 +2551,238 @@ ngang; và cập nhật skill đã tinh chỉnh sau mỗi lần làm việc.
 
 ---
 
+## Session 49 — 2026-09-26 (Pin Hôm Nay gọn: số + chip thay chữ; vuốt dài đổi tab vòng tròn)
+
+**Làm gì:** Người dùng: màn Pin Hôm Nay quá nhiều chữ → chỉ giữ keyword + thông số quan trọng; và vuốt dài
+trái/phải để chuyển 5 tab chính theo vòng tròn (mượt mắt), vẫn giữ bấm tab như cũ.
+
+**Kết quả:**
+- Pin tổng (`MasterBattery`): dưới pin chỉ còn 1 dòng số `2.150 / 2.000 kcal` + chip `+150 dư`, `🏃 +300`,
+  `🎯 ↓ 72 kg` + ⓘ. Câu dài (sổ calo, mục tiêu, kcal/ngày + BMR, "chạm pin để xem khuyến nghị", disclaimer) vào ⓘ.
+- Home: tiêu đề + ngày cùng 1 dòng; "Pin nhỏ" + ⓘ (thay nhãn dài và dòng gợi ý cuối trang).
+- "Chi tiết hôm nay": 6 dòng gập `FoldRow` (icon · keyword · số chính · ⓘ · ⌄) — Đã ăn, Vận động, Cân bằng,
+  Vi chất, TPCN, Nạp nhanh; mặc định gập hết, mở một dòng một lúc, danh sách dài cuộn trong khung (300–360).
+  Các khối bên trong có prop `embedded` (bỏ tiêu đề trùng; ghi chú KN + disclaimer vi chất, gợi ý TPCN vào ⓘ).
+  Số tóm tắt từ `domain/battery/homeDetailsSummary.ts` (thuần, có test); `isOverReference` chuyển sang
+  `domain/nutrition/overdoseWarning.ts`.
+- Vuốt tab: `navigation/mainTabs.ts` (thứ tự tab, `cycleTab` vòng tròn, `swipeStep` ngưỡng 30% màn hoặc
+  flick ≥ 12% + 800 px/s) + `navigation/TabSwipe.tsx` (HOC `withTabSwipe`: Pan RNGH `activeOffsetX ±25`,
+  `failOffsetY ±18`; trang theo tay 50% + pill icon/tên tab đích mờ dần hiện ở mép; thả qua ngưỡng → trang mới
+  trượt vào 260 ms ease-out; "Giảm chuyển động" của iOS → đổi ngay không animation). Không thêm thư viện.
+- Test mới: mainTabs, homeDetailsSummary, HomeScreen (gập/mở), MasterBattery (chip, câu dài không lộ ra).
+  i18n đủ vi/en/de. `npm run verify` xanh (99 suites / 1208 tests).
+- EAS preview: group `5d8045de-4abc-40c0-8744-1abb290c57c4`, publish từ working tree. **Chưa có xác nhận test máy thật.**
+
+**Vấn đề gặp phải & Cách giải quyết:** Test render component có Reanimated 4 cần mock cả
+`react-native-worklets/src/mock` và `react-native-reanimated/mock` (xem `components/__tests__/MasterBattery.test.tsx`).
+Vuốt tab dựa vào việc UIScrollView ngang bắt pan sớm hơn (~10 px) → các dải trượt ngang bên trong vẫn thắng — cần
+xác nhận trên iPhone.
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử trên iPhone: vuốt dài qua 5 tab hai chiều, vuốt trên dải TPCN / ngày vi chất / lịch tuần Tập
+   luyện không bị đổi tab nhầm; các dòng Chi tiết gập/mở.
+2. Nếu vuốt dễ bị kích hoạt nhầm → tăng `SWIPE_DISTANCE_RATIO` / `activeOffsetX` trong `mainTabs.ts` / `TabSwipe.tsx`.
+
+---
+
+## Session 50 — 2026-09-26 (Cài đặt xếp A–Z; thanh tab "sóng bong bóng")
+
+**Làm gì:** Người dùng: (1) các thẻ Cài đặt xếp theo alphabet; (2) chạm vào thanh tab và lướt ngón tay → các icon
+phồng thành bong bóng, nhô theo đường cong quanh ngón tay (kiểu Dock macOS), lướt qua tab nào mở ngay tab đó
+(người dùng chọn kiểu này thay vì "bánh xe vòng cung").
+
+**Kết quả:**
+- `lib/sortByLabel.ts` (Intl.Collator theo `LOCALE_TAGS[language]`: vi Đ sau D, de Ä cùng A) — `SettingsScreen`
+  dựng mảng `cards` rồi sắp theo tiêu đề đã dịch, đổi ngôn ngữ là thứ tự đổi theo. Test thứ tự vi/en.
+- `navigation/BubbleTabBar.tsx` (tabBar tuỳ chỉnh): Pan `minDistance(0)` trên thanh; mỗi icon nhấc lên
+  `-22px` và phóng `×1.5` theo đường chuông (`navigation/bubbleWave.ts`: `bubbleInfluence`, `tabIndexAt`,
+  `tabCenterX`, có test); tab dưới ngón tay mở ngay + haptic `selection()`; thả tay → sóng lăn về giữa tab và lún
+  xuống (spring). Bấm thường vẫn như cũ (phát `tabPress`). "Giảm chuyển động" → không phồng/nhấc. VoiceOver: mỗi tab
+  `accessibilityRole="tab"` + `onAccessibilityTap`. Không thêm thư viện.
+- Test render dùng Reanimated cần thêm `useReducedMotion: () => false` vào mock (mock gốc không có).
+- `npm run verify` xanh (102 suites / 1217 tests). EAS preview group `bbc18ac1-9001-43fa-9e9c-1ef5f9f35bf9`,
+  từ working tree. **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử trên iPhone: lướt thanh tab (độ cao sóng, độ nhạy, haptic), bấm thường, vuốt dài trên màn
+   (Session 49) vẫn chạy cùng thanh tab mới.
+2. Nếu sóng quá cao/thấp → chỉnh `LIFT` / `SWELL` trong `BubbleTabBar.tsx`.
+
+---
+
+## Session 51 — 2026-09-26 (Màn hình trượt qua nhau khi đổi tab)
+
+**Làm gì:** Người dùng: khi lướt thanh tab, muốn cảm giác các màn trượt qua nhau thay vì đổi đột ngột.
+
+**Kết quả:**
+- `@react-navigation/bottom-tabs` v6 ẩn màn cũ ngay lập tức (react-native-screens `activityState 0` → `display:none`),
+  nên không thể làm transition. Thay bằng navigator riêng `navigation/SlideTabNavigator.tsx` (TabRouter +
+  `useNavigationBuilder` + `createNavigatorFactory` của `@react-navigation/native`, không thêm thư viện): mỗi trang là
+  một `Animated.View` absoluteFill, `translateX = pageOffsets[tab] × width`. Đổi tab → trang mới trượt vào từ một
+  phía, mọi trang còn trên màn trượt ra phía kia (300 ms ease-out). Kế hoạch trượt thuần: `slideTransition.ts`
+  (`slidePlan`, `slideDirection`, có test); offset sống: `pageOffsets.ts` (makeMutable, module-level).
+- Trang đã mở giữ mounted + mount sẵn 2 tab kề tab đang xem; trang khuất `pointerEvents none` + ẩn khỏi VoiceOver.
+- Vuốt dài (`TabSwipe.tsx`) thành kiểu pager: trang theo tay 1:1, trang kề thật trượt vào cạnh; thả qua ngưỡng →
+  navigator hoàn tất từ vị trí đang dở (`setPendingDirection` cho trường hợp vòng Settings → Home). Bỏ pill icon cũ.
+- `BubbleTabBar` nhận `SlideTabBarProps`. Test: slideTransition, SlideTabNavigator (mount kề, offset sau khi bấm).
+  Test cần mock `react-native-safe-area-context/jest/mock` (SafeAreaProvider render rỗng trong jest nếu không mock) và
+  thay `pageOffsets` (mock `makeMutable` của Reanimated trả số trần, không có `.value`).
+- `npm run verify` xanh (104 suites / 1224 tests). EAS preview group `ac967763-327f-4b96-9dca-ff777a26981e`, từ
+  working tree. **Chưa có xác nhận test máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử: bấm/lướt thanh tab, vuốt dài — trang trượt mượt, không nháy trắng, không giật khi lướt nhanh.
+2. Theo dõi hiệu năng: giờ các tab đã mở không bị tách khỏi cây view nữa; nếu thấy chậm → cân nhắc ẩn hẳn trang ở
+   xa (offset ±1 khi không animate).
+
+---
+
+## Session 52 — 2026-09-26 (Phòng Nghiên cứu Chiến lược Tiêu dùng; UX Đợt 0–3: Tự động, màu dịu, chip keyword, lặp bữa hôm qua)
+
+**Làm gì:** Người dùng nhờ nghiên cứu xu hướng app sức khoẻ + trải nghiệm (số & keyword, thao tác mượt, màu dịu mắt,
+lớp dự đoán) và mở "phòng ban" nghiên cứu trong bộ agent; sau đó duyệt triển khai luôn Đợt 0–3 của báo cáo.
+
+**Kết quả:**
+- Báo cáo có trích dẫn từng dòng + 18 nguồn: `docs/nghien-cuu/2026-09-26-trai-nghiem-nguoi-dung.md` (bản 2 có mục
+  Đính chính, mục 10 Triển khai: đánh giá, khó khăn, rủi ro, checklist). Bản HTML: claude.ai artifact `2C4zF2ySn1qmQr19k2gSp1`.
+- Đợt 0: agent `consumer-research` (`.claude/agents/`, con trỏ `.ai/agents/`, dòng trong README).
+- Đợt 1: `theme.ts` — chữ chính dark `#F0F0F7`; token `statusGood/Mid/Low`, `onAccent`; `ThemeMode` + `resolveThemeMode`.
+  Giao diện "📱 Tự động" (`useResolvedThemeMode`, `app.json` `userInterfaceStyle: "automatic"`, `Appearance.setColorScheme`
+  trong `App.tsx` để Tối/Sáng thủ công kéo theo hộp thoại hệ thống). `EnergyBalanceCard` tô màu theo mục tiêu
+  (`profileGoalDirection` + `isBalanceTowardGoal` trong `weightHistoryGroups.ts`; `WeekRingsCard` dùng chung, hành vi
+  giữ nguyên). Cài đặt bỏ `LayoutAnimation` khi bật Giảm chuyển động (`useReduceMotionSetting`, dùng `AccessibilityInfo`).
+- Đợt 2: chip keyword dưới "Pin nhỏ" — `domain/battery/homeKeywords.ts` (nhịp 06–22h, chỉ nhắc phần cần bù),
+  `components/HomeKeywordChips.tsx`, `hooks/useCurrentHour.ts`; bấm chip = `handleCellPress`.
+- Đợt 3: "↻ Bữa … hôm qua" trong `FoodLogModal` (`previousDayMeal`/`repeatableMeal` trong `foodSuggestions.ts`; theo
+  `mealWindows`; ngày cũ giữ giờ gốc; ẩn khi đã ghi bữa đó). Apple Health `getTodayStepsAndSleep` +
+  `sleepHoursFromSamples` — chỉ đọc, CHƯA nối vào pin (giữ S-F2, tránh đếm hai lần).
+- i18n đủ vi/en/de (`screens.home.keywords.*`, `components.foodLogModal.repeat*`, `settings.interface.themeSystem`).
+  Skill `mobile-ui-density` thêm mục màu 3 vùng/`onAccent` và mục 9 "Chip keyword". `docs/01` mục 3.7–3.10.
+- `qa-reviewer` 1 lượt: 3 lỗi thật + 3 nên sửa → đã sửa hết. `npm run verify` xanh (108 suites / 1257 tests).
+- EAS preview: group `d7d26fb6-6b5c-417d-a2d3-ca1801da231e`, publish từ working tree (gồm cả việc chưa commit của
+  Session 49–51). **Chưa có xác nhận test máy thật.** Chưa commit.
+
+**Vấn đề gặp phải & Cách giải quyết:**
+- Làm song song với session `bodybatteries-84` (Session 49–51, ~22 file chưa commit, trùng HomeScreen/Settings/locales):
+  nhắn chia file qua SendMessage, sửa chồng lên, không stash/reset. Đợt 2 thu hẹp vì Session 49 đã gọn Home.
+- Báo cáo bản 1 có 4 giả định sai về code (đỏ cho "thấp", Reduce Motion, `#EAEAF2`, Home chưa gọn) → mục Đính chính.
+  Reanimated 4 mặc định `ReduceMotion.System`; chỉ `LayoutAnimation` cần tự chặn.
+- Nhập `useReducedMotion` (Reanimated) vào SettingsScreen làm vỡ `SettingsScreen.test` của session khác (không mock
+  Reanimated) → dùng `AccessibilityInfo` thay vì sửa test của họ.
+- Đổi chữ chính sang trắng dịu làm chữ trên nút cam tệ hơn (1,83 → 1,61:1) → token `onAccent` cho Cài đặt + nút Lưu hồ sơ;
+  các nút cam khác (nhóm Tập luyện dùng `c.bg`, hỏng ở giao diện Sáng) để đợt dọn màu.
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử trên iPhone theo checklist ở mục 10 của báo cáo (Tự động/Tối/Sáng, màu cân bằng, chip keyword theo giờ,
+   lặp bữa hôm qua cho hôm nay + ngày cũ). ❓ Kiểm tra Expo Go có áp dụng `userInterfaceStyle: "automatic"` không.
+2. Chủ app ghi nhật ký dùng thật 1 tuần → `consumer-research` viết báo cáo số 2.
+3. Commit: phối hợp với session 49–51 (cùng file), stage theo file/hunk; không `git add -A`.
+4. Sau test: đợt dọn màu (`onAccent` cho mọi nút cam), nhịp chip theo khung giờ bữa ăn, "bữa mẫu" (bảng DB mới),
+   quy tắc gộp Apple Health bước/ngủ với số ghi tay trước khi nối vào pin (cần dev-client build).
+
+---
+
+## Session 53 — 2026-09-26 (Thả tay thì thanh tab và trang luôn về vị trí ban đầu)
+
+**Làm gì:** Người dùng: lướt qua lại giữa các tab rồi thả tay, khung tab phải về vị trí ban đầu (đang bị kẹt đến khi
+chạm chỗ khác).
+
+**Kết quả:** `BubbleTabBar` và `TabSwipe` dựng gesture một lần (`useMemo` + hàm dựng ngoài component
+`buildScrubGesture` / `buildSwipeGesture`), `selectTab` ổn định (đọc `navigation.getState()`), logic thả tay trong
+`onFinalize` (luôn chạy, kể cả bị huỷ). Bài học: `.ai/skills/learned/gesture-rebuilt-each-render-drops-release.md`.
+`npm run verify` xanh (108 suites / 1257 tests, gồm việc của Session 52). EAS preview group
+`8298094f-6af8-41fe-bc91-18ea03d9b12f`, từ working tree (chứa cả việc Session 49–53). **Chưa có xác nhận test máy
+thật** — nguyên nhân suy từ code, chưa tái hiện trên máy.
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử lại: lướt nhanh qua lại trên thanh tab và vuốt dài trên màn, thả tay → phải về ngay.
+2. Commit (Session 49–53 vẫn chưa commit; hai phiên dùng chung file → stage theo file/hunk hoặc gộp một commit).
+
+---
+
+## Session 54 — 2026-09-26 (Bong bóng hạ ngay khi nhấc tay; nghiên cứu "xem nhiều mục cùng lúc")
+
+**Làm gì:** (1) Người dùng: bong bóng thanh tab vẫn không tự hạ ngay khi buông tay (mục 2, 3 của checklist Session 53
+thì OK). (2) Nghiên cứu có bài báo khoa học: thói quen mở liên tiếp 2–3 mục để nhìn cùng lúc (vd. Đã ăn + Vận động).
+
+**Kết quả:**
+- Test mới "keeps the same tab-bar gesture across tab switches" (mock `useSharedValue` ổn định) → gesture KHÔNG bị dựng
+  lại. Giả thuyết Session 53 sai một phần; đã ghi đính chính trong `learned/gesture-rebuilt-each-render-drops-release.md`.
+- `BubbleTabBar`: hạ bong bóng ở `onTouchesUp` (hết ngón) + `onTouchesCancelled` + `onFinalize` qua `settleBubbles`
+  (chỉ chạy một lần mỗi lượt chạm), `withTiming` 180 ms thay spring; callback chọn tab đi qua forwarder module-level
+  `selectFromGesture` (gesture chỉ phụ thuộc `count`, `reduceMotion`).
+- `npm run verify` xanh (108 suites / 1258 tests). EAS preview group `5fce1a49-760f-4138-9091-531d6278f888`, từ working
+  tree. **Chưa có xác nhận máy thật.**
+- Báo cáo `docs/nghien-cuu/2026-09-26-xem-nhieu-muc-cung-luc.md` (NN/g, Gleicher 2011, Cockburn 2008, Shneiderman
+  1996, Cowan 2001, Apple HIG, GhostUI CHI'26, Apple Health Pinned): đề xuất mở chồng tối đa 3, khung co giãn, 📌 ghim
+  bằng nhấn giữ, chụm/mở hai ngón + nút ⊕/⊖. Chờ chủ dự án chốt (mục 4 của báo cáo).
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử lại bong bóng (lướt rồi nhấc tay).
+2. Chủ dự án chốt 4 câu hỏi trong báo cáo → triển khai A + B, rồi C, D; sửa luật "một mục một lúc" trong
+   `mobile-ui-density.md` nếu được duyệt.
+3. Commit Session 49–54 (+ Session 52 của phiên khác) — chủ dự án chưa chọn cách commit.
+
+---
+
+## Session 55 — 2026-09-26 (Home: xem tối đa 3 mục + máy học thói quen gợi ý)
+
+**Làm gì:** Chủ dự án: chưa đặt luật chung (còn nghiên cứu thói quen user). Mặc định vẫn 1 mục; thêm tính năng mở tối
+đa 3 mục cho ai có thói quen quan sát nhiều thông tin; máy hiểu thói quen thao tác → gợi ý và đổi theo ý họ. Triển
+khai A + B của báo cáo `docs/nghien-cuu/2026-09-26-xem-nhieu-muc-cung-luc.md`.
+
+**Kết quả:**
+- `domain/habits/detailViewHabit.ts` (thuần, 10 test): `toggleOpen` (tối đa N, gập mục cũ nhất), `addOpenEvent`
+  (giữ 14 ngày / 60 lần), `suggestViewMode` (1 mục → gợi ý nhiều khi ≥ 3 "quick switch" ≤ 20 s trên ≥ 2 ngày/7 ngày;
+  nhiều → gợi ý 1 khi 10 lần mở gần nhất trên ≥ 2 ngày đều chỉ 1 mục; im 14 ngày khi bấm ✕).
+- `store/homeDetailsStore.ts` (persist AsyncStorage): mode, log, snoozedUntil, suggestion (tính khi mở mục, không
+  đọc đồng hồ trong render — `Date.now()` nằm trong action của store để qua lint `react-hooks/purity`).
+- Home: nút **⧉ 1 / ⧉ 3** + ⓘ cạnh "Chi tiết hôm nay"; dòng gợi ý `DetailsViewSuggestion` (💡 · Đổi · ✕); ≥ 2 mục
+  mở thì mỗi khung cuộn 220 px. i18n vi/en/de. Không sửa luật chung trong `mobile-ui-density.md` (theo ý chủ dự án).
+- `npm run verify` xanh (109 suites / 1270 tests). EAS preview `0cf13cb3-4979-428a-bf71-0fd17424fb18`, từ working
+  tree. **Chưa có xác nhận máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử nút ⧉, mở 3–4 mục, xem khung co lại; thử bong bóng thanh tab (Session 54).
+2. Thảo luận tiếp: ghim, chụm/mở hai ngón, nhớ cặp mục hay mở cùng nhau, gợi ý theo giờ (báo cáo mục 5).
+3. Commit Session 49–55 (+52) — chủ dự án chưa chọn cách commit.
+
+---
+
+## Session 56 — 2026-09-26 (Gốc thật: bong bóng không hạ khi nhấc tay)
+
+**Làm gì:** Người dùng: bong bóng vẫn không biến mất khi bỏ tay khỏi màn hình (sau 2 lần sửa ở Session 53, 54).
+
+**Kết quả:** Gốc thật: 3 `useAnimatedStyle` của `BubbleItem` đọc shared value qua hàm phụ `lift()` → Reanimated không
+thấy phụ thuộc (`extractInputs` không duyệt function) → style chỉ cập nhật khi React render lại. Sửa: đọc `.value` trực
+tiếp trong từng updater, tính bằng worklet thuần `liftAmount(...)` ở cấp module. Đã quét toàn `src`: chỉ chỗ này mắc.
+Bài học mới `learned/animated-style-must-read-shared-values-directly.md`; ghi chú 2 giả thuyết trước không phải gốc.
+`npm run verify` xanh (109 / 1270). EAS preview `26e6aecf-d890-4a29-b452-e0f49d4433e0`. **Chưa có xác nhận máy thật.**
+
+**Session tiếp theo phải làm:**
+1. Người dùng thử: lướt thanh tab rồi nhấc tay → bong bóng hạ ngay.
+2. Thử chế độ ⧉ 3 (Session 55). 3. Commit Session 49–56 (+52).
+
+---
+
+## Session 57 — 2026-09-26 (LearnWithAI: bài giảng thanh tab sóng bong bóng + skill learn-with-ai)
+
+**Làm gì:** Chủ dự án: viết bài giảng để sinh viên năm nhất hiểu và tự làm lại thao tác sóng bong bóng; lưu ở thư mục
+mới `docs/LearnWithAI/`; tạo skill để agent sau viết bài giảng kiểu này; nói rõ kiến thức/ý tưởng đến từ đâu.
+
+**Kết quả:**
+- `docs/LearnWithAI/2026-09-26-thanh-tab-song-bong-bong.md` + `README.md`: §0 nguồn gốc (Dock macOS, fisheye —
+  Cockburn 2008, hàm Gauss; không sao chép repo nào; kiến thức AI = dữ liệu huấn luyện + tài liệu chính thức mở lại
+  trong phiên + đọc code thư viện), 4 khái niệm nền, ví dụ tính tay, 7 bước làm (cặp ĐÚNG/SAI ở animated style),
+  navigator trượt, câu chuyện 3 lần đoán sai, kiểm thử, 6 bài tập, 11 nguồn đã mở kiểm chứng (RNGH 2.x, Reanimated,
+  Expo SDK 57, React Navigation 6.x, `mappers.ts` trên GitHub).
+- Skill `.ai/skills/learn-with-ai.md` + `.claude/skills/learn-with-ai/SKILL.md`, thêm vào bảng `.ai/skills/README.md`.
+- Chỉ tài liệu → không đẩy EAS.
+
+**Session tiếp theo phải làm:** chủ dự án đọc bài giảng, góp ý văn phong/độ sâu → cập nhật skill; commit Session 49–57.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

@@ -1,5 +1,6 @@
-import type { FoodLogEntry, PortionUnit } from '../../types/food';
+import type { FoodLogEntry, MealType, PortionUnit } from '../../types/food';
 import { mealTypeForHour } from './foodNutrition';
+import { addDaysToDateString, dateString } from '../../lib/dateUtils';
 
 // Pure suggestion logic. No I/O, no state — unit-tested.
 
@@ -9,6 +10,12 @@ export interface FoodSuggestion {
   grams: number;
   portionUnit?: PortionUnit;
   count?: number;
+  // When the original entry was eaten (unix ms) — set by previousDayMeal so a
+  // repeat on a backfill day lands at the same time of day (= same meal).
+  eatenAt?: number;
+  // The original entry's kcal — lets the repeat row re-total after dropping
+  // foods that no longer resolve.
+  energyKcal?: number;
 }
 
 const DEFAULT_MAX_SUGGESTIONS = 6;
@@ -44,4 +51,41 @@ export function suggestFoods(
     if (suggestions.length >= maxCount) break;
   }
   return suggestions;
+}
+
+export interface RepeatMeal {
+  items: FoodSuggestion[];
+  kcal: number;
+}
+
+// "Lặp lại bữa hôm qua": everything logged for `mealType` on the calendar day
+// before `day` (YYYY-MM-DD), in the order it was eaten, each with its logged
+// portion. Duplicates stay (two separate eggs = two rows) so repeating gives
+// exactly yesterday's meal. Empty = nothing to repeat, the UI hides the row.
+export function previousDayMeal(recentLog: FoodLogEntry[], day: string, mealType: MealType): RepeatMeal {
+  const previous = addDaysToDateString(day, -1);
+  const entries = recentLog
+    .filter((e) => e.mealType === mealType && dateString(new Date(e.timestamp)) === previous)
+    .sort((a, b) => a.timestamp - b.timestamp);
+  return {
+    items: entries.map((e) => ({
+      foodId: e.foodId,
+      foodNameVi: e.foodNameVi,
+      grams: e.grams,
+      portionUnit: e.portionUnit,
+      count: e.count,
+      eatenAt: e.timestamp,
+      energyKcal: e.energyKcal,
+    })),
+    kcal: Math.round(entries.reduce((sum, e) => sum + e.energyKcal, 0)),
+  };
+}
+
+// What the "repeat" row offers: yesterday's meal, but nothing once `day`
+// already has that meal logged — so reopening the sheet can't log it twice.
+export function repeatableMeal(recentLog: FoodLogEntry[], day: string, mealType: MealType): RepeatMeal {
+  const alreadyLogged = recentLog.some(
+    (e) => e.mealType === mealType && dateString(new Date(e.timestamp)) === day
+  );
+  return alreadyLogged ? { items: [], kcal: 0 } : previousDayMeal(recentLog, day, mealType);
 }

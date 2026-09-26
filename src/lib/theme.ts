@@ -35,7 +35,10 @@ export const darkColors = {
   // pre-existing UI already used ~10 distinct grays, each with its own
   // contextual meaning (primary label vs. meta vs. placeholder vs. hint) —
   // collapsing any two of these would visibly change that screen.
-  textPrimary: '#fff',
+  // Soft white instead of pure #fff: pure white on this near-black ground
+  // halos for readers with astigmatism. #F0F0F7 still clears 15:1 on bgCard
+  // and stays brighter than textBright (#eee) so the ladder order holds.
+  textPrimary: '#F0F0F7',
   textBright: '#eee',
   textLight: '#ddd',
   textSoft: '#ccc',
@@ -89,6 +92,15 @@ export const darkColors = {
   warning: '#FFD93D',
   info: '#54A0FF',
   infoAlt: '#0984e3',
+  // Three-zone level scale for keyword chips (enough / partway / low). "Low"
+  // is a soft coral, never alarm red — red stays for destructive actions and
+  // real safety warnings, so a short day never reads as a scolding.
+  statusGood: '#4ECDC4',
+  statusMid: '#FFB020',
+  statusLow: '#FF8A7A',
+  // Text/icons ON an accent (amber) fill, e.g. a selected segment. Dark in both
+  // themes: white on #FFB020 is only ~1.8:1, this is ~10:1.
+  onAccent: '#1A1200',
 
   // Alpha-blended status backgrounds (History day-score badges)
   successBgSoft: '#7ED95722',
@@ -183,6 +195,11 @@ export const lightColors: ThemeColors = {
   // clear 4.5:1 against white bgCard
   info: '#54A0FF',
   infoAlt: '#0984e3',
+  // Darkened to clear 4.5:1 on white bgCard and on bg (#F5F5FA).
+  statusGood: '#0B7A73',
+  statusMid: '#9A6400',
+  statusLow: '#B8473A',
+  onAccent: '#1A1200',
 
   // Alpha-blended status backgrounds — bumped alpha slightly vs. dark's `22`
   // so they still read against a white card.
@@ -201,3 +218,20 @@ export const lightColors: ThemeColors = {
   notebookDate: '#7A3DC8',
   notebookLift: '#6E6E82',
 };
+
+// What the user picked in Settings. 'system' follows the phone's own
+// light/dark setting (needs app.json `userInterfaceStyle: "automatic"`, or
+// iOS keeps reporting 'dark').
+export type ThemeMode = 'dark' | 'light' | 'system';
+
+// The palette actually shown. `systemScheme` is useColorScheme()/
+// Appearance.getColorScheme() (which may also say 'unspecified'); anything
+// but 'light' falls back to dark, the
+// app's original look.
+export function resolveThemeMode(
+  mode: ThemeMode,
+  systemScheme: string | null | undefined
+): 'dark' | 'light' {
+  if (mode === 'system') return systemScheme === 'light' ? 'light' : 'dark';
+  return mode;
+}

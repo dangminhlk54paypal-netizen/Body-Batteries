@@ -71,6 +71,18 @@ After every session, whatever the owner approved or refined becomes a skill
 for next time (`.ai/skills/session-wrapup.md` step 5b) — new UI patterns go
 into `mobile-ui-density.md`, hard bugs into `.ai/skills/learned/`.
 
+# MANDATORY RULE: research with cited sources
+
+Whenever the owner asks to research, investigate, compare, or plan something
+that depends on outside information (store policies, prices, limits, library
+behaviour, security, law), follow `.ai/skills/research-report.md`: verify
+every external fact by opening the primary source (never from memory), mark
+it inline where it is used (`[n]` web source, `[Mã: file]` code evidence,
+💡 own opinion, ❓ unverified), list the full URLs with access date at the
+end, and add an "Đính chính" section when a source contradicts something said
+earlier. Reports are saved in `docs/nghien-cuu/` and indexed in its README.
+This applies to research answers given only in chat, too.
+
 # Expo SDK version
 
 This project is pinned to **Expo SDK 57** (see `package.json`: `expo` ^57,

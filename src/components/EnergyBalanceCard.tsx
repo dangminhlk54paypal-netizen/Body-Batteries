@@ -6,12 +6,17 @@ import { summarizeFoodLog } from '../domain/food/foodLogSummary';
 import type { FoodLogEntry } from '../types/food';
 import { AppleHealthStatusBadge, type AppleHealthStatus } from './AppleHealthStatusBadge';
 import { useT } from '../i18n/useT';
+import { useSettingsStore } from '../store/settingsStore';
+import { isBalanceTowardGoal, profileGoalDirection } from '../domain/health/weightHistoryGroups';
 
 interface Props {
   foodLog: FoodLogEntry[]; // today's meals — "Eaten Today" is derived from this, same source TodayMeals uses
   burnedKcal: number; // appleHealthBurnedKcal from energyStore (real sync or BMR estimate)
   status: AppleHealthStatus;
   lastSyncAt: number | null;
+  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // block drops its own heading.
+  embedded?: boolean;
 }
 
 // "Energy Balance" section — secondary display below the main battery
@@ -19,7 +24,7 @@ interface Props {
 // their balance. Purely presentational: reads already-computed store state,
 // derives "eaten" via the same summarizeFoodLog domain function TodayMeals
 // uses (no new business logic here).
-export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: Props) {
+export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt, embedded = false }: Props) {
   // Lazy initializer, not a bare Date.now() call during render — matches the
   // pattern useLiveEnergyReading.ts already uses to stay clear of
   // react-hooks/purity. Doesn't need a ticking interval: the badge only shows
@@ -33,10 +38,18 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
   const eatenKcal = summarizeFoodLog(foodLog).totalKcal;
   const balance = Math.round(eatenKcal - burnedKcal);
   const isSurplus = balance >= 0;
+  // Colored by the weight goal, not by sign: a deficit while losing weight is
+  // on track, so it must not show up in alarm red. Off track = soft coral.
+  const userProfile = useSettingsStore((s) => s.userProfile);
+  const toward = isBalanceTowardGoal(
+    balance,
+    profileGoalDirection(userProfile.weightKg, userProfile.heightCm, userProfile.goalWeightKg)
+  );
+  const balanceColor = toward == null ? c.textSecondary : toward ? c.statusGood : c.statusLow;
 
   return (
     <View style={styles.card}>
-      <Text style={styles.sectionLabel}>{t('components.energyBalanceCard.sectionLabel')}</Text>
+      {!embedded && <Text style={styles.sectionLabel}>{t('components.energyBalanceCard.sectionLabel')}</Text>}
 
       <View style={styles.row}>
         <View style={styles.rowLeft}>
@@ -55,7 +68,7 @@ export function EnergyBalanceCard({ foodLog, burnedKcal, status, lastSyncAt }: P
 
       <View style={styles.row}>
         <Text style={styles.balanceLabel}>{t('components.energyBalanceCard.balanceLabel')}</Text>
-        <Text style={[styles.balanceValue, { color: isSurplus ? c.mint : c.danger }]}>
+        <Text style={[styles.balanceValue, { color: balanceColor }]}>
           {isSurplus
             ? t('components.energyBalanceCard.balanceSurplusLine', { amount: balance })
             : t('components.energyBalanceCard.balanceDeficitLine', { amount: balance })}

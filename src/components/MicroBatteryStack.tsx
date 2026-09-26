@@ -4,7 +4,7 @@ import Svg, { Rect } from 'react-native-svg';
 import type { MicroBatteryState } from '../types/nutrition';
 import type { FoodLogEntry } from '../types/food';
 import { PROMINENT_GOAL_IDS, MORE_GOAL_IDS, LIMIT_IDS, ELECTROLYTE_IDS } from '../lib/nutrientTargets';
-import { UPPER_LIMITS } from '../lib/upperLimits';
+import { isOverReference } from '../domain/nutrition/overdoseWarning';
 import type { DateOption } from '../hooks/useMicroBatteryHistory';
 import { OverdoseNotice } from './OverdoseNotice';
 import { MicroBatterySourceSheet } from './MicroBatterySourceSheet';
@@ -22,6 +22,9 @@ interface Props {
   foodLog: FoodLogEntry[];
   // e.g. "Khuyến nghị chung cho nam ~30 tuổi" — derived from the user profile.
   recommendNote?: string;
+  // Inside a Home FoldRow: no own heading / fold (the row is the fold), and
+  // the recommendation note + disclaimer move to the row's ⓘ.
+  embedded?: boolean;
 }
 
 const CELL_WIDTH = 56;
@@ -32,17 +35,6 @@ function byIds(states: MicroBatteryState[], ids: string[]): MicroBatteryState[] 
   return ids
     .map((id) => states.find((s) => s.id === id))
     .filter((s): s is MicroBatteryState => !!s);
-}
-
-// Gentle "past a reference ceiling" flag — deliberately narrower than the
-// existing caption logic (kind==='goal' && over just means "past the daily
-// recommendation", which is fine/neutral and must NOT warn, see CONTEXT.md
-// §5). A goal-type nutrient only warns once it clears the separate Upper
-// Limit table; a limit-type nutrient (sodium/sugar/salt) warns as soon as
-// it's over its own cap, same as `state.over`.
-function isOverReference(state: MicroBatteryState): boolean {
-  if (state.kind === 'limit') return state.over;
-  return state.current > (UPPER_LIMITS[state.id]?.value ?? Infinity);
 }
 
 // A static (non-animated) pin cell dedicated to micronutrients — deliberately
@@ -128,6 +120,7 @@ export function MicroBatteryStack({
   onSelectDate,
   foodLog,
   recommendNote,
+  embedded = false,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   // Which micronutrient's "where did this come from" sheet is open, if any —
@@ -139,7 +132,8 @@ export function MicroBatteryStack({
   const styles = useThemedStyles(createStyles);
   // Persisted collapse state for this whole section — same read-the-store-
   // directly pattern MasterBattery uses for particleEffectsEnabled.
-  const microCollapsed = useSettingsStore((s) => s.microCollapsed);
+  const microCollapsedSetting = useSettingsStore((s) => s.microCollapsed);
+  const microCollapsed = !embedded && microCollapsedSetting;
   const setMicroCollapsed = useSettingsStore((s) => s.setMicroCollapsed);
 
   const prominent = byIds(states, PROMINENT_GOAL_IDS);
@@ -157,17 +151,19 @@ export function MicroBatteryStack({
 
   return (
     <View style={styles.container}>
-      <Pressable
-        onPress={() => setMicroCollapsed(!microCollapsed)}
-        style={styles.headerRow}
-        hitSlop={6}
-      >
-        <View style={styles.headerLeft}>
-          <Text style={styles.chevron}>{microCollapsed ? '▸' : '▾'}</Text>
-          <Text style={styles.title}>{t('components.microBatteryStack.title')}</Text>
-        </View>
-        <Text style={styles.disclaimer}>{t('components.microBatteryStack.disclaimer')}</Text>
-      </Pressable>
+      {!embedded && (
+        <Pressable
+          onPress={() => setMicroCollapsed(!microCollapsed)}
+          style={styles.headerRow}
+          hitSlop={6}
+        >
+          <View style={styles.headerLeft}>
+            <Text style={styles.chevron}>{microCollapsed ? '▸' : '▾'}</Text>
+            <Text style={styles.title}>{t('components.microBatteryStack.title')}</Text>
+          </View>
+          <Text style={styles.disclaimer}>{t('components.microBatteryStack.disclaimer')}</Text>
+        </Pressable>
+      )}
 
       {microCollapsed ? (
         <Pressable onPress={() => setMicroCollapsed(false)}>

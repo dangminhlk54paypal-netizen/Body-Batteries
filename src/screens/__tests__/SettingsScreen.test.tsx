@@ -77,6 +77,33 @@ describe('SettingsScreen', () => {
     expect(text).toContain('Tiếng Việt · tự dịch món: tắt');
   });
 
+  it('lists the cards A–Z in the current language', async () => {
+    const headings = (tree: TestRenderer.ReactTestRenderer) =>
+      tree.root
+        .findAll((n) => n.props.accessibilityState?.expanded !== undefined && typeof n.props.onPress === 'function')
+        .map((n) => n.props.accessibilityLabel);
+    const tree = await render();
+    expect(headings(tree)).toEqual([
+      'DỮ LIỆU',
+      'GIAO DIỆN',
+      'HỒ SƠ CƠ THỂ',
+      'KHUNG GIỜ BỮA ĂN',
+      'NGÔN NGỮ',
+      'SỨC KHOẺ',
+      'THÔNG BÁO',
+    ]);
+    await act(async () => useSettingsStore.setState({ language: 'en' }));
+    expect(headings(tree)).toEqual([
+      'BODY PROFILE',
+      'DATA',
+      'HEALTH',
+      'INTERFACE',
+      'LANGUAGE',
+      'MEAL WINDOWS',
+      'NOTIFICATIONS',
+    ]);
+  });
+
   it('opens one card at a time', async () => {
     const tree = await render();
     await tap(tree, 'THÔNG BÁO');

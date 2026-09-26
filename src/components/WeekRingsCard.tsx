@@ -9,7 +9,7 @@ import {
   type WeekRingsSummary,
 } from '../domain/battery/weekRingsModel';
 import { arcPath, ringSlots, slotArcs, type RingGeometry } from '../domain/battery/batteryRingModel';
-import type { WeightGoalDirection } from '../domain/health/weightHistoryGroups';
+import { isBalanceTowardGoal, type WeightGoalDirection } from '../domain/health/weightHistoryGroups';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { formatDisplayDate, weekdayLabel } from '../lib/dateUtils';
 import type { ThemeColors } from '../lib/theme';
@@ -100,8 +100,9 @@ export function WeekRingsCard({ summary, today, goal, onPressDay }: Props) {
   const total = summary.days.length;
 
   const balanceColor = (kcal: number | null) => {
-    if (kcal == null || kcal === 0 || goal === 'maintain') return c.textTertiary;
-    return (kcal < 0) === (goal === 'lose') ? c.weightTrendToward : c.weightTrendAway;
+    const toward = isBalanceTowardGoal(kcal, goal);
+    if (toward == null) return c.textTertiary;
+    return toward ? c.weightTrendToward : c.weightTrendAway;
   };
 
   const { finishedBalanceKcal: weekKcal, finishedDaysWithFood } = summary;

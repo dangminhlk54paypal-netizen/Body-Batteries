@@ -61,6 +61,27 @@ export function isTrendTowardGoal(
   return (trend === 'down') === (goal === 'lose');
 }
 
+// Same idea for a calorie balance (eaten − burned): a deficit moves toward a
+// 'lose' goal, a surplus toward 'gain'. null = neutral (no balance, zero, or
+// no weight goal) — the UI then shows it without a good/bad color.
+// The direction the user is actually aiming for: their own goal weight when
+// they set one (e.g. a lifter bulking to 82 kg), else the WHO healthy range.
+export function profileGoalDirection(
+  weightKg: number,
+  heightCm: number,
+  goalWeightKg?: number
+): WeightGoalDirection {
+  if (goalWeightKg !== undefined && goalWeightKg > 0 && goalWeightKg !== weightKg) {
+    return goalWeightKg < weightKg ? 'lose' : 'gain';
+  }
+  return weightGoalDirection(weightKg, heightCm);
+}
+
+export function isBalanceTowardGoal(kcal: number | null, goal: WeightGoalDirection): boolean | null {
+  if (kcal == null || kcal === 0 || goal === 'maintain') return null;
+  return (kcal < 0) === (goal === 'lose');
+}
+
 // `entries` may come in any order; output is newest month first, newest row
 // first within each month.
 export function groupWeightHistoryByMonth(entries: WeightEntryWithId[]): WeightMonthGroup[] {

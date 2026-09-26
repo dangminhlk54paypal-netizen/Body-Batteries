@@ -34,6 +34,7 @@ cùng lúc, cứ nói rõ — các agent chạy song song, mỗi cái một cont
 | [`logic-backend`](../../.claude/agents/logic-backend.md) | Logic năng lượng, lưu trữ, thông báo, tác vụ nền | — |
 | [`data-ml`](../../.claude/agents/data-ml.md) | Phân tích & dự báo (Phase 5, làm sau cùng) | — |
 | [`qa-reviewer`](../../.claude/agents/qa-reviewer.md) | Soát lỗi, review chất lượng, checklist test | **read-only** — không sửa được file |
+| [`consumer-research`](../../.claude/agents/consumer-research.md) | Phòng Nghiên cứu Chiến lược Tiêu dùng: xu hướng app sức khoẻ, trải nghiệm người dùng, brief có nguồn trước tính năng lớn | có WebSearch; chỉ ghi vào `docs/nghien-cuu/` |
 
 ## Cách TẠO agent mới
 

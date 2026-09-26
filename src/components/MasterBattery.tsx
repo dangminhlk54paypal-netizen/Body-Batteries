@@ -15,6 +15,7 @@ import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { useChargeEffectStore } from '../store/chargeEffectStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useT } from '../i18n/useT';
+import { InfoPopover, type InfoSection } from './ui/InfoPopover';
 import { LOCALE_TAGS } from '../i18n/types';
 import type { Language } from '../i18n/types';
 
@@ -31,8 +32,10 @@ interface Props {
   // rendered as a small "🏃 Vận động hôm nay: +N kcal..." line.
   activityBonusKcal?: number;
   // Optional estimated daily target line, e.g.
-  // "Cần ~1800 kcal/ngày để đạt 65 kg · BMR ~1500", rendered under goalLabel.
+  // "Cần ~1800 kcal/ngày để đạt 65 kg · BMR ~1500" — shown inside the ⓘ.
   targetLine?: string;
+  // Short on-screen goal chip, e.g. "🎯 ↓ 72 kg" (full sentence = goalLabel, in ⓘ).
+  goalChip?: string;
 }
 
 const W = 120;
@@ -132,6 +135,7 @@ export function MasterBattery({
   goalLabel,
   activityBonusKcal,
   targetLine,
+  goalChip,
 }: Props) {
   const { t, language } = useT();
   const c = useThemeColors();
@@ -243,6 +247,30 @@ export function MasterBattery({
   // only used for the neutral "ăn dư" ledger text below, never for the bar.
   const color = c.accent;
 
+  const infoSections: InfoSection[] = [];
+  if (capacityKcal != null && levelKcal != null) {
+    infoSections.push({
+      body: t('components.masterBattery.ledgerLine', {
+        eaten: formatKcal(levelKcal, language),
+        goal: formatKcal(capacityKcal, language),
+      }),
+    });
+  }
+  if (isOver && levelKcal != null && capacityKcal != null) {
+    infoSections.push({
+      body: t('components.masterBattery.overAmount', { amount: formatKcal(levelKcal - capacityKcal, language) }),
+    });
+  }
+  if (activityBonusKcal != null && activityBonusKcal > 0) {
+    infoSections.push({
+      body: t('components.masterBattery.activityBonusLine', { amount: formatKcal(activityBonusKcal, language) }),
+    });
+  }
+  if (goalLabel != null) infoSections.push({ body: goalLabel });
+  if (targetLine != null) infoSections.push({ body: targetLine });
+  infoSections.push({ body: t('components.masterBattery.tapHint') });
+  infoSections.push({ body: t('components.masterBattery.disclaimer') });
+
   return (
     <View style={styles.container}>
       <View
@@ -307,33 +335,35 @@ export function MasterBattery({
         {t('components.masterBattery.label')}
       </Text>
 
+      {/* Compact stat block: one number line + keyword chips; every full
+          sentence (ledger, goal, target/BMR, disclaimer) lives behind ⓘ. */}
       <View style={styles.ledgerSection}>
-        <View style={styles.divider} />
         {capacityKcal != null && levelKcal != null && (
           <Text style={styles.ledger}>
-            {t('components.masterBattery.ledgerLine', {
+            {t('components.masterBattery.kcalStat', {
               eaten: formatKcal(levelKcal, language),
               goal: formatKcal(capacityKcal, language),
             })}
           </Text>
         )}
-        {isOver && levelKcal != null && capacityKcal != null && (
-          <Text style={styles.overText}>
-            {t('components.masterBattery.overAmount', {
-              amount: formatKcal(levelKcal - capacityKcal, language),
-            })}
-          </Text>
-        )}
-        {activityBonusKcal != null && activityBonusKcal > 0 && (
-          <Text style={styles.activityBonus}>
-            {t('components.masterBattery.activityBonusLine', {
-              amount: formatKcal(activityBonusKcal, language),
-            })}
-          </Text>
-        )}
-        {goalLabel != null && <Text style={styles.goal}>{goalLabel}</Text>}
-        {targetLine != null && <Text style={styles.targetLine}>{targetLine}</Text>}
-        <Text style={styles.disclaimer}>{t('components.masterBattery.disclaimer')}</Text>
+        <View style={styles.chipRow}>
+          {isOver && levelKcal != null && capacityKcal != null && (
+            <Text style={[styles.chip, styles.chipOver]}>
+              {t('components.masterBattery.overChip', {
+                amount: formatKcal(levelKcal - capacityKcal, language),
+              })}
+            </Text>
+          )}
+          {activityBonusKcal != null && activityBonusKcal > 0 && (
+            <Text style={[styles.chip, styles.chipActivity]}>
+              {t('components.masterBattery.activityChip', {
+                amount: formatKcal(activityBonusKcal, language),
+              })}
+            </Text>
+          )}
+          {goalChip != null && <Text style={styles.chip}>{goalChip}</Text>}
+          <InfoPopover title={t('components.masterBattery.label')} sections={infoSections} />
+        </View>
       </View>
     </View>
   );
@@ -376,43 +406,39 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   },
   ledgerSection: {
     alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
+    marginTop: 2,
+    gap: 6,
     width: '100%',
   },
-  divider: {
-    width: '80%',
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: c.borderSubtle,
-    marginBottom: 4,
-  },
   ledger: {
-    fontSize: 13,
+    fontSize: 15,
     color: c.accent,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
-  overText: {
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+  },
+  chip: {
     fontSize: 12,
+    fontWeight: '600',
+    color: c.textSecondary,
+    backgroundColor: c.bgElevated,
+    borderRadius: 10,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    fontVariant: ['tabular-nums'],
+  },
+  chipOver: {
     color: c.warning,
-    fontWeight: '600',
   },
-  activityBonus: {
-    fontSize: 12,
+  chipActivity: {
     color: c.mint,
-  },
-  goal: {
-    fontSize: 12,
-    color: c.textSecondary,
-  },
-  targetLine: {
-    fontSize: 12,
-    color: c.textSecondary,
-  },
-  disclaimer: {
-    fontSize: 12,
-    // textDim, not textMuted: textMuted only clears ~2.9:1 against bgCard
-    // (below WCAG AA 4.5:1) — textDim clears ~5.6-6:1 in both themes.
-    color: c.textDim,
-    fontStyle: 'italic',
   },
 });

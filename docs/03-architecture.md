@@ -33,7 +33,7 @@ App được chia thành các lớp rõ ràng để bạn và AI luôn biết "c
 src/
 ├── screens/            # Các màn hình (Home, History, Settings, Diary, Onboarding)
 ├── components/         # Khối tái sử dụng (BatteryRing, MasterBattery, WeekRingsCard...); training/ = Sổ tập luyện
-├── navigation/         # Điều hướng tab (React Navigation)
+├── navigation/         # Điều hướng tab: navigator riêng SlideTabNavigator (màn trượt qua nhau) + vuốt dài đổi tab vòng tròn (TabSwipe.tsx, mainTabs.ts) + thanh tab sóng bong bóng (BubbleTabBar.tsx)
 ├── hooks/              # Hook React (useDrainTick, useLiveEnergyReading, useLowEnergyWatch)
 ├── store/              # Zustand: energyStore, settingsStore
 ├── types/              # Kiểu TypeScript dùng chung (battery, energy...)

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform, AppState, type AppStateStatus } from 'react-native';
+import { View, Text, StyleSheet, Platform, AppState, Appearance, type AppStateStatus } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,7 @@ import { useSettingsStore } from './src/store/settingsStore';
 import { todayString, energyDayString } from './src/lib/dateUtils';
 import { checkDateChanged } from './src/services/background/dailyResetCheck';
 import { appDarkNavigationTheme, appLightNavigationTheme } from './src/navigation/navigationThemes';
+import { useResolvedThemeMode } from './src/hooks/useThemeColors';
 
 // How often to check for a calendar-day rollover while the app stays open.
 const DATE_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
@@ -22,7 +23,16 @@ export default function App() {
   const currentMode = useSettingsStore((s) => s.currentMode);
   const hasOnboarded = useSettingsStore((s) => s.hasOnboarded);
   const setHasOnboarded = useSettingsStore((s) => s.setHasOnboarded);
-  const themeMode = useSettingsStore((s) => s.themeMode);
+  const themeMode = useResolvedThemeMode();
+  const themeSetting = useSettingsStore((s) => s.themeMode);
+
+  // app.json lets iOS follow the phone (userInterfaceStyle "automatic") so
+  // the 'system' option works; an explicit Dark/Light choice is pushed back
+  // to iOS so native alerts and the keyboard match the app, not the phone.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    Appearance.setColorScheme(themeSetting === 'system' ? 'unspecified' : themeSetting);
+  }, [themeSetting]);
 
   useEffect(() => {
     async function bootstrap() {

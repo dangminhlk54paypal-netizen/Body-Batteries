@@ -3,6 +3,8 @@ import {
   getTodayEnergyBurned,
   getTodayEnergyBurnedDetailed,
   calculateTotalBurned,
+  getTodayStepsAndSleep,
+  sleepHoursFromSamples,
 } from '../appleHealthSync';
 
 // Mock the native bridge module entirely — this service must be testable
@@ -14,6 +16,8 @@ const mockInitHealthKit = jest.fn();
 const mockIsAvailable = jest.fn();
 const mockGetActiveEnergyBurned = jest.fn();
 const mockGetBasalEnergyBurned = jest.fn();
+const mockGetStepCount = jest.fn();
+const mockGetSleepSamples = jest.fn();
 
 jest.mock('react-native-health', () => ({
   __esModule: true,
@@ -22,12 +26,16 @@ jest.mock('react-native-health', () => ({
       Permissions: {
         ActiveEnergyBurned: 'ActiveEnergyBurned',
         BasalEnergyBurned: 'BasalEnergyBurned',
+        StepCount: 'StepCount',
+        SleepAnalysis: 'SleepAnalysis',
       },
     },
     initHealthKit: (...args: unknown[]) => mockInitHealthKit(...args),
     isAvailable: (...args: unknown[]) => mockIsAvailable(...args),
     getActiveEnergyBurned: (...args: unknown[]) => mockGetActiveEnergyBurned(...args),
     getBasalEnergyBurned: (...args: unknown[]) => mockGetBasalEnergyBurned(...args),
+    getStepCount: (...args: unknown[]) => mockGetStepCount(...args),
+    getSleepSamples: (...args: unknown[]) => mockGetSleepSamples(...args),
   },
 }));
 
@@ -187,5 +195,58 @@ describe('getTodayEnergyBurnedDetailed / getTodayEnergyBurned', () => {
     const detailed = await getTodayEnergyBurnedDetailed();
     expect(detailed.status).toBe('error');
     expect(await getTodayEnergyBurned()).toBeNull();
+  });
+});
+
+describe('sleepHoursFromSamples', () => {
+  const S = (start: string, end: string, value: string) => ({
+    startDate: `2026-09-26T${start}:00.000Z`,
+    endDate: `2026-09-26T${end}:00.000Z`,
+    value,
+  });
+
+  it('counts asleep stages, ignores in-bed/awake, and merges overlaps from two devices', () => {
+    const hours = sleepHoursFromSamples([
+      S('00:00', '07:30', 'INBED'),
+      S('00:30', '03:00', 'CORE'),
+      S('02:00', '04:00', 'ASLEEP'), // overlaps the CORE sample (watch + phone)
+      S('04:00', '04:15', 'AWAKE'),
+      S('04:15', '07:00', 'deep'),
+    ]);
+    expect(hours).toBe(6.3); // 00:30–04:00 (3.5 h) + 04:15–07:00 (2.75 h)
+  });
+
+  it('returns 0 for no usable samples', () => {
+    expect(sleepHoursFromSamples([])).toBe(0);
+    expect(sleepHoursFromSamples([{ startDate: 'x', endDate: 'y', value: 'ASLEEP' }])).toBe(0);
+  });
+});
+
+describe('getTodayStepsAndSleep', () => {
+  it('reads today\'s steps and last night\'s sleep when linked and permitted', async () => {
+    mockAvailableAndGranted();
+    mockGetStepCount.mockImplementation((_o: unknown, cb: (e: string, r: { value: number }) => void) => cb('', { value: 6543.4 }));
+    mockGetSleepSamples.mockImplementation((_o: unknown, cb: (e: string, r: unknown[]) => void) =>
+      cb('', [{ startDate: '2026-09-25T23:00:00.000Z', endDate: '2026-09-26T06:30:00.000Z', value: 'ASLEEP' }])
+    );
+    await expect(getTodayStepsAndSleep(new Date('2026-09-26T09:00:00Z'))).resolves.toEqual({
+      status: 'success',
+      steps: 6543,
+      sleepHours: 7.5,
+    });
+  });
+
+  it('reports permission_denied without querying', async () => {
+    mockIsAvailable.mockImplementation((cb: (err: unknown, a: boolean) => void) => cb({}, true));
+    mockInitHealthKit.mockImplementation((_p: unknown, cb: (error: string) => void) => cb('denied'));
+    await expect(getTodayStepsAndSleep()).resolves.toEqual({ status: 'permission_denied', steps: 0, sleepHours: 0 });
+    expect(mockGetStepCount).not.toHaveBeenCalled();
+  });
+
+  it('turns a native error into status error, never a throw', async () => {
+    mockAvailableAndGranted();
+    mockGetStepCount.mockImplementation((_o: unknown, cb: (e: string, r: unknown) => void) => cb('boom', null));
+    mockGetSleepSamples.mockImplementation((_o: unknown, cb: (e: string, r: unknown[]) => void) => cb('', []));
+    await expect(getTodayStepsAndSleep()).resolves.toEqual({ status: 'error', steps: 0, sleepHours: 0 });
   });
 });

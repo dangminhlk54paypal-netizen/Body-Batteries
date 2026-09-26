@@ -10,6 +10,9 @@ import type { Language } from '../i18n/types';
 interface Props {
   entries: IntakeEvent[];
   onDelete: (id: string) => void;
+  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // block drops its own heading.
+  embedded?: boolean;
 }
 
 function timeLabel(timestamp: number): string {
@@ -29,16 +32,18 @@ function intakeLabel(entry: IntakeEvent, language: Language): string {
   return `${batteryTypeName(battery.id, language)} ${entry.amount} ${battery.unit}`;
 }
 
-export function TodayIntakes({ entries, onDelete }: Props) {
+export function TodayIntakes({ entries, onDelete, embedded = false }: Props) {
   const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
   const sorted = [...entries].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionLabel}>{t('components.todayIntakes.sectionLabel')}</Text>
-      </View>
+      {!embedded && (
+        <View style={styles.headerRow}>
+          <Text style={styles.sectionLabel}>{t('components.todayIntakes.sectionLabel')}</Text>
+        </View>
+      )}
 
       {sorted.length === 0 ? (
         <View style={styles.card}>

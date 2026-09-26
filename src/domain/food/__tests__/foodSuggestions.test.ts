@@ -1,4 +1,4 @@
-import { suggestFoods } from '../foodSuggestions';
+import { previousDayMeal, repeatableMeal, suggestFoods } from '../foodSuggestions';
 import type { FoodLogEntry } from '../../../types/food';
 
 function entry(overrides: Partial<FoodLogEntry> & Pick<FoodLogEntry, 'foodId' | 'timestamp' | 'mealType'>): FoodLogEntry {
@@ -85,5 +85,55 @@ describe('suggestFoods', () => {
     ];
     const result = suggestFoods(log, 23);
     expect(result[0]).toMatchObject({ portionUnit: 'capsule', count: 2, grams: 2 });
+  });
+});
+
+describe('previousDayMeal', () => {
+  const at = (day: string, hour: number, minute = 0) => new Date(`${day}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`).getTime();
+
+  it("returns yesterday's entries of that meal, in eating order, with portions and total kcal", () => {
+    const log = [
+      entry({ foodId: 'rice', timestamp: at('2026-09-25', 12, 30), mealType: 'lunch', grams: 200, energyKcal: 260 }),
+      entry({ foodId: 'pho', timestamp: at('2026-09-25', 12, 0), mealType: 'lunch', energyKcal: 400 }),
+      entry({ foodId: 'caps', timestamp: at('2026-09-25', 12, 40), mealType: 'lunch', portionUnit: 'capsule', count: 2, energyKcal: 5.4 }),
+      entry({ foodId: 'egg', timestamp: at('2026-09-25', 8, 0), mealType: 'breakfast' }),
+      entry({ foodId: 'bun', timestamp: at('2026-09-24', 12, 0), mealType: 'lunch' }),
+      entry({ foodId: 'today', timestamp: at('2026-09-26', 12, 0), mealType: 'lunch' }),
+    ];
+    const r = previousDayMeal(log, '2026-09-26', 'lunch');
+    expect(r.items.map((i) => i.foodId)).toEqual(['pho', 'rice', 'caps']);
+    expect(r.items[1].grams).toBe(200);
+    expect(r.items[2]).toMatchObject({ portionUnit: 'capsule', count: 2 });
+    expect(r.kcal).toBe(665);
+  });
+
+  it('keeps repeated foods so the meal is repeated exactly', () => {
+    const log = [
+      entry({ foodId: 'egg', timestamp: at('2026-09-25', 8, 0), mealType: 'breakfast' }),
+      entry({ foodId: 'egg', timestamp: at('2026-09-25', 8, 5), mealType: 'breakfast' }),
+    ];
+    expect(previousDayMeal(log, '2026-09-26', 'breakfast').items).toHaveLength(2);
+  });
+
+  it('works relative to a backfill day and is empty when nothing matches', () => {
+    const log = [entry({ foodId: 'pho', timestamp: at('2026-09-23', 19, 0), mealType: 'dinner' })];
+    expect(previousDayMeal(log, '2026-09-24', 'dinner').items).toHaveLength(1);
+    expect(previousDayMeal(log, '2026-09-26', 'dinner')).toEqual({ items: [], kcal: 0 });
+  });
+});
+
+describe('repeatableMeal', () => {
+  const at = (day: string, hour: number) => new Date(`${day}T${String(hour).padStart(2, '0')}:00:00`).getTime();
+  const yesterdayLunch = entry({ foodId: 'pho', timestamp: at('2026-09-25', 12), mealType: 'lunch' });
+
+  it("offers yesterday's meal with the original eating time", () => {
+    const r = repeatableMeal([yesterdayLunch], '2026-09-26', 'lunch');
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0].eatenAt).toBe(yesterdayLunch.timestamp);
+  });
+
+  it('offers nothing once that meal is already logged on the day', () => {
+    const todayLunch = entry({ foodId: 'rice', timestamp: at('2026-09-26', 12), mealType: 'lunch' });
+    expect(repeatableMeal([yesterdayLunch, todayLunch], '2026-09-26', 'lunch').items).toEqual([]);
   });
 });

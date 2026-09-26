@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { ThemeMode } from '../lib/theme';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ModeId } from '../types/modes';
@@ -67,8 +68,9 @@ interface SettingsState {
   foodNameTranslationsCheckedV1: boolean;
   // Display theme — drives useThemeColors()/getCurrentThemeColors() (see
   // src/hooks/useThemeColors.ts). Defaults to 'dark' so existing users see no
-  // visual change until they explicitly opt into the light palette.
-  themeMode: 'dark' | 'light';
+  // visual change until they explicitly opt into the light palette. 'system'
+  // follows the phone's light/dark setting (resolveThemeMode in lib/theme.ts).
+  themeMode: ThemeMode;
   // How the Tập luyện tab's training log writes its lines (shorthand, decimal
   // style, which parts to show). Read it through useTrainingLogFormat() — it
   // merges in defaults for options added after this device last saved.
@@ -89,7 +91,7 @@ interface SettingsState {
   addCustomExercise: (exercise: Omit<CustomExercise, 'id'>) => void;
   removeCustomExercise: (id: string) => void;
   setLanguage: (language: Language) => void;
-  setThemeMode: (mode: 'dark' | 'light') => void;
+  setThemeMode: (mode: ThemeMode) => void;
   setAutoTranslateCustomFoodNames: (enabled: boolean) => void;
   setTrainingLogFormat: (patch: Partial<Omit<TrainingLogFormat, 'abbreviations'>>) => void;
   // Sets (or, with an empty/blank value, removes) one abbreviation override.
