@@ -2872,7 +2872,37 @@ khi trùng trên cùng một vòng. `HomeScreen.test` vỡ vì Home kéo thêm B
 **Session tiếp theo phải làm:**
 1. Chủ dự án test máy thật theo checklist Session 60; ghi lại góp ý.
 2. Cân nhắc: chấm màu trong sheet ✎ chưa phản ánh màu dự phòng (fat hiện vàng dù trên vòng đổi màu khi có Carbs).
-3. Commit Session 60 khi chủ dự án duyệt.
+3. ~~Commit Session 60 khi chủ dự án duyệt.~~ Đã commit `0ec9cdf` (2026-10-01, theo yêu cầu chủ dự án).
+
+---
+
+## Session 61 — 2026-10-01 (Nhập một lần nhật ký tập Block 0–2 từ Notes vào Sổ tập)
+
+**Làm gì:** Chủ dự án viết lại nhật ký tập cũ trong Apple Notes (Block 0 → Block 2, 01.05–30.08.2026) theo khuôn gọn
+`<Bài> <Prime> <Volume>` và nhờ AI ghi thẳng vào Sổ tập thay vì tự dán trên iPhone ("chỉ lần này").
+
+**Kết quả:**
+- Dữ liệu chỉ nằm trên máy (SQLite) nên AI không ghi trực tiếp được → **app tự nhập một lần khi mở**:
+  `domain/training/ownerNotesImport.ts` (văn bản 58 buổi + 18 tuần dạng trang 📄, kỳ tạm 27.04–30.08 Thứ 2–CN,
+  `keepUnmentionedMovements`) + `services/training/ownerNotesImportService.ts` (đi đúng đường trang 📄:
+  `planPageEdit` → `applyPageEdit`; cờ AsyncStorage `ownerNotesImport.v1.done`; tự tắt sau 15.10.2026; chạy lại không
+  trùng) + hook TEMPORARY trong `App.tsx`. Ngày đã có Xả: bài trùng cập nhật, bài thiếu thêm, bài cũ không nhắc tới giữ nguyên.
+- Văn bản chuyển sang ngữ pháp parser: `Prime + Volume`, "+1" → `4x4(+1)x75`, cách viết gộp đổi tương đương
+  (`(3x2+2x3)x85` → `3x2x85+2x3x85`…); chỗ chưa rõ (`& vai`, `P`, `+2x1`, `(+8)`, `[?]`) giữ nguyên văn ở ghi chú ngày.
+- Test `ownerNotesImport.test.ts` (58 buổi đều thành Xả, 18 nhãn, 6 ghi chú tuần, cân nặng 77.5/77). `npm run verify`
+  xanh (117 / 1315). EAS preview `a7188e72-…`, `41da9851-24ab-4134-af69-c586d86fc584` (từ working tree, gồm Session 60).
+  **Chưa có xác nhận máy thật.** Không có chữ UI mới (không cần i18n).
+
+**Vấn đề gặp phải & Cách giải quyết:** parser đọc "+1" rời là 1 rep @ 1 kg và số đứng trước volume không có "+" là set
+làm việc → phải đổi ký hiệu. Trang 📄 chỉ nhận tiêu đề tuần đã có → dựng kỳ/trang tạm phủ mọi tuần. Đồng bộ ngày coi dòng
+là toàn bộ sự thật (xoá bài không nhắc tới) → thêm lại bài cũ vào dòng trước khi đồng bộ. Phiên song song đang sửa dở
+làm typecheck đỏ → chờ verify xanh mới publish (không publish bản cô lập để khỏi mất Session 60 trên máy).
+Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holiday. Nhãn B0–B2 là nhãn tay, không phải block plan.
+
+**Session tiếp theo phải làm:**
+1. Chủ dự án xác nhận dữ liệu tháng 4–8 trong Sổ tập → **xoá** 3 file `ownerNotesImport*` + effect trong `App.tsx`,
+   verify, publish (`git revert` commit nhập tạm cũng được).
+2. Chủ dự án kiểm tra Block 3 đã có trong Kế hoạch block chưa (để tuần mới tự mang nhãn B3Wx); thử buổi Bench Thứ 6 02.10.
 
 ---
 

@@ -120,6 +120,13 @@ export default function App() {
     })();
   }, [ready]);
 
+  // TEMPORARY — the owner's one-time Notes import (Block 0–2). Remove with
+  // src/services/training/ownerNotesImportService.ts once confirmed on device.
+  useEffect(() => {
+    if (!ready || !hasOnboarded || Platform.OS === 'web') return;
+    import('./src/services/training/ownerNotesImportService').then((m) => m.runOwnerNotesImportOnce());
+  }, [ready, hasOnboarded]);
+
   let content: React.ReactNode;
   if (error) {
     content = (
