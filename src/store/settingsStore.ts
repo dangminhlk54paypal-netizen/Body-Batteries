@@ -9,6 +9,7 @@ import type { MovementDisplayUnit, WaterDisplayUnit } from '../lib/units';
 import type { Language } from '../i18n/types';
 import { DEFAULT_TRAINING_LOG_FORMAT, resolveTrainingLogFormat } from '../types/trainingLog';
 import type { TrainingLogFormat } from '../types/trainingLog';
+import type { RingMetricId } from '../domain/battery/ringMetrics';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -75,6 +76,10 @@ interface SettingsState {
   // style, which parts to show). Read it through useTrainingLogFormat() — it
   // merges in defaults for options added after this device last saved.
   trainingLogFormat: TrainingLogFormat;
+  // Which metrics the Home "pin nhỏ" ring shows (✎ next to its title). null =
+  // the default 6 sub-batteries. Read it through resolveRingMetrics() — it
+  // drops ids a later version no longer knows.
+  ringMetrics: RingMetricId[] | null;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -96,6 +101,7 @@ interface SettingsState {
   setTrainingLogFormat: (patch: Partial<Omit<TrainingLogFormat, 'abbreviations'>>) => void;
   // Sets (or, with an empty/blank value, removes) one abbreviation override.
   setTrainingLogAbbreviation: (key: string, value: string) => void;
+  setRingMetrics: (ids: RingMetricId[] | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -120,6 +126,7 @@ export const useSettingsStore = create<SettingsState>()(
       autoTranslateCustomFoodNames: false,
       foodNameTranslationsCheckedV1: false,
       trainingLogFormat: DEFAULT_TRAINING_LOG_FORMAT,
+      ringMetrics: null,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -159,6 +166,7 @@ export const useSettingsStore = create<SettingsState>()(
           else abbreviations[key] = trimmed;
           return { trainingLogFormat: { ...current, abbreviations } };
         }),
+      setRingMetrics: (ids) => set({ ringMetrics: ids }),
     }),
     {
       name: 'settings-storage',

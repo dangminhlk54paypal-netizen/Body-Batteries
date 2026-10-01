@@ -25,6 +25,16 @@ export const RING_GEOMETRY: RingGeometry = {
   gapDeg: 6,
 };
 
+// The small corner ring (micronutrients when there are more than 3).
+export const MINI_RING_GEOMETRY: RingGeometry = {
+  size: 76,
+  radius: 28,
+  thickness: 8,
+  overflowGap: 2,
+  overflowThickness: 3,
+  gapDeg: 8,
+};
+
 export interface RingSlot {
   startDeg: number; // 0° = 12 o'clock, clockwise
   endDeg: number;

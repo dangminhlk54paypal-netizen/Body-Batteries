@@ -10,7 +10,8 @@ import type { LiftProgressWeek } from './trainingLogProgress';
 // coordinates out; the components only paint.
 //
 // Two kinds of marks:
-//   - weekly dots + lines: the heaviest working set of S / B / D each week;
+//   - weekly dots + lines: the heaviest working set of S / B / D each week
+//     (kg), or its estimated 1RM ÷ body weight (ratio);
 //   - ⭐ stars: one-rep maxes the user recorded — milestones, never joined to
 //     the weekly line, placed on their own day.
 
@@ -79,12 +80,13 @@ export function niceTicks(min: number, max: number): number[] {
   return ticks;
 }
 
-// The plotted weekly value: kg, or kg ÷ that week's body weight (null without one).
+// The plotted weekly value: the heaviest working set in kg, or the
+// powerlifting ratio — the week's best estimated 1RM (a prime, or sets turned
+// into one: 4 reps at 100 → 113.3) ÷ that week's body weight (null without one).
 export function weekValue(w: LiftProgressWeek, lift: LiftingExercise, mode: ProgressMode): number | null {
-  const kg = w.top[lift];
-  if (kg == null) return null;
-  if (mode === 'kg') return kg;
-  return w.bodyWeightKg ? kg / w.bodyWeightKg : null;
+  if (mode === 'kg') return w.top[lift] ?? null;
+  const e = w.e1rm[lift];
+  return e != null && w.bodyWeightKg ? e / w.bodyWeightKg : null;
 }
 
 // How far each lift moved over the chart in the mode shown, from its first
@@ -102,6 +104,23 @@ export function liftChanges(
     const last = values[values.length - 1];
     return [{ lift, first, last, pct: ((last - first) / first) * 100 }];
   });
+}
+
+// One lift at one week, in the mode shown: its value, and how far it moved
+// since the lift's first plotted week (null when this is that first week or
+// there is no earlier value) — what each S / B / D tile under the chart shows.
+export function liftDeltaAt(
+  weeks: LiftProgressWeek[],
+  lift: LiftingExercise,
+  mode: ProgressMode,
+  index: number
+): { value: number | null; pct: number | null } {
+  const value = index >= 0 && index < weeks.length ? weekValue(weeks[index], lift, mode) : null;
+  if (value == null) return { value: null, pct: null };
+  const firstIdx = weeks.findIndex((w) => weekValue(w, lift, mode) != null);
+  const first = firstIdx >= 0 ? weekValue(weeks[firstIdx], lift, mode) : null;
+  if (first == null || firstIdx >= index || first <= 0) return { value, pct: null };
+  return { value, pct: ((value - first) / first) * 100 };
 }
 
 // Highest recorded 1RM per lift (the latest one wins a tie).

@@ -178,8 +178,15 @@ export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Prop
               })}
             </Text>
           )}
+          {/* Holding a meal card or a food row shares the whole day as an
+              image (the same full poster as ⤴ — never a cropped screenshot). */}
           {summary.groups.map((group) => (
-            <View key={group.mealType} style={styles.card}>
+            <Pressable
+              key={group.mealType}
+              style={styles.card}
+              onLongPress={handleShare}
+              accessibilityHint={t('common.holdToShareHint')}
+            >
               <View style={styles.mealHeader}>
                 <Text style={styles.mealTitle}>{mealLabel(group.mealType, language)}</Text>
                 <Text style={styles.mealKcal}>{group.totalKcal} kcal</Text>
@@ -189,6 +196,7 @@ export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Prop
                   <Pressable
                     style={({ pressed }) => [styles.entryMain, pressed && styles.pressed]}
                     onPress={() => openDetail(e)}
+                    onLongPress={handleShare}
                   >
                     <Text style={styles.entryName} numberOfLines={1}>
                       {foodLogEntryDisplayName(e, language)}
@@ -213,7 +221,7 @@ export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Prop
                   </Pressable>
                 </View>
               ))}
-            </View>
+            </Pressable>
           ))}
         </>
       )}

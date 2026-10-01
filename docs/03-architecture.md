@@ -33,6 +33,7 @@ App được chia thành các lớp rõ ràng để bạn và AI luôn biết "c
 src/
 ├── screens/            # Các màn hình (Home, History, Settings, Diary, Onboarding)
 ├── components/         # Khối tái sử dụng (BatteryRing, MasterBattery, WeekRingsCard...); training/ = Sổ tập luyện
+│                       #   BatteryRing vẽ theo settingsStore.ringMetrics (domain/battery/ringMetrics.ts, ✎ RingMetricsSheet)
 ├── navigation/         # Điều hướng tab: navigator riêng SlideTabNavigator (màn trượt qua nhau) + vuốt dài đổi tab vòng tròn (TabSwipe.tsx, mainTabs.ts) + thanh tab sóng bong bóng (BubbleTabBar.tsx)
 ├── hooks/              # Hook React (useDrainTick, useLiveEnergyReading, useLowEnergyWatch)
 ├── store/              # Zustand: energyStore, settingsStore
@@ -174,6 +175,10 @@ sửa ghi chú không xoá nhãn và ngược lại. **Tháng tập tự do** đ
 - *Biểu đồ dùng chung*: `progressChartModel.ts` (thuần: trục theo **ngày**, tick, series, stars, nhãn cuối) +
   `ProgressChartSvg` vẽ; `TrainingProgressChart` (màn hình) và `ShareProgressCard` (ảnh, theo theme sáng/tối) dùng
   cùng model. Chia sẻ qua `services/share/imageShareService.shareViewAsImage` (captureRef, dùng chung với ảnh bữa ăn).
+- *Giữ để lưu/chia sẻ ảnh (Session 60)*: `hooks/useHoldToShare` (ref + `onLongPress` → `shareViewAsImage` → bảng
+  chia sẻ của hệ điều hành, có "Lưu hình ảnh" vào Ảnh — không cần quyền thư viện ảnh hay module native mới). Dùng ở
+  `BatteryRing`, `WeightTrendChart`; `TodayMeals` và `TrainingProgressChart` giữ = cùng ảnh poster như nút ⤴/📤.
+  View được chụp cần `collapsable={false}` và nền đặc.
 - *Excel*: thêm sheet **Tiến độ sức mạnh** (mỗi tuần: S/B/D nặng nhất, cân nặng, × cân nặng — cùng số với biểu đồ,
   gồm cả dòng ghi tay) và **1RM**, chỉ khi có dữ liệu (`domain/training/strengthExcelRows.ts`).
 - i18n vi/en/de đủ (`trainingLog.progress.share*/max*`, `trainingLog.maxSheet.*`, `trainingLog.editor.createXa*`,
@@ -190,7 +195,10 @@ Lưu ý: phiên song song (Kế hoạch block, Session 33) có `setNotation.ts` 
 **📈 Biểu đồ tiến độ** (`TrainingProgressChart`, dữ liệu `trainingLogProgress.buildLiftProgress`), ngay dưới
 sổ: mỗi tuần (26 tuần gần nhất) một điểm = **set làm việc nặng nhất** của S/B/D **bài chuẩn** (biến thể như
 Pause bị bỏ để ngày tập kỹ thuật không trông như tụt sức). Nút chuyển **kg** / **× cân nặng** (một trục mỗi
-lần, không vẽ hai trục). Cân nặng của tuần = lần cân đầu tiên trong tuần, không có thì lần gần nhất trước đó,
+lần, không vẽ hai trục). **Ratio (Session 60):** chế độ tỉ lệ = `e1rm` của tuần ÷ cân nặng tuần
+(`weekValue`), `e1rm` = `bestEstimatedMax` (Epley qua `liftingEngine.estimatedOneRepMax`, mọi set 1–10 rep kể cả
+prime — prime được parser ghi là `warmup`); chế độ kg vẫn là set làm việc nặng nhất. Excel thêm cột e1RM, cột ratio
+dùng e1RM. Cân nặng của tuần = lần cân đầu tiên trong tuần, không có thì lần gần nhất trước đó,
 không có nữa thì cân nặng hồ sơ. Ngày có dòng ghi tay/sửa tay thì **dòng đó thắng** (đọc bằng parser), nên buổi
 quên Xả vẫn lên biểu đồ. Chạm biểu đồ để xem từng tuần (tên `B2W3`, kg, tỉ lệ, cao nhất đến tuần đó). Màu
 S/B/D: token `liftSquat/liftBench/liftDeadlift` trong `theme.ts` (đã chạy kiểm tra mù màu; luôn kèm nhãn chữ).

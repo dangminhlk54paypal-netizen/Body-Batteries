@@ -1,16 +1,24 @@
-import { bestLiftMaxes, buildProgressChartModel, liftChanges, starPoints } from '../progressChartModel';
+import { bestLiftMaxes, buildProgressChartModel, liftChanges, liftDeltaAt, starPoints, weekValue } from '../progressChartModel';
 import type { ChartLayout } from '../progressChartModel';
 import type { LiftProgressWeek } from '../trainingLogProgress';
 import type { LiftMaxRecord } from '../../../types/trainingLog';
 
 const LAYOUT: ChartLayout = { width: 320, height: 170, padLeft: 34, padRight: 22, padTop: 12, padBottom: 22 };
 
-const week = (weekStart: string, top: LiftProgressWeek['top'], bodyWeightKg: number | null = 80): LiftProgressWeek => ({
+// e1rm defaults to `top` (as if every top set were a single) so the kg and
+// ratio modes plot the same lifts unless a test says otherwise.
+const week = (
+  weekStart: string,
+  top: LiftProgressWeek['top'],
+  bodyWeightKg: number | null = 80,
+  e1rm: LiftProgressWeek['e1rm'] = top
+): LiftProgressWeek => ({
   weekStart,
   weekEnd: weekStart,
   bodyWeightKg,
   bodyWeightSource: bodyWeightKg == null ? null : 'measured',
   top,
+  e1rm,
 });
 const max = (id: string, lift: LiftMaxRecord['lift'], weightKg: number, date: string): LiftMaxRecord => ({
   id,
@@ -121,5 +129,35 @@ describe('liftChanges — how far each lift moved, in the mode shown', () => {
 
   it('leaves out a lift with a single value', () => {
     expect(liftChanges([week('2026-07-27', { squat: 100, bench_press: 70 }), week('2026-08-03', { squat: 102.5 })], 'kg').map((c) => c.lift)).toEqual(['squat']);
+  });
+});
+
+describe('weekValue — kg is the heaviest set, ratio is e1RM ÷ body weight', () => {
+  it('ratio uses the estimated 1RM, not the heaviest set', () => {
+    // 4 reps at 100 kg → e1RM 113.3; at 80 kg body weight that is 1.42×, not 1.25×.
+    const w = week('2026-08-03', { squat: 100 }, 80, { squat: 113.3 });
+    expect(weekValue(w, 'squat', 'kg')).toBe(100);
+    expect(weekValue(w, 'squat', 'ratio')).toBeCloseTo(113.3 / 80, 5);
+  });
+
+  it('no e1RM (only sets above 10 reps) or no body weight → no ratio point', () => {
+    expect(weekValue(week('2026-08-03', { squat: 60 }, 80, {}), 'squat', 'ratio')).toBeNull();
+    expect(weekValue(week('2026-08-03', { squat: 100 }, null), 'squat', 'ratio')).toBeNull();
+  });
+});
+
+describe('liftDeltaAt — the value and change shown in each S/B/D tile', () => {
+  const ws = [
+    week('2026-07-27', { bench_press: 100 }),
+    week('2026-08-03', { squat: 150, bench_press: 95 }),
+    week('2026-08-10', { squat: 160 }),
+  ];
+  it('change since the lift’s own first week, up to the selected week', () => {
+    expect(liftDeltaAt(ws, 'squat', 'kg', 2)).toEqual({ value: 160, pct: (10 / 150) * 100 });
+    expect(liftDeltaAt(ws, 'bench_press', 'kg', 1).pct).toBeCloseTo(-5, 5);
+  });
+  it('first week of a lift → no change; week without the lift → nothing', () => {
+    expect(liftDeltaAt(ws, 'squat', 'kg', 1)).toEqual({ value: 150, pct: null });
+    expect(liftDeltaAt(ws, 'bench_press', 'kg', 2)).toEqual({ value: null, pct: null });
   });
 });

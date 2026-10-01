@@ -1,5 +1,5 @@
 // Shared "what did the user weigh on day X" logic — used by both the Excel
-// export (excelSheets.ts) and the History day-detail sheet, so the
+// History day-detail sheet (and formerly the Excel export), so the
 // carry-forward rule stays identical in both places.
 
 export interface WeightEntryLike {

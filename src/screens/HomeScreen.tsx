@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,12 @@ import { computeDailyBatteryTotals } from '../domain/battery/dailyBatteryTotals'
 import { pickHomeKeywords, type KeywordTargets } from '../domain/battery/homeKeywords';
 import { useCurrentHour } from '../hooks/useCurrentHour';
 import { MicroBatteryStack } from '../components/MicroBatteryStack';
+import { MicroBatterySourceSheet } from '../components/MicroBatterySourceSheet';
+import { RingMetricsSheet } from '../components/RingMetricsSheet';
+import { isRingBatteryId, resolveRingMetrics, type RingMetricId } from '../domain/battery/ringMetrics';
+import { computeMicroBatteries } from '../domain/nutrition/microBatteryEngine';
+import { nutrientTargetsForProfile } from '../lib/nutrientTargets';
+import type { MicroBatteryState } from '../types/nutrition';
 import { SupplementQuickLog } from '../components/SupplementQuickLog';
 import { FoldRow } from '../components/ui/FoldRow';
 import { DetailsViewSuggestion } from '../components/DetailsViewSuggestion';
@@ -131,6 +137,8 @@ export function HomeScreen() {
     setWaterDisplayUnit,
     movementDisplayUnit,
     setMovementDisplayUnit,
+    ringMetrics,
+    setRingMetrics,
   } = useSettingsStore();
   const themeMode = useResolvedThemeMode();
   const c = useThemeColors();
@@ -142,6 +150,11 @@ export function HomeScreen() {
   // protein/carbs/minerals/movement: these auto-charge from logged food/activity,
   // so a tap opens a read-only "where did this come from" sheet instead (CHANGE 1).
   const [sourceSheetVisible, setSourceSheetVisible] = useState(false);
+  // A micronutrient segment of the ring (fat, sugar…) → its sources sheet.
+  const [ringMicro, setRingMicro] = useState<MicroBatteryState | null>(null);
+  const [ringMicroVisible, setRingMicroVisible] = useState(false);
+  // ✎ next to "Pin nhỏ": which metrics the ring shows.
+  const [ringEditVisible, setRingEditVisible] = useState(false);
   // All detail rows start folded; open rows stay open while the user moves
   // between tabs (the screen stays mounted). One row at a time by default, up
   // to three in "view several" mode (⧉) — oldest first.
@@ -155,6 +168,12 @@ export function HomeScreen() {
 
   useLowEnergyWatch();
   const microBattery = useMicroBatteryHistory(foodLog, userProfile);
+  const ringMetricIds = resolveRingMetrics(ringMetrics);
+  // The ring is always today — the micro section below may be showing a past day.
+  const todayMicroStates = useMemo(
+    () => computeMicroBatteries(foodLog, getAnyFoodById, nutrientTargetsForProfile(userProfile)),
+    [foodLog, userProfile]
+  );
 
   useEffect(() => {
     loadToday(currentMode);
@@ -176,6 +195,17 @@ export function HomeScreen() {
 
   function handleToggleMovementUnit() {
     setMovementDisplayUnit(nextMovementDisplayUnit(movementDisplayUnit));
+  }
+
+  function handleRingPress(id: string) {
+    if (isRingBatteryId(id as RingMetricId)) {
+      handleCellPress(id);
+      return;
+    }
+    const state = todayMicroStates.find((m) => m.id === id);
+    if (!state) return;
+    setRingMicro(state);
+    setRingMicroVisible(true);
   }
 
   function handleCellPress(id: string) {
@@ -353,13 +383,25 @@ export function HomeScreen() {
           <Text style={styles.sectionLabel}>{t('screens.home.subBatteriesTitle')}</Text>
           <InfoPopover
             title={t('screens.home.subBatteriesTitle')}
-            sections={[{ body: t('screens.home.hint') }]}
+            sections={[{ body: t('screens.home.hint') }, { body: t('screens.home.ringCustomizeInfo') }]}
           />
+          <View style={styles.flex} />
+          <Pressable
+            onPress={() => setRingEditVisible(true)}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('components.batteryRing.editA11y')}
+            style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.editIcon}>✎</Text>
+          </Pressable>
         </View>
         <HomeKeywordChips keywords={keywords} onPress={handleCellPress} />
         <BatteryRing
           batteries={batteryStates}
-          onPressCell={handleCellPress}
+          metricIds={ringMetricIds}
+          microStates={todayMicroStates}
+          onPressCell={handleRingPress}
           waterDisplayUnit={waterDisplayUnit}
           onToggleWaterUnit={handleToggleWaterUnit}
           movementDisplayUnit={movementDisplayUnit}
@@ -560,6 +602,21 @@ export function HomeScreen() {
         intakeLog={intakeLog}
         level={selectedBatteryLevel}
       />
+
+      <MicroBatterySourceSheet
+        nutrient={ringMicro}
+        visible={ringMicroVisible}
+        onClose={() => setRingMicroVisible(false)}
+        foodLog={foodLog}
+        dateLabel={t('common.today')}
+      />
+
+      <RingMetricsSheet
+        visible={ringEditVisible}
+        onClose={() => setRingEditVisible(false)}
+        selected={ringMetricIds}
+        onChange={setRingMetrics}
+      />
     </SafeAreaView>
   );
 }
@@ -624,6 +681,18 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
     marginBottom: 6,
   },
   detailsTitle: { flex: 1 },
+  flex: { flex: 1 },
+  editBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: c.bgElevated,
+    borderWidth: 1,
+    borderColor: c.borderSubtle,
+  },
+  editIcon: { color: c.textSecondary, fontSize: 14, fontWeight: '700' },
   modePill: {
     paddingHorizontal: 10,
     paddingVertical: 3,

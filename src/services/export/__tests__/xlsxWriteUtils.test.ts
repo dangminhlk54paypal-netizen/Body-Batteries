@@ -1,7 +1,8 @@
 import { utils, read } from 'xlsx';
 import { unzipSync, strFromU8 } from 'fflate';
-import { workbookToBase64WithFrozenHeaders } from '../xlsxWriteUtils';
+import { tableToSheet, workbookToBase64WithFrozenHeaders } from '../xlsxWriteUtils';
 import type { StyledCell } from '../xlsxWriteUtils';
+import { dateCell, type SheetTable } from '../../../domain/export/sheetTable';
 
 function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -32,7 +33,7 @@ describe('workbookToBase64WithFrozenHeaders — bold style injection', () => {
     expect(strFromU8(entries['xl/worksheets/sheet1.xml'])).toContain('<pane ySplit="1"');
   });
 
-  it('adds exactly 3 bold fonts (title/header/label tiers) and references them by index', () => {
+  it('adds exactly 3 bold fonts (title/header/label tiers) plus a wrap style, and references them by index', () => {
     const styledCells: StyledCell[] = [
       { sheet: 1, ref: 'A1', tier: 1 },
       { sheet: 1, ref: 'A2', tier: 2 },
@@ -46,7 +47,7 @@ describe('workbookToBase64WithFrozenHeaders — bold style injection', () => {
     expect(stylesXml).toContain('<sz val="20"/>');
     expect(stylesXml).toContain('<sz val="14"/>');
     expect(stylesXml).toContain('<sz val="12"/>');
-    expect(stylesXml).toMatch(/<cellXfs count="4">/); // 1 default + 3 injected
+    expect(stylesXml).toMatch(/<cellXfs count="5">/); // 1 default + 3 bold tiers + 1 wrap tier
 
     const sheetXml = strFromU8(entries['xl/worksheets/sheet1.xml']);
     // tier 1 -> cellXfs index 1 (base count was 1 before injection)
@@ -64,5 +65,33 @@ describe('workbookToBase64WithFrozenHeaders — bold style injection', () => {
     expect(sheet.A1.v).toBe('Title');
     expect(sheet.A2.v).toBe('Header A');
     expect(sheet.B3.v).toBe('data');
+  });
+});
+
+describe('tableToSheet — a SheetTable as a clean, filterable sheet', () => {
+  const table: SheetTable = {
+    name: 'Daily',
+    columns: ['Date', 'Time', 'Kcal', 'Note'],
+    rows: [
+      [dateCell('2026-09-21'), { kind: 'time', hours: 7, minutes: 15 }, 1477, null],
+      [dateCell('2026-09-22'), null, 1500, 'x'],
+    ],
+  };
+
+  it('writes real dates/times (number + format), leaves null cells empty, adds an AutoFilter', () => {
+    const sheet = tableToSheet(table, 'dd/mm/yyyy');
+    expect(sheet.A2).toMatchObject({ t: 'n', v: 46286, z: 'dd/mm/yyyy' }); // Excel serial of 2026-09-21
+    expect(sheet.B2).toMatchObject({ t: 'n', z: 'hh:mm' });
+    expect(sheet.B2.v).toBeCloseTo((7 * 60 + 15) / 1440, 10);
+    expect(sheet.D2).toBeUndefined();
+    expect(sheet.B3).toBeUndefined();
+    expect(sheet['!autofilter']).toEqual({ ref: 'A1:D3' });
+    // A date column is as wide as its format, not its serial number.
+    expect(sheet['!cols']![0].wch).toBeGreaterThanOrEqual('dd/mm/yyyy'.length);
+  });
+
+  it('no AutoFilter when asked (the Read me sheet) or when the table is empty', () => {
+    expect(tableToSheet(table, 'dd/mm/yyyy', { autoFilter: false })['!autofilter']).toBeUndefined();
+    expect(tableToSheet({ ...table, rows: [] }, 'dd/mm/yyyy')['!autofilter']).toBeUndefined();
   });
 });

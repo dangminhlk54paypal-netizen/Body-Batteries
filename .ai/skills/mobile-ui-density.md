@@ -46,6 +46,7 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
 | **＋** | thêm | nút nhỏ, hoặc gộp vào menu của ✎ |
 | **⌄ / ⌃** | mở / gập | cuối hàng tiêu đề |
 | nhấn giữ | thao tác hiếm (đổi tên, xoá) | `Alert` menu |
+| nhấn giữ (biểu đồ, vòng pin, thẻ bữa ăn) | lưu vào Ảnh / chia sẻ ảnh | `hooks/useHoldToShare` (destructure `{ ref, onLongPress }` — lint react-hooks/refs chặn `hold.ref`); view chụp cần `collapsable={false}` + nền đặc. Có poster đầy đủ (bữa ăn, sức mạnh) thì giữ = chia sẻ poster, không chụp khung đang cuộn |
 | **⏰ ✓** | trạng thái (đã hẹn / đã ghi) | chip nhỏ màu; bấm vào để mở menu |
 
 - Chữ in nhỏ (mô tả, công thức, disclaimer) để trong ⓘ. Trên màn chỉ còn một dòng ngắn, nếu thật cần.
@@ -72,6 +73,17 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
 - **Thanh tab dưới = "sóng bong bóng":** chạm và lướt ngang trên thanh, icon phồng/nhấc theo đường cong quanh ngón
   tay, tab dưới ngón tay mở ngay (`navigation/BubbleTabBar.tsx` + `bubbleWave.ts`). Thêm tab mới: thêm vào
   `MAIN_TABS` / `MAIN_TAB_META` trong `mainTabs.ts`.
+- **Khối tổng quan người dùng tự chọn nội dung (vòng pin nhỏ):** ✎ tròn nhỏ ở cuối hàng tiêu đề → sheet lưới chip
+  bật/tắt rộng bằng nhau (3 cột, chia nhóm), áp dụng ngay, footer **Mặc định | Xong**. Hình tự chia đều theo số mục;
+  chú thích chọn số cột cho hàng đều (4 → 2×2, 8 → 4×2). Mẫu: `RingMetricsSheet` + `domain/battery/ringMetrics.ts`.
+  Màu trùng nhau (Carbs và Béo cùng vàng) → mục phụ đổi sang màu dự phòng.
+  - **Không chặn im lặng:** bấm mà không có tác dụng (chạm giới hạn) phải hiện chữ báo, không chỉ rung — chủ app
+    tưởng nút hỏng (Session 60: trần 8 mục làm Salt/Sodium/Iron "bấm không ăn").
+  - **Nhóm phụ quá 3 mục → hình nhỏ ở góc** của hình to (vòng vi chất ở góc trên phải), chạm để đổi to/nhỏ; chú
+    thích chỉ theo hình to. Thay cho giới hạn số mục.
+  - **Số tổng ("x/y đạt") đếm mọi mục người dùng đã chọn**, kể cả mục kiểu "giới hạn" (đạt = còn dưới trần, sau khi
+    đã có dữ liệu trong ngày).
+
 - **Danh sách thẻ ngang hàng (Cài đặt…) xếp A–Z theo tiêu đề đã dịch**: `sortByLabel(items, labelOf, language)`
   (`lib/sortByLabel.ts`) — không xếp cứng theo tiếng Việt.
 
@@ -84,6 +96,17 @@ Chọn biểu tượng theo chức năng, không để chữ giải thích nằm
   **Huỷ | Lưu** ghim ở đáy ngoài vùng cuộn; ô nhập đi cặp hai cột với nhãn ngắn phía trên (Phút | Bước, Từ | Đến); chữ
   một dòng tự co. Nhập dở được giữ (lỡ tay đóng thì mở lại tiếp tục trong 5 phút), Huỷ mới xoá. Mẫu:
   `ActivityLogSheet` + `store/activityDraftStore.ts`.
+
+## 4b. Ô số liệu (thẻ thống kê) — mắt thấy số quan trọng trước
+Khi một thẻ so sánh vài đối tượng ngang hàng (S / B / D…), thay các dòng chữ bằng **một hàng ô rộng bằng nhau**:
+- Viền trên 3px màu của đối tượng + nhãn viết tắt cùng màu (màu = nhận diện, không tô màu cho số chính).
+- **Số chính to, đậm, màu chữ chính** (độ tương phản cao nhất), tự co một dòng.
+- Thay đổi = **▲ xanh (`statusGood`) / ▼ cam san hô (`statusLow`) / = xám** — mũi tên luôn đi kèm màu.
+- Số phụ (e1RM, ★ kỷ lục) nhỏ, mờ, mỗi thứ một dòng cố định (giữ chỗ bằng " " để các ô cao bằng nhau).
+- Phụ đề, công thức, gợi ý thao tác → ⓘ cạnh tiêu đề; chế độ xem (kg | Ratio) là segmented nhỏ ở góc phải tiêu đề;
+  hành động (⭐, ⤴) là nút tròn icon cạnh dòng ngữ cảnh. Mẫu: `TrainingProgressChart` + `liftDeltaAt`.
+- Biểu đồ nào cũng có **⤴ nhìn thấy được** (không chỉ nhấn giữ — chủ app không tự tìm ra thao tác ẩn); ảnh chia sẻ là
+  poster riêng (thương hiệu, ngày, số chính, biểu đồ), không chụp khung trên màn. Mẫu: `ShareWeightCard`.
 
 ## 5. Bảng / dòng thay vì đoạn văn
 - Mỗi mục một dòng, theo cột: **tên | giá trị | ⓘ | ✎**. Mẫu: hàng bài tập trong `BlockPlanView` (`tableRow`).

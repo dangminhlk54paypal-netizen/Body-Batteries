@@ -1,5 +1,6 @@
 import { addDaysToDateString, dateString, mondayOfWeek } from '../../lib/dateUtils';
 import type { Language } from '../../i18n/types';
+import { estimatedOneRepMax } from '../energy/liftingEngine';
 import { LIFTING_EXERCISES } from '../../types/energy';
 import type { ActivityLogEntry, LiftingExercise, LiftingSet } from '../../types/energy';
 import type { TrainingLogDayRecord, TrainingLogFormat } from '../../types/trainingLog';
@@ -9,8 +10,8 @@ import type { WeightPoint } from './trainingLogWeights';
 // Week-by-week strength progress for the chart under the notebook: the
 // heaviest working set of each competition lift (S / B / D, variations such as
 // paused squat left out so a lighter technique day never reads as a drop),
-// next to the body weight of that week, so the UI can plot kg or kg ÷ body
-// weight. Reads the same two sources the notebook shows: Xả sessions, and the
+// its estimated one-rep max, and the body weight of that week, so the UI can
+// plot kg, or the powerlifting ratio e1RM ÷ body weight. Reads the same two sources the notebook shows: Xả sessions, and the
 // user's own line for a day (hand-written or edited) — that line wins, because
 // it is what the notebook says happened. Pure: no store, no clock.
 
@@ -20,6 +21,8 @@ export interface LiftProgressWeek {
   bodyWeightKg: number | null; // see weekBodyWeight
   bodyWeightSource: BodyWeightSource | null;
   top: Partial<Record<LiftingExercise, number>>;
+  // Best estimated 1RM of the week (see bestEstimatedMax) — what the ratio uses.
+  e1rm: Partial<Record<LiftingExercise, number>>;
 }
 
 // Where a week's body weight came from — the chart says so, because a ratio
@@ -41,6 +44,24 @@ function heaviestWorking(sets: { kind: LiftingSet['kind']; weightKg: number; rep
     if (top == null || s.weightKg > top) top = s.weightKg;
   }
   return top;
+}
+
+// Above this many reps a set says little about a one-rep max (the Epley
+// estimate is meant for the 1–10 rep range powerlifting works in).
+export const E1RM_MAX_REPS = 10;
+
+// The "real" strength a day shows: the best estimated 1RM over every set of
+// 1–10 reps — a prime (the heavy single before the main sets, parsed as a
+// warm-up) counts as itself, "4x100" counts as 4 reps at 100 → 113.3. Light
+// warm-up rungs never win the max, so they need no filtering.
+export function bestEstimatedMax(sets: { weightKg: number; reps: number }[]): number | null {
+  let best: number | null = null;
+  for (const s of sets) {
+    if (s.reps < 1 || s.reps > E1RM_MAX_REPS || !(s.weightKg > 0)) continue;
+    const e = estimatedOneRepMax(s.weightKg, s.reps);
+    if (best == null || e > best) best = e;
+  }
+  return best;
 }
 
 const dayOf = (w: WeightPoint) => dateString(new Date(w.timestamp));
@@ -103,16 +124,27 @@ export function buildLiftProgress(input: {
   );
 
   const weeks = new Map<string, LiftProgressWeek>();
-  const record = (date: string, exercise: LiftingExercise, kg: number | null) => {
+  const record = (date: string, exercise: LiftingExercise, sets: { kind: LiftingSet['kind']; weightKg: number; reps: number }[]) => {
+    const kg = heaviestWorking(sets);
     if (kg == null) return;
     const monday = mondayOfWeek(date);
     let week = weeks.get(monday);
     if (!week) {
-      week = { weekStart: monday, weekEnd: addDaysToDateString(monday, 6), bodyWeightKg: null, bodyWeightSource: null, top: {} };
+      week = {
+        weekStart: monday,
+        weekEnd: addDaysToDateString(monday, 6),
+        bodyWeightKg: null,
+        bodyWeightSource: null,
+        top: {},
+        e1rm: {},
+      };
       weeks.set(monday, week);
     }
     const prev = week.top[exercise];
     if (prev == null || kg > prev) week.top[exercise] = kg;
+    const e = bestEstimatedMax(sets);
+    const prevE = week.e1rm[exercise];
+    if (e != null && (prevE == null || e > prevE)) week.e1rm[exercise] = e;
   };
 
   const dates = new Set([...entriesByDate.keys(), ...overrides.keys()]);
@@ -122,7 +154,7 @@ export function buildLiftProgress(input: {
     if (override != null) {
       const known = dayEntries.flatMap((e) => e.workouts);
       for (const m of parseDayBody(override, { format, language, known }).movements) {
-        if (m.identity && isStandardIdentity(m.identity)) record(date, m.identity.exercise, heaviestWorking(m.sets));
+        if (m.identity && isStandardIdentity(m.identity)) record(date, m.identity.exercise, m.sets);
       }
       continue;
     }
@@ -130,7 +162,7 @@ export function buildLiftProgress(input: {
       for (const w of e.workouts) {
         const identity = identityOfWorkout(w);
         if (identity && isStandardIdentity(identity) && w.sets) {
-          record(date, identity.exercise, heaviestWorking(w.sets));
+          record(date, identity.exercise, w.sets);
         }
       }
     }

@@ -137,6 +137,20 @@ xanh → vàng → đỏ khi cạn dần. Chạm vào một viên:
   từ đâu" để xem lại — không sửa tay trực tiếp ở đây được (sửa/xoá thì làm ở
   danh sách "Hôm nay đã ăn/đã tập" phía dưới, xem mục 3.6).
 
+**Chọn chỉ số trên vòng (✎):** bấm **✎** cạnh tiêu đề "Pin nhỏ" để chọn chỉ số hiện trên vòng (ít nhất 2) —
+6 pin gốc và các vi chất (chất béo, đường, chất xơ, muối, natri, sắt…). Ví dụ chỉ theo dõi **Protein · Carbs ·
+Béo · Đường** thì vòng chia làm 4 cung đều nhau. **Mặc định (6)** đưa về 6 pin như ban đầu.
+- Số ở giữa vòng ("đạt mục tiêu") đếm **mọi** chỉ số bạn chọn: chỉ số cần đủ thì đạt khi tới 100%; đường, muối,
+  natri là **mức trần** (hiện `≤`) thì đạt khi hôm nay đã ăn và vẫn còn dưới trần.
+- Chọn **hơn 3 vi chất** thì vi chất chuyển sang **vòng nhỏ ở góc** trên bên phải, vòng to giữ các pin chính.
+  Chạm vòng nhỏ để đổi chỗ (vi chất lên vòng to, kèm chú thích bên dưới).
+- Chạm một cung vi chất mở bảng "món nào góp bao nhiêu" của hôm nay.
+
+**Giữ để lưu ảnh:** nhấn giữ vòng pin (hoặc chú thích bên dưới) → bảng chia sẻ của iPhone mở ra; chọn **Lưu
+hình ảnh** để vào Ảnh, hoặc gửi qua Tin nhắn/Zalo… Cách này cũng dùng được cho: thẻ bữa ăn / món trong
+"🍽 Bữa ăn" (ảnh đủ cả ngày, không bị cắt), biểu đồ cân nặng (Lịch sử — có cả nút **⤴** cạnh 1T/3T/1N/Tất cả; ảnh gồm
+cân nặng hiện tại, thay đổi trong khoảng đang xem và biểu đồ) và biểu đồ sức mạnh (Tập luyện, nút **⤴**).
+
 ### 3.5. Pin vi chất (micronutrient)
 
 Phía dưới, app tính riêng các chỉ số nhỏ hơn từ chính món ăn đã ghi: chất
@@ -235,22 +249,22 @@ buổi đó tự hiện trong sổ, ví dụ:
   `14.09(79.5kg):`), là lưu thành lần cân của ngày đó trong mục Cân nặng; ngày đã có lần cân thì số đó được sửa lại,
   không ghi đúp. Sửa số cân ở **tiêu đề tuần** (vd. `B1W1: 01.09–07.09 76.3kg` → `80kg`) thì lần cân đầu tiên của
   tuần đó được sửa; tuần chưa có lần cân thì thêm một lần vào sáng thứ Hai. Trang không xoá lần cân nào.
-- **📈 Tiến độ sức mạnh** (ngay dưới sổ): mỗi tuần một điểm là mức tạ nặng nhất bạn làm ở Squat / Bench /
-  Deadlift (bài chuẩn). Nút **kg** / **× cân nặng** đổi sang tỉ lệ so với cân nặng tuần đó. Chạm vào biểu đồ để
-  xem số của từng tuần. Buổi bạn ghi tay trong sổ cũng được tính.
-  - **Cân nặng của tuần** (dùng cho tỉ lệ): trung bình các lần cân trong tuần; tuần không cân thì ước tính trên
-    đường thẳng giữa lần cân trước và sau; sau lần cân cuối thì giữ số đó. Tuần trước lần cân đầu tiên chỉ ước tạm
-    (hiện chữ vàng khi chạm vào tuần đó) — cân thường xuyên thì tỉ lệ mới chính xác.
-  - Dòng **So với tuần đầu** dưới biểu đồ cho biết mỗi bài tăng bao nhiêu % theo chế độ đang xem: khi giảm cân, %
-    ở **× cân nặng** sẽ cao hơn % ở **kg**.
-  - **⭐ Ghi 1RM**: ghi mức tạ tối đa 1 lần bạn đạt được (bài, kg, ngày). Mỗi 1RM hiện thành một **ngôi sao** màu
-    của bài trên biểu đồ, đúng ngày đạt, không nối vào đường tập. Xoá bằng nút ✕ trong danh sách.
-  - **📤 Chia sẻ ảnh**: xuất biểu đồ (kèm mức nặng nhất và 1RM) thành ảnh để gửi bạn bè; màu theo chủ đề sáng/tối.
+- **📈 Tiến độ sức mạnh** (ngay dưới sổ): mỗi tuần một điểm cho Squat / Bench / Deadlift (bài chuẩn). Nút **kg |
+  Ratio** ở góc phải: **kg** = mức tạ nặng nhất thật sự đã nâng; **Ratio = e1RM ÷ cân nặng tuần** (nâng được bao
+  nhiêu lần cân nặng của mình). ⓘ cạnh tiêu đề giải thích cách tính (prime tính đúng mức tạ; set nhiều rep quy đổi
+  Epley — vd. 4 rep ở 100kg → 113kg; chỉ tính set 1–10 rep). Buổi bạn ghi tay trong sổ cũng được tính.
+  - Dưới biểu đồ là **tuần đang chọn** (mặc định tuần mới nhất; chạm biểu đồ để chọn tuần khác) kèm cân nặng tuần đó
+    (`≈` = ước tính vì tuần đó không cân; màu vàng = chỉ tạm đoán, cân thường xuyên thì ratio mới chính xác).
+  - **3 ô S · B · D**: số lớn là giá trị theo chế độ đang xem; **▲ xanh / ▼ cam** là thay đổi so với tuần đầu của bài
+    đó (khi giảm cân, % ở Ratio cao hơn % ở kg); dòng nhỏ là e1RM và ★ 1RM tốt nhất.
+  - **⭐**: ghi mức tạ tối đa 1 lần (1RM) — hiện thành ngôi sao màu của bài trên biểu đồ, đúng ngày đạt.
+  - **⤴** (hoặc giữ biểu đồ): lưu vào Ảnh / chia sẻ ảnh biểu đồ (kèm số mới nhất và 1RM); màu theo chủ đề sáng/tối.
 - **Viết bù buổi quên Xả** (kể cả tháng trước): ở **＋ Ghi buổi**, nhập ngày và dòng tập (vd. `S 120 5x4x100`).
   Nếu app đọc được cả dòng, công tắc **⚡ Tạo buổi Xả** (bật sẵn) sẽ tạo buổi Xả thật cho ngày đó: tính kcal, pin,
   hiện trong Lịch sử, biểu đồ và Excel. Tắt công tắc nếu chỉ muốn lưu chữ. Những dòng ghi tay cũ: mở **📄 Trang**
   → **⚡ Ghi N dòng tay vào Xả** → xem trước → Áp dụng.
-- **Excel** có thêm sheet **Tiến độ sức mạnh** (mỗi tuần S/B/D nặng nhất, cân nặng, × cân nặng) và **1RM**.
+- **Excel** có thêm sheet **Tiến độ sức mạnh** (mỗi tuần S/B/D nặng nhất, e1RM, cân nặng, ratio e1RM ÷ cân nặng)
+  và **1RM**.
 
 **Đang tập dở một block trước khi dùng app?** Khi tạo block, nhập **Đây là block số** (vd. 3) rồi bấm tuần bạn đang
 tập ở **Bạn đang ở tuần thứ** (W1, W2, …, Deload). Bảng ngay bên dưới hiện ngày thật của từng tuần (B3W1: T2 01/09 –
@@ -334,9 +348,11 @@ Chỉnh giờ bắt đầu/kết thúc của bữa sáng/trưa/tối — dùng �
 bữa khi bạn ghi món ăn (ngoài các khung này tính là bữa phụ).
 
 ### 6.6. 💾 Dữ liệu
-- **Xuất Excel theo tuần / theo tháng**: xuất toàn bộ dữ liệu ăn uống/pin ra
-  file Excel lưu trên điện thoại (nhiều sheet: lịch sử pin, món ăn, tổng kết
-  ngày/tuần theo vi chất...).
+- **Xuất Excel theo tuần / theo tháng**: xuất toàn bộ dữ liệu ra file Excel. Sheet đầu **Đọc trước** giải thích
+  từng sheet. Mỗi sheet là một bảng gọn: hàng tiêu đề có nút lọc ▾ để sắp xếp/lọc, ngày là kiểu ngày thật (lọc theo
+  tháng/tuần được), số không kèm đơn vị (đơn vị ở tiêu đề), ô trống nghĩa là chưa có dữ liệu. Sheet **Theo ngày**
+  (mỗi dòng một ngày: cân nặng, ăn, vận động, nước, ngủ, vi chất) dùng để vẽ biểu đồ; **Món ăn**, **Vận động**,
+  **Nước & ngủ** là dữ liệu gốc; muốn tổng hợp theo ý mình thì dùng Insert → PivotTable.
 - **Dọn dữ liệu cũ**: xoá dữ liệu quá 7 ngày khỏi app (bản Excel đã xuất vẫn
   giữ nguyên) — việc này bình thường app cũng tự làm mỗi tuần, nút này để
   bạn chủ động làm ngay khi cần.

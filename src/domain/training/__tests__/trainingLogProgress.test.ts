@@ -1,4 +1,4 @@
-import { buildLiftProgress } from '../trainingLogProgress';
+import { bestEstimatedMax, buildLiftProgress } from '../trainingLogProgress';
 import { addDaysToDateString as addDays } from '../../../lib/dateUtils';
 import { DEFAULT_TRAINING_LOG_FORMAT } from '../../../types/trainingLog';
 import type { ActivityLogEntry, LiftingSet, WorkoutSession } from '../../../types/energy';
@@ -67,6 +67,18 @@ describe('buildLiftProgress — weekly top sets for the chart', () => {
     ]);
   });
 
+  it('e1RM per week for the ratio: a prime counts as itself, sets convert with Epley', () => {
+    const day = (date: string, overrideText: string) => ({ date, overrideText, note: null, sourceSignature: null, updatedAt: 0 });
+    const weeks = build({
+      dayRecords: [
+        day('2026-09-14', 'B 95+ 4x6x72.5'), // prime 95 beats 6 @ 72.5 (→ 87)
+        day('2026-09-16', 'S 4x4x100'), // 4 reps @ 100 → 113.3
+        day('2026-09-18', 'D 3x180 5x5x160'), // 3 @ 180 → 198 beats 5 @ 160 (→ 186.7)
+      ],
+    });
+    expect(weeks[0].e1rm).toEqual({ bench_press: 95, squat: 113.3, deadlift: 198 });
+  });
+
   it('body weight per week: average of the week, interpolated between weigh-ins, carried after the last', () => {
     const weeks = build({
       entries: [
@@ -118,4 +130,12 @@ describe('buildLiftProgress — weekly top sets for the chart', () => {
     expect(ratios[1] / ratios[0] - 1).toBeGreaterThan(0.1);
   });
 
+});
+
+describe('bestEstimatedMax', () => {
+  it('best Epley estimate over sets of 1–10 reps; none above 10 reps', () => {
+    expect(bestEstimatedMax([{ weightKg: 100, reps: 4 }, { weightKg: 105, reps: 1 }])).toBe(113.3);
+    expect(bestEstimatedMax([{ weightKg: 60, reps: 12 }])).toBeNull();
+    expect(bestEstimatedMax([])).toBeNull();
+  });
 });

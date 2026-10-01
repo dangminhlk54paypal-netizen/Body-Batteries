@@ -145,6 +145,11 @@ export const MORE_GOAL_IDS: MicronutrientId[] = ['zinc', 'omega3'];
 export const LIMIT_IDS: MicronutrientId[] = ['sugar'];
 export const ELECTROLYTE_IDS: MicronutrientId[] = ['salt', 'sodium', 'potassium', 'magnesium'];
 
+// A nutrient's fixed display colour (never depends on the profile).
+export function nutrientColor(id: MicronutrientId): string | undefined {
+  return NUTRIENT_TABLE.find((m) => m.id === id)?.color;
+}
+
 function valueFor(meta: NutrientMeta, sex: Sex, bracket: AgeBracket): number {
   return sex === 'male' ? meta.male[bracket] : meta.female[bracket];
 }

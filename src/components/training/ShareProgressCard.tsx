@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { ProgressChartSvg, liftColor } from './ProgressChartSvg';
 import { formatDisplayDate, todayString } from '../../lib/dateUtils';
 import { formatDayDate } from '../../domain/training/trainingLogFormatter';
-import { bestLiftMaxes, formatChartValue } from '../../domain/training/progressChartModel';
+import { bestLiftMaxes, formatChartValue, weekValue } from '../../domain/training/progressChartModel';
 import type { ChartLayout, ProgressChartModel, ProgressMode } from '../../domain/training/progressChartModel';
 import type { LiftProgressWeek } from '../../domain/training/trainingLogProgress';
 import { activityLabel } from '../../lib/activityLabels';
@@ -46,6 +46,8 @@ export const ShareProgressCard = forwardRef<View, Props>(function ShareProgressC
   const styles = useThemedStyles(createStyles);
   const best = bestLiftMaxes(maxes);
   const kg = (v: number) => t('trainingLog.progress.valueKg', { kg: formatChartValue(v, 1, format, language) });
+  const value = (v: number) =>
+    mode === 'kg' ? kg(v) : t('trainingLog.progress.valueRatio', { ratio: formatChartValue(v, 2, format, language) });
 
   return (
     // collapsable={false}: Android may otherwise flatten this node away, and a
@@ -76,7 +78,8 @@ export const ShareProgressCard = forwardRef<View, Props>(function ShareProgressC
 
       <View style={styles.legend}>
         {LIFTING_EXERCISES.map((lift) => {
-          const tops = weeks.map((w) => w.top[lift]).filter((v): v is number => v != null);
+          // The legend speaks the chart's unit: kg, or the ratio e1RM ÷ body weight.
+          const tops = weeks.map((w) => weekValue(w, lift, mode)).filter((v): v is number => v != null);
           const max = best[lift];
           if (tops.length === 0 && !max) return null;
           return (
@@ -87,8 +90,8 @@ export const ShareProgressCard = forwardRef<View, Props>(function ShareProgressC
               </Text>
               {tops.length > 0 && (
                 <Text style={styles.value}>
-                  {kg(tops[tops.length - 1])}
-                  <Text style={styles.muted}> · {t('trainingLog.progress.best', { value: kg(Math.max(...tops)) })}</Text>
+                  {value(tops[tops.length - 1])}
+                  <Text style={styles.muted}> · {t('trainingLog.progress.best', { value: value(Math.max(...tops)) })}</Text>
                 </Text>
               )}
               {max && (

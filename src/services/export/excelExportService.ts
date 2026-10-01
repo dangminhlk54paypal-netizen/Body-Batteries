@@ -1,248 +1,121 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { utils } from 'xlsx';
-import { autoFitColumns, workbookToBase64WithFrozenHeaders } from './xlsxWriteUtils';
+import { headerCells, tableToSheet, workbookToBase64WithFrozenHeaders, wrapColumnCells } from './xlsxWriteUtils';
 import { getReadingsInRange } from '../../data/repositories/batteryRepository';
 import { getIntakeEventsInRange } from '../../data/repositories/intakeRepository';
 import { getFoodLogInRange } from '../../data/repositories/foodLogRepository';
-import { getWeightHistory, getAppleHealthBurnedInRange, getWeightsInRange } from '../../data/repositories/healthSignalsRepository';
+import { getAppleHealthBurnedInRange, getWeightsInRange } from '../../data/repositories/healthSignalsRepository';
 import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
 import { getTrainingLogDaysInRange } from '../../data/repositories/trainingLogRepository';
 import { listLiftMaxes } from '../../data/repositories/liftMaxRepository';
 import { bodyWeightOn, buildLiftProgress } from '../../domain/training/trainingLogProgress';
-import { buildLiftMaxRows, buildStrengthProgressRows } from '../../domain/training/strengthExcelRows';
+import { buildLiftMaxSheet, buildStrengthProgressSheet } from '../../domain/training/strengthExcelRows';
+import {
+  buildActivitySheet,
+  buildBatterySheet,
+  buildDailyNotesSheet,
+  buildDailySheet,
+  buildFoodSheet,
+  buildPeriodAveragesSheet,
+  buildQuickLogSheet,
+  buildReadMeSheet,
+  buildReferenceSheet,
+  type DataWorkbookInput,
+  type SheetGuideKey,
+} from '../../domain/export/dataWorkbook';
+import { EXCEL_DATE_FORMATS, type SheetTable } from '../../domain/export/sheetTable';
 import { resolveTrainingLogFormat } from '../../types/trainingLog';
-import { todayString, daysAgo, formatDisplayDate, addDaysToDateString } from '../../lib/dateUtils';
-import { mealLabel, batteryTypeName } from '../../lib/constants';
+import { todayString, daysAgo, addDaysToDateString } from '../../lib/dateUtils';
 import { useSettingsStore } from '../../store/settingsStore';
 import { nutrientTargetsForProfile } from '../../lib/nutrientTargets';
-import { getAnyFoodById, foodLogEntryDisplayName } from '../../data/food/foodLookup';
-import { summarizeWeeklyNutrition } from '../../domain/nutrition/dailyNutritionSummary';
-import { buildDailyTotals, buildFoodEntryRows } from '../../domain/nutrition/excelSheets';
-import { ASSESSMENT_RULES, ASSESSMENT_ORDER } from '../../domain/nutrition/nutritionAssessment';
+import { getAnyFoodById } from '../../data/food/foodLookup';
 import { translate } from '../../i18n/translate';
-import { LOCALE_TAGS } from '../../i18n/types';
 import type { Language } from '../../i18n/types';
 
-function round1(n: number): number {
-  return Math.round(n * 10) / 10;
-}
-
-// Build the .xlsx (8 sheets, + the 2 training sheets when there is training) for an arbitrary date range and return it as a
-// base64 string. Does the DB reads but no file I/O — shared by every export.
-// Every header/label in the workbook follows `language` — see
-// src/i18n/locales/*.ts `export.*`/`nutrients.*`/`meals.*`/`batteries.*`.
+// Build the .xlsx for an arbitrary date range and return it as base64. Does
+// the DB reads but no file I/O — shared by every export. The sheets
+// themselves are pure SheetTables (domain/export/dataWorkbook.ts,
+// domain/training/strengthExcelRows.ts): one header row, one record per row,
+// real dates, bare numbers with the unit in the header — so the file can be
+// sorted, filtered and pivoted as-is. Every header/label follows `language`.
 async function buildWorkbookBase64(fromDate: string, toDate: string, language: Language): Promise<string> {
-  const t = (key: string, vars?: Record<string, string | number>) => translate(language, key, vars);
-  const localeTag = LOCALE_TAGS[language];
+  const [readings, intakeLog, foodLog, activityLog, appleHealthBurned, trainingDays, liftWeights, liftMaxes] =
+    await Promise.all([
+      getReadingsInRange(fromDate, toDate),
+      getIntakeEventsInRange(fromDate, toDate),
+      getFoodLogInRange(fromDate, toDate),
+      getActivityLogInRange(fromDate, toDate),
+      getAppleHealthBurnedInRange(fromDate, toDate),
+      getTrainingLogDaysInRange(fromDate, toDate),
+      // A year earlier too, so the first training weeks can carry a weigh-in forward.
+      getWeightsInRange(addDaysToDateString(fromDate, -365), toDate),
+      listLiftMaxes(),
+    ]);
 
-  const readings = await getReadingsInRange(fromDate, toDate);
-  const intakes = await getIntakeEventsInRange(fromDate, toDate);
-  const foodLog = await getFoodLogInRange(fromDate, toDate);
-  const weights = await getWeightHistory(1000);
-  const activityLog = await getActivityLogInRange(fromDate, toDate);
-  const energyReadings = readings.filter((r) => r.batteryTypeId === 'energy');
-  const appleHealthBurned = await getAppleHealthBurnedInRange(fromDate, toDate);
-
-  // Domain layer stays pure: fetch profile/targets here, pass entries in.
-  const { userProfile } = useSettingsStore.getState();
-  const targets = nutrientTargetsForProfile(userProfile);
-  const { days, weekly } = summarizeWeeklyNutrition(foodLog, targets, getAnyFoodById, language);
-
-  // Sheet 0a: Daily Totals — one row per day with logged food, macro sums,
-  // carried-forward weight, burned kcal (activity log), estimated energy
-  // need + balance (Apple Health synced burn when available, else the energy
-  // battery capacity estimate — see domain/nutrition/excelSheets.ts).
-  const dailyTotalsRows = buildDailyTotals(
+  // Domain layer stays pure: read profile/targets here, pass them in.
+  const settings = useSettingsStore.getState();
+  const profile = settings.userProfile;
+  const input: DataWorkbookInput = {
+    fromDate,
+    toDate,
+    exportedOn: todayString(),
+    language,
+    profile,
+    targets: nutrientTargetsForProfile(profile),
     foodLog,
-    weights,
     activityLog,
-    energyReadings,
+    intakeLog,
+    readings,
+    weights: liftWeights,
     appleHealthBurned,
-    language
-  );
+    lookup: getAnyFoodById,
+  };
 
-  // Sheet 0b: Food Entries — one row per logged food, blank-row separated by
-  // calendar day (the free `xlsx` build can't style cell fills/borders), plus
-  // per-entry micronutrients scaled from the food's per-100g figures.
-  const foodEntryRows = buildFoodEntryRows(foodLog, getAnyFoodById, language);
-
-  // Sheet 1: Battery readings
-  const readingRows = readings.map((r) => ({
-    [t('export.columns.date')]: r.date,
-    [t('export.columns.battery')]: batteryTypeName(r.batteryTypeId, language),
-    [t('export.columns.level')]: r.level,
-    [t('export.columns.capacity')]: r.capacity,
-    [t('export.columns.percentage')]: Math.round((r.level / r.capacity) * 100),
-  }));
-
-  // Sheet 2: Intake events
-  const intakeRows = intakes.map((e) => ({
-    [t('export.columns.date')]: new Date(e.timestamp).toLocaleDateString(localeTag),
-    [t('export.columns.time')]: new Date(e.timestamp).toLocaleTimeString(localeTag),
-    [t('export.columns.battery')]: batteryTypeName(e.batteryTypeId, language),
-    [t('export.columns.amount')]: e.amount,
-    [t('export.columns.note')]: e.note,
-  }));
-
-  // Sheet 3: Food log (rich per-meal rows — food, grams, meal type, kcal, macro).
-  // Food name follows the export language via the live catalog lookup (see
-  // foodLogEntryDisplayName in foodLookup.ts); only a custom food deleted by
-  // the user, or a since-removed catalog id, falls back to the frozen
-  // foodNameVi snapshot taken at log time.
-  const foodRows = foodLog.map((f) => ({
-    [t('export.columns.date')]: new Date(f.timestamp).toLocaleDateString(localeTag),
-    [t('export.columns.time')]: new Date(f.timestamp).toLocaleTimeString(localeTag),
-    [t('export.columns.meal')]: mealLabel(f.mealType, language),
-    [t('export.columns.foodName')]: foodLogEntryDisplayName(f, language),
-    [t('export.columns.grams')]: f.grams,
-    [t('export.columns.kcal')]: f.energyKcal,
-    [t('export.columns.protein')]: f.proteinG,
-    [t('export.columns.fat')]: f.fatG,
-    [t('export.columns.carbs')]: f.carbG,
-    [t('export.columns.water')]: f.waterG,
-    [t('export.columns.minerals')]: f.mineralsMg,
-  }));
-
-  // Sheet 4: Nutrition by day — one row per day with logged food, macro totals
-  // + each micronutrient's current/target, plus the gentle daily assessment.
-  const nutritionDayRows = days.map((day) => {
-    const row: Record<string, string | number> = {
-      [t('export.columns.date')]: formatDisplayDate(day.date, language),
-      [t('export.columns.kcal')]: day.kcal,
-      [t('export.columns.protein')]: day.proteinG,
-      [t('export.columns.fat')]: day.fatG,
-      [t('export.columns.carbs')]: day.carbG,
-    };
-    for (const id of ASSESSMENT_ORDER) {
-      const micro = day.micros.find((m) => m.id === id);
-      if (micro) {
-        row[t(`nutrients.${id}.name`)] = `${micro.current}/${micro.target} ${micro.unit}`;
-      }
-    }
-    row[t('export.columns.assessment')] = day.assessment;
-    return row;
-  });
-
-  // Sheet 5: Weekly summary — 7-day average vs target per nutrient.
-  const weeklySummaryRows = weekly.map((w) => ({
-    [t('export.columns.nutrient')]: t(`nutrients.${w.id}.name`),
-    [t('export.columns.avgPerDay')]: `${w.avgPerDay} ${w.unit}`,
-    [t('export.columns.recommendedPerDay')]: `${w.target} ${w.unit}`,
-    [t('export.columns.pctReached')]: w.pctOfTarget,
-    [t('export.columns.assessment')]: w.assessment,
-  }));
-
-  // Sheet 6: Reference thresholds — the threshold/advice/source table that
-  // drives the assessment columns above (see domain/nutrition/
-  // nutritionAssessment.ts ASSESSMENT_RULES). Disclaimer is the first row.
-  const referenceRows: Record<string, string>[] = [
-    {
-      [t('export.columns.nutrient')]: '',
-      [t('export.columns.threshold')]: '',
-      [t('export.columns.advice')]: t('assessment.disclaimer'),
-      [t('export.columns.source')]: '',
-    },
+  const sheets: { key: SheetGuideKey; table: SheetTable }[] = [
+    { key: 'daily', table: buildDailySheet(input) },
+    { key: 'foods', table: buildFoodSheet(input) },
+    { key: 'activity', table: buildActivitySheet(input) },
+    { key: 'quickLogs', table: buildQuickLogSheet(input) },
+    { key: 'periodAverages', table: buildPeriodAveragesSheet(input) },
+    { key: 'dailyNotes', table: buildDailyNotesSheet(input) },
+    { key: 'referenceThresholds', table: buildReferenceSheet(input) },
+    { key: 'batteryReadings', table: buildBatterySheet(input) },
   ];
-  for (const id of ASSESSMENT_ORDER) {
-    const rule = ASSESSMENT_RULES[id];
-    const target = targets.find((tg) => tg.id === id);
-    const name = t(`nutrients.${id}.name`);
-    const unit = target?.unit ?? '';
-    const value = target?.value ?? 0;
-    const underAdvice = t(`nutrients.${id}.underAdvice`);
-    const overAdvice = t(`nutrients.${id}.overAdvice`);
-    if (rule.underThreshold !== undefined && underAdvice) {
-      referenceRows.push({
-        [t('export.columns.nutrient')]: name,
-        [t('export.columns.threshold')]: t('export.thresholdUnder', {
-          pct: Math.round(rule.underThreshold * 100),
-          value: round1(rule.underThreshold * value),
-          unit,
-        }),
-        [t('export.columns.advice')]: underAdvice,
-        [t('export.columns.source')]: rule.sourceUrl,
-      });
-    }
-    if (rule.overThreshold !== undefined && overAdvice) {
-      referenceRows.push({
-        [t('export.columns.nutrient')]: name,
-        [t('export.columns.threshold')]: t('export.thresholdOver', {
-          pct: Math.round(rule.overThreshold * 100),
-          value: round1(rule.overThreshold * value),
-          unit,
-        }),
-        [t('export.columns.advice')]: overAdvice,
-        [t('export.columns.source')]: rule.sourceUrl,
-      });
-    }
-  }
 
-  const wb = utils.book_new();
-
-  const dailyTotalsSheet = utils.json_to_sheet(dailyTotalsRows);
-  autoFitColumns(dailyTotalsSheet);
-  utils.book_append_sheet(wb, dailyTotalsSheet, t('export.sheets.dailyTotals'));
-
-  const foodEntriesSheet = utils.json_to_sheet(foodEntryRows);
-  autoFitColumns(foodEntriesSheet);
-  utils.book_append_sheet(wb, foodEntriesSheet, t('export.sheets.foodEntries'));
-
-  const readingsSheet = utils.json_to_sheet(readingRows);
-  autoFitColumns(readingsSheet);
-  utils.book_append_sheet(wb, readingsSheet, t('export.sheets.batteryReadings'));
-
-  const intakeSheet = utils.json_to_sheet(intakeRows);
-  autoFitColumns(intakeSheet);
-  utils.book_append_sheet(wb, intakeSheet, t('export.sheets.intakeEvents'));
-
-  const foodLogSheet = utils.json_to_sheet(foodRows);
-  autoFitColumns(foodLogSheet);
-  utils.book_append_sheet(wb, foodLogSheet, t('export.sheets.foodLog'));
-
-  const nutritionDaySheet = utils.json_to_sheet(nutritionDayRows);
-  autoFitColumns(nutritionDaySheet);
-  utils.book_append_sheet(wb, nutritionDaySheet, t('export.sheets.nutritionByDay'));
-
-  const weeklySummarySheet = utils.json_to_sheet(weeklySummaryRows);
-  autoFitColumns(weeklySummarySheet);
-  utils.book_append_sheet(wb, weeklySummarySheet, t('export.sheets.weeklySummary'));
-
-  const referenceSheet = utils.json_to_sheet(referenceRows);
-  autoFitColumns(referenceSheet);
-  utils.book_append_sheet(wb, referenceSheet, t('export.sheets.referenceThresholds'));
-
-  // Training sheets — the same numbers as the strength chart: the week's
-  // heaviest S/B/D from Xả sessions AND the notebook's own lines, and every
-  // recorded 1RM. Only added when there is something to show.
-  const [trainingDays, liftWeights, liftMaxes] = await Promise.all([
-    getTrainingLogDaysInRange(fromDate, toDate),
-    // A year earlier too, so the first weeks can carry a weigh-in forward.
-    getWeightsInRange(addDaysToDateString(fromDate, -365), toDate),
-    listLiftMaxes(),
-  ]);
+  // Training sheets — the same numbers as the strength chart (Xả sessions AND
+  // the notebook's own lines). Only added when there is something to show.
   const strengthWeeks = buildLiftProgress({
     entries: activityLog,
     dayRecords: trainingDays,
     weights: liftWeights,
-    fallbackBodyWeightKg: userProfile.weightKg,
-    format: resolveTrainingLogFormat(useSettingsStore.getState().trainingLogFormat),
+    fallbackBodyWeightKg: profile.weightKg,
+    format: resolveTrainingLogFormat(settings.trainingLogFormat),
     language,
   });
   if (strengthWeeks.length > 0) {
-    const strengthSheet = utils.json_to_sheet(buildStrengthProgressRows(strengthWeeks, language));
-    autoFitColumns(strengthSheet);
-    utils.book_append_sheet(wb, strengthSheet, t('export.sheets.strengthProgress'));
+    sheets.push({ key: 'strengthProgress', table: buildStrengthProgressSheet(strengthWeeks, language) });
   }
   const maxesInRange = liftMaxes.filter((m) => m.date >= fromDate && m.date <= toDate);
   if (maxesInRange.length > 0) {
-    const bodyWeightOf = (date: string) => bodyWeightOn(date, liftWeights, userProfile.weightKg);
-    const maxSheet = utils.json_to_sheet(buildLiftMaxRows(maxesInRange, bodyWeightOf, language));
-    autoFitColumns(maxSheet);
-    utils.book_append_sheet(wb, maxSheet, t('export.sheets.liftMaxes'));
+    const bodyWeightOf = (date: string) => bodyWeightOn(date, liftWeights, profile.weightKg);
+    sheets.push({ key: 'liftMaxes', table: buildLiftMaxSheet(maxesInRange, bodyWeightOf, language) });
   }
 
-  return workbookToBase64WithFrozenHeaders(wb);
+  const readMe = buildReadMeSheet(input, sheets);
+  const tables = [readMe, ...sheets.map((s) => s.table)];
+  const wb = utils.book_new();
+  tables.forEach((table, i) => {
+    // "Read me" is notes, not data: no filter buttons.
+    const sheet = tableToSheet(table, EXCEL_DATE_FORMATS[language], { autoFilter: i > 0 });
+    utils.book_append_sheet(wb, sheet, table.name);
+  });
+  // Bold header row on every sheet (frozen too — see workbookToBase64WithFrozenHeaders);
+  // the long "Read me" texts wrap inside their column.
+  return workbookToBase64WithFrozenHeaders(wb, [
+    ...tables.flatMap((table, i) => headerCells(i + 1, table)),
+    ...wrapColumnCells(1, readMe, 1),
+  ]);
 }
 
 // Build + write the workbook for a date range into the app document directory

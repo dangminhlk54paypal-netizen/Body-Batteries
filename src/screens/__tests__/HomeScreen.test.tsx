@@ -23,6 +23,8 @@ jest.mock('../../components/EnergyActionsBar', () => ({ EnergyActionsBar: () => 
 jest.mock('../../components/BatteryRing', () => ({ BatteryRing: () => null }));
 jest.mock('../../components/IntakeModal', () => ({ IntakeModal: () => null }));
 jest.mock('../../components/BatterySourceSheet', () => ({ BatterySourceSheet: () => null }));
+jest.mock('../../components/MicroBatterySourceSheet', () => ({ MicroBatterySourceSheet: () => null }));
+jest.mock('../../components/RingMetricsSheet', () => ({ RingMetricsSheet: () => null }));
 jest.mock('../../components/ModeSelector', () => ({ ModeSelector: () => null }));
 jest.mock('../../components/TodayMeals', () => ({ TodayMeals: () => 'MEALS_BLOCK' }));
 jest.mock('../../components/TodayActivities', () => ({ TodayActivities: () => 'ACTIVITIES_BLOCK' }));

@@ -2817,6 +2817,65 @@ thì làm mới.
 
 ---
 
+## Session 60 — 2026-10-01 (Vòng pin tuỳ chọn chỉ số · giữ để lưu ảnh · Ratio e1RM)
+
+**Làm gì:** Chủ dự án góp ý 3 điểm: (1) vòng pin nhỏ cho chọn chỉ số (vd. Protein · Carbs · Béo · Đường → 4 cung),
+mặc định vẫn 6; (2) nhấn giữ biểu đồ / vùng ăn uống để lưu vào Ảnh hoặc chia sẻ; (3) biểu đồ "× cân nặng" thành
+RATIO powerlifting: mức tạ (prime, hoặc quy đổi set ra 1RM) ÷ cân nặng tuần.
+
+**Kết quả:**
+- (1) `domain/battery/ringMetrics.ts` (thuần: `resolveRingMetrics`, `toggleRingMetric` 2–8, `buildRingItems` gồm 6 pin +
+  11 vi chất, màu trùng → màu dự phòng, `ringReached` chỉ đếm chỉ số "goal", `ringLegendColumns`) +
+  `settingsStore.ringMetrics` (null = mặc định 6, persist) + `components/RingMetricsSheet.tsx` (✎ cạnh "Pin nhỏ", lưới chip
+  3 cột, Mặc định | Xong). `BatteryRing` vẽ theo danh sách chọn; vi chất lấy từ log **hôm nay**
+  (`computeMicroBatteries`), chạm cung vi chất mở `MicroBatterySourceSheet`. Mức trần hiện `≤`.
+- (2) `hooks/useHoldToShare.ts` → `shareViewAsImage` → bảng chia sẻ iOS ("Lưu hình ảnh" vào Ảnh), không thêm quyền/module
+  native. Giữ được ở: vòng pin + chú thích, thẻ bữa ăn/món (poster cả ngày), biểu đồ cân nặng, biểu đồ sức mạnh (poster).
+- (3) `LiftProgressWeek.e1rm` (`bestEstimatedMax`: Epley, set 1–10 rep, prime tính bằng chính nó); `weekValue('ratio')` =
+  e1RM ÷ cân nặng tuần (TB các lần cân trong tuần, như cũ). Nút đổi tên **Ratio**, phụ đề theo chế độ, ⓘ giải thích,
+  readout `kg · e1RM · ratio`, "cao nhất" theo đơn vị đang xem, poster chia sẻ theo đơn vị. Excel thêm cột e1RM, ratio dùng e1RM.
+- i18n vi/en/de đủ. Test mới `ringMetrics.test.ts`, thêm test e1RM (trainingLogProgress, progressChartModel,
+  strengthExcelRows). `npm run verify` xanh (114 / 1299). Skill mobile-ui-density thêm mẫu "nhấn giữ = lưu ảnh" và
+  "khối tổng quan tự chọn nội dung". EAS preview `2b45e148-6654-41a5-8585-0a5187f3e63d` (từ working tree). Chưa commit.
+  **Chưa có xác nhận máy thật.**
+
+**Vòng 2 (cùng ngày, góp ý sau khi thử):** (1a) "Targets met" hiện 0/5 khi chọn 5 pin + Đường → giờ đếm **mọi**
+chỉ số (`ringReached(items, hasEatenToday)`: goal đạt ở 100 %, limit đạt khi đã ăn và còn dưới trần); nhãn EN/DE đổi
+thành "on target"/"im Ziel". (1b) Salt/Sodium/Iron "bấm không hiện" = trần 8 mục chặn im lặng → bỏ trần; chạm mức tối
+thiểu thì hiện chữ cảnh báo. (2) Hơn 3 vi chất → `splitRing`: vòng to giữ pin chính, vi chất sang **vòng nhỏ ở góc**
+(`MINI_RING_GEOMETRY`), chạm để đổi to/nhỏ, chú thích theo vòng to. Test mới `components/__tests__/BatteryRing.test.tsx`.
+`npm run verify` xanh (115 / 1305). EAS preview `852ad723-391e-4382-b7fc-247840793c39`. **Chưa có xác nhận máy thật.**
+
+**Vòng 3 (cùng ngày): làm lại file Excel xuất dữ liệu** — chủ dự án muốn mở file là biết cách sắp xếp/xử lý về sau.
+Dựng file mẫu bằng chính code xuất (harness Jest tạm, đã xoá) và soi từng sheet: ngày là chữ với 5 kiểu khác nhau
+(có kiểu không có năm), số dính đơn vị (`6.6/38 g`, `100 g`), dòng trống/dòng cảnh báo chen trong bảng, 2 cặp sheet
+trùng nhau, ô "Đánh giá" 8 câu, cột "Thương hiệu" luôn trống, số `78.39999999999999`, **lỗi TB vi chất luôn chia 7**
+(bản 30 ngày và sao lưu tháng phóng to ~4 lần), không có danh sách vận động. Làm lại: `domain/export/sheetTable.ts` +
+`dataWorkbook.ts` (11 sheet: Đọc trước, Theo ngày, Món ăn, Vận động, Nước & ngủ, Trung bình kỳ, Góp ý theo ngày,
+Ngưỡng tham chiếu, Chỉ số pin, Tiến độ sức mạnh, 1RM), `xlsxWriteUtils.tableToSheet` (ngày/giờ thật theo ngôn ngữ,
+AutoFilter, tiêu đề in đậm + cố định, xuống dòng ở Đọc trước). Bỏ `domain/nutrition/excelSheets.ts` (+ test).
+Tài liệu `docs/excel-report.md` viết lại. `npm run verify` xanh (116 / 1312). EAS preview `21b182c9-6211-48bf-91ca-eba7c85e8763`. **Chưa có xác nhận máy thật.**
+
+**Vòng 4 (cùng ngày):** (1) Biểu đồ cân nặng "chưa có chức năng xuất ảnh" — chỉ có nhấn giữ, không thấy được → thêm
+nút **⤴** cạnh 1T/3T/1N/Tất cả; tách `WeightChartSvg` dùng chung; poster riêng `ShareWeightCard` (thương hiệu, ngày,
+cân nặng hiện tại to, thay đổi trong khoảng đang xem tô theo mục tiêu, biểu đồ, dòng vùng khỏe mạnh). Test
+`components/__tests__/WeightTrendChart.test.tsx`. (2) Thẻ Tiến độ sức mạnh gọn lại: tiêu đề + ⓘ + segmented kg|Ratio
+một hàng (phụ đề, gợi ý chạm, chú thích ★ vào ⓘ); dưới biểu đồ một dòng tuần đang chọn + cân nặng (≈ khi ước tính,
+vàng khi đoán) + nút ⭐ / ⤴; 3 ô S·B·D (viền màu bài, số chính to, ▲ xanh / ▼ cam so với tuần đầu — `liftDeltaAt`
+mới có test, e1RM + ★ 1RM nhỏ). Bỏ dòng "So với tuần đầu", danh sách 3 dòng chữ, khung 1RM và 2 nút chữ. Khoá
+`changeTitle/changeValue` thay bằng `deltaValue`. Skill UI thêm mục 4b "ô số liệu". `npm run verify` xanh (117 / 1315). EAS preview `867297b8-93b7-4a91-9b2d-569493bcc20f`. **Chưa có xác nhận máy thật.**
+
+**Vấn đề gặp phải & Cách giải quyết:** lint `react-hooks/refs` chặn `hold.ref`/`hold.onLongPress` (object chứa ref) →
+destructure ngay khi gọi hook. Màu vi chất trùng màu pin (Carbs/Béo cùng `#FFD93D`, Protein/Sắt…) → gán màu dự phòng
+khi trùng trên cùng một vòng. `HomeScreen.test` vỡ vì Home kéo thêm BottomSheet (reanimated) → mock 2 sheet mới.
+
+**Session tiếp theo phải làm:**
+1. Chủ dự án test máy thật theo checklist Session 60; ghi lại góp ý.
+2. Cân nhắc: chấm màu trong sheet ✎ chưa phản ánh màu dự phòng (fat hiện vàng dù trên vòng đổi màu khi có Carbs).
+3. Commit Session 60 khi chủ dự án duyệt.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:
