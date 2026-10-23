@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert, Dimensions } from 'react-native';
 import { BottomSheet } from '../ui/BottomSheet';
 import { FoodNutritionEditModal } from '../FoodNutritionEditModal';
+import { LibrarySourcesPanel, Seg } from './LibrarySourcesPanel';
 import {
   getCustomFoods,
   deleteCustomFoodAndUnregister,
@@ -51,6 +52,8 @@ export function MyFoodsSheet({ visible, onClose }: Props) {
   const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
   const [busy, setBusy] = useState(false);
   const [backupFiles, setBackupFiles] = useState<BackupFile[] | null>(null);
+  // 🍽️ the foods typed by hand · 📚 tables imported from files.
+  const [tab, setTab] = useState<'foods' | 'library'>('foods');
 
   // Read during render like SupplementQuickLog does: synchronous in-memory
   // reads, re-run whenever refreshTick changes.
@@ -197,8 +200,18 @@ export function MyFoodsSheet({ visible, onClose }: Props) {
       <View style={styles.content}>
         <Text style={styles.title}>{t('myFoods.title')}</Text>
         <Text style={styles.subtitle}>{t('myFoods.subtitle')}</Text>
+        <Seg
+          options={[
+            { value: 'foods', label: t('myFoods.tabFoods') },
+            { value: 'library', label: t('myFoods.tabLibrary') },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
 
-        {backupFiles !== null ? (
+        {tab === 'library' ? (
+          <LibrarySourcesPanel />
+        ) : backupFiles !== null ? (
           <>
             <Text style={styles.sectionTitle}>{t('myFoods.import.pickTitle')}</Text>
             <Text style={styles.hint}>{t('myFoods.import.pickHint')}</Text>

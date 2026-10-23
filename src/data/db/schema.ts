@@ -321,6 +321,60 @@ export const CREATE_EATING_DAILY_SUMMARY = `
   );
 `;
 
+// "Nguồn của tôi": food tables the user imported from their own files
+// (docs/nghien-cuu/2026-10-23-nhap-kho-mon-an-tu-file.md). One row per
+// imported file; `mapping` is the JSON column mapping + unit options used,
+// kept so a newer version of the same file can be imported the same way.
+// A disabled source stays in the DB (its foods still resolve for meals
+// already logged) but is left out of search.
+export const CREATE_LIBRARY_SOURCES = `
+  CREATE TABLE IF NOT EXISTS library_sources (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    file_name TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    food_count INTEGER NOT NULL DEFAULT 0,
+    mapping TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`;
+
+// The imported foods themselves — possibly hundreds of thousands of rows, so
+// unlike custom_foods they are NOT mirrored in memory: search runs as a
+// query on `name_norm` (every name folded by domain/food/searchNormalize.ts)
+// and only the rows the user picks or has logged are cached
+// (data/food/libraryFoodRegistry.ts). Per-100 g nutrition like custom_foods.
+// Ids are `lib_<source_id>_<key>` (libraryFoodId), stable across re-imports.
+export const CREATE_LIBRARY_FOODS = `
+  CREATE TABLE IF NOT EXISTS library_foods (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    name_vi TEXT NOT NULL,
+    name_en TEXT,
+    name_de TEXT,
+    name_norm TEXT NOT NULL,
+    category TEXT,
+    default_serving_g REAL,
+    energy_kcal REAL,
+    water_g REAL,
+    protein_g REAL,
+    fat_g REAL,
+    carb_g REAL,
+    fiber_g REAL,
+    sugar_g REAL,
+    calcium_mg REAL,
+    iron_mg REAL,
+    sodium_mg REAL,
+    potassium_mg REAL,
+    magnesium_mg REAL,
+    zinc_mg REAL,
+    epa_mg REAL,
+    dha_mg REAL
+  );
+  CREATE INDEX IF NOT EXISTS idx_library_foods_source ON library_foods (source_id);
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -338,4 +392,6 @@ export const ALL_SCHEMAS = [
   CREATE_TRAINING_LOG_MONTHS,
   CREATE_LIFT_MAXES,
   CREATE_EATING_DAILY_SUMMARY,
+  CREATE_LIBRARY_SOURCES,
+  CREATE_LIBRARY_FOODS,
 ];

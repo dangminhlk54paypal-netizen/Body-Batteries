@@ -44,6 +44,7 @@ export default function App() {
           const { requestNotificationPermission } = await import('./src/services/notifications/notificationService');
           const { loadCustomFoodsIntoRegistry } = await import('./src/data/food/customFoodRegistry');
           const { loadOverridesIntoRegistry } = await import('./src/data/food/foodOverrideRegistry');
+          const { loadLibraryIntoRegistry } = await import('./src/data/food/libraryFoodRegistry');
           await initDatabase();
           await requestNotificationPermission();
           // Hydrate the custom-foods search/lookup registry (see
@@ -53,6 +54,9 @@ export default function App() {
           // shadows the catalog at lookup time — see foodOverrideRegistry.ts).
           // Defensive internally — never throws.
           await loadOverridesIntoRegistry();
+          // "Nguồn của tôi": the list of imported tables + the library foods
+          // the food log points at (libraryFoodRegistry.ts). Never throws.
+          await loadLibraryIntoRegistry();
           // One-time online re-check of old machine-translated food names
           // (no-op unless auto-translate is on). Not awaited: never delays startup.
           import('./src/services/translation/foodNameTranslationService').then((m) =>

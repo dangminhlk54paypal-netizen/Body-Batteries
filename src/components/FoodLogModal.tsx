@@ -7,6 +7,8 @@ import { addCustomFoodAndRegister } from '../data/food/customFoodRegistry';
 import { autoTranslateCustomFoodName } from '../services/translation/foodNameTranslationService';
 import { getAnyFoodById, foodDisplayName, foodLogEntryDisplayName } from '../data/food/foodLookup';
 import { getOverrideByIdSync } from '../data/food/foodOverrideRegistry';
+import { getLibrarySourceOfFood } from '../data/food/libraryFoodRegistry';
+import { useLibrarySearch } from '../hooks/useLibrarySearch';
 import { foodSourceKind } from '../domain/food/foodSource';
 import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
@@ -66,9 +68,10 @@ function displayNames(item: FoodItem, language: Language): { main: string; sub: 
   return { main, sub };
 }
 
-// "Của tôi" / "Catalog VN" / "USDA", plus an "đã sửa" marker when the user has
-// corrected this food. The list mixes three very different provenances and the
-// user's own entries are the ones they trust most — worth saying out loud.
+// "Của tôi" / "Catalog VN" / "USDA" / the name of the user's imported table,
+// plus an "đã sửa" marker when the user has corrected this food. The list
+// mixes very different provenances and the user's own entries (typed or
+// imported) are the ones they trust most — worth saying out loud.
 function sourceBadge(
   item: FoodItem,
   t: (key: string, vars?: Record<string, string | number>) => string
@@ -77,10 +80,16 @@ function sourceBadge(
   const label =
     kind === 'mine'
       ? t('components.foodLogModal.sourceBadgeMine')
-      : kind === 'usda'
-        ? t('components.foodLogModal.sourceBadgeUsda')
-        : t('components.foodLogModal.sourceBadgeCatalog');
-  return { label, mine: kind === 'mine', edited: getOverrideByIdSync(item.id) != null };
+      : kind === 'library'
+        ? getLibrarySourceOfFood(item.id)?.name ?? t('components.foodLogModal.sourceBadgeLibrary')
+        : kind === 'usda'
+          ? t('components.foodLogModal.sourceBadgeUsda')
+          : t('components.foodLogModal.sourceBadgeCatalog');
+  return {
+    label,
+    mine: kind === 'mine' || kind === 'library',
+    edited: getOverrideByIdSync(item.id) != null,
+  };
 }
 
 function pad2(n: number): string {
@@ -219,7 +228,12 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   // near-misses (typos, words run together, foreign names; see searchFoods).
   // Foods logged recently win ties.
   const recentIds = useMemo(() => recentLog.map((e) => e.foodId), [recentLog]);
-  const search = useMemo(() => searchFoods(query, { preferIds: recentIds }), [query, recentIds]);
+  // Rows of the user's imported tables come from SQLite a moment later.
+  const libraryCandidates = useLibrarySearch(query);
+  const search = useMemo(
+    () => searchFoods(query, { preferIds: recentIds, library: libraryCandidates }),
+    [query, recentIds, libraryCandidates]
+  );
   const rows = useMemo<ResultRow[]>(
     () => [
       ...search.matches.map((item) => ({ kind: 'food' as const, item })),
@@ -632,7 +646,8 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
                         </View>
                         {sub ? <Text style={styles.foodNameEn}>{sub}</Text> : null}
                         <Text style={styles.foodMeta}>
-                          {foodCategoryLabel(item.category, language)} ·{' '}
+                          {/* An imported row may have no category. */}
+                          {item.category ? `${foodCategoryLabel(item.category, language)} · ` : ''}
                           {t('components.foodLogModal.resultEnergyMeta', {
                             kcal: item.per100g.energyKcal,
                             measure: measureUnitOf(item),

@@ -4,11 +4,14 @@ import { getFoodById } from './foodDatabase';
 import { getUsdaFoodById } from './usdaFoods';
 import { getCustomFoodByIdSync } from './customFoodRegistry';
 import { getOverrideByIdSync } from './foodOverrideRegistry';
+import { getLibraryFoodByIdSync } from './libraryFoodRegistry';
 import { decodePercentEncodedText } from '../../domain/food/foodNameText';
 
 // Resolves a logged foodId no matter which catalog it came from: the
-// Vietnamese CSV ("rice_white_cooked"), the USDA lookup ("usda_2727589"), or
-// a user-saved custom food (runtime SQLite-backed registry). Anything that
+// Vietnamese CSV ("rice_white_cooked"), the USDA lookup ("usda_2727589"), a
+// user-saved custom food (runtime SQLite-backed registry), or a row of a
+// table the user imported ("lib_…", libraryFoodRegistry.ts — cached for every
+// food the log points at, so history keeps resolving). Anything that
 // aggregates over the food log (e.g. the micronutrient battery engine, the
 // Excel export) must use this, not getFoodById alone — otherwise
 // USDA-logged or custom-logged meals silently drop out of the totals.
@@ -21,7 +24,8 @@ import { decodePercentEncodedText } from '../../domain/food/foodNameText';
 // overrides automatically flow everywhere (micro batteries, daily summary,
 // Excel) with no other changes needed.
 export function getAnyFoodById(id: string): FoodItem | undefined {
-  const base = getFoodById(id) ?? getUsdaFoodById(id) ?? getCustomFoodByIdSync(id);
+  const base =
+    getFoodById(id) ?? getUsdaFoodById(id) ?? getCustomFoodByIdSync(id) ?? getLibraryFoodByIdSync(id);
   const override = getOverrideByIdSync(id);
 
   if (!override) return base;

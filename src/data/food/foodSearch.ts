@@ -5,6 +5,7 @@ import { getCustomFoods } from './customFoodRegistry';
 import { FOOD_SEARCH_ALIASES } from './foodSearchAliases';
 import { scoreCompact, scoreToken } from '../../domain/food/fuzzyMatch';
 import type { TokenMatch } from '../../domain/food/fuzzyMatch';
+import { expandUmlauts, normalize, wordsOf } from '../../domain/food/searchNormalize';
 
 // Merged, precomputed food search — replaces the old two-tab "Món Việt" /
 // "Tra cứu USDA (EN)" picker with one search box that finds a food by its
@@ -22,36 +23,9 @@ export const ALL_FOODS: FoodItem[] = [...FOOD_ITEMS, ...USDA_FOODS];
 // catalog — used only to break search-ranking ties (Vietnamese first).
 const VN_COUNT = FOOD_ITEMS.length;
 
-// Strip Vietnamese diacritics + lowercase for accent-insensitive search.
-// NFD decomposes precomposed letters (ơ, ắ, ệ, …) into base + combining
-// marks (U+0300–U+036F), which we then drop. đ/Đ are NOT decomposed by NFD
-// (they're independent Unicode letters, not base+diacritic), so they need an
-// explicit replace. "Cơm trắng" -> "com trang", "Đậu" -> "dau".
-export function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/ß/g, 'ss')
-    .trim();
-}
-
-// German shoppers commonly type the ASCII "umlaut expansion" habit (a with
-// umlaut -> ae, o with umlaut -> oe, u with umlaut -> ue, sharp-s -> ss)
-// instead of just dropping the umlaut (which is what normalize() above does
-// via NFD-stripping: o-umlaut -> o, not "oe"). Index BOTH forms so
-// "broetchen", "brotchen" (and the accented original) all match the same
-// row. Operates on the raw (accented) string, not the NFD-stripped one.
-function expandUmlauts(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/ä/g, 'ae')
-    .replace(/ö/g, 'oe')
-    .replace(/ü/g, 'ue')
-    .replace(/ß/g, 'ss')
-    .trim();
-}
+// Text folding lives in the domain layer so the SQLite-backed library search
+// (libraryFoodRegistry.ts) folds names exactly like this index does.
+export { normalize };
 
 // One precomputed, searchable entry per food.
 interface SearchEntry {
@@ -72,10 +46,6 @@ interface SearchEntry {
   compacts: string[];
 }
 
-function wordsOf(text: string): string[] {
-  return text.split(/[^a-z0-9]+/).filter(Boolean);
-}
-
 // Builds one precomputed search entry for a food item. Shared by the
 // module-load-time catalog index below AND the per-call custom-food index
 // (custom foods can be added mid-session, so they can't be precomputed once
@@ -86,7 +56,7 @@ function buildSearchEntry(item: FoodItem, isVietnamese: boolean, order: number):
   // German name (search-only, never displayed) — indexed in both its
   // NFD-stripped form (umlauts dropped: o-umlaut -> o) and its
   // umlaut-expanded form (o-umlaut -> oe), covering both common ASCII
-  // typing habits (see expandUmlauts() above).
+  // typing habits (see expandUmlauts() in searchNormalize.ts).
   const normNameDe = normalize(item.nameDe ?? '');
   const expandedNameDe = expandUmlauts(item.nameDe ?? '');
   const aliases = normalize(FOOD_SEARCH_ALIASES[item.id] ?? '');
@@ -224,7 +194,16 @@ const SIMILAR_LIMIT = 6;
 // catalog, as before; `preferIds` (foods the user logged recently) win ties.
 // Empty query returns everything, custom foods first, then Vietnamese
 // catalog, then USDA.
-export function searchFoods(query: string, opts: { preferIds?: Iterable<string> } = {}): FoodSearchResult {
+//
+// `library`: candidates the SQLite-backed "Nguồn của tôi" search already
+// pulled for this query (useLibrarySearch → searchLibraryCandidates). They
+// can be far too many to index in memory, so the database narrows them down
+// and they are only RANKED here, by the same scorer, listed after the
+// user's hand-typed foods and before the built-in catalog.
+export function searchFoods(
+  query: string,
+  opts: { preferIds?: Iterable<string>; library?: FoodItem[] } = {}
+): FoodSearchResult {
   const q = parseQuery(query);
   const prefer = new Set(opts.preferIds ?? []);
   const compare = compareRanked(prefer);
@@ -236,6 +215,7 @@ export function searchFoods(query: string, opts: { preferIds?: Iterable<string> 
   const rank = (index: SearchEntry[]) =>
     index.map((e) => rankEntry(e, q)).filter((r): r is Ranked => r != null);
   const custom = rank(customIndex);
+  const library = rank((opts.library ?? []).map((item, i) => buildSearchEntry(item, false, i)));
   const catalog = rank(SEARCH_INDEX);
 
   const seen = new Set<string>();
@@ -248,6 +228,7 @@ export function searchFoods(query: string, opts: { preferIds?: Iterable<string> 
 
   const matches = unique([
     ...custom.filter((r) => r.strict).sort(compare),
+    ...library.filter((r) => r.strict).sort(compare),
     ...catalog.filter((r) => r.strict).sort(compare),
   ]);
   // With some exact matches already listed, "similar" is only for near-misses
@@ -256,7 +237,7 @@ export function searchFoods(query: string, opts: { preferIds?: Iterable<string> 
   const similar =
     q.tokens.length > 0 && matches.length < SIMILAR_ONLY_BELOW
       ? unique(
-          [...custom, ...catalog].filter((r) => !r.strict && (matches.length === 0 || r.coverage === 1)).sort(compare)
+          [...custom, ...library, ...catalog].filter((r) => !r.strict && (matches.length === 0 || r.coverage === 1)).sort(compare)
         ).slice(0, SIMILAR_LIMIT)
       : [];
   return { matches: matches.map((r) => r.entry.item), similar: similar.map((r) => r.entry.item) };

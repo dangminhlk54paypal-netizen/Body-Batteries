@@ -13,6 +13,7 @@ import type { RingMetricId } from '../domain/battery/ringMetrics';
 import type { MainTab } from '../navigation/mainTabs';
 import { normalizeNickname } from '../lib/nickname';
 import { DEFAULT_DATA_RETENTION, resolveDataRetention, type DataRetentionSettings } from '../types/dataRetention';
+import { DEFAULT_LIBRARY_LIMIT_MB } from '../domain/food/library/libraryMapping';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -97,6 +98,10 @@ interface SettingsState {
   // trimmed, plus the Kho kept forever — Settings → Dữ liệu. Read it through
   // resolveDataRetention() for fields added later.
   dataRetention: DataRetentionSettings;
+  // "Nguồn của tôi": files bigger than this (MB) ask before importing. The
+  // user picks it in the import panel (LIBRARY_LIMIT_OPTIONS_MB); a hard cap
+  // (LIBRARY_HARD_MAX_MB) applies whatever it says — libraryMapping.ts.
+  libraryImportLimitMb: number;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -123,6 +128,7 @@ interface SettingsState {
   setAmbientBackgroundEnabled: (enabled: boolean) => void;
   setStartTab: (tab: MainTab) => void;
   setDataRetention: (patch: Partial<Omit<DataRetentionSettings, 'archive'>> & { archive?: Partial<DataRetentionSettings['archive']> }) => void;
+  setLibraryImportLimitMb: (mb: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -152,6 +158,7 @@ export const useSettingsStore = create<SettingsState>()(
       ambientBackgroundEnabled: true,
       startTab: 'Home',
       dataRetention: DEFAULT_DATA_RETENTION,
+      libraryImportLimitMb: DEFAULT_LIBRARY_LIMIT_MB,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -202,6 +209,7 @@ export const useSettingsStore = create<SettingsState>()(
             dataRetention: { ...current, ...patch, archive: { ...current.archive, ...patch.archive } },
           };
         }),
+      setLibraryImportLimitMb: (mb) => set({ libraryImportLimitMb: mb }),
     }),
     {
       name: 'settings-storage',
