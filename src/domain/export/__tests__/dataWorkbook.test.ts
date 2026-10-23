@@ -182,6 +182,25 @@ describe('Món ăn (foods)', () => {
     expect(rows[1]['Food']).toBe('Viên cá');
     expect(rows[1]['Sugar (g)']).toBeNull();
   });
+
+  it('says when each row was typed in, blank for rows from before the app kept it', () => {
+    const typedNextMorning = at('2026-09-11', 8, 2);
+    const table = buildFoodSheet(
+      input({
+        language: 'en',
+        foodLog: [
+          food('dinner', at('2026-09-10', 19, 0), { loggedAt: typedNextMorning }),
+          food('old', at('2026-09-10', 20, 0)),
+        ],
+      })
+    );
+    expectCleanTable(table);
+    const rows = tableAsObjects(table);
+    expect(rows[0]['Logged on']).toEqual(dateCell('2026-09-11'));
+    expect(rows[0]['Logged at']).toEqual(timeCell(typedNextMorning));
+    expect(rows[1]['Logged on']).toBeNull();
+    expect(rows[1]['Logged at']).toBeNull();
+  });
 });
 
 describe('Vận động (activity) and Nước & ngủ (quick logs)', () => {

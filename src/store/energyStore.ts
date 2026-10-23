@@ -809,6 +809,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       // charge above, so removeFood can reverse it on the right day even if the
       // food was logged 0h-6am (yesterday's ledger) and undone after 6am.
       energyDayApplied: energyDayString(new Date(timestamp)),
+      loggedAt: Date.now(),
     };
 
     // Write the log row BEFORE charging anything. The pins and the food log
@@ -975,6 +976,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
       portionUnit: portion?.portionUnit,
       count: portion?.count,
       energyDayApplied: entryEnergyDay,
+      loggedAt: Date.now(),
     };
 
     // Targets that ARE the currently loaded day (0h-6am overlap): charge them

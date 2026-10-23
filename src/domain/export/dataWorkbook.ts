@@ -183,6 +183,10 @@ export function buildFoodSheet(input: DataWorkbookInput): SheetTable {
     t('export.columns.fat'),
     t('export.columns.waterMl'),
     ...EXPORT_MICRO_IDS.map((id) => microHeader(id, targets, t)),
+    // When the row was typed in (or last edited) — tells a meal logged late
+    // ("hôm qua tối…" written the next morning) from one logged on the spot.
+    t('export.columns.loggedDate'),
+    t('export.columns.loggedTime'),
   ];
   const rows = [...input.foodLog]
     .sort((a, b) => a.timestamp - b.timestamp)
@@ -212,6 +216,9 @@ export function buildFoodSheet(input: DataWorkbookInput): SheetTable {
         round1(e.waterG),
         // Blank (not 0) when the food is no longer in the catalog: unknown ≠ none.
         ...EXPORT_MICRO_IDS.map((id) => (item ? round1(per100gValue(item.per100g, id) * factor) : null)),
+        // Blank for rows logged before the app kept this.
+        e.loggedAt != null ? dateCell(dayOf(e.loggedAt)) : null,
+        e.loggedAt != null ? timeCell(e.loggedAt) : null,
       ];
     });
   return { name: t('export.sheets.foods'), columns, rows };

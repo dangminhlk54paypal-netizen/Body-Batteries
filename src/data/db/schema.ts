@@ -66,6 +66,8 @@ export const FOOD_LOG_MIGRATION_COLUMNS = [
   // removeFood can reverse it on the right day. Old rows have no value and are
   // treated as same-day. Same ALTER-if-missing pattern as above.
   { name: 'energy_day_applied', ddl: 'ALTER TABLE food_log ADD COLUMN energy_day_applied TEXT' },
+  // When the row was written / last edited (FoodLogEntry.loggedAt). Old rows: NULL.
+  { name: 'logged_at', ddl: 'ALTER TABLE food_log ADD COLUMN logged_at INTEGER' },
 ];
 
 export const CREATE_INTAKE_EVENTS = `
@@ -113,7 +115,8 @@ export const CREATE_FOOD_LOG = `
     minerals_mg REAL NOT NULL DEFAULT 0,
     portion_unit TEXT,
     count REAL,
-    energy_day_applied TEXT
+    energy_day_applied TEXT,
+    logged_at INTEGER
   );
 `;
 

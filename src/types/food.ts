@@ -135,4 +135,9 @@ export interface FoodLogEntry {
   // on the right day. Absent on rows logged before this field existed — treated
   // as same-day for backward compatibility.
   energyDayApplied?: string;
+  // When this row was written — logged, or last edited (an edit rewrites the
+  // row, see energyStore.updateFood). Distinct from `timestamp` (when it was
+  // EATEN): a dinner typed in the next morning has timestamp 19:00 yesterday,
+  // loggedAt 08:00 today. Absent on rows logged before this field existed.
+  loggedAt?: number;
 }

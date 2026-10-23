@@ -14,6 +14,7 @@ import { getFoodLogInRange } from '../data/repositories/foodLogRepository';
 import { FoodNutritionEditModal } from './FoodNutritionEditModal';
 import { CustomFoodFields } from './food/CustomFoodFields';
 import { PastDateField } from './food/PastDateField';
+import { TextMealEntry } from './food/TextMealEntry';
 import { BottomSheet } from './ui/BottomSheet';
 import { nutritionForGrams, mealTypeForHour, gramsForPortion } from '../domain/food/foodNutrition';
 import {
@@ -169,6 +170,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   // double-charging the batteries — the sibling of savingCustomFood above.
   // Cleared by reset() when the sheet closes after a successful log.
   const [savingFood, setSavingFood] = useState(false);
+  // "⌨️ Nạp bằng chữ": a fourth branch (TextMealEntry) — type / dictate /
+  // paste a whole meal, review the rows, log them together.
+  const [textMode, setTextMode] = useState(false);
   // Last 7 days of food log + the hour the modal was opened, fetched/read
   // once per open — feeds the "Gợi ý cho bữa này" suggestion chips (see
   // suggestFoods). Empty until the fetch resolves; the modal degrades
@@ -262,6 +266,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     setShowMicros(false);
     setSavingCustomFood(false);
     setSavingFood(false);
+    setTextMode(false);
   }
 
   function handleClose() {
@@ -495,7 +500,15 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
           it, otherwise "Sửa thành phần" silently shows nothing. */}
       <BottomSheet visible={visible && !editingNutrition} onClose={handleClose} sheetOffset={500}>
         <View style={styles.sheet}>
-          {adding ? (
+          {textMode ? (
+            <TextMealEntry
+              baseDate={logDate}
+              recentLog={recentLog}
+              onBack={() => setTextMode(false)}
+              onClose={handleClose}
+              onLogged={handleClose}
+            />
+          ) : adding ? (
             <>
               <View style={styles.headerRow}>
                 <Pressable
@@ -555,14 +568,27 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
           ) : !selected ? (
             <>
               <View style={styles.headerRow}>
-                <Text style={styles.title}>{t('components.foodLogModal.title')}</Text>
-                <Pressable
-                  onPress={handleClose}
-                  hitSlop={12}
-                  style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
-                >
-                  <Text style={styles.closeX}>✕</Text>
-                </Pressable>
+                <Text style={styles.title} numberOfLines={1}>
+                  {t('components.foodLogModal.title')}
+                </Text>
+                <View style={styles.headerActions}>
+                  <Pressable
+                    onPress={() => setTextMode(true)}
+                    style={({ pressed }) => [styles.textEntryBtn, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.textEntryText} numberOfLines={1}>
+                      {t('components.foodLogModal.textEntryButton')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleClose}
+                    hitSlop={12}
+                    style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.closeX}>✕</Text>
+                  </Pressable>
+                </View>
               </View>
               <Text style={styles.subtitle}>{t('components.foodLogModal.searchSubtitle')}</Text>
               <TextInput
@@ -905,7 +931,17 @@ function clampInt(n: number, min: number, max: number): number {
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+  textEntryBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: c.bgElevated,
+    borderWidth: 1,
+    borderColor: c.accent,
+  },
+  textEntryText: { color: c.accent, fontSize: 13, fontWeight: '700' },
   closeBtn: {
     width: 32,
     height: 32,

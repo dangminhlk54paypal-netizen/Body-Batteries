@@ -28,6 +28,8 @@ import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
 import { parseDecimal } from '../lib/units';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { useT } from '../i18n/useT';
+import { LOCALE_TAGS } from '../i18n';
+import { dateString } from '../lib/dateUtils';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -66,6 +68,15 @@ function countFieldLabel(entry: FoodLogEntry, language: Language, t: TFn): strin
   return t('components.todayMeals.countFieldLabel', {
     unit: portionUnitNoun(entry.portionUnit, food?.servingLabel, language),
   });
+}
+
+// "19:00", or "08:02 (24/10)" when `ts` falls on another day than `eatenAt` —
+// a meal written in the next morning says so.
+function clockLabel(ts: number, eatenAt: number, language: Language): string {
+  const tag = LOCALE_TAGS[language];
+  const time = new Date(ts).toLocaleTimeString(tag, { hour: '2-digit', minute: '2-digit' });
+  if (dateString(new Date(ts)) === dateString(new Date(eatenAt))) return time;
+  return `${time} (${new Date(ts).toLocaleDateString(tag, { day: '2-digit', month: '2-digit' })})`;
 }
 
 export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Props) {
@@ -237,6 +248,14 @@ export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Prop
             {editingEntry && (
               <Text style={styles.editingName}>{foodLogEntryDisplayName(editingEntry, language)}</Text>
             )}
+            {editingEntry?.loggedAt != null && (
+              <Text style={styles.loggedLine}>
+                {t('components.todayMeals.eatenLoggedLine', {
+                  eaten: clockLabel(editingEntry.timestamp, editingEntry.timestamp, language),
+                  logged: clockLabel(editingEntry.loggedAt, editingEntry.timestamp, language),
+                })}
+              </Text>
+            )}
             <TextInput
               style={styles.input}
               placeholder={
@@ -360,6 +379,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   },
   title: { fontSize: 20, fontWeight: '700', color: c.textPrimary },
   editingName: { fontSize: 14, color: c.textSecondary, marginTop: -6 },
+  loggedLine: { fontSize: 12, color: c.textTertiary, marginTop: -8, fontVariant: ['tabular-nums'] },
   input: {
     backgroundColor: c.bgElevated,
     borderRadius: 10,

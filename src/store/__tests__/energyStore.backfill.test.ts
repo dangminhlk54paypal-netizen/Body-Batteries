@@ -153,6 +153,17 @@ describe('energyStore — logFoodForPastDate (S-S4)', () => {
     expect(state.foodLog).toEqual([]);
   });
 
+  it('stamps when the entry was typed in, apart from when it was eaten', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-10T08:02:00'));
+    seedTodayReadings();
+    const ts = pastNoonTimestamp(1);
+    getReadingsSpy.mockResolvedValue(pastDayRows(dateString(new Date(ts))));
+    await useEnergyStore.getState().logFoodForPastDate(makeFoodItem(), 100, ts);
+    expect(addEntrySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ timestamp: ts, loggedAt: new Date('2026-07-10T08:02:00').getTime() })
+    );
+  });
+
   it('charges the PAST day\'s persisted rows and records the log entry for it', async () => {
     const ts = pastNoonTimestamp(3);
     const pastDay = dateString(new Date(ts));
