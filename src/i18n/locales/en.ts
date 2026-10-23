@@ -1601,6 +1601,8 @@ export const en: TranslationSchema = {
     },
     formatSheet: {
       title: 'Log format',
+      textSize: 'Text size',
+      textSizes: { small: 'Small', medium: 'Medium', large: 'Large' },
       labelStyle: 'Lift names',
       labelShort: 'Abbreviated',
       labelFull: 'Full names',

@@ -1653,6 +1653,8 @@ export const vi = {
     },
     formatSheet: {
       title: 'Định dạng sổ',
+      textSize: 'Cỡ chữ',
+      textSizes: { small: 'Nhỏ', medium: 'Vừa', large: 'Lớn' },
       labelStyle: 'Tên bài',
       labelShort: 'Viết tắt',
       labelFull: 'Đầy đủ',

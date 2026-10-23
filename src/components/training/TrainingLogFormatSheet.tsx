@@ -10,7 +10,7 @@ import { workoutLabel } from '../../lib/activityLabels';
 import { daysAgo, todayString } from '../../lib/dateUtils';
 import { LIFTING_EXERCISES } from '../../types/energy';
 import type { ActivityLogEntry } from '../../types/energy';
-import type { TrainingLogFormat } from '../../types/trainingLog';
+import { TRAINING_LOG_TEXT_SIZES, notebookFontSize, type TrainingLogFormat } from '../../types/trainingLog';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
@@ -127,7 +127,7 @@ export function TrainingLogFormatSheet({ visible, onClose }: Props) {
     language,
   });
 
-  function chip<K extends 'labelStyle' | 'decimal'>(option: K, value: TrainingLogFormat[K], label: string) {
+  function chip<K extends 'labelStyle' | 'decimal' | 'textSize'>(option: K, value: TrainingLogFormat[K], label: string) {
     const active = format[option] === value;
     return (
       <Pressable
@@ -147,9 +147,22 @@ export function TrainingLogFormatSheet({ visible, onClose }: Props) {
 
         <View style={styles.previewCard}>
           <Text style={styles.label}>{t('trainingLog.formatSheet.preview')}</Text>
-          <Text selectable style={styles.previewText}>
+          <Text
+            selectable
+            style={[
+              styles.previewText,
+              { fontSize: notebookFontSize(15, format.textSize), lineHeight: notebookFontSize(22, format.textSize) },
+            ]}
+          >
             <Text style={styles.previewPrefix}>{sample.prefix}</Text> {sample.body}
           </Text>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('trainingLog.formatSheet.textSize')}</Text>
+          <View style={styles.chipRow}>
+            {TRAINING_LOG_TEXT_SIZES.map((size) => chip('textSize', size, t(`trainingLog.formatSheet.textSizes.${size}`)))}
+          </View>
         </View>
 
         <View style={styles.field}>

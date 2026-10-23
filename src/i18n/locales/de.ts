@@ -1609,6 +1609,8 @@ export const de: TranslationSchema = {
     },
     formatSheet: {
       title: 'Tagebuch-Format',
+      textSize: 'Schriftgröße',
+      textSizes: { small: 'Klein', medium: 'Mittel', large: 'Groß' },
       labelStyle: 'Übungsnamen',
       labelShort: 'Abgekürzt',
       labelFull: 'Ausgeschrieben',

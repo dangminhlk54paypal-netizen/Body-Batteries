@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import type { ThemeColors } from '../../lib/theme';
+import { notebookFontSize, type TrainingLogTextSize } from '../../types/trainingLog';
 import { useThemedStyles } from '../../hooks/useThemeColors';
 
 interface Props {
@@ -29,6 +30,8 @@ interface Props {
   // A small ✎ at the end of the heading row, with its accessibility label.
   onEdit?: () => void;
   editLabel?: string;
+  // The Sổ tập ⚙︎ text size; omitted = the base sizes in createStyles.
+  textSize?: TrainingLogTextSize;
   children: React.ReactNode;
 }
 
@@ -51,11 +54,17 @@ export function TrainingNotebookSection({
   onLongPress,
   onEdit,
   editLabel,
+  textSize = 'medium',
   children,
 }: Props) {
   const styles = useThemedStyles(createStyles);
   const [ownExpanded, setOwnExpanded] = useState(defaultExpanded);
   const expanded = controlledExpanded ?? ownExpanded;
+  const titleSize =
+    variant === 'block'
+      ? { fontSize: notebookFontSize(19, textSize), lineHeight: notebookFontSize(24, textSize) }
+      : { fontSize: notebookFontSize(16, textSize), lineHeight: notebookFontSize(24, textSize) };
+  const subtitleSize = { fontSize: notebookFontSize(12, textSize), lineHeight: notebookFontSize(16, textSize) };
   const toggle = () => {
     if (controlledExpanded === undefined) setOwnExpanded(!expanded);
     onExpandedChange?.(!expanded);
@@ -77,6 +86,7 @@ export function TrainingNotebookSection({
             <Text
               style={[
                 variant === 'block' ? styles.blockTitle : styles.weekTitle,
+                titleSize,
                 dimmed && styles.dimmed,
               ]}
             >
@@ -84,7 +94,7 @@ export function TrainingNotebookSection({
               {title}
               {titleTail ? <Text style={styles.weekTail}> {titleTail}</Text> : null}
             </Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            {subtitle ? <Text style={[styles.subtitle, subtitleSize]}>{subtitle}</Text> : null}
           </View>
         </Pressable>
         {onEdit ? (

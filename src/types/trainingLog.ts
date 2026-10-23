@@ -23,10 +23,26 @@ export interface TrainingLogFormat {
   showBodyWeight: boolean;
   showWeekday: boolean;
   showKcal: boolean;
+  // Notebook text size (⚙︎ sheet). 'medium' = the original sizes; 'small' is
+  // the default — the owner found the notebook text too big on the phone.
+  textSize: TrainingLogTextSize;
   // Per-key overrides of the default abbreviations. Keys: `lift:<exercise>`,
   // `var:<variationId>`, `cvar:<free-text variation name>`, `bb:<bbExerciseId>`.
   // An empty string means "no override".
   abbreviations: Record<string, string>;
+}
+
+export type TrainingLogTextSize = 'small' | 'medium' | 'large';
+export const TRAINING_LOG_TEXT_SIZES: TrainingLogTextSize[] = ['small', 'medium', 'large'];
+
+const TEXT_SCALE: Record<TrainingLogTextSize, number> = { small: 0.86, medium: 1, large: 1.15 };
+// Below this, notebook text stops being readable on a phone.
+const MIN_FONT_SIZE = 11;
+
+// A notebook font size (or line height) at the chosen text size, rounded to
+// whole points; an unknown stored value reads as 'medium'.
+export function notebookFontSize(base: number, size: TrainingLogTextSize): number {
+  return Math.max(MIN_FONT_SIZE, Math.round(base * (TEXT_SCALE[size] ?? 1)));
 }
 
 export const DEFAULT_TRAINING_LOG_FORMAT: TrainingLogFormat = {
@@ -38,6 +54,7 @@ export const DEFAULT_TRAINING_LOG_FORMAT: TrainingLogFormat = {
   showBodyWeight: true,
   showWeekday: false,
   showKcal: false,
+  textSize: 'small',
   abbreviations: {},
 };
 

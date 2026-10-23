@@ -76,6 +76,7 @@ export function TrainingLogPeriodSection({ period, format, isLatest, actions }: 
         onLongPress={() => actions.periodMenu(period)}
         onEdit={() => actions.openPage(period)}
         editLabel={t('trainingLog.periodEditA11y', { title })}
+        textSize={format.textSize}
       >
         <TrainingLogPeriodBody period={period} format={format} actions={actions} />
       </TrainingNotebookSection>

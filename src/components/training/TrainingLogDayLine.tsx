@@ -8,7 +8,7 @@ import {
   trainingDaySignature,
 } from '../../domain/training/trainingLogFormatter';
 import type { ActivityLogEntry } from '../../types/energy';
-import type { TrainingLogDayRecord, TrainingLogFormat } from '../../types/trainingLog';
+import { notebookFontSize, type TrainingLogDayRecord, type TrainingLogFormat } from '../../types/trainingLog';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
@@ -41,6 +41,10 @@ export function TrainingLogDayLine({ date, entries, record, format, onPress }: P
   const override = record?.overrideText ?? null;
   const body = override ?? line.body;
   const conflict = detectDayConflict({ record, entries });
+  // The ⚙︎ sheet's text size (the base sizes are in createStyles).
+  const size = format.textSize;
+  const lineSize = { fontSize: notebookFontSize(14, size), lineHeight: notebookFontSize(20, size) };
+  const noteSize = { fontSize: notebookFontSize(13, size), lineHeight: notebookFontSize(18, size) };
 
   // ✍ = no Xả entry ever stood behind this line (or none is left); ✎ = the
   // user rewrote an auto line.
@@ -67,7 +71,7 @@ export function TrainingLogDayLine({ date, entries, record, format, onPress }: P
   return (
     <View style={styles.container}>
       <Pressable disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined}>
-        <Text selectable style={styles.line}>
+        <Text selectable style={[styles.line, lineSize]}>
           <Text style={styles.prefix}>{line.prefix}</Text>
           {body ? ' ' : ''}
           {splitDayBody(body).map((part, i) =>
@@ -85,7 +89,7 @@ export function TrainingLogDayLine({ date, entries, record, format, onPress }: P
           )}
           {marker ? (
             <Text
-              style={styles.marker}
+              style={[styles.marker, { fontSize: notebookFontSize(12, size) }]}
               accessibilityLabel={marker === 'manual' ? t('trainingLog.markManual') : t('trainingLog.markEdited')}
             >
               {marker === 'manual' ? ' ✍' : ' ✎'}
@@ -95,7 +99,7 @@ export function TrainingLogDayLine({ date, entries, record, format, onPress }: P
       </Pressable>
 
       {record?.note ? (
-        <Text selectable style={styles.note}>
+        <Text selectable style={[styles.note, noteSize]}>
           {record.note}
         </Text>
       ) : null}

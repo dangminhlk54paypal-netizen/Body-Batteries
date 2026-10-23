@@ -15,6 +15,7 @@ import { weekHeadingWeight } from '../../domain/training/trainingLogWeights';
 import type { WeightPoint } from '../../domain/training/trainingLogWeights';
 import { dateString, todayString } from '../../lib/dateUtils';
 import type { ActivityLogEntry } from '../../types/energy';
+import { notebookFontSize } from '../../types/trainingLog';
 import type {
   TrainingLogDayRecord,
   TrainingLogFormat,
@@ -67,6 +68,7 @@ export function TrainingLogWeekSection({ week, weights, format, defaultExpanded,
       onLongPress={() => actions.editWeekNote(week.weekStart, label)}
       onEdit={openEditMenu}
       editLabel={t('trainingLog.weekEditA11y', { label })}
+      textSize={format.textSize}
     >
       <TrainingLogWeekBody week={week} format={format} actions={actions} />
     </TrainingNotebookSection>
@@ -94,6 +96,7 @@ function TrainingLogWeekBody({
   const { t } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const bodySize = { fontSize: notebookFontSize(14, format.textSize), lineHeight: notebookFontSize(20, format.textSize) };
   const revision = useTrainingLogStore((s) => s.revision);
   const [data, setData] = useState<WeekData | null>(null);
 
@@ -131,12 +134,12 @@ function TrainingLogWeekBody({
   return (
     <View style={styles.body}>
       {data.weekNote ? (
-        <Text selectable style={styles.weekNote}>
+        <Text selectable style={[styles.weekNote, bodySize]}>
           {data.weekNote}
         </Text>
       ) : null}
       {week.dates.length === 0 && !data.weekNote ? (
-        <Text style={styles.empty}>{t('trainingLog.emptyWeek')}</Text>
+        <Text style={[styles.empty, bodySize]}>{t('trainingLog.emptyWeek')}</Text>
       ) : null}
       {week.dates.map((date) => (
         <TrainingLogDayLine

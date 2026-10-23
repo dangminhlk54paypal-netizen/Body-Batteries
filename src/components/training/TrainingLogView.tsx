@@ -217,6 +217,9 @@ export function TrainingLogView() {
           <Text style={styles.addText}>{t('trainingLog.addEntryButton')}</Text>
         </Pressable>
 
+        {/* First, because it draws the eye: weekly top sets + ratio to body weight. */}
+        {periods.length > 0 && <TrainingProgressChart format={format} />}
+
         {periods.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>{t('trainingLog.emptyState')}</Text>
@@ -234,9 +237,6 @@ export function TrainingLogView() {
             ))}
           </View>
         )}
-
-        {/* Right under the notebook: weekly top sets + ratio to body weight. */}
-        {periods.length > 0 && <TrainingProgressChart format={format} />}
       </ScrollView>
 
       {editor && (
