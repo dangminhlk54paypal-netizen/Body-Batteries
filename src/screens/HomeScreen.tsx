@@ -17,6 +17,7 @@ import { ModeSelector } from '../components/ModeSelector';
 import { IntakeModal } from '../components/IntakeModal';
 import { EnergyActionsBar } from '../components/EnergyActionsBar';
 import { TodayMeals } from '../components/TodayMeals';
+import { WalkTrackerCard } from '../components/WalkTrackerCard';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
@@ -125,6 +126,9 @@ export function HomeScreen() {
 
         {/* Eat / move quick actions feeding the energy battery */}
         <EnergyActionsBar />
+
+        {/* Outings: steps from the phone pedometer, accumulated per day */}
+        <WalkTrackerCard />
 
         {/* Sub-batteries */}
         <Text style={styles.sectionLabel}>Các pin nhỏ — bấm để nạp ⚡</Text>

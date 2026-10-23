@@ -73,6 +73,18 @@ export const CREATE_FOOD_LOG = `
   );
 `;
 
+// One row per "ra khỏi nhà" outing. ended_at is NULL while the user is still
+// outside; steps are filled from the phone pedometer when they come home.
+export const CREATE_WALK_SESSIONS = `
+  CREATE TABLE IF NOT EXISTS walk_sessions (
+    id TEXT PRIMARY KEY,
+    date TEXT NOT NULL,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    steps REAL NOT NULL DEFAULT 0
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -81,4 +93,5 @@ export const ALL_SCHEMAS = [
   CREATE_HEALTH_SIGNALS,
   CREATE_DIARY_ENTRIES,
   CREATE_FOOD_LOG,
+  CREATE_WALK_SESSIONS,
 ];

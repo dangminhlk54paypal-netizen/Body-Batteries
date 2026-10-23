@@ -303,14 +303,22 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     const profile = currentProfile();
     const updated = [...readings];
     updated[ei] = burnActivity(updated[ei], profile, steps, workouts);
+    const toPersist: BatteryReading[] = [updated[ei]];
+
+    // Steps also fill the "Vận động" (movement) battery, which counts steps.
+    const mi = steps > 0 ? updated.findIndex((r) => r.batteryTypeId === 'movement') : -1;
+    if (mi !== -1) {
+      updated[mi] = applyIntake(updated[mi], steps);
+      toPersist.push(updated[mi]);
+    }
     set({ readings: updated, masterPercentage: energyPercentage(updated) });
 
     try {
-      await upsertReadings([updated[ei]]);
+      await upsertReadings(toPersist);
 
       // Record logged activity into intake history so it shows up in the
       // weekly Excel export (it does not affect battery levels here — that
-      // already happened above via burnActivity).
+      // already happened above via burnActivity / the movement battery).
       const ts = nowTimestamp();
       if (steps > 0) {
         await addIntakeEvent({
