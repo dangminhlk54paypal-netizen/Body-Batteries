@@ -111,6 +111,29 @@ Ngay dưới pin lớn là các nút hành động:
    - **Theo 1 khẩu phần** (vd 1 tô phở 350g = 450 kcal): gõ tổng của cả khẩu phần;
      app tự quy về /100g để lưu.
    Bấm qua lại giữa hai chế độ, số đã gõ được **tự quy đổi** chứ không bị xoá.
+6. **⌨️ Nạp bằng chữ** (nút ở đầu màn Ghi món ăn): ghi cả bữa trong một câu thay vì tìm từng món.
+   - **Cách nhập:** gõ, bấm 🎤 trên bàn phím iPhone để đọc (có tiếng Việt và tiếng Đức), hoặc dán câu trả lời
+     của một AI. Các món cách nhau bằng dấu phẩy, "và" hoặc xuống dòng. Ví dụ: "Sáng nay 2 trứng, 1 ly sữa",
+     "2 chén cơm, 200g ức gà lúc 12h", "hôm qua tối 1 tô bún bò Huế". Tiếng Anh và tiếng Đức cũng được
+     ("1 bowl of rice", "ein Glas Milch").
+   - **Bấm Phân tích:** app đoán món, lượng (theo chén/bát/quả… của món, hoặc gram) và giờ ăn, rồi hiện danh sách
+     chờ. Mỗi dòng có dấu ✓ (khớp chắc), ⚠ (cần để ý: gần đúng, lượng do đoán, lượng lớn, trùng món) hoặc ✗
+     (không ghi được: không thấy món, giờ ở tương lai). Không ghi lượng thì app lấy **lượng bạn ăn lần trước**.
+   - **Duyệt:** tick hoặc bỏ tick từng dòng, chỉnh lượng bằng − / +, bấm ✎ để đổi món, sửa giờ hoặc bỏ dòng.
+     Bấm 🕐 để đặt một giờ cho cả danh sách, bấm ＋ để thêm món bị sót.
+   - **Trùng món:** nếu món đó đã được nạp trong khoảng ±3 giờ, dòng đó hiện "Đã nạp Ức gà 150g lúc 11:30" và
+     **bỏ tick sẵn**. Tick lại nếu bạn thật sự ăn thêm một phần. App không bao giờ tự gộp hay ghi đè.
+   - **Nạp n món:** chỉ những dòng đang tick mới được ghi, mỗi dòng là một món mới trong nhật ký.
+   - Lỡ tay đóng thì chữ đã gõ được giữ 5 phút. Bấm Huỷ mới xoá.
+   - Toàn bộ việc đọc câu chạy **ngay trên máy**, không gửi chữ đi đâu.
+   - **📤 Hỏi AI (chụp ảnh bữa ăn):** bấm 📤 Hỏi AI → chọn ChatGPT / Gemini / Claude trong menu chia sẻ → câu lệnh
+     đã được điền sẵn, bạn đính kèm ảnh bữa ăn rồi gửi → copy câu trả lời của AI → quay lại app bấm **📋 Dán**. App tự
+     phân tích, bạn duyệt như bình thường. Ảnh chỉ đi qua app AI của chính bạn, Body Batteries không gửi gì ra ngoài.
+     AI thường đoán **thiếu** lượng (sai khoảng 30–40%), nên hãy chỉnh lại bằng − / + trước khi nạp.
+   - Món trong bảng bạn tự nhập ("📚 Nguồn của tôi") cũng được tìm thấy.
+7. **Giờ ăn và giờ ghi:** mỗi món giờ lưu thêm **lúc bạn ghi** (hoặc sửa lần cuối). Bấm vào một món trong "Hôm nay đã
+   ăn" để sửa: dòng nhỏ dưới tên cho biết "Ăn 19:00 · ghi 08:02 (24/10)". File Excel có thêm 2 cột "Ngày ghi" và
+   "Giờ ghi". Món ghi trước bản cập nhật này để trống.
 
 **🔥 Xả** — ghi lại việc bạn tập/di chuyển:
 - Chọn nhóm (Cardio / Thể thao / Gym / Khác), chọn môn cụ thể (đi bộ, chạy,
@@ -325,6 +348,9 @@ Chọn Tiếng Việt / English / Deutsch — đổi ngay lập tức, áp dụn
 giao diện lẫn file Excel xuất ra sau này.
 
 ### 6.2. 🧬 Hồ sơ cơ thể — nơi quan trọng nhất
+Hàng đầu tiên **Tên gọi** là tên app dùng để gọi bạn; tên này được in vào mọi file Excel xuất ra (sheet **Đọc trước**
+và bảng in block tập). Để trống nếu không muốn. Tên chỉ lưu trên máy.
+
 Sửa lại cân nặng/chiều cao/tuổi/giới tính/mức vận động bất cứ lúc nào. Ngay
 trên thẻ này có 2 con số **bấm được** để xem giải thích cách tính:
 - **"Nhu cầu năng lượng ước tính"** — bấm vào để xem từng bước: BMR
@@ -353,9 +379,32 @@ bữa khi bạn ghi món ăn (ngoài các khung này tính là bữa phụ).
   tháng/tuần được), số không kèm đơn vị (đơn vị ở tiêu đề), ô trống nghĩa là chưa có dữ liệu. Sheet **Theo ngày**
   (mỗi dòng một ngày: cân nặng, ăn, vận động, nước, ngủ, vi chất) dùng để vẽ biểu đồ; **Món ăn**, **Vận động**,
   **Nước & ngủ** là dữ liệu gốc; muốn tổng hợp theo ý mình thì dùng Insert → PivotTable.
-- **Dọn dữ liệu cũ**: xoá dữ liệu quá 7 ngày khỏi app (bản Excel đã xuất vẫn
-  giữ nguyên) — việc này bình thường app cũng tự làm mỗi tuần, nút này để
-  bạn chủ động làm ngay khi cần.
+- **Lưu dữ liệu trong app**: chọn 3 tháng / 6 tháng / 1 năm (mặc định) / 2 năm / ∞. **Khi đầy giữ lại** ¼ / ½ / ¾ (mặc định
+  ½: lưu 1 năm thì giữ lại 6 tháng mới nhất). Dòng nhỏ bên dưới ước tính dung lượng (khoảng 1,5 MB/năm khi ghi nhiều) và
+  ngày app sẽ hỏi dọn. App nhắc trước 3 tháng, 1 tháng và 1 tuần. Đến ngày đó, app **tự sao lưu** phần cũ ra 2 file
+  (Excel để đọc + file `.json` để khôi phục) rồi **hỏi bạn**: Chép bản sao lưu / Để sau (7 ngày sau hỏi lại) / Dọn. Chưa
+  bấm Dọn thì không có gì bị xoá.
+- **Kho giữ lâu dài**: ⚖️ Cân nặng, 🏋️ Tập luyện, 🥗 Thói quen ăn. Mục đang bật không bao giờ bị dọn, để biểu đồ xem được
+  nhiều năm. Thói quen ăn được giữ dưới dạng mỗi ngày một dòng tóm tắt (kcal, đạm/carb/béo, kcal theo nhóm món). Lần đầu
+  mở app sau khi cập nhật, app hỏi bạn các lựa chọn này một lần.
+- **♻️ Khôi phục**: chọn file `.json` sao lưu (từ iCloud Drive, AirDrop…) để nhập lại dữ liệu cũ; dòng đã có sẵn được giữ
+  nguyên. **📤 Chép bản sao lưu**: mở bảng chia sẻ cho bản mới nhất. Nên làm việc này mỗi lần dọn, vì file nằm trong app,
+  xoá app là mất. **🗄️ Sao lưu & dọn**: làm ngay chu trình trên, tính lùi từ hôm nay.
+- **📚 Nguồn của tôi** (🍽️ Món của tôi → tab 📚 Nguồn): nhập bảng dinh dưỡng của chính bạn, ví dụ tải từ USDA hoặc tự làm
+  trong Excel. App tính toán và lưu bảng ngay trên máy, không gửi đi đâu.
+  1. Chuẩn bị file **CSV** hoặc **Excel** (.xlsx / .xls / .ods): mỗi dòng một món, dòng đầu là tên cột. File Excel đọc
+     thẳng được tới 30 MB; bảng lớn hơn thì "Lưu dưới dạng" → **CSV (UTF-8)** (CSV nhận tới 500 MB).
+  2. Bấm **＋ Nhập file CSV / Excel** và chọn file. File Excel có nhiều trang tính thì chạm tên trang ở hàng trên cùng để
+     chọn. App tự đoán cột (tên cột tiếng Việt/Anh/Đức đều được). Bạn kiểm lại: số liệu cho 100 g hay 1 khẩu phần, kcal
+     hay kJ, dấu thập phân "1.5" hay "1,5". Chạm một cột để đổi. Phần xem trước cho thấy 3 dòng đầu đã đổi ra sao.
+  3. Bấm **Nhập**. App báo đã nhập bao nhiêu món và bỏ qua dòng nào (thiếu tên, thiếu năng lượng, số âm).
+  - Món từ nguồn hiện trong ô tìm của "Ghi món ăn", có nhãn là tên nguồn. Muốn chỉnh số của một món thì dùng ✎ Sửa thành
+    phần như món catalog.
+  - Công tắc bên cạnh nguồn: tắt thì món của nguồn không hiện khi tìm. ✕ xoá cả nguồn; các bữa đã ghi vẫn giữ số cũ.
+  - **↻ Cập nhật:** có bản mới của cùng file thì bấm ↻ và chọn file mới. App dùng lại cách ghép cột lần trước (theo tên
+    cột, kể cả khi cột đổi chỗ). Nội dung nguồn được thay bằng file mới: món có cùng mã giữ nguyên chỗ bạn đã sửa, món
+    không còn trong file bị bỏ. Huỷ giữa chừng thì nguồn cũ vẫn nguyên.
+  - File lớn hơn mức bạn chọn (mặc định 10 MB) thì app hỏi trước khi nhập. App nhận tối đa 500 MB.
 
 ### 6.7. 🎨 Giao diện
 Chọn chủ đề hiển thị cho app:

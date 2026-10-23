@@ -171,6 +171,21 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > thay vì số Apple Health thật mà Home screen đã dùng từ lâu — sửa `excelSheets.ts` ưu tiên số
 > Apple Health thật, fallback `capacity` khi ngày đó chưa sync. Verify: **tsc/eslint sạch, 606/606
 > test PASS**. Chi tiết: `.ai/SESSION_LOG.md` Session 28.
+>
+> **Session 70 (2026-10-23), CODE XONG chưa test máy — ⌨️ Nạp bằng chữ (Đợt 1, 2, 3a / 3):** ghi cả bữa bằng một
+> câu (gõ, Dictation 🎤), hoặc 📤 Hỏi AI (gửi câu lệnh + ảnh qua app AI của người dùng) → 📋 Dán JSON; đọc ngay trên
+> máy, duyệt từng dòng rồi Insert; tìm cả món "Nguồn của tôi"; lưu **thời gian cập nhật** (`food_log.logged_at`, Excel
+> "Ngày ghi/Giờ ghi"). Còn Đợt 3b: 🎤 trong app + đọc ảnh bằng model trên máy (cần development build). Kế hoạch + nguồn:
+> `docs/nghien-cuu/2026-10-23-ai-nhan-dien-mon-an-tu-anh.md`.
+>
+> **Session 69 (2026-10-23), CODE XONG chưa test máy — 📚 Nguồn của tôi (Đợt 0–1/3):** người dùng nhập bảng dinh dưỡng
+> của họ từ file CSV (đọc từng khúc, tới 500 MB), ghép cột vi/en/de, lưu SQLite, tìm chung trong "Ghi món ăn".
+> - [x] Đợt 0: lớp nguồn (bảng `library_*`, id ổn định, tìm bằng SQLite, cache món đã ghi) — code xong, chưa test máy
+> - [x] Đợt 1: nhập CSV + ghép cột + xem trước + giới hạn dung lượng — code xong, chưa test máy
+> - [x] Đợt 2: ↻ nhập lại cùng file để cập nhật nguồn (giữ id, thay trong một transaction) — code xong, chưa test máy
+> - [x] Đợt 3: đọc .xlsx/.xls/.ods trực tiếp (SheetJS 0.20.3 từ CDN, tối đa 30 MB) — code xong, chưa test máy
+> - [ ] Sau: "⌨️ Nạp bằng chữ" tìm cả món nguồn. EAS preview Đợt 2–3: `48281746…`
+> Kế hoạch + nguồn: `docs/nghien-cuu/2026-10-23-nhap-kho-mon-an-tu-file.md`. EAS preview `a4429e44…` (chung Session 70).
 
 ---
 
@@ -305,5 +320,13 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > thể (Pause/Incline…) khi Xả. Code xong W1–W7 + docs (W8, W6b chủ ý bỏ). Verify: **909 test**, tsc/lint sạch (có 1 test lỗi
 > ngẫu nhiên có sẵn của Session 31). **Chưa test máy thật.** Chi tiết: `.ai/SESSION_LOG.md` Session 32,
 > `.ai/plans/2026-09-23-training-log-notebook.md`.
+
+> 🟡 **(2026-10-23, Session 61–68, nhánh `ui-upgrade`, CHƯA COMMIT)** Kế hoạch block do người dùng quyết: tạo từ lịch sử
+> tập, nghỉ tuần (dời / bỏ) và nghỉ buổi, bài phụ tự viết, sửa theo bài (lưới tuần × thứ, ô xanh = đã tập, xám = nghỉ),
+> kiểu **Tịnh tiến** (+%/+kg mỗi tuần, set×rep từng tuần, test cuối) và block tiếp theo (+5% / +5 kg / thêm volume),
+> **Training Max** theo biến thể, **ghi RPE** trong ô + gợi ý ±kg / ＋1 set sau 2 buổi lệch, chế độ **📋 Form** (TM + set x rep
+> @ tạ kèm % TM). Tên bài theo chủ app (Comp/TnG Bench…), Excel "Planned X (TM = …)" / "Actual X". Cộng: nền đổi màu theo
+> pin, chọn tab mở đầu, cỡ chữ sổ tập, sửa lỗi lịch tuần. Code xong, verify **1420/1420**. **Chưa test máy thật.** Nghiên cứu:
+> `docs/nghien-cuu/2026-10-23-tinh-tien-tuyen-tinh-block.md`, `…-tm-rpe-coach.md`. Chi tiết: `.ai/SESSION_LOG.md` Session 61–68.
 
 > 💡 Cập nhật bảng này sau mỗi session để AI luôn biết đang ở đâu.

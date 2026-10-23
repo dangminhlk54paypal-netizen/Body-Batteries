@@ -302,6 +302,39 @@ Cài đặt → mục GIAO DIỆN.
 - Màu sắc là cố định (không tuning theo brand); nếu thêm màu tùy chỉnh sau, sửa trong `theme.ts`.
 - Chế độ Tối (mặc định) giữ nguyên giao diện cũ; chế độ Sáng là bổ sung.
 
+**Nền đổi màu & tab mở đầu (Session 61, 2026-10-23):**
+- `ambientBackgroundEnabled` (mặc định bật) → `AmbientBackground` (react-native-svg `RadialGradient` + Reanimated
+  `useAnimatedProps`, không thêm thư viện) vẽ sau `Tab.Navigator`; các màn tab dùng `useScreenBackground()` để nền
+  trong suốt. Màu: `ambientTint(satietyPct)` thuần, có test. Đứng yên khi bật Giảm chuyển động.
+- `startTab` (mặc định `Home`, đọc qua `resolveStartTab`) → `initialRouteName`; `placePagesAt()` đặt đúng trang lên
+  màn trước khung hình đầu. Chữ trong Cài đặt có đủ vi/en/de (i18n-covered).
+- Nghiên cứu: `docs/nghien-cuu/2026-10-23-hinh-nen-doi-mau-kieu-gemini.md`.
+
+**Tên gọi người dùng (Session 63, 2026-10-23):**
+- `settingsStore.nickname` (chuỗi, `''` = chưa đặt) — luôn lưu đã chuẩn hoá qua `normalizeNickname()`
+  (`src/lib/nickname.ts`: cắt khoảng trắng, tối đa 24 ký tự). Chỉ nằm trên máy (AsyncStorage) như mọi cài đặt khác.
+- Sửa ở Cài đặt → Hồ sơ cơ thể (hàng "Tên gọi", lưu khi rời ô). In vào Excel: dòng đầu sheet "Đọc trước"
+  (`DataWorkbookInput.nickname`, kể cả sao lưu tháng tự động) và hàng 2 của bảng in block tập
+  (`buildPlanCrosstab(plan, language, nickname)`). Hàm domain nhận nickname qua tham số, service đọc store.
+- Để dành cho AI nhắc nhở/gợi ý sau này: đọc `useSettingsStore.getState().nickname`, rỗng thì xưng hô chung.
+  Chữ mới đủ vi/en/de (i18n-covered).
+
+**Thời hạn lưu dữ liệu & Kho (Session 64, 2026-10-23):**
+- Cài đặt `settingsStore.dataRetention` (đọc qua `resolveDataRetention`, `types/dataRetention.ts`): `months` 3/6/12/24/null,
+  `keepFraction` ¼/½/¾, `archive.{weight,gym,eatingHabits}`, `setupDone` (sheet hỏi một lần `DataRetentionSetupSheet`).
+- Lịch dọn thuần, có test: `domain/retention/retentionSchedule.ts`. Ngày dọn = ngày cũ nhất còn dọn được + thời hạn; mốc
+  cắt = ngày dọn − thời hạn × phần giữ; nhắc 3m/1m/1w chỉ trong chu kỳ hiện tại.
+- Bảng nào dọn, theo cột ngày nào, Kho nào giữ: một danh sách duy nhất `RETENTION_TABLES` trong
+  `data/repositories/retentionRepository.ts`. Thêm bảng có dữ liệu theo ngày thì phải thêm vào đây. Không bao giờ dọn:
+  món tự thêm, sửa dinh dưỡng, nhật ký mã hoá.
+- `services/retention/retentionService.ts`: lúc khởi động (`App.tsx`) chạy `checkRetentionDue`. Thứ tự là tóm tắt ăn
+  (`eating_daily_summary`) → file `.json` khôi phục (`domain/retention/dataBackup.ts`) + Excel → kiểm tra 2 file →
+  `promptRetentionTrim` (Alert hỏi một lần). Chỉ khi người dùng bấm Dọn mới chạy `deleteTrimmableRows`, gói trong một
+  transaction. Khôi phục: `expo-document-picker` → `restoreRows` (`INSERT OR IGNORE`, chỉ cột đang có).
+- Nhắc nhở hằng ngày giờ có id cố định (`cancelDailyReminder`), nên tắt nó không huỷ nhắc hết hạn lưu trữ (`retention-3m/1m/1w`).
+- Thay `cleanupService.ts` (xoá > 35 ngày, đã bỏ) và lời hỏi dọn sau Excel tháng. Chữ mới đủ vi/en/de (i18n-covered).
+  Báo cáo: `docs/nghien-cuu/2026-10-23-luu-tru-theo-nam-va-kho-du-lieu.md`.
+
 ## 🔢 Parse số thập phân với dấu phẩy (src/lib/units.ts)
 
 Bàn phím decimal-pad trên iPhone locale VI/DE sử dụng dấu phẩy (`,`) thay vì dấu chấm (`.`).
@@ -383,6 +416,112 @@ Các "bảng" dữ liệu chính lưu trong SQLite. *Tên cột bằng tiếng A
 | `updated_at` | number | thời điểm sửa |
 
 Bản ghi rỗng (không dòng, không ghi chú) bị **xoá**, không lưu. Hai bảng này **không** nằm trong `cleanupService`.
+
+---
+
+## ⌨️ Nạp bằng chữ (Session 70, 2026-10-23)
+
+Một ô chữ cho gõ tay, Dictation 🎤 của bàn phím, hoặc câu trả lời dán từ AI. Chuỗi xử lý chạy trên máy, theo đúng lớp:
+
+```
+TextMealEntry (UI, trong sheet FoodLogModal)
+   │ text
+   ▼
+domain/food/mealText/parseMealText.ts   1. Parsing  — cắt câu (dấu phẩy, "và/with/mit", xuống dòng)
+                                        2. Decoding — {số lượng, đơn vị, tên món, giờ}; từ khoá vi/en/de
+                                           trong mealTextLexicon.ts (từ khoá phân tích, KHÔNG hiển thị)
+   │ DecodedMealItem[]
+   ▼
+domain/food/mealText/mapMealText.ts     3. Mapping & Validation — món (search tiêm vào), gram (preset
+                                           chén/bát → đếm hộp/viên → gram nói ra → lượng lần trước →
+                                           khẩu phần mặc định), giờ (giờ nói ra → giữa khung bữa → bây giờ),
+                                           nhãn: noMatch/futureTime/tooOld/invalidAmount (chặn),
+                                           duplicate/fuzzyMatch/unitGuess/largeAmount/default/usualAmount
+   │ MealDraftRow[] → người dùng duyệt (tick, −/+, ✎, 🕐, ＋)
+   ▼
+energyStore.logFood / logFoodForPastDate   4. Insert — từng dòng đang tick, không gộp, không ghi đè
+```
+
+- **Search** = `data/food/mealTextSearch.ts`: `searchFoods` + "từ trơn → món cơ bản" ("cơm", "rice", "Reis" →
+  Cơm trắng), trừ khi món khớp đầu tiên nằm trong lịch sử gần đây của người dùng. Không khớp đủ chữ thì bớt dần chữ
+  cuối ("bánh mì trứng" → "bánh mì") trước khi dùng kết quả gần đúng. Số viết bằng chữ có thể là một phần tên
+  ("ba chỉ", "cá ba sa"), nên cụm giữ nguyên số được thử trước.
+- **Trùng:** cùng `foodId` trong ±3 giờ (`DUPLICATE_WINDOW_MS`) so với nhật ký 7 ngày mà FoodLogModal đã tải. Dòng trùng
+  bỏ tick sẵn và mang theo entry cũ để UI hiện "Đã nạp … lúc …" (quyết định của chủ app).
+- **Nhập dở:** `store/mealTextDraftStore.ts` giữ chữ (persist), TTL 5 phút dùng chung `isDraftFresh`.
+- i18n: `components.textMealEntry.*`, `components.foodLogModal.textEntryButton` đủ vi/en/de.
+- **Đợt 2 — 📤 Hỏi AI / 📋 Dán:** "Hỏi AI" mở share sheet với câu lệnh có sẵn (i18n `textMealEntry.aiPrompt`, đòi
+  JSON `{"items":[{"name","name_en","grams","time"}]}`); người dùng tự gửi kèm ảnh trong app AI của họ — **app không
+  gửi gì ra ngoài**. "Dán" đọc clipboard (`expo-clipboard`, có trong Expo Go) rồi tự phân tích. `parseMealJson` (trong
+  `parseMealText.ts`) chịu được ```` ```json ```` + lời dẫn, mảng trần, `quantity`+`unit`, `meal`, `day_offset`; JSON
+  hỏng → đọc như câu thường. `name_en` thành `altQuery`, thử khi tên chính không khớp đủ chữ.
+- **"Nguồn của tôi" trong Nạp bằng chữ:** trước khi ghép, `loadLibraryCandidates` (mealTextSearch.ts) gom mọi cụm mà
+  mapper có thể thử (kể cả dạng bớt chữ) → `searchLibraryCandidates` (SQLite) → pool đưa vào `searchFoods({ library })`.
+  Ô chọn món dùng `useLibrarySearch`. Món của người dùng (Của tôi / Nguồn) thắng "món cơ bản".
+- **Đợt 3a — thời gian cập nhật:** `FoodLogEntry.loggedAt` = lúc dòng được ghi/sửa (sửa = xoá + ghi lại, nên tự cập
+  nhật), khác `timestamp` (lúc ăn). Cột `food_log.logged_at INTEGER` (migration ALTER-if-missing trong
+  `FOOD_LOG_MIGRATION_COLUMNS`; dòng cũ NULL). Excel sheet Món ăn: 2 cột cuối "Ngày ghi" / "Giờ ghi" (trống với dòng cũ).
+  UI: dòng "Ăn 19:00 · ghi 08:02 (24/10)" trong ô sửa món của `TodayMeals`.
+- Test: `domain/food/mealText/__tests__/` (48), `data/food/__tests__/mealTextSearch.test.ts` (6, kho món thật),
+  `components/food/__tests__/TextMealEntry.test.tsx` (10), `dataWorkbook.test.ts` + `energyStore.backfill.test.ts`
+  (loggedAt).
+- Chưa có: 🎤 trong app (`expo-speech-recognition`, cần development build), đọc ảnh bằng model trên máy (Đợt 3b).
+  Báo cáo: `docs/nghien-cuu/2026-10-23-ai-nhan-dien-mon-an-tu-anh.md`.
+
+---
+
+## 📚 Nguồn của tôi — nhập bảng món ăn từ file (Session 69, 2026-10-23)
+
+Người dùng nhập bảng dinh dưỡng của chính họ (CSV; .xlsx ở đợt sau). App chỉ làm "máy tính" và nơi lưu trên máy:
+mỗi dòng được **đổi** về dạng theo 100 g, không bị sửa số. Quyết định của chủ app và nguồn trích dẫn:
+`docs/nghien-cuu/2026-10-23-nhap-kho-mon-an-tu-file.md`.
+
+```
+LibrarySourcesPanel (tab 📚 Nguồn trong MyFoodsSheet)
+   │ chọn file (expo-document-picker, mọi loại → kiểm đuôi: .csv/.tsv/.txt; .xlsx → bảo lưu sang CSV)
+   ▼
+services/food/libraryImportService.ts
+   readLibraryPreview  — đọc 256 KB đầu → đoán dấu phân cách, cột, dấu thập phân, ước số dòng
+   importLibraryFile   — FileHandle.readBytes 1 MB/lần → UTF-8 → bản ghi CSV → từng dòng → SQLite lô 500
+   │                     nguồn TẮT trong lúc nhập; huỷ / lỗi = xoá phần đã ghi; 0 món = không giữ nguồn
+   ▼
+domain/food/library/libraryCsv.ts      giải mã UTF-8 + tách CSV theo khúc (giữ phần bị cắt ở ranh giới khúc)
+domain/food/library/libraryMapping.ts  đoán cột (tên cột vi/en/de, USDA, nhãn Đức), số "12,5"/"<0.1",
+                                       kJ→kcal, khoáng g→mg, muối→natri (×400), theo khẩu phần → 100 g,
+                                       carb ≥ đường + xơ (báo "đã nâng"), id lib_<nguồn>_<khoá>-<hash>
+   ▼
+library_sources / library_foods (schema.ts) — name_norm = mọi tên đã gập dấu (searchNormalize.ts)
+```
+
+- **Không giữ cả bảng trong bộ nhớ** (có thể hàng trăm nghìn dòng). `data/food/libraryFoodRegistry.ts` chỉ giữ danh
+  sách nguồn + cache các món mà nhật ký ăn đang trỏ tới (nạp lúc mở app, `App.tsx`) và kết quả tìm gần nhất, để
+  `getAnyFoodById` vẫn tra đồng bộ được (pin vi chất, Excel, tên theo ngôn ngữ).
+- **Tìm kiếm:** `hooks/useLibrarySearch.ts` (chờ 200 ms) → `searchLibraryCandidates` (SQLite `name_norm LIKE` từng
+  chữ, nguồn đang bật, tối đa 60 dòng) → `searchFoods(query, { library })` chấm điểm bằng đúng bộ chấm của catalog, xếp
+  sau "Của tôi", trước catalog. Ô trống không liệt kê món của nguồn. Nhãn kết quả = tên nguồn.
+- **Id ổn định:** lấy từ cột mã trong file nếu có, không thì từ tên → nhập lại cùng file ra cùng id, nhật ký cũ vẫn trỏ
+  đúng. Xoá nguồn → nhật ký cũ dùng tên đã chụp (`foodNameVi`), như xoá món tự thêm.
+- **Sửa món:** không sửa thẳng; ✎ trong "Ghi món ăn" tạo override như với catalog (`FoodNutritionEditModal` vốn luôn
+  ghi override khi sửa).
+- **Giới hạn:** `settingsStore.libraryImportLimitMb` (10 / 50 / 100 / 300 / 500, mặc định 10). Lớn hơn → hỏi kèm số MB
+  và số dòng ước tính; trên 500 MB → từ chối (`librarySizeCheck`).
+- `libraryFoodRegistry` / service nạp repository bằng `require` lười (không `await import()`): Jest của dự án không chạy
+  được dynamic import, mà các nhánh async này có test.
+- i18n: `myFoods.tabFoods/tabLibrary`, `myFoods.library.*` (kể cả `fields.*`, `issues.*` — kiểm bằng
+  `i18n/__tests__/libraryKeys.test.ts`), `components.foodLogModal.sourceBadgeLibrary` đủ vi/en/de.
+- Test: `domain/food/library/__tests__/` (57), `data/food/__tests__/libraryFoods.test.ts`,
+  `services/food/__tests__/libraryImportService.test.ts` (file giả trả từng 7 byte → thử mọi ranh giới khúc).
+- **Đợt 3 — bảng tính:** `.xlsx/.xls/.ods` đọc bằng SheetJS **0.20.3 cài từ CDN SheetJS** (`package.json` trỏ tarball;
+  npm dừng ở 0.18.5, có lỗi khi đọc file). `services/food/libraryXlsx.ts` → `readSpreadsheetTable` (dòng đầu không rỗng
+  là tiêu đề, ô số giữ là số — `LibraryCell = string | number`, nên ô số không phụ thuộc lựa chọn dấu thập phân). Đọc
+  trọn file (SheetJS không đọc theo khúc) → trần riêng `LIBRARY_XLSX_HARD_MAX_MB = 30`. Nhiều trang tính → dải chip chọn
+  trang trên màn ghép cột; `mapping.format` + `mapping.sheetName` được lưu.
+- **Đợt 2 — ↻ cập nhật nguồn:** cột được ghép lại theo tên cột đã lưu (`remapColumns`, bỏ dấu/hoa thường); đơn vị lấy
+  lại từ lần trước. Bản mới nhập vào một nguồn tạm (tắt), xong mới `replaceLibrarySourceFoods` trong một transaction: xoá
+  dòng cũ, đổi id `lib_<tạm>_<khoá>` → `lib_<nguồn>_<khoá>`, xoá nguồn tạm. Trong lúc nhập nguồn cũ vẫn tìm được; huỷ / lỗi
+  / 0 món thì nguồn cũ nguyên vẹn. Cùng khoá → cùng id, nên nhật ký và override vẫn trỏ đúng. Sau đó
+  `refreshLibrarySourceInRegistry` bỏ cache cũ của nguồn và nạp lại các món nhật ký đang trỏ tới.
+- Chưa có: "⌨️ Nạp bằng chữ" tìm cả món nguồn (tìm bất đồng bộ).
 
 ---
 

@@ -2906,6 +2906,267 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
 
 ---
 
+### Nâng cấp Expo SDK 57 → 58 (2026-10-23)
+- **Làm gì:** Expo Go trên iPhone tự lên SDK 58 → nâng project theo (`expo` 58.0.17, RN 0.88.0, React 19.3.0,
+  gesture-handler 3.3, Reanimated 4.7.1, Jest 30) bằng `npx expo install --fix`.
+- **Kết quả:** `npm run verify` xanh (117 suite / 1315 test). Sửa: kiểu ref `ComponentRef<typeof View/ScrollView>`
+  (8 file), bỏ `StatusBar.backgroundColor` ở HomeScreen, thêm `react-test-renderer` 19.3.0 (devDep), `jest.resolver.js`
+  cho lỗi Reanimated dưới Jest, bọc `GestureHandlerRootView` trong 2 test thanh tab. Ghi chú vào `AGENTS.md`.
+- **EAS:** nhánh `preview`, runtime `exposdk:58.0.0`, group `4fa38f20-29bd-483c-b86b-a88a1fccbe4e`, publish từ working
+  tree (chỉ lẫn docs của phiên khác). Sau đó Session 70 publish đè bằng `698588e2-6079-4a88-9f7e-7934daad9a17`
+  (cùng working tree, gồm luôn SDK 58). Checklist thử máy: `docs/KIEM-TRA-TREN-MAY.md` § "Nâng cấp Expo SDK 58".
+  **Chưa có xác nhận test máy thật.**
+- **Vấn đề:** `react-native-health` vẫn bị expo-doctor cảnh báo (chưa thử New Arch, kéo thêm `@expo/fingerprint` cũ) —
+  không ảnh hưởng Expo Go.
+
+### Session 61 — Nền đổi màu kiểu Gemini + chọn tab mở đầu (2026-10-23)
+- **Làm gì:** nghiên cứu nền gradient chuyển động của Gemini (báo cáo `docs/nghien-cuu/2026-10-23-hinh-nen-doi-mau-kieu-gemini.md`),
+  rồi làm theo quyết định của chủ dự án: quầng màu trôi chậm sau **mọi tab**, màu theo pin Năng lượng cơ thể
+  (san hô → hổ phách → xanh ngọc), loé hổ phách khi ghi món; công tắc "Nền đổi màu 🌈" và hàng icon "Mở app ở" trong
+  Cài đặt → Giao diện. i18n đủ vi/en/de.
+- **Kết quả:** `AmbientBackground.tsx`, `lib/ambientBackground.ts` (+test), `hooks/useScreenBackground.ts`,
+  `resolveStartTab` + `placePagesAt` (+test mở trên tab Training). `npm run verify` xanh (118 suite / 1323 test).
+- **EAS:** nhánh `preview`, group `2122bac2-2934-4414-9b05-795c508749f5`, publish từ working tree (lẫn bản nâng SDK 58
+  chưa commit của cùng ngày — cần thiết cho Expo Go 58). **Chưa có xác nhận test máy thật.**
+- **Vấn đề:** vòng pin (giữ để lưu ảnh) cần nền đặc khi chụp → bật nền đặc 2 frame trước khi chụp. Mức tốn pin chưa đo.
+- **Session tiếp theo phải làm:** chủ dự án thử trên iPhone (độ đậm màu, dễ đọc chữ ở giao diện Sáng, chụp vòng pin);
+  chỉnh `peak` trong `AmbientBackground.tsx` nếu quá đậm/nhạt.
+
+### Session 62 — Tab Tập luyện: đồ thị lên trên, cỡ chữ sổ tập tuỳ chỉnh (2026-10-23)
+- **Làm gì:** đồ thị Tiến độ sức mạnh chuyển lên **trên** sổ tập (thu hút hơn). Sheet ⚙︎ Định dạng sổ có hàng chip
+  **Cỡ chữ: Nhỏ / Vừa / Lớn** (`TrainingLogFormat.textSize`, mặc định `small`; `medium` = cỡ cũ), áp cho dòng ngày,
+  ghi chú, tiêu đề tuần/tháng và ô xem trước. i18n đủ vi/en/de.
+- **Kết quả:** `notebookFontSize()` trong `types/trainingLog.ts` (×0,86 / ×1 / ×1,15, sàn 11pt) + test. `npm run verify` xanh.
+- **EAS:** nhánh `preview`, group `adb18001-759a-4fab-9762-e6d218ee73e3`, publish từ working tree (gồm Session 61 + bản
+  nâng SDK 58). **Chưa có xác nhận test máy thật.**
+- **Session tiếp theo phải làm:** chủ dự án thử 3 cỡ chữ; chỉnh hệ số nếu "Nhỏ" quá nhỏ.
+
+### Session 63 — Tên gọi người dùng, in vào file Excel (2026-10-23)
+- **Làm gì:** thêm **Tên gọi** (nickname) để app xưng hô với người dùng — chuẩn bị cho AI phân tích/nhắc nhở sau này —
+  và in tên vào mọi file Excel xuất ra. i18n đủ vi/en/de.
+- **Kết quả:** `settingsStore.nickname` + `setNickname` (chuẩn hoá qua `src/lib/nickname.ts`, tối đa 24 ký tự); hàng
+  "Tên gọi" ở đầu thẻ Cài đặt → Hồ sơ cơ thể (lưu khi rời ô, hiện trong dòng tóm tắt, giải thích sau ⓘ). Excel dữ liệu:
+  dòng đầu sheet "Đọc trước" = "Người dùng | <tên>" (gồm cả sao lưu tháng tự động); Excel block tập: hàng 2 "Người tập:
+  <tên>". Không đặt tên → file như cũ. Test mới cho cả 3 chỗ; `npm run verify` xanh (120 suite / 1336 test, 5 test mới).
+- **EAS:** nhánh `preview`, group `48b707a2-3483-4aaf-b734-9a5f44ae4f55`, publish từ working tree (gồm Session 61–62 +
+  bản nâng SDK 58 chưa commit). **Chưa có xác nhận test máy thật.**
+- **Session tiếp theo phải làm:** chủ dự án thử đặt tên, xuất Excel 7 ngày + block tập; khi làm AI nhắc nhở thì đọc
+  `nickname` (rỗng → xưng hô chung).
+
+### Session 63 — Sửa lịch tuần + plan linh hoạt: tạo từ lịch sử, nghỉ tuần/buổi, bài phụ tự viết (2026-10-23)
+- **Lỗi lịch tuần (BlockScheduleEditor):** bấm T4 ra T5, vuốt bị lệch. Gốc: `contentOffset` đi theo `page` mà `onScroll`
+  cập nhật `page` → iOS Fabric đặt lại vị trí cuộn ngay (RCTScrollViewComponentView.mm ~408). Sửa: `DayPager` chỉ đặt
+  offset lúc mount; `tapTarget` ref; chốt trang ở `onMomentumScrollEnd`. 3 test hồi quy. Bài học:
+  `.ai/skills/learned/scrollview-contentoffset-prop-must-not-follow-state.md`.
+- **Tính năng (chủ app: "User makes decisions"):** ✨ tạo block từ lịch sử tập (điền sẵn → Tóm tắt); 🏖 Nghỉ tuần với lựa
+  chọn "Dời các tuần sau" / "Bỏ tuần này" (bỏ ra được); "Nghỉ" từng buổi; ＋/✎ Bài phụ tự viết trong plan đang chạy,
+  có gợi ý tên. Chi tiết: `docs/08-powerlifting-engine.md` §12. i18n vi/en/de.
+- **Kết quả:** `npm run verify` xanh (122 suite / 1355 test).
+- **EAS:** nhánh `preview`, group `13510055-e48f-415b-8e34-51d2ae7b9123`, publish từ working tree sau khi phiên
+  `bodybatteries-b6` xác nhận tính năng biệt danh đã xong (gồm cả Session 61–62, bản nâng SDK 58, biệt danh).
+  **Chưa có xác nhận test máy thật.**
+- **Bổ sung (sau khi phiên b6 xong):** Excel xuất block ghi tuần/buổi nghỉ, tuần nghỉ chèn thêm, bài phụ theo từng tuần
+  (+3 test). Verify xanh 126 suite / 1382 test. EAS `preview` group `c7609c89-fa99-4c14-b6fb-f7746f7e7987` (mới nhất,
+  gồm cả tính năng lưu trữ của Session 64). **Chưa có xác nhận test máy thật.**
+- **Session tiếp theo phải làm:** chủ dự án thử trên iPhone (checklist trong chat); gợi ý tính toán cho bài phụ có trong
+  thư viện (chủ app nói sẽ phát triển tiếp); commit khi chủ dự án đồng ý.
+
+### Session 64 — Lưu dữ liệu theo năm, tự sao lưu trước khi dọn, Kho dài hạn (2026-10-23)
+- **Làm gì:** nghiên cứu + lập kế hoạch (`docs/nghien-cuu/2026-10-23-luu-tru-theo-nam-va-kho-du-lieu.md`), chủ dự án chốt:
+  thói quen ăn tự tính, sao lưu Excel + file khôi phục, hỏi một lần trước khi xoá. Rồi làm: thời hạn lưu 3/6 tháng ·
+  1 năm (mặc định) · 2 năm · ∞, giữ lại ¼/½/¾ (mặc định ½), ước tính dung lượng, nhắc 3 tháng/1 tháng/1 tuần, tự sao lưu
+  khi đến hạn rồi hỏi Chép / Để sau / Dọn, Kho ⚖️ cân nặng · 🏋️ tập luyện · 🥗 thói quen ăn (bảng mới `eating_daily_summary`),
+  ♻️ khôi phục từ file `.json` (`expo-document-picker`, có sẵn trong Expo Go), sheet hỏi một lần. i18n đủ vi/en/de.
+- **Kết quả:** đo bằng mô phỏng SQLite: ≈ 4 KB/ngày ≈ 1,5 MB/năm. 4 file test mới (lịch dọn, tóm tắt ăn, file khôi phục,
+  SQL của repository). Câu SQL bắt được trong test cũng chạy thử trên SQLite thật (54 câu, đúng cú pháp). `npm run verify`
+  xanh (126 suite / 1379 test). Bỏ `cleanupService.ts` (xoá > 35 ngày) và lời hỏi xoá sau Excel tháng. Nhắc hằng ngày có id
+  riêng, nên tắt nó không còn huỷ mọi thông báo.
+- **EAS:** nhánh `preview`, group `766a1436-dd2f-43fe-a679-087632adc15a`, publish từ working tree sau khi phiên
+  `bodybatteries-50` xác nhận phần Tập luyện đã xong (bản này gồm cả Session 61–63). **Chưa có xác nhận test máy thật.**
+- **Vấn đề:** thư mục tài liệu của app **không** hiện trong app Tệp (`enableFileSharing` chưa bật, cần build native), nên
+  câu hướng dẫn nhập "Món của tôi" ("mở app Files → On My iPhone") đang sai. Đã ghi vào mục Đính chính, chưa sửa UI.
+  Thử trên máy cần dữ liệu đủ cũ, hoặc chọn "3 th" rồi bấm 🗄️ Sao lưu & dọn.
+- **Session tiếp theo phải làm:** (1) chủ dự án thử sheet hỏi lần đầu, 🗄️ / 📤 / ♻️ và đổi ngôn ngữ; (2) Đợt 2: biểu đồ
+  Thói quen ăn trong Lịch sử, đọc `eating_daily_summary` + `food_log`; (3) chuyển phần nhập "Món của tôi" sang
+  `expo-document-picker` và sửa câu hướng dẫn.
+
+### Session 65 — Kế hoạch block: sửa theo bài (lưới tuần × thứ) (2026-10-23)
+- **Làm gì:** chủ app không muốn sửa từng dòng theo ngày; muốn chọn một bài (Bench) và thấy nó qua cả block. Thêm chế
+  độ **🏋️ Theo bài**: lưới tuần × thứ, ô vuông có set/rep/tạ, bấm ô → sửa ngay dưới lưới. Chi tiết
+  `docs/08-powerlifting-engine.md` §13. i18n vi/en/de.
+- **Kết quả:** `liftGrid.ts` (+4 test), `BlockLiftGrid.tsx`, `VariationSetsEditor.tsx` (tách từ sheet ✎), +1 test UI.
+  `npm run verify` xanh (127 suite / 1387 test).
+- **EAS:** `preview` group `c6d78d53-97b0-4a1e-8d27-83b43ca43754`, từ working tree (không phiên nào khác đang sửa).
+  **Chưa có xác nhận test máy thật.**
+- **Màu ô (bổ sung):** ô/thẻ buổi đã tập = xanh lá nhạt (`planDoneBg`/`planDoneBorder`), chưa tập = mặc định, bỏ tập =
+  xám (`planSkippedBg`); `planDayState()` trong `blockSessions.ts` (+test). Áp cho cả "Theo bài" lẫn "Theo tuần". Verify
+  xanh 127 suite / 1389 test. EAS group `95855324-5f3d-403a-821d-28946cf028f7`. **Chưa có xác nhận test máy thật.**
+- **Gợi ý tiếp:** thao tác hàng loạt trong lưới (chép ô sang các tuần sau, +2,5 kg mỗi tuần) nếu chủ app cần.
+
+### Session 66 — Kiểu "Tịnh tiến" + block tiếp theo từ block trước (2026-10-23)
+- **Làm gì:** chủ app đưa khung tịnh tiến cho người mới (W1 70%/65% 4×5 … W5 90%/85% 3×2, W6 test ~95%; bước +5% hoặc
+  +2,5% hoặc kg) và cách nối block cho người tập lâu (+5% / +5 kg / giữ tạ +volume). Nghiên cứu có trích nguồn:
+  `docs/nghien-cuu/2026-10-23-tinh-tien-tuyen-tinh-block.md` (ACSM 2009/2026, Harries 2015, Williams 2017, Moesgaard 2022).
+- **Kết quả:** `focus 'linear'` + `LinearProgression`; `linearProgression.ts` (+9 test), engine `resolveLinearDay` /
+  `resolveLinearDeloadDay`; `LinearProgressionEditor.tsx`; chip 1RM từ block trước; +2 test wizard. Chi tiết
+  `docs/08-powerlifting-engine.md` §14. `npm run verify` xanh (128 suite / 1400 test).
+- **EAS:** `preview` group `8da09046-3c3d-405e-a0fc-87b4b7c1a27c`, từ working tree. **Chưa có xác nhận test máy thật.**
+- **Chờ chủ app chốt:** % mặc định cho người mới (70% hay 65% khi 1RM là ước tính); test tuần cuối bật mặc định?
+
+### Session 67 — Tên bài kiểu chủ app, Training Max theo block, ghi RPE + huấn luyện viên RPE (2026-10-23)
+- **Làm gì:** đổi tên mọi biến thể (Comp Bench, TnG Bench, Squat, Deadlift…), Excel ghi "Planned X (TM = …)" / "Actual X";
+  TM theo block (gợi ý 90% 1RM) cho kiểu Tịnh tiến; ghi RPE ngay trong ô kế hoạch; engine gợi ý ±kg / ＋1 set sau 2 buổi
+  lệch liên tiếp. Nghiên cứu: `docs/nghien-cuu/2026-10-23-tm-rpe-coach.md` — có Đính chính (bench thi đấu IPF là dừng ngực,
+  trước đây app ghi nhầm là chạm ngực).
+- **Kết quả:** `rpeCoach.ts` (+test), `RpeChips.tsx`, `RpeCoachCard.tsx`, bước `tm` trong wizard, `suggestTrainingMax` /
+  `nextBlockTrainingMax`, Excel Planned/Actual + RPE. i18n vi/en/de. Chi tiết `docs/08-powerlifting-engine.md` §15.
+- **EAS:** `preview` group `09d7ec2d-dfd4-4927-b402-10ff0bcbaf35`, từ working tree. `npm run verify` xanh (129 suite / 1412 test).
+- **Chờ chủ app:** test máy thật; hệ số Comp/TnG (app 0,9, TM của chủ app ≈ 0,96) có nên đổi không.
+- **Vấn đề gặp phải & cách giải quyết:** 2 kỳ vọng test làm tròn sai (107,5×1,05 → 112,5; 130×0,9 → 115 vì làm tròn
+  xuống) — sửa test, không sửa code. Bỏ `findLastIndex` (rủi ro Hermes) thay bằng `findIndex` ngược. Nghiên cứu: PubMed đòi
+  cookie → đọc abstract qua Europe PMC REST API; PDF ACSM đọc bằng `pdftotext`. Phát hiện app ghi nhầm TnG là chuẩn thi đấu
+  → đính chính theo luật IPF 2026 (luật 8 bench).
+
+### Session 68 — Chế độ "Form": TM + set x rep @ tạ (% TM) theo từng tuần (2026-10-23)
+- **Làm gì:** chủ app muốn chỉnh block theo mẫu bảng của họ: mỗi bài một TM, mỗi tuần "set x rep @ tạ" kèm % TM, sửa nhanh
+  và thống nhất cả block. Thêm nút "📋 Form" trong kế hoạch.
+- **Kết quả:** `blockForm.ts` (+7 test), `BlockFormView.tsx`, store `editFormRows` / `setTrainingMax`, Excel dùng chung
+  `blockTrainingMax`; +1 test giao diện. Gõ kg hoặc % TM; đổi TM kéo tạ các buổi chưa tập theo. i18n vi/en/de.
+  Chi tiết `docs/08-powerlifting-engine.md` §16. `npm run verify` xanh (130 suite / 1420 test).
+- **EAS:** `preview` group `3b5384fa-1bf2-4b35-acb9-125d7c366b46`. **Chưa có xác nhận test máy thật.**
+- **Vấn đề gặp phải & cách giải quyết:** `weekdayLabel` đòi kiểu thứ 0–6 chứ không phải `number` → `FormRow.dayOfWeek`
+  lấy kiểu `ResolvedDayPlan['dayOfWeek']`. Đổi TM khi đang có dòng sửa dở sẽ đè chỗ đang gõ → khoá "Áp dụng" tới khi lưu.
+- **Session tiếp theo phải làm** (gộp Session 61–68 của phiên này):
+  1. Chủ app test trên máy theo bản `3b5384fa…`: Form (gõ % TM, đổi TM), ghi RPE + thẻ gợi ý, bước TM của Tịnh tiến, lưới
+     "Theo bài" + màu ô, nghỉ tuần/buổi, sửa lịch tuần (bấm T4/T6), nền đổi màu + tab mở đầu, Excel Planned/Actual.
+  2. Chờ chủ app chốt: % tuần 1 khi 1RM là ước tính (70 hay 65); tuần test bật sẵn không; hệ số Comp Bench (0,9 → ~0,96?).
+  3. Commit theo từng tính năng (chỉ `git add` đúng file, không `add -A`) **khi chủ app cho phép và các phiên song song đã
+     xong** — chủ app dặn 2026-10-23 chưa commit/push.
+  4. Ý tưởng chưa làm cho Form: nút "chép dòng này xuống các tuần sau", tăng đều % TM mỗi tuần một chạm.
+  5. Vẫn treo: xoá phần nhập Notes một lần (`owner-notes-import`) sau khi chủ app xác nhận.
+
+### Session 69 — "Nguồn của tôi": nhập bảng món ăn từ file CSV (2026-10-23)
+- **Làm gì:** chủ app duyệt hướng "người dùng tự nhập bảng dinh dưỡng của họ, app làm engine + lưu trên máy". Quyết
+  định: CSV trước, .xlsx sau; món nhập không sửa trực tiếp, chỉnh bằng override; giới hạn do người dùng chọn (mặc định
+  10 MB, tối đa 500 MB, không nhận GB). Báo cáo: `docs/nghien-cuu/2026-10-23-nhap-kho-mon-an-tu-file.md` (bản 2 ghi
+  phần đã làm). Kỹ thuật: `docs/03-architecture.md` § "📚 Nguồn của tôi". i18n vi/en/de đủ.
+- **Kết quả (Đợt 0 + 1, code xong):** domain `searchNormalize.ts`, `library/libraryCsv.ts`, `library/libraryMapping.ts`;
+  `types/foodLibrary.ts`; bảng `library_sources` / `library_foods`; `libraryFoodMapper.ts`, `libraryFoodsRepository.ts`,
+  `libraryFoodRegistry.ts` (nạp lúc mở app); `getAnyFoodById` + `searchFoods({ library })`; service
+  `libraryImportService.ts`; hook `useLibrarySearch.ts`; UI tab "🍽️ Món | 📚 Nguồn" trong `MyFoodsSheet` +
+  `LibrarySourcesPanel.tsx`; nhãn nguồn trong `FoodLogModal`; `settingsStore.libraryImportLimitMb`.
+  `npm run verify` xanh: 139 suite / 1549 test (gồm cả Session 70).
+- **Vấn đề & cách giải:** (1) Jest của dự án không chạy được `await import()` ("dynamic import callback … without
+  --experimental-vm-modules"), nên registry và service nạp repository bằng `require` lười. (2) `jest.mock` factory không
+  cho dùng biến ngoài phạm vi, kể cả tham số `constructor(private uri)` → đổi tên biến thành `mockUri`. (3) Test bắt
+  được lỗi phần xem trước: chỉ gọi `readBytes` một lần → sửa thành đọc lặp đến đủ 256 KB hoặc hết file.
+- **EAS:** `preview` group `a4429e44-e8bd-48f1-9ae7-46c25cdca2ae`, từ working tree chung với Session 70 (gồm cả Session
+  61–68). **Chưa test máy thật.**
+- **Session tiếp theo phải làm:**
+  1. Chủ app thử: Cài đặt → Dữ liệu → 🍽️ Món của tôi → 📚 Nguồn → ＋ Nhập file CSV (file `;` + dấu phẩy thập phân,
+     file USDA), ghép cột, nhập, tìm món trong "Ghi món ăn", tắt/xoá nguồn, đổi vi/en/de.
+  2. Duyệt xong kiểu màn ghép cột → ghi vào skill `mobile-ui-density`.
+  3. Đợt 2: nhập lại cùng file để cập nhật (dùng `mapping.header` đã lưu); Đợt 3: .xlsx (cần bản SheetJS đã vá);
+     cho "⌨️ Nạp bằng chữ" tìm cả món nguồn (async).
+
+### Session 70 — ⌨️ Nạp bằng chữ (Đợt 1, 2, 3a): gõ / 🎤 / Hỏi AI + Dán → duyệt → Nạp; giờ ghi món (2026-10-23) — phiên song song
+- **Làm gì:** chủ app hỏi về AI đọc ảnh món ăn → 3 bản nghiên cứu có nguồn
+  (`docs/nghien-cuu/2026-10-23-ai-nhan-dien-mon-an-tu-anh.md`): AI gọi tên tốt nhưng sai gram ~36% và luôn đoán thiếu;
+  không được đăng nhập hộ tài khoản AI (Anthropic cấm, OpenAI cấm trích xuất tự động); hướng 0 đồng = cầu copy–paste /
+  khoá Gemini miễn phí của người dùng; tự train chỉ khả thi cho gọi tên món. Chủ app chọn làm trước một **ô chữ một cửa**
+  với chuỗi Parsing → Decoding → Mapping & Validation → Insert, có duyệt từng món. Quyết định: **Insert, không Upsert**;
+  trùng món (±3 giờ) phải **hiện nội dung** ("Đã nạp Ức gà 150g lúc 11:30") và bỏ tick sẵn, không trùng thì thêm món
+  mới; "thời gian cập nhật" để Đợt 3.
+- **Kết quả (code xong, chưa test máy):**
+  - Domain `src/domain/food/mealText/`: `mealTextLexicon.ts` (từ khoá vi/en/de, không hiển thị; từ đệm tiếng Việt so
+    CÓ dấu để "tỏi"/"đá"/"chưng" không bị nuốt), `parseMealText.ts`, `mapMealText.ts` (preset chén/bát → đếm hộp → gram
+    → lượng lần trước → mặc định; giờ theo câu → giữa khung bữa → bây giờ; nhãn chặn/cảnh báo; sửa dòng; −/+ theo bậc).
+  - Data `data/food/mealTextSearch.ts` (từ trơn → món cơ bản: cơm/rice/Reis → Cơm trắng, trừ khi lịch sử nói khác).
+  - Store `store/mealTextDraftStore.ts` (giữ chữ 5 phút). UI `components/food/TextMealEntry.tsx` (danh sách duyệt, sửa
+    dòng / chọn món / đặt giờ cả danh sách hiện thay chỗ), nút "⌨️ Nạp bằng chữ" ở đầu màn tìm món của `FoodLogModal`.
+    i18n `components.textMealEntry.*` + `foodLogModal.textEntryButton` đủ vi/en/de.
+  - Test: 43 domain + 6 kho món thật + 6 render (gõ → Phân tích → Nạp; trùng; món lạ; hôm qua; nhập dở 5 phút).
+  - Tài liệu: `03-architecture.md` (mục ⌨️ Nạp bằng chữ), `HUONG-DAN-SU-DUNG-APP.md` §3.3 mục 6, `04-roadmap.md`,
+    `CONTEXT.md`, skill `mobile-ui-density` §7b (danh sách duyệt trước khi ghi).
+- **Vấn đề & cách giải:** (1) cụm không dấu "an toi" (ăn tối) bắt nhầm "ăn tỏi" → cụm không dấu chỉ khớp chữ gõ không
+  dấu tiếng Việt (umlaut Đức vẫn được). (2) "ba chỉ nướng" thành 3 × "chỉ nướng" (khớp nhầm thịt bò nhờ chịu lỗi gõ) →
+  thử cụm giữ nguyên số trước, kể cả bớt dần chữ cuối. (3) "cơm" ra Cơm chiên, "rice" ra Cháo → bảng món cơ bản.
+  (4) Một phiên khác (Session 69, "Nguồn của tôi") sửa cùng `FoodLogModal`/`foodSearch`/locale trong lúc làm — các sửa
+  ghép sạch, không đụng phần của nhau.
+- **Kiểm tra:** `tsc` + eslint sạch; jest 137/139 suite xanh — 2 suite đỏ là của Session 69 (`libraryFoods`,
+  `libraryImportService`), không liên quan file của phiên này.
+- **EAS:** `preview` group `a4429e44-e8bd-48f1-9ae7-46c25cdca2ae`, từ working tree chung với Session 69. **Chưa test máy thật.**
+- **Session tiếp theo phải làm:**
+  1. Publish `preview` theo cách chủ app chọn, gửi link + checklist (màn Ghi món ăn → ⌨️ Nạp bằng chữ; câu mẫu vi/en/de;
+     trùng món; ✎ đổi món; 🕐 đặt giờ; hôm qua; đổi ngôn ngữ DE kiểm độ rộng hàng).
+  2. Đợt 2: nút "📋 Dán từ AI" — nhánh JSON trong `parseMealText` + câu lệnh mẫu để copy sang ChatGPT/Gemini/Claude.
+  3. Cho Nạp bằng chữ tìm cả món "Nguồn của tôi" (bảng nhập từ file) khi Session 69 xong.
+  4. Đợt 3: cột "thời gian cập nhật" (migration), 🎤 trong app (`expo-speech-recognition`, cần development build).
+
+- **Làm tiếp cùng ngày (chủ app: "ghi checklist vào đâu đó, làm tiếp các bước"):**
+  - `docs/KIEM-TRA-TREN-MAY.md` (mới): mọi việc cần thử trên iPhone, theo session, có ô `[ ]`; skill
+    `eas-preview-publish` thêm Bước 3b "ghi checklist vào file này" mỗi lần publish.
+  - **Đợt 2:** 📤 Hỏi AI (share sheet + câu lệnh JSON i18n `textMealEntry.aiPrompt`, app không tự gửi gì), 📋 Dán
+    (`expo-clipboard ~58.0.4`, có trong Expo Go), `parseMealJson` (fence, lời dẫn, mảng trần, quantity+unit, meal,
+    day_offset; JSON hỏng → đọc như câu), `altQuery` = `name_en`. Món "Nguồn của tôi" được tìm (`loadLibraryCandidates`
+    + `useLibrarySearch` trong ô chọn món); món của người dùng thắng "món cơ bản".
+  - **Đợt 3a:** `FoodLogEntry.loggedAt` + cột `food_log.logged_at` (migration ALTER-if-missing), đóng dấu trong
+    `logFood`/`logFoodForPastDate` (sửa = ghi lại nên tự cập nhật), Excel sheet Món ăn thêm "Ngày ghi"/"Giờ ghi",
+    `TodayMeals` ô sửa có dòng "Ăn 19:00 · ghi 08:02 (24/10)".
+  - Kiểm tra: `npm run verify` xanh 140 suite / 1572 test (một lần chạy giữa chừng có 1 suite lỗi do phiên khác đang
+    viết test — chạy lại xanh).
+  - **EAS:** `preview` group `698588e2-6079-4a88-9f7e-7934daad9a17` (runtime exposdk:58.0.0), từ working tree chung —
+    gồm Session 61–71 + nâng SDK 58 của phiên `bodybatteries-23` (đã xác nhận "ok publish"). **Chưa test máy thật.**
+  - Còn lại: Đợt 3b (🎤 trong app `expo-speech-recognition` + đọc ảnh bằng model trên máy) — cần development build,
+    phải hỏi chủ app trước.
+- **TỔNG KẾT CUỐI NGÀY (wrap-up theo yêu cầu chủ app):**
+  - ✅ **Đã xong (code + test tự động, CHƯA test máy):** nghiên cứu 3 phần (AI đọc ảnh / hướng 0 đồng / ô chữ một cửa);
+    Đợt 1 ô Nạp bằng chữ + danh sách duyệt + cảnh báo trùng có nội dung; Đợt 2 📤 Hỏi AI + 📋 Dán + đọc JSON + món
+    "Nguồn của tôi"; Đợt 3a giờ ghi món (DB + Excel + ô sửa món); 60+ test mới; tài liệu (03-architecture, hướng dẫn
+    sử dụng §3.3 mục 6–7, roadmap, CONTEXT, báo cáo nghiên cứu §15); skill: `mobile-ui-density` §7b,
+    `eas-preview-publish` Bước 1 (hỏi phiên khác) + 3b (checklist), bài học `learned/vietnamese-accent-folding-collisions`;
+    checklist thử máy `docs/KIEM-TRA-TREN-MAY.md`.
+  - ⏳ **Chưa xong:** Đợt 3b — 🎤 riêng trong app (`expo-speech-recognition`) và đọc ảnh bằng model chạy trên máy
+    (Apple Foundation Models có nhìn ảnh từ iOS 27, hoặc model tự train); cả hai cần **development build** thay vì Expo
+    Go → chờ chủ app quyết. Chưa có test cho sửa giờ trong ô duyệt bằng tay trên máy thật.
+  - 🔍 **Cần kiểm tra trên iPhone:** toàn bộ mục "Session 70" trong `docs/KIEM-TRA-TREN-MAY.md` (đọc câu cơ bản, trùng
+    món, 🎤 bàn phím, hôm qua, món lạ, sửa dòng, −/+, giờ cả danh sách, ＋, giờ tương lai, nhập dở, bàn phím che, EN/DE,
+    📤 Hỏi AI + ảnh + 📋 Dán, clipboard trống, món Nguồn của tôi, 3 nút đều nhau, dòng "Ăn … · ghi …", 2 cột Excel).
+    Ghi lại AI đoán gram thiếu/thừa bao nhiêu so với cân thật.
+- **Session tiếp theo phải làm:**
+  1. Đọc kết quả chủ app đánh dấu trong `docs/KIEM-TRA-TREN-MAY.md`; mỗi câu bị đọc sai → thêm vào
+     `parseMealText.test.ts` / `mealTextSearch.test.ts` trước khi sửa luật.
+  2. Nếu AI đoán gram lệch có hệ thống: thêm hệ số chỉnh riêng (nhớ theo người dùng) cho kết quả dán từ AI.
+  3. Chủ app quyết Đợt 3b (development build) — nếu đồng ý: `expo-speech-recognition` (MIT, on-device iOS 17+), nút 🎤
+     cạnh ô chữ; sau đó thử Apple Foundation Models nhìn ảnh khi iOS 27 ra.
+
+### Session 71 — "Nguồn của tôi" Đợt 2 (↻ cập nhật nguồn) + Đợt 3 (đọc Excel) (2026-10-23)
+- **Làm gì:** chủ app bảo làm tiếp Đợt 2 và 3 (sẽ thử máy sau). Báo cáo có trích nguồn: bản 3 + mục Đính chính trong
+  `docs/nghien-cuu/2026-10-23-nhap-kho-mon-an-tu-file.md`. Kỹ thuật: `docs/03-architecture.md` § "📚 Nguồn của tôi".
+- **Kết quả:**
+  - `xlsx` đổi từ npm `^0.18.5` sang tarball CDN SheetJS **0.20.3** (`package.json`). Đây là JS thuần, không cần build native.
+    Test xuất Excel vẫn xanh, `npm audit` không còn báo `xlsx`.
+  - Đợt 3: `services/food/libraryXlsx.ts` (`readSpreadsheetTable`), `LibraryCell = string | number`, trần .xlsx 30 MB
+    (`libraryHardMaxMb`), chip chọn trang tính, `mapping.format/sheetName`.
+  - Đợt 2: nút ↻ trên từng nguồn → hỏi xác nhận → chọn file → ghép lại cột theo tên (`remapColumns`) → nhập vào nguồn
+    tạm → `replaceLibrarySourceFoods` (một transaction, đổi id về nguồn cũ) → `refreshLibrarySourceInRegistry`.
+  - Sửa lỗi tiềm ẩn: `onPress={handlePick}` sẽ truyền sự kiện chạm vào tham số `replace` → đổi thành `() => handlePick()`.
+  - i18n vi/en/de: `updateA11y/updateConfirmTitle/updateConfirmMessage/updateConfirm/updateTitle/resultUpdated`,
+    `tooBigXlsxMessage`, `sheetA11y`. Bỏ `xlsxTitle/xlsxMessage`. Câu nhắc file đổi thành CSV/Excel.
+  - Test: +`services/food/__tests__/libraryXlsx.test.ts`, thêm test cho mapping (ô số, `remapColumns`, trần xlsx) và
+    service (nhập .xlsx, cập nhật giữ id, huỷ/0 món thì nguồn cũ nguyên). `npm run verify` xanh: 140 suite / 1561 test.
+  - Tài liệu: `03-architecture.md`, `04-roadmap.md`, `HUONG-DAN-SU-DUNG-APP.md` §6.6.
+- **EAS:** `preview` group `48281746-b08e-4a68-845b-dc852116e055`, từ working tree (mọi phiên khác đang rảnh, chỉ có file
+  của phiên này thay đổi; bản gồm cả Session 61–70). **Chưa test máy thật.**
+- **Session tiếp theo phải làm:**
+  1. Chủ app thử: (a) nhập một file .xlsx nhiều trang tính, chọn trang; (b) ↻ cập nhật nguồn bằng bản file đã đổi thứ
+     tự cột + bớt 1 món → món còn lại giữ chỗ ✎ đã sửa, món bị bớt biến mất, bữa đã ghi vẫn còn; (c) huỷ giữa chừng
+     khi đang cập nhật → nguồn cũ không đổi; (d) file .xlsx > 30 MB → app khuyên lưu CSV.
+  2. Nếu .xlsx vài MB làm máy chậm/treo thì hạ `LIBRARY_XLSX_HARD_MAX_MB`. Nếu tìm kiếm chậm với CSV lớn thì xét FTS5.
+  3. Cho "⌨️ Nạp bằng chữ" tìm cả món nguồn. Duyệt màn ghép cột → ghi vào skill `mobile-ui-density`.
+
+---
+
 ## 📌 Hướng dẫn viết session log
 
 Khi kết thúc một session, AI tự điền vào đây:

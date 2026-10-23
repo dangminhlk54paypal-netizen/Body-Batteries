@@ -28,3 +28,5 @@ Thư mục này chứa các "bài học" mà AI ghi lại khi gặp **lỗi/khó
 - [automation-must-not-override-user-choice](automation-must-not-override-user-choice.md)
 - [gesture-rebuilt-each-render-drops-release](gesture-rebuilt-each-render-drops-release.md)
 - [animated-style-must-read-shared-values-directly](animated-style-must-read-shared-values-directly.md)
+- [vietnamese-accent-folding-collisions](vietnamese-accent-folding-collisions.md)
+- [scrollview-contentoffset-prop-must-not-follow-state](scrollview-contentoffset-prop-must-not-follow-state.md)

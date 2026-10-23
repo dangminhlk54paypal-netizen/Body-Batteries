@@ -40,7 +40,11 @@ git status --short
 ```
 
 - Mọi file thay đổi đều thuộc việc vừa làm → sang Bước 2, publish tại chỗ.
-- Có file lạ không thuộc việc này → publish từ **bản cô lập**: dựng thư mục tạm bằng
+- Có file lạ không thuộc việc này: **trước hết hỏi các phiên đang chạy** (`ListAgents` rồi `SendMessage`: "phần của
+  bạn có ổn định để đẩy lên máy không?"). Nếu họ trả lời "ok publish" và `npm run verify` xanh → publish thẳng từ
+  working tree, để điện thoại nhận việc của mọi phiên (Session 70, 2026-10-23). Bản cô lập từ HEAD sẽ **xoá** khỏi
+  `preview` mọi tính năng chưa commit của phiên khác.
+- Chỉ khi phiên khác đang dở và không chờ được → publish từ **bản cô lập**: dựng thư mục tạm bằng
   `git archive HEAD` rồi áp lại đúng các file/hunk của việc này, `npm install`, chạy
   `npm run verify` trong đó, rồi publish với `EAS_NO_VCS=1` (cách đã làm ở Session 30).
   **Tuyệt đối không** `git stash` / `git reset` / `git add -A` trên working tree chung.
@@ -72,6 +76,11 @@ Cần thử:
 
 Checklist thử phải cụ thể theo đúng việc vừa sửa (màn hình nào, bấm gì, kỳ vọng thấy gì), gồm
 cả bước đổi ngôn ngữ VI/EN/DE nếu có chữ mới trên UI.
+
+### Bước 3b — Ghi checklist vào `docs/KIEM-TRA-TREN-MAY.md`
+Chủ app không phải lúc nào cũng cầm máy thử ngay (2026-10-23: "ghi hết nội dung cần kiểm tra lại vào đâu đó"). Mỗi lần
+publish: cập nhật bảng "Bản `preview` mới nhất" và thêm một mục `## Session N — …` với các ô `- [ ]` cụ thể (mở ở đâu,
+gõ/bấm gì, kỳ vọng thấy gì). Không xoá mục của session khác; mục chủ app đã đánh `[x]` thì giữ nguyên.
 
 ### Bước 4 — Ghi lại
 Trong mục session của `.ai/SESSION_LOG.md` (lúc chạy `session-wrapup`), ghi 1 dòng:

@@ -119,11 +119,32 @@ Khi một thẻ so sánh vài đối tượng ngang hàng (S / B / D…), thay c
 - Nhóm nút hành động thì dùng **lưới ô vuông 2×2** (`Tile`), nút nguy hiểm viền đỏ.
 - Hàng nhiều ô nhập có nhãn dài ngắn khác nhau: `justifyContent: 'flex-end'` để các ô nhập thẳng hàng ở đáy.
 - Stepper nhỏ (nút 28) đặt cùng hàng với nhãn. Kiểm tra độ rộng với **tiếng Đức** (chữ dài nhất).
+- Bật/tắt 3 mục ngang hàng (Kho ⚖️ 🏋️ 🥗): **một hàng chip bằng nhau**, icon trên chữ, bật = viền accent
+  (`accessibilityRole="switch"`), thay cho 3 hàng `Switch` riêng. 5 phương án ngắn (3 th · 6 th · 1 năm · 2 năm · ∞):
+  segmented với nhãn viết tắt, tên đầy đủ đọc qua `accessibilityLabel`. Mẫu: `components/settings/DataRetentionPanel.tsx`.
+- Lưới `Tile` có 5–6 hành động thì xếp **2×3** cho đều, nút nguy hiểm đặt cuối.
+- Câu hỏi chỉ cần hỏi một lần (thiết lập lần đầu): `BottomSheet` + chính panel trong Cài đặt + nút "Lưu lựa chọn". Vuốt
+  xuống chỉ ẩn trong lần mở app này. Mẫu: `DataRetentionSetupSheet`.
 
 ## 7. Chọn từ danh sách dài → vừa gõ vừa cuộn
 - Ô tìm kiếm + danh sách chia nhóm, cuộn được, lọc **không dấu, không cần đúng thứ tự từ**:
   `matchesSearch` / `foldSearchText` (`domain/energy/blockSchedule.ts`).
 - Picker hiện **thay chỗ** khung đang xem (không mở thêm Modal chồng lên), có nút Huỷ.
+
+## 7b. Danh sách duyệt trước khi ghi nhiều mục cùng lúc (Session 70)
+Khi app đoán ra nhiều mục từ một câu (Nạp bằng chữ), người dùng duyệt rồi mới ghi. Mẫu: `components/food/TextMealEntry.tsx`.
+- Mỗi dòng 2 tầng: **☑ · trạng thái · tên · ✎** / giờ · bữa · **− lượng +** · kcal. Tối đa 2 dòng ghi chú nhỏ bên dưới.
+- Trạng thái bằng **ký hiệu + màu**: ✓ `statusGood` (chắc), ⚠ `statusMid` (cần để ý), ✗ `statusLow` (không ghi được, ô
+  tick khoá). Không dùng đỏ.
+- **Trùng:** luôn nói rõ trùng với cái gì ("Đã nạp Ức gà 150g lúc 11:30"), bỏ tick sẵn, người dùng tick lại được. Không
+  tự gộp.
+- Sửa một dòng, chọn món, đặt giờ cho cả danh sách: hiện **thay chỗ** danh sách, footer **Huỷ | Xong**.
+- Dòng tóm tắt trên danh sách: **🕐 giờ chung ▾** (bấm để đặt cho tất cả) bên trái, **n món · kcal** bên phải. Nút chính
+  ghi đúng số sẽ ghi: "Nạp n món ⚡".
+- Hướng dẫn cú pháp nằm sau **ⓘ bật/tắt tại chỗ** (không dùng `InfoPopover` vì đang trong `BottomSheet`).
+- Ô nhập có nhiều nguồn: **một hàng 3 nút rộng bằng nhau** ngay dưới ô (**📤 Hỏi AI | 📋 Dán | Phân tích**), nút
+  chính viền `accent`, chữ một dòng tự co (kiểm tra bằng tiếng Đức). Dán mà clipboard trống → hiện một dòng chữ
+  `statusMid` ("Chưa có gì để dán…"), không im lặng.
 
 ## 8. Màu & chủ đề
 - Chỉ dùng token trong `lib/theme.ts` (`c.accent`, `c.textMuted`…). Màu mới thì thêm cho **cả dark lẫn light** và
@@ -136,6 +157,39 @@ Khi một thẻ so sánh vài đối tượng ngang hàng (S / B / D…), thay c
 - **Chữ trên nền cam** (`c.accent`, ví dụ segment đang chọn, nút Lưu): dùng `c.onAccent` (tối, ~10:1) — không dùng
   `textPrimary` (trắng, ~1,6:1) hay `c.bg` (hỏng ở giao diện Sáng).
 - Chữ chính giao diện Tối là trắng dịu `#F0F0F7`, không phải `#fff`.
+- **Nền đổi màu toàn app (Session 61, chủ app duyệt):** quầng màu dịu trôi chậm *sau* mọi tab, màu theo pin Năng
+  lượng cơ thể (`lib/ambientBackground.ts`), loé hổ phách một nhịp khi ghi món. Vẽ **một lần** sau navigator
+  (`components/AmbientBackground.tsx` trong `AppNavigator`), nên các trang trượt qua mà nền đứng yên. Màn/khối mới
+  phủ kín màn hình phải thêm `useScreenBackground()` sau style nền (`style={[styles.container, screenBg]}`), nếu không
+  nó che mất quầng màu. Thẻ (`bgCard`) giữ nền đặc cho dễ đọc. View dùng giữ-để-lưu-ảnh cần nền đặc **chỉ lúc chụp**
+  (mẫu `BatteryRing`: bật nền đặc, chờ 2 frame, rồi chụp).
+- **Cỡ chữ người dùng chỉnh được (Session 62):** khối chữ dày đặc (Sổ tập) có hàng chip **Nhỏ / Vừa / Lớn** trong sheet
+  ⚙︎ của nó, mặc định **Nhỏ**; cỡ gốc giữ ở `createStyles`, áp hệ số inline bằng `notebookFontSize(base, size)`
+  (sàn 11pt). Ô xem trước trong sheet đổi cỡ theo ngay.
+- **Người dùng quyết định (Session 63):** gợi ý của app (plan, tạo tự động) chỉ là điểm xuất phát. Thao tác làm
+  thay đổi phần còn lại (nghỉ một tuần) → `Alert` cho **chọn cách** ("Dời các tuần sau" / "Bỏ tuần này"), luôn có ↺ để
+  bỏ ra. Mục đã bỏ vẫn hiện nhưng mờ (`opacity 0.45`) + chip nhỏ "Không tập · ↺". Cặp chip ngang hàng: `Nghỉ` | `✓ Sẽ tập`.
+- **Ô tự gõ có gợi ý không bắt buộc:** gõ ≥ 2 ký tự → tối đa 4 chip gợi ý từ thư viện ngay dưới ô; bấm chip điền tên,
+  không bấm vẫn lưu đúng chữ người dùng gõ (mẫu `BlockAccessoriesSheet`).
+- **Màu trạng thái của ô kế hoạch (Session 65, chủ app duyệt):** đã làm = xanh lá **nhạt** (`c.planDoneBg` + viền
+  `c.planDoneBorder`), chưa làm = màu mặc định của thẻ (trắng ở theme Sáng), bỏ = xám (`c.planSkippedBg`, mờ nhẹ). Màu
+  nền đặc, không dùng alpha, để chữ trên ô giữ độ tương phản.
+- **Hai cách nhìn cùng dữ liệu (Session 65):** segmented "📅 Theo tuần | 🏋️ Theo bài" ở đầu khối. "Theo bài" = chip
+  chọn mục → lưới hàng × cột (ô vuông, khung cao tối đa 360, cột hẹp thì cuộn ngang); bấm ô → khung sửa **ngay dưới
+  lưới** (không mở sheet), ô đang sửa viền cam. Phần nhập tách thành component dùng chung cho cả sheet lẫn khung inline
+  (mẫu `BlockLiftGrid` + `VariationSetsEditor`).
+- **Thứ tự trong tab:** thứ hút mắt (đồ thị tiến độ) đặt **trên**, chi tiết dài (sổ tập) bên dưới.
+- **Tab mở đầu:** chọn bằng hàng icon tab trong Cài đặt → Giao diện (`Segmented` icon-only kèm `a11yLabel`). Áp dụng từ
+  lần mở app sau, không kéo người dùng khỏi trang đang xem.
+
+- **Đánh giá nhanh trong ô (RPE):** buổi đã tập có một chip nhỏ "RPE ?" (hoặc số đã chọn); chạm mới mở hàng chip số
+  ngay trong ô, chạm lại số đã chọn để xoá. Thang giải thích 1 dòng nhỏ dưới chip (mẫu `RpeChips`).
+- **Gợi ý của engine = thẻ có nút, không tự đổi:** 1 câu lý do + nút hành động ngắn (＋2,5 kg, ＋1 set) + "Bỏ qua" xám;
+  bỏ qua thì nhớ, không hỏi lại (mẫu `RpeCoachCard`).
+
+- **Sửa cả block theo một bài ("Form"):** chip chọn bài vuốt ngang → 1 ô số gốc (TM) + "Áp dụng" + ⓘ cách gõ → danh sách
+  dòng trong cửa sổ cuộn cố định, mỗi dòng 1 ô gõ + dòng kết quả nhỏ (kg + %). Nhiều dòng sửa rồi lưu một lần
+  ("Lưu 3 dòng"), dòng đang sửa viền màu nhấn, lỗi viền đỏ (mẫu `BlockFormView`).
 
 ## 9. Chip keyword "trạng thái + việc nên làm"
 - Tối đa **3 chip**, mỗi chip ≤ 3 từ, có số khi số giúp hành động ("Thiếu 30g đạm", "Uống thêm 2 ly"). Chỉ hiện điều

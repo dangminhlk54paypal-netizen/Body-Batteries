@@ -112,7 +112,31 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
-**Cập nhật lần cuối: 2026-09-24 (Session 33).** Kế hoạch block: người dùng sửa kế hoạch thật trong app (gõ ký hiệu Notes,
+**Cập nhật lần cuối: 2026-10-23 (Session 61–68, nhiều phiên song song trên `ui-upgrade`, CHƯA COMMIT từ sau `4ef9d89`).**
+Hôm nay: nền đổi màu theo pin no (kiểu Gemini) + chọn tab mở đầu; tab Tập luyện đồ thị lên trên, cỡ chữ sổ tập tuỳ chỉnh;
+sửa lỗi lịch tuần (bấm T4/T6 nhảy ngày); kế hoạch block linh hoạt (tạo từ lịch sử, nghỉ tuần/buổi, bài phụ tự viết, lưới
+"Theo bài" có màu đã tập/nghỉ); kiểu **Tịnh tiến** + block tiếp theo; tên bài Comp/TnG Bench, **Training Max**, ghi **RPE** +
+gợi ý tạ/volume; chế độ **📋 Form** (TM + set x rep @ tạ kèm % TM, gõ theo %). Phiên khác: tên gọi người dùng in vào Excel,
+lưu dữ liệu theo năm + Kho dài hạn. `npm run verify` xanh (130 suite / 1420 test). EAS preview mới nhất `3b5384fa…`.
+**Chưa test máy thật, chưa commit** — chủ app dặn chờ các phiên song song xong. Việc kế tiếp: `.ai/SESSION_LOG.md` Session 68.
+Chi tiết kỹ thuật: `docs/08-powerlifting-engine.md` §12–16.
+
+**Session 70 (2026-10-23, phiên song song): ⌨️ Nạp bằng chữ, Đợt 1 + 2 + 3a** — gõ / Dictation 🎤 / 📤 Hỏi AI (câu lệnh
++ ảnh qua app AI của người dùng) → 📋 Dán → app đọc câu ngay trên máy (`domain/food/mealText`: Parsing → Decoding →
+Mapping & Validation, hiểu cả JSON) → danh sách duyệt (✓ ⚠ ✗, −/+, ✎, cảnh báo trùng có nội dung, bỏ tick sẵn) →
+Insert qua `logFood`; tìm cả món "Nguồn của tôi"; lưu **giờ ghi** (`food_log.logged_at`, Excel "Ngày ghi/Giờ ghi").
+Preview `698588e2…` (Session 61–71 + SDK 58). **Chưa test máy thật** — checklist trong `docs/KIEM-TRA-TREN-MAY.md`.
+Còn Đợt 3b (🎤 trong app, đọc ảnh trên máy) cần development build, chờ chủ app. Chi tiết: `.ai/SESSION_LOG.md` Session 70.
+
+**Session 69 (2026-10-23, phiên song song): 📚 Nguồn của tôi** — người dùng nhập bảng dinh dưỡng của họ từ file CSV
+(tab 📚 Nguồn trong Món của tôi): đọc từng khúc 1 MB, đoán cột vi/en/de, đổi về 100 g, lưu `library_foods` (SQLite),
+tìm chung trong "Ghi món ăn" (`searchFoods({ library })`). Giới hạn mặc định 10 MB, tối đa 500 MB. `npm run verify` xanh
+(139 suite / 1549 test, cả Session 69 + 70). EAS preview `a4429e44-e8bd-48f1-9ae7-46c25cdca2ae` (từ working tree, gồm
+Session 61–70). **Chưa test máy thật, chưa commit.** Chi tiết: `docs/03-architecture.md` § "📚 Nguồn của tôi".
+**Session 71:** Đợt 2 (↻ cập nhật nguồn, giữ id) + Đợt 3 (đọc .xlsx/.xls/.ods tới 30 MB, SheetJS 0.20.3 từ CDN). Verify
+xanh 140 suite / 1561 test. EAS preview `48281746-b08e-4a68-845b-dc852116e055`. Việc kế tiếp: `.ai/SESSION_LOG.md` Session 71.
+
+**Trước đó — Session 33 (2026-09-24).** Kế hoạch block: người dùng sửa kế hoạch thật trong app (gõ ký hiệu Notes,
 gợi ý + "Cách app tính" vẫn hiện), đặt ngày từng tuần (tuần sau tự dời), engine tính tải theo **set × rep × RPE + mệt tích
 luỹ** thay bảng %1RM cố định, bài phụ nhẹ hơn (trước đây bị bỏ qua). 967 test xanh. Chưa commit, chưa test máy thật.
 Chi tiết: `docs/08-powerlifting-engine.md` mục 2.1 + 10.
