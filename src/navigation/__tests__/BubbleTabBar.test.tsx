@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { SlideTabBarProps } from '../SlideTabNavigator';
 import { BubbleTabBar } from '../BubbleTabBar';
 import { MAIN_TABS } from '../mainTabs';
@@ -49,7 +50,11 @@ it('shows the five tabs, marks the focused one, and a tap opens a tab', async ()
   const { props, navigation } = setup(0);
   let tree!: TestRenderer.ReactTestRenderer;
   await act(async () => {
-    tree = TestRenderer.create(<BubbleTabBar {...props} />);
+    tree = TestRenderer.create(
+      <GestureHandlerRootView>
+        <BubbleTabBar {...props} />
+      </GestureHandlerRootView>
+    );
   });
   const tabs = tree.root.findAll((n) => n.props.accessibilityRole === 'tab' && typeof n.type === 'string');
   expect(tabs.map((n) => n.props.accessibilityLabel)).toEqual(MAIN_TABS.map((n) => `label-${n}`));

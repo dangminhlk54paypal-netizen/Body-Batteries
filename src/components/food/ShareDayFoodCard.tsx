@@ -28,7 +28,7 @@ interface Props {
 // look like the same "poster" regardless of which phone it was made on.
 const CARD_WIDTH = 390;
 
-export const ShareDayFoodCard = forwardRef<View, Props>(function ShareDayFoodCard(
+export const ShareDayFoodCard = forwardRef<React.ComponentRef<typeof View>, Props>(function ShareDayFoodCard(
   { entries },
   ref
 ) {

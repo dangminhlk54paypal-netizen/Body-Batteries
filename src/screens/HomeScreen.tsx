@@ -350,9 +350,7 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar
-        barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={c.bg}
-      />
+        barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={

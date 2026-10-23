@@ -85,7 +85,7 @@ export function TodayMeals({ entries, onDelete, onEdit, embedded = false }: Prop
   // list rendered off-screen (see the hidden <ShareDayFoodCard> mount below)
   // purely so shareTodayFoodCard has a real native view to snapshot — this
   // component never shows it to the user directly.
-  const shareCardRef = useRef<View>(null);
+  const shareCardRef = useRef<React.ComponentRef<typeof View>>(null);
   const [sharing, setSharing] = useState(false);
 
   const editingIsPortion = editingEntry != null && isPortionEntry(editingEntry);

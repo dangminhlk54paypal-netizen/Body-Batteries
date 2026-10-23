@@ -7,7 +7,7 @@ import { createSlideTabNavigator } from '../SlideTabNavigator';
 import { BubbleTabBar } from '../BubbleTabBar';
 import { MAIN_TABS } from '../mainTabs';
 import { pageOffsets } from '../pageOffsets';
-import { GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Pages slide past each other: switching sends the old page off one side and
 // brings the new one to 0; the focused tab's neighbours are already mounted.
@@ -59,13 +59,15 @@ it('mounts the neighbours and slides the old page out when a tab is tapped', asy
   let tree!: TestRenderer.ReactTestRenderer;
   await act(async () => {
     tree = TestRenderer.create(
-      <NavigationContainer>
-        <Tab.Navigator tabBar={(props) => <BubbleTabBar {...props} />}>
-          {MAIN_TABS.map((name) => (
-            <Tab.Screen key={name} name={name} component={screens[name]} options={{ tabBarLabel: name }} />
-          ))}
-        </Tab.Navigator>
-      </NavigationContainer>
+      <GestureHandlerRootView>
+        <NavigationContainer>
+          <Tab.Navigator tabBar={(props) => <BubbleTabBar {...props} />}>
+            {MAIN_TABS.map((name) => (
+              <Tab.Screen key={name} name={name} component={screens[name]} options={{ tabBarLabel: name }} />
+            ))}
+          </Tab.Navigator>
+        </NavigationContainer>
+      </GestureHandlerRootView>
     );
   });
 
@@ -96,13 +98,15 @@ it('keeps the same tab-bar gesture across tab switches (so finger-up is never lo
   let tree!: TestRenderer.ReactTestRenderer;
   await act(async () => {
     tree = TestRenderer.create(
-      <NavigationContainer>
-        <Tab.Navigator tabBar={(props) => <BubbleTabBar {...props} />}>
-          {MAIN_TABS.map((name) => (
-            <Tab.Screen key={name} name={name} component={screens[name]} options={{ tabBarLabel: name }} />
-          ))}
-        </Tab.Navigator>
-      </NavigationContainer>
+      <GestureHandlerRootView>
+        <NavigationContainer>
+          <Tab.Navigator tabBar={(props) => <BubbleTabBar {...props} />}>
+            {MAIN_TABS.map((name) => (
+              <Tab.Screen key={name} name={name} component={screens[name]} options={{ tabBarLabel: name }} />
+            ))}
+          </Tab.Navigator>
+        </NavigationContainer>
+      </GestureHandlerRootView>
     );
   });
   const barGesture = () => tree.root.findAllByType(GestureDetector)[0].props.gesture;

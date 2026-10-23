@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentRef } from 'react';
 import { Alert, type View } from 'react-native';
 import { shareViewAsImage } from '../services/share/imageShareService';
 import * as haptics from '../lib/haptics';
@@ -13,7 +13,7 @@ import { useT } from '../i18n/useT';
 // usedKeys test sees the key.
 export function useHoldToShare(dialogTitle: string) {
   const { t } = useT();
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof View>>(null);
   const [sharing, setSharing] = useState(false);
 
   async function onLongPress() {

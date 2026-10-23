@@ -85,7 +85,7 @@ describe('TrainingLogPageSheet', () => {
   });
 
   it('Share hands exactly the shown text to the OS share sheet', async () => {
-    const shareSpy = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
+    const shareSpy = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction', activityType: undefined });
     const tree = await render();
     const shareBtn = tree.root.findAll((n) => typeof n.props.onPress === 'function' && textOf(n) === 'Chia sẻ')[0];
     await act(async () => {

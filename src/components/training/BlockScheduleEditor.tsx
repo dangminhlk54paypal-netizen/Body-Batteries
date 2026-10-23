@@ -40,7 +40,7 @@ export function BlockScheduleEditor({ days, onChange, onUseTemplate }: Props) {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
-  const pagerRef = useRef<ScrollView>(null);
+  const pagerRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   // Opens on the first planned day (Monday for an empty week).
   const [page, setPage] = useState(() =>

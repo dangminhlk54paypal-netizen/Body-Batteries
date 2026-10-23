@@ -37,7 +37,7 @@ export const SHARE_CHART_LAYOUT: ChartLayout = {
   padBottom: 22,
 };
 
-export const ShareProgressCard = forwardRef<View, Props>(function ShareProgressCard(
+export const ShareProgressCard = forwardRef<React.ComponentRef<typeof View>, Props>(function ShareProgressCard(
   { model, mode, weeks, maxes, format },
   ref
 ) {

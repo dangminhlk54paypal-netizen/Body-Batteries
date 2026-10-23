@@ -381,7 +381,7 @@ const POSTER_PADDING = 16;
 // the change over the shown range (green toward the user's goal, red away —
 // the same colours as the weight list), then the chart exactly as on screen.
 const ShareWeightCard = forwardRef<
-  View,
+  React.ComponentRef<typeof View>,
   { model: WeightChartModel; rangeLabel: string; heightCm: number; goalWeightKg?: number }
 >(function ShareWeightCard({ model, rangeLabel, heightCm, goalWeightKg }, ref) {
   const { t, language } = useT();

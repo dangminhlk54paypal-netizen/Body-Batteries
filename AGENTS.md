@@ -85,14 +85,23 @@ This applies to research answers given only in chat, too.
 
 # Expo SDK version
 
-This project is pinned to **Expo SDK 57** (see `package.json`: `expo` ^57,
-`react-native` 0.86.3, `react` 19.2.3). It matches the Expo Go build installed
-on the test phone. (Upgraded 2026-09-09 from SDK 54 — Expo Go on the phone had
-auto-updated to require SDK 57 and Apple does not allow installing older Expo
-Go builds, so staying on Expo Go left no choice but to move the project.)
+This project is pinned to **Expo SDK 58** (see `package.json`: `expo` ^58,
+`react-native` 0.88.0, `react` 19.3.0). It matches the Expo Go build installed
+on the test phone. (Upgraded 2026-09-09 from SDK 54 to 57, then 2026-10-23 to
+58 — each time Expo Go on the phone had auto-updated to require the new SDK and
+Apple does not allow installing older Expo Go builds, so staying on Expo Go
+left no choice but to move the project.)
 
-- Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/
+- Read the exact versioned docs at https://docs.expo.dev/versions/v58.0.0/
   before writing any code.
+- SDK 58 gotchas (fixed 2026-10-23): `View`/`ScrollView` are function
+  components in RN 0.88, so type refs as `ComponentRef<typeof View>` (never
+  `useRef<View>`); `StatusBar` has no `backgroundColor` prop anymore;
+  react-native-gesture-handler v3 throws if a `GestureDetector` renders outside
+  `GestureHandlerRootView` (tests must wrap it); Reanimated 4.7.1 crashes on
+  import under Jest unless `jest.resolver.js` maps its `initializers` to the
+  non-native file; `react-test-renderer` is now a direct devDependency pinned to
+  the exact `react` version.
 - Do NOT upgrade the SDK further without a clear reason and the user's
   approval — an upgrade can break the working environment and must be
   re-matched against the Expo Go version on the phone.

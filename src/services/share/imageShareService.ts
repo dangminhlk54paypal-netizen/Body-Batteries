@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { ComponentRef, RefObject } from 'react';
 import type { View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -14,7 +14,7 @@ import * as Sharing from 'expo-sharing';
 //
 // result: 'tmpfile' (the library default) writes straight to a temp file and
 // hands back its URI, cleaned up automatically when the app closes.
-export async function shareViewAsImage(viewRef: RefObject<View | null>, dialogTitle: string): Promise<void> {
+export async function shareViewAsImage(viewRef: RefObject<ComponentRef<typeof View> | null>, dialogTitle: string): Promise<void> {
   const uri = await captureRef(viewRef, { format: 'png', quality: 1 });
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle });

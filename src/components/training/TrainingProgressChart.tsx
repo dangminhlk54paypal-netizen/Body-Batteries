@@ -77,7 +77,7 @@ export function TrainingProgressChart({ format }: Props) {
   const [width, setWidth] = useState(0);
   const [maxSheet, setMaxSheet] = useState<{ key: number; visible: boolean } | null>(null);
   const [sharing, setSharing] = useState(false);
-  const shareRef = useRef<View>(null);
+  const shareRef = useRef<React.ComponentRef<typeof View>>(null);
 
   useEffect(() => {
     let cancelled = false;
