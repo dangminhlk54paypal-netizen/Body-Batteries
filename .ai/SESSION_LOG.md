@@ -3139,6 +3139,14 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
   2. Nếu AI đoán gram lệch có hệ thống: thêm hệ số chỉnh riêng (nhớ theo người dùng) cho kết quả dán từ AI.
   3. Chủ app quyết Đợt 3b (development build) — nếu đồng ý: `expo-speech-recognition` (MIT, on-device iOS 17+), nút 🎤
      cạnh ô chữ; sau đó thử Apple Foundation Models nhìn ảnh khi iOS 27 ra.
+- **Commit + push + Expo (chủ app duyệt "tách theo tính năng"):** toàn bộ việc chưa commit của Session 61–71 + SDK 58
+  thành 9 commit trên `ui-upgrade` (d421d9b SDK 58 · d7971f8 nền đổi màu · 5df92a1 Sổ tập cỡ chữ · 67c8ef5 tên gọi ·
+  8914f11 lưu theo năm · 20c1bfb kế hoạch block 63/65–68 · c440846 Nguồn của tôi · 35e740f Nạp bằng chữ · 01f75c1 docs).
+  Cách làm: index tạm (`GIT_INDEX_FILE`) + `commit-tree`, không đụng working tree/index chung; file nhiều tính năng tách
+  theo đoạn sửa (khoá i18n theo namespace, `settingsStore`/`schema`/`SettingsScreen` theo từng dòng); `expo-clipboard`
+  tách khỏi commit SDK. Kiểm tra: cây commit cuối = working tree (cùng tree hash); **từng commit đều tsc sạch + jest xanh**
+  (117/1315 → 140/1572). Push `4ef9d89..01f75c1` lên origin. EAS `preview` group
+  `66d377c7-2eec-40f4-9511-fc0c25f02c75` (commit 01f75c1, cây sạch). **Chưa test máy thật.**
 
 ### Session 71 — "Nguồn của tôi" Đợt 2 (↻ cập nhật nguồn) + Đợt 3 (đọc Excel) (2026-10-23)
 - **Làm gì:** chủ app bảo làm tiếp Đợt 2 và 3 (sẽ thử máy sau). Báo cáo có trích nguồn: bản 3 + mục Đính chính trong

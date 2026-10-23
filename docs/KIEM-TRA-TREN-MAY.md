@@ -9,7 +9,8 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 | Bản `preview` mới nhất | Gồm | Ngày |
 |---|---|---|
-| [`698588e2…`](https://u.expo.dev/update/698588e2-6079-4a88-9f7e-7934daad9a17) | Session 61–71 + SDK 58, Nạp bằng chữ Đợt 1–3a | 2026-10-23 |
+| [`66d377c7…`](https://u.expo.dev/update/66d377c7-2eec-40f4-9511-fc0c25f02c75) | Đã commit `01f75c1` (Session 61–71 + SDK 58) — **dùng bản này** | 2026-10-23 |
+| [`698588e2…`](https://u.expo.dev/update/698588e2-6079-4a88-9f7e-7934daad9a17) | Session 61–71 + SDK 58, Nạp bằng chữ Đợt 1–3a (cũ hơn, chưa commit) | 2026-10-23 |
 | [`48281746…`](https://u.expo.dev/update/48281746-b08e-4a68-845b-dc852116e055) | Session 61–71, Nguồn của tôi Đợt 2–3 (cũ hơn) | 2026-10-23 |
 | [`a4429e44…`](https://u.expo.dev/update/a4429e44-e8bd-48f1-9ae7-46c25cdca2ae) | Session 61–70 (cũ hơn) | 2026-10-23 |
 
