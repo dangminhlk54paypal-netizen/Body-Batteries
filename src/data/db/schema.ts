@@ -254,7 +254,8 @@ export const CREATE_TRAINING_BLOCKS = `
 // HAND-WRITTEN line (no Xả entry behind it); with a signature it is an edit of
 // an auto line and the signature is how that auto line looked at edit time
 // (conflict detection). A row whose override and note are both empty is
-// deleted, never stored. Deliberately NOT swept by cleanupService.
+// deleted, never stored. Trimmed by the retention cycle only when the 🏋️ Kho
+// is off (data/repositories/retentionRepository.ts).
 export const CREATE_TRAINING_LOG_DAYS = `
   CREATE TABLE IF NOT EXISTS training_log_days (
     date TEXT PRIMARY KEY,
@@ -303,6 +304,23 @@ export const CREATE_LIFT_MAXES = `
   );
 `;
 
+// Kho 🥗 "Thói quen ăn" (domain/retention/eatingHabits.ts): one summary row
+// per calendar day, written from food_log before its detailed rows are
+// trimmed. `category_kcal` is a JSON object { category: kcal }.
+export const CREATE_EATING_DAILY_SUMMARY = `
+  CREATE TABLE IF NOT EXISTS eating_daily_summary (
+    date TEXT PRIMARY KEY,
+    kcal REAL NOT NULL,
+    protein_g REAL NOT NULL,
+    carb_g REAL NOT NULL,
+    fat_g REAL NOT NULL,
+    food_count INTEGER NOT NULL,
+    meal_count INTEGER NOT NULL,
+    category_kcal TEXT NOT NULL DEFAULT '{}',
+    updated_at INTEGER NOT NULL
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -319,4 +337,5 @@ export const ALL_SCHEMAS = [
   CREATE_TRAINING_LOG_WEEKS,
   CREATE_TRAINING_LOG_MONTHS,
   CREATE_LIFT_MAXES,
+  CREATE_EATING_DAILY_SUMMARY,
 ];

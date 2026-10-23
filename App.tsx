@@ -5,6 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { DataRetentionSetupSheet } from './src/components/settings/DataRetentionSetupSheet';
 import { useDrainTick } from './src/hooks/useDrainTick';
 import { useBlockSessionAutoLog } from './src/hooks/useBlockSessionAutoLog';
 import { useEnergyStore } from './src/store/energyStore';
@@ -107,18 +108,19 @@ export default function App() {
   }, [ready]);
 
   // Once per calendar month: auto-export the previous month's workbook to the
-  // app document folder, then ASK (never silently) whether to clear old data.
-  // Fully defensive — maybeRunMonthlyExport swallows its own errors.
+  // app document folder. Then the retention cycle: when the trim date has
+  // come, back up (Excel + restorable file) and ASK before trimming — see
+  // services/retention/retentionService.ts. Both swallow their own errors.
   useEffect(() => {
-    if (!ready || Platform.OS === 'web') return;
+    if (!ready || !hasOnboarded || Platform.OS === 'web') return;
     (async () => {
-      const { maybeRunMonthlyExport, confirmAndCleanupAfterExport } = await import(
-        './src/services/export/monthlyAutoExport'
-      );
-      const res = await maybeRunMonthlyExport();
-      if (res.ran && res.filename) confirmAndCleanupAfterExport(res.filename);
+      const { maybeRunMonthlyExport } = await import('./src/services/export/monthlyAutoExport');
+      await maybeRunMonthlyExport();
+      const { checkRetentionDue, promptRetentionTrim } = await import('./src/services/retention/retentionService');
+      const pending = await checkRetentionDue();
+      if (pending) promptRetentionTrim(pending);
     })();
-  }, [ready]);
+  }, [ready, hasOnboarded]);
 
   // TEMPORARY — the owner's one-time Notes import (Block 0–2). Remove with
   // src/services/training/ownerNotesImportService.ts once confirmed on device.
@@ -148,6 +150,7 @@ export default function App() {
         theme={themeMode === 'light' ? appLightNavigationTheme : appDarkNavigationTheme}
       >
         <AppNavigator />
+        {Platform.OS !== 'web' && <DataRetentionSetupSheet />}
       </NavigationContainer>
     );
   }

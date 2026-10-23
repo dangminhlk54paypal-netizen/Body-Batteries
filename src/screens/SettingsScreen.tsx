@@ -20,11 +20,19 @@ import { sortByLabel } from '../lib/sortByLabel';
 import { InfoPopover } from '../components/ui/InfoPopover';
 import { appleHealthStatusMeta } from '../components/AppleHealthStatusBadge';
 import { exportWeeklyData, exportMonthlyData } from '../services/export/excelExportService';
-import { runWeeklyCleanup } from '../services/cleanup/cleanupService';
+import {
+  getLatestBackup,
+  restoreFromPickedFile,
+  shareBackupFiles,
+  startManualTrim,
+} from '../services/retention/retentionService';
+import { DataRetentionPanel, monthsKey } from '../components/settings/DataRetentionPanel';
+import { resolveDataRetention } from '../types/dataRetention';
+import { formatDisplayDate } from '../lib/dateUtils';
 import {
   requestNotificationPermission,
   scheduleDailyReminder,
-  cancelAllNotifications,
+  cancelDailyReminder,
 } from '../services/notifications/notificationService';
 import type { ThemeColors, ThemeMode } from '../lib/theme';
 import { useReduceMotionSetting } from '../hooks/useReduceMotionSetting';
@@ -214,6 +222,7 @@ export function SettingsScreen() {
     setAutoTranslateCustomFoodNames,
     userProfile,
     nickname,
+    dataRetention,
   } = useSettingsStore();
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
   const c = useThemeColors();
@@ -249,7 +258,7 @@ export function SettingsScreen() {
   }, []);
 
   async function applyReminderSchedule(hour: number, minute: number) {
-    await cancelAllNotifications();
+    await cancelDailyReminder();
     await scheduleDailyReminder(hour, minute);
   }
 
@@ -267,7 +276,7 @@ export function SettingsScreen() {
       await applyReminderSchedule(reminderHour, reminderMinute);
     } else {
       setNotificationsEnabled(false);
-      await cancelAllNotifications();
+      await cancelDailyReminder();
     }
   }
 
@@ -324,15 +333,36 @@ export function SettingsScreen() {
     syncAppleHealthBurned();
   }
 
-  function handleCleanup() {
-    Alert.alert(t('settings.data.cleanupTitle'), t('settings.data.cleanupMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.deletePermanently'),
-        style: 'destructive',
-        onPress: () => runWeeklyCleanup(),
-      },
-    ]);
+  // Backs up first, then asks — see retentionService.startManualTrim.
+  async function handleTrimNow() {
+    setExporting(true);
+    try {
+      await startManualTrim();
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleRestore() {
+    const res = await restoreFromPickedFile().catch(() => ({ ok: false as const, reasonKey: 'unreadable' as const }));
+    if (res.ok) {
+      Alert.alert(
+        t('dataRetention.restore.doneTitle'),
+        t('dataRetention.restore.doneMessage', {
+          added: res.added,
+          from: formatDisplayDate(res.fromDate, language),
+          to: formatDisplayDate(res.toDate, language),
+        })
+      );
+    } else if (res.reasonKey !== 'canceled') {
+      Alert.alert(t('dataRetention.restore.failedTitle'), t(`dataRetention.restore.reasons.${res.reasonKey}`));
+    }
+  }
+
+  function handleShareBackup() {
+    const latest = getLatestBackup();
+    if (latest) void shareBackupFiles(latest);
+    else Alert.alert(t('dataRetention.noBackup.title'), t('dataRetention.noBackup.message'));
   }
 
   const thresholdOptions = [0.1, 0.2, 0.3];
@@ -384,7 +414,9 @@ export function SettingsScreen() {
         })
       )
       .join(' · '),
-    data: t('settings.summary.data'),
+    data: t('settings.summary.data', {
+      period: t(`dataRetention.periodLong.${monthsKey(resolveDataRetention(dataRetention).months)}`),
+    }),
     interface: t('settings.summary.interface', {
       theme: t(THEME_LABEL_KEYS[themeMode]),
       fx: onOff(particleEffectsEnabled),
@@ -570,11 +602,15 @@ export function SettingsScreen() {
           summary={summaries.data}
           info={[
             { heading: t('myFoods.openButton'), body: t('myFoods.subtitle') },
-            { heading: t('settings.data.cleanupTitle'), body: t('settings.data.cleanupInfo') },
+            { heading: t('dataRetention.info.cycleTitle'), body: t('dataRetention.info.cycle') },
+            { heading: t('dataRetention.info.estimateTitle'), body: t('dataRetention.info.estimate') },
+            { heading: t('dataRetention.archiveTitle'), body: t('dataRetention.info.archive') },
+            { heading: t('dataRetention.info.filesTitle'), body: t('dataRetention.info.files') },
           ]}
           open={openSection === 'data'}
           onToggle={() => toggle('data')}
         >
+          <DataRetentionPanel />
           <View style={styles.tileGrid}>
             <Tile icon="🍽️" label={t('myFoods.openButton')} onPress={() => setMyFoodsVisible(true)} />
             <Tile
@@ -589,7 +625,15 @@ export function SettingsScreen() {
               onPress={handleExportMonthly}
               disabled={exporting}
             />
-            <Tile icon="🗑️" label={t('settings.data.tileCleanup')} onPress={handleCleanup} danger />
+            <Tile icon="♻️" label={t('dataRetention.tiles.restore')} onPress={handleRestore} />
+            <Tile icon="📤" label={t('dataRetention.tiles.share')} onPress={handleShareBackup} />
+            <Tile
+              icon="🗄️"
+              label={exporting ? t('settings.data.exporting') : t('dataRetention.tiles.trimNow')}
+              onPress={handleTrimNow}
+              disabled={exporting}
+              danger
+            />
           </View>
         </SettingsSection>
       ),

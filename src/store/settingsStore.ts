@@ -12,6 +12,7 @@ import type { TrainingLogFormat } from '../types/trainingLog';
 import type { RingMetricId } from '../domain/battery/ringMetrics';
 import type { MainTab } from '../navigation/mainTabs';
 import { normalizeNickname } from '../lib/nickname';
+import { DEFAULT_DATA_RETENTION, resolveDataRetention, type DataRetentionSettings } from '../types/dataRetention';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -92,6 +93,10 @@ interface SettingsState {
   // Which tab the app opens on. Read it through resolveStartTab() — it falls
   // back to Home for a name a later version no longer has.
   startTab: MainTab;
+  // How long logged data stays before it is backed up and (after asking)
+  // trimmed, plus the Kho kept forever — Settings → Dữ liệu. Read it through
+  // resolveDataRetention() for fields added later.
+  dataRetention: DataRetentionSettings;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -117,6 +122,7 @@ interface SettingsState {
   setRingMetrics: (ids: RingMetricId[] | null) => void;
   setAmbientBackgroundEnabled: (enabled: boolean) => void;
   setStartTab: (tab: MainTab) => void;
+  setDataRetention: (patch: Partial<Omit<DataRetentionSettings, 'archive'>> & { archive?: Partial<DataRetentionSettings['archive']> }) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -145,6 +151,7 @@ export const useSettingsStore = create<SettingsState>()(
       ringMetrics: null,
       ambientBackgroundEnabled: true,
       startTab: 'Home',
+      dataRetention: DEFAULT_DATA_RETENTION,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -188,6 +195,13 @@ export const useSettingsStore = create<SettingsState>()(
       setRingMetrics: (ids) => set({ ringMetrics: ids }),
       setAmbientBackgroundEnabled: (enabled) => set({ ambientBackgroundEnabled: enabled }),
       setStartTab: (tab) => set({ startTab: tab }),
+      setDataRetention: (patch) =>
+        set((s) => {
+          const current = resolveDataRetention(s.dataRetention);
+          return {
+            dataRetention: { ...current, ...patch, archive: { ...current.archive, ...patch.archive } },
+          };
+        }),
     }),
     {
       name: 'settings-storage',

@@ -25,6 +25,24 @@ export async function scheduleDailyReminder(_hour: number, _minute: number): Pro
   return '';
 }
 
+export async function cancelDailyReminder(): Promise<void> {
+  console.warn('Notifications are not available on web');
+}
+
+export async function scheduleDateNotification(
+  _identifier: string,
+  _date: string,
+  _hour: number,
+  _title: string,
+  _body: string
+): Promise<void> {
+  console.warn('Notifications are not available on web');
+}
+
+export async function cancelScheduledNotification(_identifier: string): Promise<void> {
+  console.warn('Notifications are not available on web');
+}
+
 export async function cancelAllNotifications(): Promise<void> {
   console.warn('Notifications are not available on web');
 }

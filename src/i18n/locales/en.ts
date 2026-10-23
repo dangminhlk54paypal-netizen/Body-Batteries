@@ -337,6 +337,74 @@ export const en: TranslationSchema = {
       "{{name}}: you've had {{current}}{{unit}}, above the reference upper intake level ({{limit}}{{unit}}). If you're taking multiple supplements of the same kind, consider cutting back. For reference only, not a substitute for medical advice.",
   },
 
+  dataRetention: {
+    periodLabel: 'Keep data in the app',
+    periodShort: { m3: '3 mo', m6: '6 mo', m12: '1 yr', m24: '2 yr', forever: '∞' },
+    periodLong: { m3: '3 months', m6: '6 months', m12: '1 year', m24: '2 years', forever: 'no limit' },
+    keepLabel: 'When full, keep {{span}}',
+    spanMonths: '{{n}} months',
+    spanDays: '{{n}} days',
+    estimate: '≈ {{peak}} when full · now {{current}}',
+    estimateForever: '≈ {{perYear}}/year · now {{current}}',
+    nextTrim: 'asks to clean up {{date}}',
+    archiveTitle: 'Long-term archive',
+    archive: { weight: 'Weight', gym: 'Training', eatingHabits: 'Eating habits' },
+    info: {
+      cycleTitle: 'How long data is kept',
+      cycle:
+        'Data builds up until the oldest day reaches the period you chose (1 year by default). Then the app backs the old part up into 2 files and asks whether to clean it out of the app. The newest part (½ = 6 months by default) always stays. You get a reminder 3 months, 1 month and 1 week before. "Later" asks again in 7 days; nothing is deleted until you tap "Clean up".',
+      estimateTitle: 'Size estimate',
+      estimate:
+        "Today's data size divided by the days you have used the app, times the period. With less than 2 weeks of data, the app uses a test measurement of a heavy logging day: about 4 KB/day (≈ 1.5 MB/year). Tiny compared with your phone's storage.",
+      archive:
+        'Items switched on are never cleaned up, so charts can show many years. Weight: your weigh-ins. Training: sessions, training log, blocks, 1RMs. Eating habits: one summary line per day (kcal, protein/carbs/fat, kcal by food group), made from your logged foods before they are cleaned up.',
+      filesTitle: 'Backup files',
+      files:
+        "Each clean-up leaves 2 files in the app's storage: an Excel file to read and a .json file to restore (♻️). Deleting the app deletes both, so tap 📤 to copy them to iCloud Drive or a computer, or send them to yourself.",
+    },
+    tiles: { restore: 'Restore', share: 'Copy backup', trimNow: 'Back up & clean' },
+    setup: {
+      title: 'How long should we keep your data?',
+      intro: 'Choose once, change it any time in Settings → Data. The app always backs up and asks you before cleaning up.',
+      save: 'Save choice',
+    },
+    reminder: {
+      title: '💾 Body Batteries',
+      body: 'In {{left}} ({{date}}) the app will back up and ask to clean up data before {{cutoff}}. Check the archive in Settings → Data.',
+      left3m: '3 months',
+      left1m: '1 month',
+      left1w: '1 week',
+    },
+    prompt: {
+      title: 'Time to clean up data',
+      message:
+        'Backed up {{rows}} rows ({{from}} – {{to}}) into 2 files: an Excel file to read and a restore file.\n\nClean this out of the app? Data from {{cutoff}} on and everything in the archive stays.',
+      share: 'Copy backup',
+      later: 'Later',
+      trim: 'Clean up',
+    },
+    done: {
+      title: 'Cleaned up',
+      message: 'The backup files stay in the app. Copy them somewhere else too (📤 in Settings → Data): deleting the app deletes them.',
+    },
+    failed: { title: 'Not cleaned up', message: 'Something went wrong while backing up or cleaning up, so nothing was deleted. Try again later.' },
+    nothing: { title: 'Nothing to clean up', message: 'There is no data older than {{cutoff}} outside the archive.' },
+    noBackup: {
+      title: 'No backup yet',
+      message: 'A backup is made when the app cleans up data, or when you tap 🗄️ Back up & clean.',
+    },
+    shareDialogTitle: 'Copy backup',
+    restore: {
+      doneTitle: 'Restored',
+      doneMessage: 'Added {{added}} rows ({{from}} – {{to}}). Rows already in the app were left as they are.',
+      failedTitle: 'Could not restore',
+      reasons: {
+        unreadable: 'This file could not be read.',
+        notBackup: 'This file is not a Body Batteries data backup.',
+        newerVersion: 'This file was made by a newer version of the app. Update the app and try again.',
+      },
+    },
+  },
   export: {
     shareDialogTitle: 'Export Body Batteries data',
     trainingBlock: {
@@ -463,13 +531,6 @@ export const en: TranslationSchema = {
     },
     thresholdUnder: 'Below {{pct}}% of target ({{value}} {{unit}})',
     thresholdOver: 'Above {{pct}}% of target ({{value}} {{unit}})',
-    autoBackup: {
-      title: 'Last month’s data was saved',
-      message:
-        'Saved file "{{filename}}" to the app’s storage (open it with the Files app).\n\nWould you like to delete data older than 35 days to keep things tidy? The Excel file just saved will be kept.',
-      keep: 'Keep',
-      deleteOld: 'Delete old data',
-    },
   },
 
   settings: {
@@ -484,8 +545,8 @@ export const en: TranslationSchema = {
       notificationsOn: 'Reminder {{time}} · battery < {{pct}}%',
       notificationsOff: 'Off',
       mealRange: '{{label}} {{start}}–{{end}}h',
-      data: 'Excel · My foods · cleanup',
-      interface: '{{theme}} theme · effects {{fx}}',
+      data: 'Keep {{period}} · Excel · My foods',
+      interface: '{{theme}} theme · effects {{fx}} · colour background {{bg}} · opens on {{start}}',
     },
     language: {
       sectionTitle: 'LANGUAGE',
@@ -532,14 +593,9 @@ export const en: TranslationSchema = {
     data: {
       tileWeekly: 'Excel 7 days',
       tileMonthly: 'Excel 30 days',
-      tileCleanup: 'Delete data > 35 days',
-      cleanupInfo: 'Permanently deletes data older than 35 days to keep the phone light. Export to Excel first to keep a copy.',
       sectionTitle: 'DATA',
       exporting: 'Exporting...',
       exportError: 'Could not export the file. Try again later.',
-      cleanupTitle: 'Delete old data',
-      cleanupMessage:
-        'Data older than 35 days will be PERMANENTLY deleted and cannot be recovered.\n\nTap "Export Excel" first to keep a backup. Are you sure you want to delete it?',
     },
     interface: {
       sectionTitle: 'INTERFACE',

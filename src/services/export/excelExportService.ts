@@ -120,7 +120,7 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
 }
 
 // Build + write the workbook for a date range into the app document directory
-// (persistent, visible in Files). Returns the file URI and does NOT open the
+// (persistent; not shown in the Files app). Returns the file URI and does NOT open the
 // share sheet — used by the silent monthly auto-export.
 export async function exportDataInRangeToFile(
   fromDate: string,

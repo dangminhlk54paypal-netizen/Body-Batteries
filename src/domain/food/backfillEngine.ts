@@ -42,8 +42,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Whether `dateStr` is a legal backfill target relative to `today` (both
 // "YYYY-MM-DD"). Rejects the future (nothing to backfill yet), anything older
-// than `maxDays` (default DATA_RETENTION_DAYS — cleanupService sweeps data
-// that old anyway, so backfilling it would be pointless), and malformed
+// than `maxDays` (default DATA_RETENTION_DAYS — far enough back for a
+// forgotten entry; older days are history, not backfill), and malformed
 // strings. `today === dateStr` is a legal ("hôm nay") target — callers that
 // want to route same-day writes through the normal `logFood` path do that
 // check themselves, not here.

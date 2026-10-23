@@ -38,8 +38,9 @@ export interface ExportResult {
 }
 
 // Writes the user's own foods + corrections into the app's document directory
-// (persistent and visible in the Files app, same as the Excel exports) and
-// opens the share sheet. The file stays behind either way, which is also what
+// (persistent, like the Excel exports — but NOT shown in the Files app: that
+// needs expo-file-system's `enableFileSharing`, off by default and a native
+// config change) and opens the share sheet. The file stays behind either way, which is also what
 // makes importFromDocumentDirectory able to find it later.
 export async function exportMyFoods(language: Language): Promise<ExportResult> {
   const customFoods = getCustomFoods();
@@ -67,16 +68,16 @@ export interface BackupFile {
 }
 
 // Lists candidate backup files sitting in the app's document directory,
-// newest name first. This is the import "picker" — no expo-document-picker
-// dependency is added: the documents directory is exposed in the Files app,
-// so a file copied in there (from iCloud, AirDrop, another phone) shows up
-// here. Any .json is offered, not just ours, since a user may well rename
-// their backup; parseMyFoodsBackup is what actually validates it.
+// newest name first — in practice the files this app wrote itself (the
+// folder is not open to the Files app, see exportMyFoods). Any .json is
+// offered, since a user may well rename their backup; parseMyFoodsBackup is
+// what actually validates it. The retention cycle's data backups
+// (BodyBatteries_Backup_*.json, restored from Settings → Dữ liệu) are left out.
 export async function listBackupFiles(): Promise<BackupFile[]> {
   const entries = Paths.document.list();
   return entries
     .filter((entry): entry is File => entry instanceof File)
-    .filter((file) => file.name.toLowerCase().endsWith(FILE_SUFFIX))
+    .filter((file) => file.name.toLowerCase().endsWith(FILE_SUFFIX) && !file.name.startsWith('BodyBatteries_Backup_'))
     .sort((a, b) => b.name.localeCompare(a.name))
     .map((file) => ({ name: file.name, uri: file.uri }));
 }

@@ -14,10 +14,17 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 jest.mock('../../services/notifications/notificationService', () => ({
   requestNotificationPermission: jest.fn(),
   scheduleDailyReminder: jest.fn(),
-  cancelAllNotifications: jest.fn(),
+  cancelDailyReminder: jest.fn(),
 }));
 jest.mock('../../services/export/excelExportService', () => ({ exportWeeklyData: jest.fn(), exportMonthlyData: jest.fn() }));
-jest.mock('../../services/cleanup/cleanupService', () => ({ runWeeklyCleanup: jest.fn() }));
+jest.mock('../../services/retention/retentionService', () => ({
+  getLatestBackup: jest.fn(),
+  restoreFromPickedFile: jest.fn(),
+  shareBackupFiles: jest.fn(),
+  startManualTrim: jest.fn(),
+  syncRetentionReminders: jest.fn(),
+  loadRetentionOverview: jest.fn(() => new Promise(() => {})),
+}));
 jest.mock('../../components/food/MyFoodsSheet', () => ({ MyFoodsSheet: () => null }));
 jest.mock('../../components/BodyProfileCard', () => ({ BodyProfileCard: () => null }));
 

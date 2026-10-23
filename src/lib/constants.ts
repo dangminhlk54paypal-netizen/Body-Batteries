@@ -131,8 +131,8 @@ export function foodCategoryLabel(category: string, language: Language): string 
 
 export const LOW_BATTERY_THRESHOLD = 0.2; // 20% — trigger warning below this
 
-// ~1 month of history so the monthly Excel export always has a full previous
-// calendar month to write before old data is (optionally) cleaned up.
+// How far back the past-date picker (PastDateField) reaches. No longer how long
+// data is KEPT — that is the user's retention choice (types/dataRetention.ts).
 export const DATA_RETENTION_DAYS = 35;
 
 // How far back the user can BACKFILL (log a food/activity entry for a past

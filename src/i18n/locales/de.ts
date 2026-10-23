@@ -337,6 +337,74 @@ export const de: TranslationSchema = {
       '{{name}}: {{current}}{{unit}} aufgenommen, über der oberen Referenz-Aufnahmegrenze ({{limit}}{{unit}}). Falls mehrere ähnliche Nahrungsergänzungsmittel eingenommen werden, ziehe eine Reduzierung in Betracht. Nur zur Orientierung, kein Ersatz für medizinische Beratung.',
   },
 
+  dataRetention: {
+    periodLabel: 'Daten in der App behalten',
+    periodShort: { m3: '3 Mon', m6: '6 Mon', m12: '1 J', m24: '2 J', forever: '∞' },
+    periodLong: { m3: '3 Monate', m6: '6 Monate', m12: '1 Jahr', m24: '2 Jahre', forever: 'unbegrenzt' },
+    keepLabel: 'Wenn voll, {{span}} behalten',
+    spanMonths: '{{n}} Monate',
+    spanDays: '{{n}} Tage',
+    estimate: '≈ {{peak}} wenn voll · jetzt {{current}}',
+    estimateForever: '≈ {{perYear}}/Jahr · jetzt {{current}}',
+    nextTrim: 'fragt am {{date}}',
+    archiveTitle: 'Langzeit-Archiv',
+    archive: { weight: 'Gewicht', gym: 'Training', eatingHabits: 'Essgewohnheiten' },
+    info: {
+      cycleTitle: 'Wie lange Daten bleiben',
+      cycle:
+        'Daten sammeln sich, bis der älteste Tag den gewählten Zeitraum erreicht (standardmäßig 1 Jahr). Dann sichert die App den alten Teil in 2 Dateien und fragt, ob er aus der App entfernt werden soll. Der neueste Teil (standardmäßig ½ = 6 Monate) bleibt immer. Du wirst 3 Monate, 1 Monat und 1 Woche vorher erinnert. „Später“ fragt in 7 Tagen erneut; gelöscht wird erst, wenn du „Aufräumen“ tippst.',
+      estimateTitle: 'Größenschätzung',
+      estimate:
+        'Heutige Datengröße geteilt durch die Tage, an denen du die App nutzt, mal Zeitraum. Bei weniger als 2 Wochen Daten nutzt die App eine Testmessung eines Tages mit vielen Einträgen: etwa 4 KB/Tag (≈ 1,5 MB/Jahr). Winzig im Vergleich zum Handyspeicher.',
+      archive:
+        'Eingeschaltete Bereiche werden nie aufgeräumt, damit Diagramme viele Jahre zeigen können. Gewicht: deine Wiegungen. Training: Einheiten, Trainingsbuch, Blöcke, 1RM. Essgewohnheiten: eine Zusammenfassung pro Tag (kcal, Eiweiß/KH/Fett, kcal je Lebensmittelgruppe), erstellt aus deinen Einträgen vor dem Aufräumen.',
+      filesTitle: 'Sicherungsdateien',
+      files:
+        'Jedes Aufräumen hinterlässt 2 Dateien im App-Speicher: eine Excel-Datei zum Lesen und eine .json-Datei zum Wiederherstellen (♻️). Wird die App gelöscht, sind beide weg – tippe 📤, um sie nach iCloud Drive oder auf einen Computer zu kopieren oder dir selbst zu schicken.',
+    },
+    tiles: { restore: 'Wiederherstellen', share: 'Sicherung kopieren', trimNow: 'Sichern & aufräumen' },
+    setup: {
+      title: 'Wie lange sollen deine Daten bleiben?',
+      intro: 'Einmal wählen, jederzeit änderbar unter Einstellungen → Daten. Die App sichert immer und fragt dich vor dem Aufräumen.',
+      save: 'Auswahl speichern',
+    },
+    reminder: {
+      title: '💾 Body Batteries',
+      body: 'In {{left}} ({{date}}) sichert die App und fragt, ob Daten vor dem {{cutoff}} aufgeräumt werden sollen. Archiv prüfen unter Einstellungen → Daten.',
+      left3m: '3 Monaten',
+      left1m: '1 Monat',
+      left1w: '1 Woche',
+    },
+    prompt: {
+      title: 'Zeit zum Aufräumen',
+      message:
+        '{{rows}} Zeilen ({{from}} – {{to}}) in 2 Dateien gesichert: eine Excel-Datei zum Lesen und eine Wiederherstellungsdatei.\n\nDiesen Teil aus der App entfernen? Daten ab {{cutoff}} und alles im Archiv bleiben.',
+      share: 'Sicherung kopieren',
+      later: 'Später',
+      trim: 'Aufräumen',
+    },
+    done: {
+      title: 'Aufgeräumt',
+      message: 'Die Sicherungsdateien bleiben in der App. Kopiere sie auch woandershin (📤 unter Einstellungen → Daten): Wird die App gelöscht, sind sie weg.',
+    },
+    failed: { title: 'Nicht aufgeräumt', message: 'Beim Sichern oder Aufräumen ist ein Fehler aufgetreten, daher wurde nichts gelöscht. Später erneut versuchen.' },
+    nothing: { title: 'Nichts aufzuräumen', message: 'Außerhalb des Archivs gibt es keine Daten vor dem {{cutoff}}.' },
+    noBackup: {
+      title: 'Noch keine Sicherung',
+      message: 'Eine Sicherung entsteht, wenn die App aufräumt oder wenn du auf 🗄️ Sichern & aufräumen tippst.',
+    },
+    shareDialogTitle: 'Sicherung kopieren',
+    restore: {
+      doneTitle: 'Wiederhergestellt',
+      doneMessage: '{{added}} Zeilen hinzugefügt ({{from}} – {{to}}). Bereits vorhandene Zeilen bleiben unverändert.',
+      failedTitle: 'Wiederherstellen fehlgeschlagen',
+      reasons: {
+        unreadable: 'Diese Datei kann nicht gelesen werden.',
+        notBackup: 'Diese Datei ist keine Body-Batteries-Datensicherung.',
+        newerVersion: 'Diese Datei stammt von einer neueren App-Version. Aktualisiere die App und versuche es erneut.',
+      },
+    },
+  },
   export: {
     shareDialogTitle: 'Body-Batteries-Daten exportieren',
     trainingBlock: {
@@ -463,13 +531,6 @@ export const de: TranslationSchema = {
     },
     thresholdUnder: 'Unter {{pct}}% des Ziels ({{value}} {{unit}})',
     thresholdOver: 'Über {{pct}}% des Ziels ({{value}} {{unit}})',
-    autoBackup: {
-      title: 'Daten des letzten Monats gespeichert',
-      message:
-        'Datei "{{filename}}" im Speicher der App gesichert (mit der App "Dateien" zu öffnen).\n\nMöchtest du Daten löschen, die älter als 35 Tage sind, um aufzuräumen? Die soeben gespeicherte Excel-Datei bleibt erhalten.',
-      keep: 'Behalten',
-      deleteOld: 'Alte Daten löschen',
-    },
   },
 
   settings: {
@@ -484,8 +545,8 @@ export const de: TranslationSchema = {
       notificationsOn: 'Erinnerung {{time}} · Akku < {{pct}}%',
       notificationsOff: 'Aus',
       mealRange: '{{label}} {{start}}–{{end}}h',
-      data: 'Excel · Meine Speisen · Aufräumen',
-      interface: 'Design {{theme}} · Effekte {{fx}}',
+      data: '{{period}} behalten · Excel · Meine Speisen',
+      interface: 'Design {{theme}} · Effekte {{fx}} · Farbhintergrund {{bg}} · Start {{start}}',
     },
     language: {
       sectionTitle: 'SPRACHE',
@@ -532,14 +593,9 @@ export const de: TranslationSchema = {
     data: {
       tileWeekly: 'Excel 7 Tage',
       tileMonthly: 'Excel 30 Tage',
-      tileCleanup: 'Daten > 35 Tage löschen',
-      cleanupInfo: 'Löscht Daten, die älter als 35 Tage sind, endgültig, damit das Handy schlank bleibt. Vorher nach Excel exportieren, um eine Kopie zu behalten.',
       sectionTitle: 'DATEN',
       exporting: 'Wird exportiert...',
       exportError: 'Die Datei konnte nicht exportiert werden. Versuche es später erneut.',
-      cleanupTitle: 'Alte Daten löschen',
-      cleanupMessage:
-        'Daten, die älter als 35 Tage sind, werden ENDGÜLTIG gelöscht und können nicht wiederhergestellt werden.\n\nTippe zuerst auf "Excel exportieren", um eine Sicherung zu behalten. Möchtest du wirklich löschen?',
     },
     interface: {
       sectionTitle: 'OBERFLÄCHE',

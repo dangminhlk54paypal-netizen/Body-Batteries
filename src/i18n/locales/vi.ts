@@ -359,6 +359,74 @@ export const vi = {
   // src/services/export/excelExportService.ts and domain/export/dataWorkbook.ts).
   // Excel sheet tab names are capped at 31 chars by the file format; every
   // value below fits comfortably in all 3 languages.
+  dataRetention: {
+    periodLabel: 'Lưu dữ liệu trong app',
+    periodShort: { m3: '3 th', m6: '6 th', m12: '1 năm', m24: '2 năm', forever: '∞' },
+    periodLong: { m3: '3 tháng', m6: '6 tháng', m12: '1 năm', m24: '2 năm', forever: 'không giới hạn' },
+    keepLabel: 'Khi đầy giữ lại {{span}}',
+    spanMonths: '{{n}} tháng',
+    spanDays: '{{n}} ngày',
+    estimate: '≈ {{peak}} khi đầy · hiện {{current}}',
+    estimateForever: '≈ {{perYear}}/năm · hiện {{current}}',
+    nextTrim: 'hỏi dọn {{date}}',
+    archiveTitle: 'Kho giữ lâu dài',
+    archive: { weight: 'Cân nặng', gym: 'Tập luyện', eatingHabits: 'Thói quen ăn' },
+    info: {
+      cycleTitle: 'Lưu bao lâu',
+      cycle:
+        'Dữ liệu tích dần đến khi ngày cũ nhất đủ thời hạn bạn chọn (mặc định 1 năm). Khi đó app tự sao lưu phần cũ ra 2 file rồi hỏi bạn có dọn phần đó khỏi app không. Phần mới nhất (mặc định ½ = 6 tháng) luôn được giữ. App nhắc trước 3 tháng, 1 tháng và 1 tuần. Bấm "Để sau" thì 7 ngày sau app hỏi lại; chưa bấm "Dọn" thì không có gì bị xoá.',
+      estimateTitle: 'Ước tính dung lượng',
+      estimate:
+        'Dung lượng hiện tại chia cho số ngày đã dùng app, nhân với thời hạn lưu. Khi chưa đủ 2 tuần dữ liệu, app dùng mức đo thử với ngày ghi nhiều: khoảng 4 KB/ngày (≈ 1,5 MB/năm). Rất nhẹ so với bộ nhớ điện thoại.',
+      archive:
+        'Mục được bật không bao giờ bị dọn, để biểu đồ xem được nhiều năm. Cân nặng: các lần cân. Tập luyện: buổi tập, sổ tập, block, 1RM. Thói quen ăn: mỗi ngày một dòng tóm tắt (kcal, đạm/carb/béo, kcal theo nhóm món), tạo từ món đã ghi trước khi dọn.',
+      filesTitle: 'File sao lưu',
+      files:
+        'Mỗi lần dọn có 2 file trong bộ nhớ của app: Excel để đọc và file .json để khôi phục (♻️). Xoá app là mất cả hai, nên hãy bấm 📤 để chép ra iCloud Drive, máy tính hoặc gửi cho chính bạn.',
+    },
+    tiles: { restore: 'Khôi phục', share: 'Chép bản sao lưu', trimNow: 'Sao lưu & dọn' },
+    setup: {
+      title: 'Lưu dữ liệu bao lâu?',
+      intro: 'Chọn một lần, đổi lại được trong Cài đặt → Dữ liệu. App luôn sao lưu và hỏi bạn trước khi dọn.',
+      save: 'Lưu lựa chọn',
+    },
+    reminder: {
+      title: '💾 Body Batteries',
+      body: 'Còn {{left}} ({{date}}) app sẽ sao lưu và hỏi dọn dữ liệu trước {{cutoff}}. Xem Kho trong Cài đặt → Dữ liệu.',
+      left3m: '3 tháng',
+      left1m: '1 tháng',
+      left1w: '1 tuần',
+    },
+    prompt: {
+      title: 'Đến hạn dọn dữ liệu',
+      message:
+        'Đã sao lưu {{rows}} dòng ({{from}} – {{to}}) vào 2 file: Excel để đọc và file khôi phục.\n\nDọn phần này khỏi app? Dữ liệu từ {{cutoff}} và các mục trong Kho vẫn giữ nguyên.',
+      share: 'Chép bản sao lưu',
+      later: 'Để sau',
+      trim: 'Dọn',
+    },
+    done: {
+      title: 'Đã dọn xong',
+      message: 'File sao lưu vẫn nằm trong app. Nên chép một bản ra ngoài (📤 trong Cài đặt → Dữ liệu): xoá app là mất file.',
+    },
+    failed: { title: 'Chưa dọn được', message: 'Có lỗi khi sao lưu hoặc dọn, nên app chưa xoá gì. Thử lại sau.' },
+    nothing: { title: 'Không có gì để dọn', message: 'Chưa có dữ liệu nào cũ hơn {{cutoff}} ngoài các mục trong Kho.' },
+    noBackup: {
+      title: 'Chưa có bản sao lưu',
+      message: 'Bản sao lưu được tạo khi app dọn dữ liệu, hoặc khi bạn bấm 🗄️ Sao lưu & dọn.',
+    },
+    shareDialogTitle: 'Chép bản sao lưu',
+    restore: {
+      doneTitle: 'Đã khôi phục',
+      doneMessage: 'Đã thêm {{added}} dòng ({{from}} – {{to}}). Dòng đã có sẵn được giữ nguyên.',
+      failedTitle: 'Không khôi phục được',
+      reasons: {
+        unreadable: 'Không đọc được file này.',
+        notBackup: 'File này không phải bản sao lưu dữ liệu Body Batteries.',
+        newerVersion: 'File được tạo bởi phiên bản app mới hơn. Hãy cập nhật app rồi thử lại.',
+      },
+    },
+  },
   export: {
     shareDialogTitle: 'Xuất dữ liệu Body Batteries',
     trainingBlock: {
@@ -485,13 +553,6 @@ export const vi = {
     },
     thresholdUnder: 'Dưới {{pct}}% mục tiêu ({{value}} {{unit}})',
     thresholdOver: 'Trên {{pct}}% mục tiêu ({{value}} {{unit}})',
-    autoBackup: {
-      title: 'Đã lưu dữ liệu tháng trước',
-      message:
-        'Đã lưu file "{{filename}}" vào bộ nhớ của app (mở bằng ứng dụng Files).\n\nBạn có muốn xoá dữ liệu cũ hơn 35 ngày để gọn nhẹ không? Bản Excel vừa lưu vẫn được giữ.',
-      keep: 'Giữ lại',
-      deleteOld: 'Xoá dữ liệu cũ',
-    },
   },
 
   // src/screens/SettingsScreen.tsx
@@ -507,8 +568,8 @@ export const vi = {
       notificationsOn: 'Nhắc {{time}} · báo pin < {{pct}}%',
       notificationsOff: 'Đang tắt',
       mealRange: '{{label}} {{start}}–{{end}}h',
-      data: 'Excel · Món của tôi · dọn dữ liệu',
-      interface: 'Chủ đề {{theme}} · hiệu ứng {{fx}}',
+      data: 'Lưu {{period}} · Excel · Món của tôi',
+      interface: 'Chủ đề {{theme}} · hiệu ứng {{fx}} · nền màu {{bg}} · mở {{start}}',
     },
     language: {
       sectionTitle: 'NGÔN NGỮ',
@@ -555,14 +616,9 @@ export const vi = {
     data: {
       tileWeekly: 'Excel 7 ngày',
       tileMonthly: 'Excel 30 ngày',
-      tileCleanup: 'Xoá dữ liệu > 35 ngày',
-      cleanupInfo: 'Xoá vĩnh viễn dữ liệu cũ hơn 35 ngày cho máy nhẹ hơn. Nên xuất Excel trước để giữ bản lưu.',
       sectionTitle: 'DỮ LIỆU',
       exporting: 'Đang xuất...',
       exportError: 'Không thể xuất file. Thử lại sau.',
-      cleanupTitle: 'Xoá dữ liệu cũ',
-      cleanupMessage:
-        'Dữ liệu hơn 35 ngày sẽ bị xoá VĨNH VIỄN và không thể khôi phục.\n\nHãy bấm "Xuất Excel" trước để giữ lại bản lưu. Bạn có chắc muốn xoá?',
     },
     interface: {
       sectionTitle: 'GIAO DIỆN',

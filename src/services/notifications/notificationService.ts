@@ -57,8 +57,13 @@ export async function sendEatReminder(message: string): Promise<void> {
   });
 }
 
+// Fixed id so the daily reminder can be replaced/cancelled on its own without
+// wiping the other scheduled notifications (the data-retention reminders).
+const DAILY_REMINDER_ID = 'daily-reminder';
+
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<string> {
   const id = await Notifications.scheduleNotificationAsync({
+    identifier: DAILY_REMINDER_ID,
     content: {
       title: '💪 Body Batteries',
       body: 'Cùng cập nhật năng lượng hôm nay nào!',
@@ -70,6 +75,33 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
     },
   });
   return id;
+}
+
+export async function cancelDailyReminder(): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+}
+
+// One-off notification on a given day at `hour`:00 local time, under a
+// caller-chosen id (re-scheduling the same id replaces it).
+export async function scheduleDateNotification(
+  identifier: string,
+  date: string,
+  hour: number,
+  title: string,
+  body: string
+): Promise<void> {
+  await Notifications.scheduleNotificationAsync({
+    identifier,
+    content: { title, body },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`),
+    },
+  });
+}
+
+export async function cancelScheduledNotification(identifier: string): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(identifier);
 }
 
 export async function cancelAllNotifications(): Promise<void> {
