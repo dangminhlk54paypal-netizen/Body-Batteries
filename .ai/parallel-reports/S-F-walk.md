@@ -36,3 +36,14 @@ trong máy, và cộng dồn theo ngày, mỗi lần ra khỏi nhà."
 `npx tsc --noEmit` sạch · `npx jest` 97 test / 12 suite PASS · `npx expo export --platform ios`
 → 1448 modules. **Chưa test trên điện thoại thật** (cần xác nhận quyền Motion & Fitness hiện ra
 trong Expo Go và số bước khớp Apple Health).
+
+## Bổ sung: Đồng hồ bấm giờ kiểu Apple (2026-10-23)
+- MỚI `src/domain/stopwatch/stopwatch.ts` (+ test), `src/store/stopwatchStore.ts` (zustand persist
+  AsyncStorage), `src/components/StopwatchCard.tsx`; SỬA `HomeScreen.tsx` (thẻ dưới WalkTrackerCard).
+- Giống app Đồng hồ của iPhone: số lớn `mm:ss,cc`, nút tròn Bắt đầu (xanh) / Dừng (đỏ), Vòng /
+  Đặt lại, danh sách vòng (vòng đang chạy ở trên cùng, vòng nhanh nhất xanh, chậm nhất đỏ khi có
+  ≥2 vòng).
+- Tính theo mốc thời gian thực (không đếm tick) + lưu trạng thái → vẫn chạy đúng khi tắt app.
+- Kiểm tra: tsc sạch · jest 102 test / 13 suite PASS · expo export ios 1451 modules.
+- Lưu ý: bản web (`expo start --web`) trắng trang do lỗi có sẵn `import.meta` trong zustand ESM —
+  không do gói này gây ra, chưa sửa.
