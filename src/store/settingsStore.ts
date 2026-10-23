@@ -11,6 +11,7 @@ import { DEFAULT_TRAINING_LOG_FORMAT, resolveTrainingLogFormat } from '../types/
 import type { TrainingLogFormat } from '../types/trainingLog';
 import type { RingMetricId } from '../domain/battery/ringMetrics';
 import type { MainTab } from '../navigation/mainTabs';
+import { normalizeNickname } from '../lib/nickname';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -34,6 +35,10 @@ interface SettingsState {
   reminderHour: number; // 0–23
   reminderMinute: number; // 0–59
   userProfile: UserProfile;
+  // What the app calls the user ('' = not set) — printed in the Excel exports,
+  // kept for future AI greetings/reminders. Always stored normalized
+  // (lib/nickname.ts).
+  nickname: string;
   hasOnboarded: boolean;
   mealWindows: MealWindows;
   // P7: toggles the "charge particle" burst on MasterBattery (the scale/glow
@@ -92,6 +97,7 @@ interface SettingsState {
   setNotificationsEnabled: (enabled: boolean) => void;
   setReminderTime: (hour: number, minute: number) => void;
   setUserProfile: (profile: UserProfile) => void;
+  setNickname: (nickname: string) => void;
   setHasOnboarded: (value: boolean) => void;
   setMealWindow: (meal: 'breakfast' | 'lunch' | 'dinner', window: MealWindow) => void;
   setParticleEffectsEnabled: (enabled: boolean) => void;
@@ -122,6 +128,7 @@ export const useSettingsStore = create<SettingsState>()(
       reminderHour: 20,
       reminderMinute: 0,
       userProfile: DEFAULT_USER_PROFILE,
+      nickname: '',
       hasOnboarded: false,
       mealWindows: DEFAULT_MEAL_WINDOWS,
       particleEffectsEnabled: true,
@@ -144,6 +151,7 @@ export const useSettingsStore = create<SettingsState>()(
       setNotificationsEnabled: (enabled) => set({ notificationsEnabled: enabled }),
       setReminderTime: (hour, minute) => set({ reminderHour: hour, reminderMinute: minute }),
       setUserProfile: (profile) => set({ userProfile: profile }),
+      setNickname: (nickname) => set({ nickname: normalizeNickname(nickname) }),
       setHasOnboarded: (value) => set({ hasOnboarded: value }),
       setMealWindow: (meal, window) =>
         set((s) => ({ mealWindows: { ...s.mealWindows, [meal]: window } })),

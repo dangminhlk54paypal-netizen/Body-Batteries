@@ -27,7 +27,7 @@ mục mới dùng tên đã lưu lúc ghi.
 
 | # | Sheet (vi) | Mỗi dòng là | Dùng để |
 |---|---|---|---|
-| 1 | **Đọc trước** | thông tin file | khoảng thời gian, ngày xuất, hồ sơ, số ngày có ghi ăn, cách dùng, mô tả từng sheet (kèm số dòng), cảnh báo y tế. Không có bộ lọc; chữ dài tự xuống dòng. |
+| 1 | **Đọc trước** | thông tin file | tên gọi người dùng (nếu đã đặt trong Cài đặt), khoảng thời gian, ngày xuất, hồ sơ, số ngày có ghi ăn, cách dùng, mô tả từng sheet (kèm số dòng), cảnh báo y tế. Không có bộ lọc; chữ dài tự xuống dòng. |
 | 2 | **Theo ngày** | 1 ngày có ghi bất kỳ thứ gì | bảng chính để vẽ xu hướng: Ngày · Thứ · Cân nặng (đo hôm đó, TB nếu cân nhiều lần, **không** kéo từ hôm trước) · Kcal ăn · Đạm · Carbs · Béo · Bước · Kcal vận động · Tổng tiêu hao · Nguồn tiêu hao (Apple Health / Ước tính của app) · Cân bằng · Nước (ml, món + ghi nhanh) · Ngủ (giờ) · 10 vi chất. |
 | 3 | **Món ăn** | 1 món đã ghi | Ngày · Giờ · Bữa · Món · Phần (chỉ khi ghi theo viên/hộp) · Gram · Kcal · macro · Nước · 10 vi chất (tính lại từ `per100g`). |
 | 4 | **Vận động** | 1 lần ghi vận động | Ngày · Bắt đầu · Kết thúc · Hoạt động (các bài nối bằng " + ", hoặc "Bước chân") · Phút · Bước · Kcal. *(Mới — trước đây Excel không có danh sách vận động.)* |
@@ -83,4 +83,5 @@ gộp thành **Món ăn** (cột "Thương hiệu" luôn trống cũng bỏ).
   hàng 1 + chèn style vào `styles.xml` — bản `xlsx` miễn phí không ghi style nên vá XML sau khi ghi).
 - `src/services/export/excelExportService.ts` — đọc DB, ráp sheet theo thứ tự trên. Dùng chung cho Excel 7 ngày,
   30 ngày và sao lưu tháng tự động.
-- Xuất block tập (`trainingBlockExportService.ts`) là bảng in, không thuộc file dữ liệu này.
+- Xuất block tập (`trainingBlockExportService.ts`) là bảng in, không thuộc file dữ liệu này (hàng 2 ghi "Người tập: <tên gọi>"
+  nếu đã đặt).

@@ -363,6 +363,7 @@ export const vi = {
     shareDialogTitle: 'Xuất dữ liệu Body Batteries',
     trainingBlock: {
       sheetPlan: 'Kế hoạch Block',
+      athlete: 'Người tập: {{name}}',
       sheetWeekly: 'Tổng theo tuần',
       week: 'Tuần',
       dateRange: 'Khoảng ngày',
@@ -456,6 +457,7 @@ export const vi = {
     readMe: {
       colItem: 'Mục',
       colValue: 'Nội dung',
+      nickname: 'Người dùng',
       period: 'Khoảng thời gian',
       exportedOn: 'Ngày xuất',
       profile: 'Hồ sơ',
@@ -517,6 +519,9 @@ export const vi = {
     },
     bodyProfile: {
       sectionTitle: 'HỒ SƠ CƠ THỂ',
+      nicknameLabel: 'Tên gọi',
+      nicknamePlaceholder: 'App gọi bạn là…',
+      nicknameDesc: 'Tên app dùng để gọi bạn và in vào mọi file Excel xuất ra. Chỉ lưu trên máy này.',
       sectionDesc: 'Dùng để tính nhu cầu năng lượng (pin Năng lượng). Chỉ tham khảo — không phải tư vấn y tế.',
     },
     health: {

@@ -31,6 +31,7 @@ export interface DataWorkbookInput {
   exportedOn: string; // YYYY-MM-DD
   language: Language;
   profile: UserProfile;
+  nickname?: string; // '' / missing = not set → no "Người dùng" row
   targets: NutrientTarget[];
   foodLog: FoodLogEntry[];
   activityLog: ActivityLogEntry[];
@@ -466,6 +467,7 @@ export function buildReadMeSheet(
   const t = tFor(language);
   const foodDays = new Set(input.foodLog.map((f) => dayOf(f.timestamp))).size;
   const rows: SheetValue[][] = [
+    ...(input.nickname ? [[t('export.readMe.nickname'), input.nickname]] : []),
     [t('export.readMe.period'), `${longDate(input.fromDate, language)} – ${longDate(input.toDate, language)}`],
     [t('export.readMe.exportedOn'), longDate(input.exportedOn, language)],
     [

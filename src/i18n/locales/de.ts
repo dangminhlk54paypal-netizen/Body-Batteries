@@ -341,6 +341,7 @@ export const de: TranslationSchema = {
     shareDialogTitle: 'Body-Batteries-Daten exportieren',
     trainingBlock: {
       sheetPlan: 'Trainingsblock-Plan',
+      athlete: 'Athlet: {{name}}',
       sheetWeekly: 'Wochensummen',
       week: 'Woche',
       dateRange: 'Zeitraum',
@@ -434,6 +435,7 @@ export const de: TranslationSchema = {
     readMe: {
       colItem: 'Punkt',
       colValue: 'Inhalt',
+      nickname: 'Nutzer',
       period: 'Zeitraum',
       exportedOn: 'Exportiert am',
       profile: 'Profil',
@@ -494,6 +496,9 @@ export const de: TranslationSchema = {
     },
     bodyProfile: {
       sectionTitle: 'KÖRPERPROFIL',
+      nicknameLabel: 'Spitzname',
+      nicknamePlaceholder: 'Wie sollen wir dich nennen?',
+      nicknameDesc: 'Der Name, mit dem die App dich anspricht; er steht in jedem Excel-Export. Nur auf diesem Gerät gespeichert.',
       sectionDesc: 'Wird zur Berechnung deines Energiebedarfs verwendet (Energie-Akku). Nur zur Orientierung — keine medizinische Beratung.',
     },
     health: {

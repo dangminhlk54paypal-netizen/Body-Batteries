@@ -3,6 +3,7 @@ import {
   View,
   Text,
   Switch,
+  TextInput,
   StyleSheet,
   SafeAreaView,
   ScrollView,
@@ -35,6 +36,7 @@ import { MyFoodsSheet } from '../components/food/MyFoodsSheet';
 import { LANGUAGES, LANGUAGE_NAMES } from '../i18n/types';
 import type { Language } from '../i18n/types';
 import { MAIN_TABS, MAIN_TAB_META, resolveStartTab } from '../navigation/mainTabs';
+import { NICKNAME_MAX_LENGTH } from '../lib/nickname';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -52,6 +54,38 @@ function SettingRow({ label, children }: { label: string; children: React.ReactN
       </Text>
       {children}
     </View>
+  );
+}
+
+// "Tên gọi" — typed freely, saved (normalized) when the field loses focus.
+function NicknameRow() {
+  const { t } = useT();
+  const c = useThemeColors();
+  const styles = useThemedStyles(createStyles);
+  const nickname = useSettingsStore((s) => s.nickname);
+  const setNickname = useSettingsStore((s) => s.setNickname);
+  const [draft, setDraft] = useState(nickname);
+  function commit() {
+    setNickname(draft);
+    setDraft(useSettingsStore.getState().nickname);
+  }
+  return (
+    <SettingRow label={t('settings.bodyProfile.nicknameLabel')}>
+      <TextInput
+        style={styles.nicknameInput}
+        value={draft}
+        onChangeText={setDraft}
+        onEndEditing={commit}
+        onSubmitEditing={commit}
+        placeholder={t('settings.bodyProfile.nicknamePlaceholder')}
+        placeholderTextColor={c.textMuted}
+        accessibilityLabel={t('settings.bodyProfile.nicknameLabel')}
+        maxLength={NICKNAME_MAX_LENGTH}
+        autoCapitalize="words"
+        autoCorrect={false}
+        returnKeyType="done"
+      />
+    </SettingRow>
   );
 }
 
@@ -179,6 +213,7 @@ export function SettingsScreen() {
     autoTranslateCustomFoodNames,
     setAutoTranslateCustomFoodNames,
     userProfile,
+    nickname,
   } = useSettingsStore();
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
   const c = useThemeColors();
@@ -330,6 +365,7 @@ export function SettingsScreen() {
       auto: onOff(autoTranslateCustomFoodNames),
     }),
     body:
+      (nickname ? `${nickname} · ` : '') +
       t('settings.summary.body', { weight: userProfile.weightKg, height: userProfile.heightCm, age: userProfile.age }) +
       (userProfile.goalWeightKg != null ? t('settings.summary.bodyGoal', { goal: userProfile.goalWeightKg }) : ''),
     health: `${healthStatusText} · ${lastSyncText}`,
@@ -402,11 +438,13 @@ export function SettingsScreen() {
           summary={summaries.body}
           info={[
             { body: t('settings.bodyProfile.sectionDesc') },
+            { heading: t('settings.bodyProfile.nicknameLabel'), body: t('settings.bodyProfile.nicknameDesc') },
             { body: t('components.bodyProfileCard.explainer') },
           ]}
           open={openSection === 'body'}
           onToggle={() => toggle('body')}
         >
+          <NicknameRow />
           <BodyProfileCard embedded />
         </SettingsSection>
       ),
@@ -654,6 +692,7 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   },
   rowLabel: { flexShrink: 1, fontSize: 14, color: c.textPrimary, fontWeight: '600' },
   rowHint: { fontSize: 12, color: c.textMuted },
+  nicknameInput: { flex: 1, minWidth: 140, textAlign: 'right', fontSize: 15, color: c.textPrimary, paddingVertical: 4 },
 
   // ── Segmented control ──────────────────────────────────────────────────────
   segmented: {

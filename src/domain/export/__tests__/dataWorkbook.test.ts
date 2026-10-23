@@ -296,6 +296,13 @@ describe('Đọc trước (read me)', () => {
     expect(table.rows[table.rows.length - 1][1]).toBe(translate('vi', 'assessment.disclaimer'));
   });
 
+  it('starts with the nickname row only when one is set', () => {
+    const withName = buildReadMeSheet({ ...input({}), nickname: 'Minh' }, []);
+    expect(withName.rows[0]).toEqual(['Người dùng', 'Minh']);
+    const without = buildReadMeSheet(input({}), []);
+    expect(without.rows.map((r) => r[0])).not.toContain('Người dùng');
+  });
+
   it('sheet names fit Excel’s 31-character limit in every language', () => {
     for (const language of ['vi', 'en', 'de'] as Language[]) {
       for (const key of [...KEYS, 'readMe']) {

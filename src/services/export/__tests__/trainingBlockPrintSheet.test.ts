@@ -59,6 +59,13 @@ describe('buildPlanCrosstab', () => {
     expect(styledCells).toContainEqual({ sheet: 1, ref: 'A1', tier: 1 });
   });
 
+  it('row 2 names whose plan it is when a nickname is set, else stays blank', () => {
+    expect(aoa[1].every((cell) => cell === '')).toBe(true);
+    const { aoa: named } = buildPlanCrosstab(plan, 'vi', 'Minh');
+    expect(named[1][0]).toBe('Người tập: Minh');
+    expect(named[2]).toEqual(aoa[2]); // header row unchanged
+  });
+
   it('week-header row (row 3) labels each column and is marked tier 2', () => {
     const headerRow = aoa[2];
     expect(headerRow[0]).toBe('');

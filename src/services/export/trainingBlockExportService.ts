@@ -6,7 +6,8 @@ import { buildPlanCrosstab } from './trainingBlockPrintSheet';
 import { formatDisplayDate } from '../../lib/dateUtils';
 import { translate } from '../../i18n/translate';
 import type { Language } from '../../i18n/types';
-import type { GeneratedBlockPlan } from '../../types/powerliftingBlock';
+import type { BlockWeekPlan, GeneratedBlockPlan } from '../../types/powerliftingBlock';
+import { useSettingsStore } from '../../store/settingsStore';
 
 // Excel export for the S-PL Block Builder's Plan Appendix — lets the user
 // print/reference the plan outside the app. Sheet 1 ("Kế hoạch Block") is
@@ -20,7 +21,7 @@ export async function exportTrainingBlockToExcelFile(
   const t = (key: string, vars?: Record<string, string | number>) => translate(language, key, vars);
   const { weeks } = plan;
 
-  const { aoa, styledCells, colCount } = buildPlanCrosstab(plan, language);
+  const { aoa, styledCells, colCount } = buildPlanCrosstab(plan, language, useSettingsStore.getState().nickname);
   const planSheet = utils.aoa_to_sheet(aoa);
   planSheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: colCount - 1 } }];
   planSheet['!cols'] = [{ wch: 34 }, ...weeks.map(() => ({ wch: 26 }))];

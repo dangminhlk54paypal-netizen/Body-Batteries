@@ -62,6 +62,7 @@ async function buildWorkbookBase64(fromDate: string, toDate: string, language: L
     exportedOn: todayString(),
     language,
     profile,
+    nickname: settings.nickname,
     targets: nutrientTargetsForProfile(profile),
     foodLog,
     activityLog,

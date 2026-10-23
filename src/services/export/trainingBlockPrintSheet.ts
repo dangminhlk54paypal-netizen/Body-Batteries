@@ -24,8 +24,9 @@ export interface PlanCrosstab {
 // can be unit tested directly. `config.schedule` is identical across every
 // week (blockEngine.ts resolves each week from the same template), so
 // day/variation index pairs line up 1:1 week to week — no need to match by
-// variationId.
-export function buildPlanCrosstab(plan: GeneratedBlockPlan, language: Language): PlanCrosstab {
+// variationId. `nickname` ('' = not set) goes in row 2 under the title, so a
+// printed sheet says whose plan it is.
+export function buildPlanCrosstab(plan: GeneratedBlockPlan, language: Language, nickname = ''): PlanCrosstab {
   const t = (key: string, vars?: Record<string, string | number>) => translate(language, key, vars);
   const { weeks, config } = plan;
   const colCount = 1 + weeks.length;
@@ -44,7 +45,8 @@ export function buildPlanCrosstab(plan: GeneratedBlockPlan, language: Language):
   aoa.push(pad([title]));
   styledCells.push({ sheet: 1, ref: 'A1', tier: 1 });
 
-  aoa.push(pad([])); // spacer between title and week header
+  // Whose plan (or an empty spacer) between title and week header.
+  aoa.push(pad(nickname ? [t('export.trainingBlock.athlete', { name: nickname })] : []));
 
   aoa.push(
     pad([
