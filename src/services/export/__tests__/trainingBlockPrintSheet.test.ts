@@ -1,7 +1,14 @@
 import { utils } from 'xlsx';
 import { buildPlanCrosstab } from '../trainingBlockPrintSheet';
 import { generateBlockPlan } from '../../../domain/energy/blockEngine';
-import { setVariationSets } from '../../../domain/energy/blockPlanEdits';
+import {
+  pauseAtWeek,
+  setDayAccessories,
+  setDaySkipped,
+  setVariationSets,
+  setWeekSkipped,
+} from '../../../domain/energy/blockPlanEdits';
+import { setVariationRpe } from '../../../domain/energy/rpeCoach';
 import { formatSetSequence } from '../../../domain/training/trainingLogFormatter';
 import { DEFAULT_TRAINING_LOG_FORMAT } from '../../../types/trainingLog';
 import type { UserProfile } from '../../../types/energy';
@@ -80,14 +87,14 @@ describe('buildPlanCrosstab', () => {
   it('each lift gets a Planned row (filled) + a blank Actual row directly under it, both tier 3', () => {
     // Row 3 (0-based) = Planned Bench (first day/variation)
     const plannedBench = aoa[3];
-    expect(plannedBench[0]).toContain('Kế hoạch:');
-    expect(plannedBench[0]).toContain('Bench');
+    // The owner's own sheet: "Planned TnG Bench (TM = 100)" / "Actual TnG Bench".
+    expect(plannedBench[0]).toBe('Planned TnG Bench (TM = 100)');
     expect(plannedBench[1]).toMatch(/^(?:[\d.]+ \+ )?\d+x\d+x[\d.]+ \(~\d+%\)$/); // "92.5 + 4x5x75 (~75%)" — the log's notation, prime first
     expect(plannedBench[1]).toBe(`${formatSetSequence(plan.weeks[0].days[0].variations[0].sets, DEFAULT_TRAINING_LOG_FORMAT, 'vi')} (~${plan.weeks[0].days[0].variations[0].pct1rm}%)`);
     expect(styledCells).toContainEqual({ sheet: 1, ref: 'A4', tier: 3 });
 
     const actualBench = aoa[4];
-    expect(actualBench[0]).toContain('Thực tế:');
+    expect(actualBench[0]).toBe('Actual TnG Bench');
     expect(actualBench.slice(1).every((v) => v === '')).toBe(true);
     expect(styledCells).toContainEqual({ sheet: 1, ref: 'A5', tier: 3 });
 
@@ -135,5 +142,56 @@ describe('buildPlanCrosstab', () => {
     );
     const { aoa: editedAoa } = buildPlanCrosstab(edited, 'vi');
     expect(editedAoa[3][2]).toBe('110 5x5x95 (~110%)');
+  });
+
+  it('prints a skipped week and a dropped day as "Nghỉ", not as training', () => {
+    const off = setDaySkipped(setWeekSkipped(plan, 1, true), { weekIndex: 0, dayIndex: 1 }, true);
+    const { aoa: offAoa } = buildPlanCrosstab(off, 'vi');
+    expect(offAoa[2][2]).toBe('Tuần 2 (Nghỉ)');
+    const benchRow = offAoa.find((row) => String(row[0]).startsWith('Planned '))!;
+    expect(benchRow[2]).toBe('Nghỉ'); // the whole of week 2
+    expect(benchRow[1]).not.toBe('Nghỉ'); // Monday of week 1 still trains
+    const squatRow = offAoa.filter((row) => String(row[0]).startsWith('Planned '))[1];
+    expect(squatRow[1]).toBe('Nghỉ'); // Wednesday of week 1 dropped
+  });
+
+  it('prints accessories per week, including ones added for later weeks only', () => {
+    const added = setDayAccessories(
+      plan,
+      { weekIndex: 1, dayIndex: 0 },
+      [...plan.weeks[1].days[0].accessories, { customName: 'Face pull', sets: 3, reps: '15' }],
+      true
+    );
+    const { aoa: accAoa } = buildPlanCrosstab(added, 'vi');
+    const face = accAoa.find((row) => String(row[1]).includes('Face pull') || String(row[2]).includes('Face pull'))!;
+    expect(face[0]).toBe('Thứ Hai');
+    expect(face[1]).toBe(''); // week 1 did not have it
+    expect(face[2]).toContain('Face pull');
+    expect(face[3]).toContain('Face pull');
+  });
+
+  it('lists the weeks off put into the block', () => {
+    const result = pauseAtWeek(plan, 1);
+    if (!result.ok) throw new Error(result.error);
+    const { aoa: pausedAoa } = buildPlanCrosstab(result.plan, 'vi');
+    const idx = pausedAoa.findIndex((row) => row[0] === 'Tuần nghỉ chèn thêm');
+    expect(idx).toBeGreaterThan(-1);
+    expect(pausedAoa[idx + 1][0]).toContain(' - ');
+  });
+
+  it("prints a linear block's own Training Max in the row label", () => {
+    const linear = generateBlockPlan(
+      { ...config, focus: 'linear', trainingMax: { bench_touch_and_go: 122.5, squat_standard: 200 } },
+      profile
+    );
+    const { aoa: tmAoa } = buildPlanCrosstab(linear, 'vi');
+    expect(tmAoa[3][0]).toBe('Planned TnG Bench (TM = 122,5)');
+    expect(tmAoa.some((row) => row[0] === 'Planned Squat (TM = 200)')).toBe(true);
+  });
+
+  it('the Actual row carries the RPE the lifter rated', () => {
+    const rated = setVariationRpe(plan, { weekIndex: 1, dayIndex: 0, variationIndex: 0 }, 8.5);
+    const { aoa: ratedAoa } = buildPlanCrosstab(rated, 'vi');
+    expect(ratedAoa[4]).toEqual(['Actual TnG Bench', '', 'RPE 8,5', '']);
   });
 });

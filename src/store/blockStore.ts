@@ -1,9 +1,21 @@
 import { create } from 'zustand';
 import type { LiftingSet, UserProfile } from '../types/energy';
-import type { GeneratedBlockPlan, NewTrainingBlockConfig } from '../types/powerliftingBlock';
-import { refreshSuggestions, setVariationSets, setWeekDates } from '../domain/energy/blockPlanEdits';
-import type { VariationAddress, WeekDatesError } from '../domain/energy/blockPlanEdits';
+import type { AccessoryLineItem, GeneratedBlockPlan, NewTrainingBlockConfig } from '../types/powerliftingBlock';
+import {
+  pauseAtWeek,
+  refreshSuggestions,
+  removeBreak,
+  setDayAccessories,
+  setDaySkipped,
+  setVariationSets,
+  setWeekDates,
+  setWeekSkipped,
+} from '../domain/energy/blockPlanEdits';
+import type { PauseWeekError, VariationAddress, WeekDatesError } from '../domain/energy/blockPlanEdits';
 import { generateBlockPlan } from '../domain/energy/blockEngine';
+import { applyCoachChange, dismissAdvice, setVariationRpe } from '../domain/energy/rpeCoach';
+import { setBlockTrainingMax, setFormRows } from '../domain/energy/blockForm';
+import type { FormLift } from '../domain/energy/blockForm';
 import { setDaySession } from '../domain/energy/blockSessions';
 import type { DayAddress } from '../domain/energy/blockSessions';
 import { logDueSessions, logPlanDay } from '../services/training/blockSessionService';
@@ -54,6 +66,23 @@ interface BlockState {
   // Logs every confirmed session whose time has come — run on app start, on
   // return to the foreground, and while the plan is open.
   runDueSessions: () => Promise<void>;
+  // Real life first (blockPlanEdits "Weeks off, days off"): drop a day or a
+  // whole week, or put a week off in so the rest moves later — all undoable.
+  setDaySkipped: (at: DayAddress, skipped: boolean) => Promise<void>;
+  setWeekSkipped: (weekIndex: number, skipped: boolean) => Promise<void>;
+  pauseAtWeek: (weekIndex: number) => Promise<PauseWeekError | null>;
+  removeBreak: (breakIndex: number) => Promise<void>;
+  // The user's own accessory lines for one day (optionally every later week too).
+  editDayAccessories: (at: DayAddress, accessories: AccessoryLineItem[], laterWeeksToo: boolean) => Promise<void>;
+  // RPE coach (rpeCoach.ts): how hard a lift felt (null clears it), applying a
+  // suggestion to the later weeks, or waving one away.
+  rateVariation: (at: VariationAddress, rpe: number | null) => Promise<void>;
+  applyCoach: (variationId: string, fromWeekIndex: number, change: { kg?: number; sets?: number }, heightCm: number) => Promise<void>;
+  dismissCoach: (key: string) => Promise<void>;
+  // "Form" (blockForm.ts): several rows saved at once, and a new Training Max
+  // that moves every session not yet trained (`lifted` = days with a lifting Xả).
+  editFormRows: (edits: { at: VariationAddress; sets: LiftingSet[] }[], heightCm: number) => Promise<void>;
+  setTrainingMax: (lift: FormLift, kg: number, heightCm: number, lifted: Set<string>) => Promise<void>;
 }
 
 const sessionDeps: BlockSessionDeps = {
@@ -170,6 +199,60 @@ export const useBlockStore = create<BlockState>((set, get) => {
     const block = get().activeBlock;
     if (!block) return;
     await saveActive(setDaySession(block, at, null));
+  },
+
+  setDaySkipped: async (at, skipped) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(setDaySkipped(block, at, skipped));
+  },
+
+  setWeekSkipped: async (weekIndex, skipped) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(setWeekSkipped(block, weekIndex, skipped));
+  },
+
+  pauseAtWeek: async (weekIndex) => {
+    const block = get().activeBlock;
+    if (!block) return null;
+    const result = pauseAtWeek(block, weekIndex);
+    if (!result.ok) return result.error;
+    await saveActive(result.plan);
+    return null;
+  },
+
+  removeBreak: async (breakIndex) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(removeBreak(block, breakIndex));
+  },
+
+  editDayAccessories: async (at, accessories, laterWeeksToo) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(setDayAccessories(block, at, accessories, laterWeeksToo));
+  },
+
+  rateVariation: async (at, rpe) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(setVariationRpe(block, at, rpe));
+  },
+
+  applyCoach: async (variationId, fromWeekIndex, change, heightCm) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(applyCoachChange(block, variationId, fromWeekIndex, change, heightCm));
+  },
+
+  dismissCoach: async (key) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(dismissAdvice(block, key));
+  },
+
+  editFormRows: async (edits, heightCm) => {
+    const block = get().activeBlock;
+    if (block && edits.length > 0) await saveActive(setFormRows(block, edits, heightCm));
+  },
+
+  setTrainingMax: async (lift, kg, heightCm, lifted) => {
+    const block = get().activeBlock;
+    if (block) await saveActive(setBlockTrainingMax(block, lift, kg, heightCm, lifted));
   },
 
   runDueSessions: async () => {

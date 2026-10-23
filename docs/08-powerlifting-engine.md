@@ -176,3 +176,92 @@ Kế hoạch app lập chỉ là **tham chiếu**; người dùng sửa thành k
   có Xả nâng tạ thì không ghi thêm (không trùng). Sau khi ghi, buổi Xả là của người dùng: dời/xoá trong Sổ tập như
   thường; Kế hoạch chỉ nhận ra ("Đã dời/xoá trong Sổ tập" → Ghi lại / Bỏ). Buổi đã hẹn có thể Đổi ngày (dd.mm), Ghi
   ngay, hoặc Huỷ. Phụ trợ (chữ tự do, không có mô hình kcal) không ghi vào Xả.
+
+## 12. Tạo từ lịch sử tập, nghỉ tuần/buổi, bài phụ tự viết (Session 63, 2026-10-23)
+
+Nguyên tắc chủ app chốt: **người dùng quyết định**. App chỉ gợi ý, mọi thứ sửa được trước và trong block.
+
+- **✨ Tạo tự động từ lịch sử tập** (`domain/energy/blockFromHistory.ts`, `inferBlockSetup`): đọc 42 ngày Xả gần nhất
+  (bỏ buổi thể hình và biến thể tự gõ tên).
+  - Ngày tập = thứ có buổi trong ≥ 40% số tuần có tập, và ít nhất 2 lần.
+  - Bài của mỗi ngày = biến thể có mặt trong ≥ 50% số buổi của thứ đó, tối đa 3 bài; bài thường làm đầu tiên là bài chính.
+  - 1RM = mốc tự ghi (`LiftMaxRecord`, trong vòng 84 ngày) nếu ≥ ước tính; còn lại lấy e1RM tốt nhất của bài thẳng
+    (`bestEstimatedMax`, Epley 1–10 rep), nếu chỉ có biến thể thì chia `loadFactor`. Làm tròn xuống 2,5 kg.
+  - Wizard điền các bước rồi nhảy tới **Tóm tắt** (có dòng 1RM). Quay lại sửa bước nào cũng được.
+- **Nghỉ giữa block** (`blockPlanEdits.ts`), nút 🏖 Nghỉ của mỗi tuần, người dùng chọn mỗi lần:
+  - *Dời các tuần sau* (`pauseAtWeek`): thêm `config.breaks` (1 tuần lịch), tuần này và các tuần sau lùi 7 ngày. Không
+    cho dời khi từ tuần đó trở đi đã có buổi `logged`. Bỏ ra bằng `removeBreak` (dòng 🏖 ↺ giữa hai tuần).
+  - *Bỏ tuần này* (`setWeekSkipped`): `week.skipped`, ngày giữ nguyên, ↺ Tập lại để bỏ.
+  - *Nghỉ một buổi* (`setDaySkipped`): `day.skipped`.
+  - Buổi đã hẹn (`planned`) nằm trong phần bị bỏ/dời sẽ bị xoá hẹn; `dueSessions` không bao giờ tự ghi ngày/tuần đã bỏ.
+- **Bài phụ trong plan đang chạy** (`setDayAccessories` + `BlockAccessoriesSheet`): tên tự gõ, số set, rep/ghi chú tự
+  do; gợi ý tên từ thư viện thể hình + bài tự thêm (không bắt buộc, không tính kcal). Tuỳ chọn áp cho cùng thứ ở các
+  tuần sau. `day.accessoriesEdited` giữ chúng khi `refreshSuggestions`.
+- **Excel xuất block** (`trainingBlockPrintSheet.ts`): tuần bỏ có tiêu đề "Tuần n (Nghỉ)" và ô "Nghỉ"; buổi bỏ ghi
+  "Nghỉ"; bài phụ mỗi bài một hàng, mỗi tuần một ô (thêm riêng cho tuần sau cũng hiện); mục "Tuần nghỉ chèn thêm" liệt
+  kê `config.breaks`. Sheet "Tổng theo tuần" có cột Ghi chú (Nghỉ / Nghỉ n buổi).
+- Mọi chữ có đủ vi/en/de (i18n-covered).
+
+## 13. Sửa theo bài — lưới tuần × thứ (Session 65, 2026-10-23)
+
+Chủ app muốn chỉnh **theo bài** chứ không mở từng tuần: màn Kế hoạch block có nút chuyển **📅 Theo tuần | 🏋️ Theo bài**.
+- `domain/energy/liftGrid.ts` (`buildLiftGrid`, `liftsInPlan`): với một bài (Squat/Bench/Deadlift), mỗi hàng một tuần,
+  mỗi cột một thứ có bài đó, mỗi ô = các biến thể của bài đó hôm ấy (địa chỉ week/day/variation trỏ thẳng vào plan),
+  đánh dấu ô nghỉ (tuần hoặc buổi đã bỏ).
+- `components/training/BlockLiftGrid.tsx`: chip chọn bài, lưới trong khung cao tối đa 360 (cuộn dọc; nhiều cột thì cuộn
+  ngang), ô vuông ghi ngày · viết tắt bài + set (Notes shorthand) · ~%1RM · ✎ nếu đã sửa. Bấm một dòng trong ô → khung sửa
+  hiện ngay dưới lưới.
+- Khung sửa là `VariationSetsEditor.tsx`, tách ra từ sheet ✎ cũ (`BlockVariationEditSheet` giờ chỉ bọc nó trong
+  BottomSheet), nên cách nhập, xem trước, "Chép gợi ý" và "Trả về gợi ý" giống hệt nhau ở cả hai chế độ.
+- i18n vi/en/de.
+
+## 14. Kiểu "Tịnh tiến" (tuyến tính) và block tiếp theo (Session 66, 2026-10-23)
+
+Bằng chứng và đối chiếu: `docs/nghien-cuu/2026-10-23-tinh-tien-tuyen-tinh-block.md`.
+- `focus: 'linear'` + `config.progression: LinearProgression` (`types/powerliftingBlock.ts`).
+  - `startPct`: %1RM tuần 1 của bài thẳng, mặc định 70.
+  - `stepMode` 'pct' | 'kg' và `step`: mỗi tuần +5 điểm % hoặc +2,5 kg.
+  - `variationOffsetPct`: biến thể có `loadFactor < 1` chạy thấp hơn bấy nhiêu điểm %, mặc định 5.
+  - `weeks[]`: set × rep của từng tuần, mặc định 4×5, 4×4, 3×4, 3×3, 3×2, test 1×1.
+- Engine (`resolveLinearDay`):
+  - Tạ = 1RM × % tuần (cộng `step × tuần` nếu chế độ kg), làm tròn 2,5 kg. Không có prime, không dùng mô hình RPE (RPE chỉ
+    đọc ngược để hiển thị). `reference.method = 'linear'`, `loadFactor = 1` (mức nhẹ hơn đã nằm trong %).
+  - Deload: tuần làm việc cuối −10 điểm %, một nửa số set (cùng quy tắc §2.1).
+- `linearProgression.ts`:
+  - `defaultLinearWeeks(n)`: block dài hơn lặp tuần làm việc cuối, tuần cuối là test.
+  - `resizeLinearWeeks`: giữ các hàng người dùng đã đặt khi đổi số tuần.
+  - `addVolume(±1)` và `nextBlockOneRepMax` (giữ nguyên / +5% làm tròn xuống 2,5 kg / +5 kg).
+- Wizard: thẻ "Tịnh tiến" + `LinearProgressionEditor` ở bước Mục tiêu. Bước Hồ sơ có chip "Lấy 1RM từ block trước" (giữ
+  / +5% / +5 kg / theo lịch sử tập). "Dùng cấu hình block trước" chép cả khung tịnh tiến. i18n vi/en/de.
+
+## 15. Tên bài, Training Max, ghi RPE và huấn luyện viên RPE (Session 67, 2026-10-23)
+
+Nguồn: `docs/nghien-cuu/2026-10-23-tm-rpe-coach.md` (có mục Đính chính: bench thi đấu IPF là **dừng ngực**).
+- **Tên bài** (cả 3 ngôn ngữ): Squat, Paused Squat, TnG Bench, Comp Bench (`bench_paused`), Close-grip Bench, Incline
+  Bench, Deadlift, Paused Deadlift, Deficit Deadlift. Tên cũ ở `aka` — ô tìm kiếm lịch tập khớp cả hai.
+- **Training Max** — `config.trainingMax?: Record<variationId, kg>`, chỉ dùng với `focus 'linear'`:
+  - Gợi ý `suggestTrainingMax` = floor2.5(0,9 × 1RM bài gốc × `loadFactor`). Ô để trống = dùng gợi ý.
+  - Engine: biến thể có TM riêng → tạ = TM × % tuần (không trừ `variationOffsetPct`); không có → 1RM như §14.
+  - Wizard có bước `tm` (chỉ hiện với Tịnh tiến), chip TM block trước giữ / +5% / +5 kg (`nextBlockTrainingMax`).
+  - Excel: "Planned {bài} (TM = x)" / "Actual {bài}"; TM = `trainingMax[id]` ?? 1RM × loadFactor; dòng Actual ghi `RPE x`.
+- **Ghi RPE** — `ResolvedVariationPlan.actualRpe` (5–10, bước 0,5), ghi trong ô kế hoạch của buổi đã tập (theo tuần và
+  lưới theo bài) qua `RpeChips`; chạm lại để xoá. `blockStore.rateVariation`.
+- **Huấn luyện viên RPE** (`rpeCoach.ts`, `RpeCoachCard`):
+  - Lấy 2 buổi được ghi cuối của một biến thể (bỏ buổi test 1×1). Mục tiêu = `reference.targetRpe` khi ô chưa bị sửa tay.
+  - Dễ: cả 2 buổi ≤ mục tiêu − 1,5 → +2,5 kg bench / +5 kg squat-deadlift, thêm "＋1 set" khi bài < 10 set làm việc/tuần.
+  - Khó: cả 2 buổi ≥ mục tiêu + 1 (hoặc ≥ 9,5) → −2,5 / −5 kg.
+  - Chỉ gợi ý; "Áp dụng" (`applyCoachChange`) sửa các tuần sau buổi ghi cuối, bỏ ngày/tuần nghỉ, qua `setVariationSets`.
+    "Bỏ qua" lưu khoá vào `config.coachDismissed`.
+
+## 16. Chế độ "Form" — sửa block theo mẫu bảng của chủ app (Session 68, 2026-10-23)
+
+Nút thứ 3 trong kế hoạch: 📅 Theo tuần · 🏋️ Theo bài · 📋 Form (`BlockFormView.tsx`, logic thuần `blockForm.ts`).
+- Chọn một biến thể (chip vuốt ngang), **TM** ở trên (`blockTrainingMax`: `config.trainingMax[id]` ?? 1RM × loadFactor —
+  Excel dùng cùng hàm), rồi **một dòng mỗi buổi**: ô gõ "1x1@110 5x5@95" (prime "95 + …"), dưới là
+  "1×1 @ 110 94% · 5×5 @ 95 81%". Tuần có 2 buổi cùng bài thì nhãn thêm thứ (B1W1 T2).
+- Gõ được theo **% TM**: `resolvePercents` đổi "5x5@81%" / "94%" thành kg (làm tròn 2,5) trước khi `parseSetNotation` đọc.
+- Sửa nhiều dòng rồi lưu một lần (`setFormRows` → `blockStore.editFormRows`). Dòng lỗi viền đỏ, nút Lưu tắt.
+- **Đổi TM** (`setBlockTrainingMax` → `blockStore.setTrainingMax`): lưu TM vào config, các buổi **chưa tập** nhân tạ theo
+  TM mới ÷ TM cũ (giữ % TM), buổi đã tập và ngày/tuần nghỉ giữ nguyên. Phải lưu các dòng đang sửa trước.
+- Màu dòng như lưới: đã tập xanh nhạt, chưa tập mặc định, nghỉ xám. i18n vi/en/de (`planAppendix.viewForm`, `planAppendix.form.*`).
+

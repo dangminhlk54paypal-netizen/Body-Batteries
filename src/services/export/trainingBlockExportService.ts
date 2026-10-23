@@ -20,6 +20,12 @@ export async function exportTrainingBlockToExcelFile(
 ): Promise<string> {
   const t = (key: string, vars?: Record<string, string | number>) => translate(language, key, vars);
   const { weeks } = plan;
+  // A week the user took off, or how many of its sessions they dropped.
+  const weekNote = (w: BlockWeekPlan) => {
+    if (w.skipped) return t('export.trainingBlock.offCell');
+    const off = w.days.filter((d) => d.skipped).length;
+    return off > 0 ? t('export.trainingBlock.daysOff', { count: off }) : '';
+  };
 
   const { aoa, styledCells, colCount } = buildPlanCrosstab(plan, language, useSettingsStore.getState().nickname);
   const planSheet = utils.aoa_to_sheet(aoa);
@@ -31,6 +37,7 @@ export async function exportTrainingBlockToExcelFile(
     [t('export.trainingBlock.dateRange')]: `${formatDisplayDate(w.startDate, language)} - ${formatDisplayDate(w.endDate, language)}`,
     [t('export.trainingBlock.kcal')]: w.totalKcal,
     [t('export.trainingBlock.deficitTarget')]: w.weeklyDeficitTargetKcal ?? '',
+    [t('export.trainingBlock.note')]: weekNote(w),
   }));
   const weekSheet = utils.json_to_sheet(weekRows);
   autoFitColumns(weekSheet);

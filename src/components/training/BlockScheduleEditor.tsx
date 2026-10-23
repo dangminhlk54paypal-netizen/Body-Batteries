@@ -49,6 +49,9 @@ export function BlockScheduleEditor({ days, onChange, onUseTemplate }: Props) {
       WEEK_ORDER.findIndex((dow) => days.some((d) => d.dayOfWeek === dow))
     )
   );
+  // A tap on the day strip is animating the pager to this page: the scroll
+  // events of the days it passes must not move the selection.
+  const tapTarget = useRef<number | null>(null);
   const [width, setWidth] = useState(0);
   const [picker, setPicker] = useState<PickerTarget | null>(null);
   const [query, setQuery] = useState('');
@@ -61,14 +64,34 @@ export function BlockScheduleEditor({ days, onChange, onUseTemplate }: Props) {
   }
 
   function goTo(index: number) {
+    tapTarget.current = index;
     setPage(index);
     pagerRef.current?.scrollTo({ x: index * width, animated: true });
   }
 
-  function onPagerScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    if (width <= 0) return;
+  function pageAt(e: NativeSyntheticEvent<NativeScrollEvent>): number | null {
+    if (width <= 0) return null;
     const i = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (i !== page && i >= 0 && i < WEEK_ORDER.length) setPage(i);
+    return i >= 0 && i < WEEK_ORDER.length ? i : null;
+  }
+
+  // Live highlight while the finger drags.
+  function onPagerScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    if (tapTarget.current != null) return;
+    const i = pageAt(e);
+    if (i != null && i !== page) setPage(i);
+  }
+
+  // The finger takes over from any tap animation still running.
+  function onPagerDragStart() {
+    tapTarget.current = null;
+  }
+
+  // Fires when a swipe settles and when a tap's animation ends.
+  function onPagerSettled(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    tapTarget.current = null;
+    const i = pageAt(e);
+    if (i != null) setPage(i);
   }
 
   function openPicker(dayOfWeek: Weekday, index: number | null) {
@@ -266,7 +289,12 @@ export function BlockScheduleEditor({ days, onChange, onUseTemplate }: Props) {
     const groups = LIFTING_EXERCISES.map((exercise) => ({
       exercise,
       items: variationsForExercise(exercise).filter((v) =>
-        matchesSearch(query, [t(`activities.${exercise}`), t(`blockVariations.${v.id}.label`)])
+        // The short lifter name ("Comp Bench") or the descriptive one ("bench có dừng") both find it.
+        matchesSearch(query, [
+          t(`activities.${exercise}`),
+          t(`blockVariations.${v.id}.label`),
+          t(`blockVariations.${v.id}.aka`),
+        ])
       ),
     })).filter((g) => g.items.length > 0);
     return (
@@ -324,22 +352,63 @@ export function BlockScheduleEditor({ days, onChange, onUseTemplate }: Props) {
         {picker ? (
           renderPicker(picker)
         ) : width > 0 ? (
-          <ScrollView
-            ref={pagerRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: page * width, y: 0 }}
+          <DayPager
+            scrollRef={pagerRef}
+            initialPage={page}
+            width={width}
             onScroll={onPagerScroll}
-            scrollEventThrottle={16}
-            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={onPagerDragStart}
+            onMomentumScrollEnd={onPagerSettled}
           >
             {WEEK_ORDER.map(renderPage)}
-          </ScrollView>
+          </DayPager>
         ) : null}
       </View>
       {!picker && <Text style={styles.swipeHint}>{t('blockBuilder.scheduleSwipeHint')}</Text>}
     </View>
+  );
+}
+
+type ScrollHandler = (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+
+// The horizontal day pager. Its start offset is fixed when it mounts (on the
+// day open at that moment — it remounts after the lift picker closes): on iOS
+// every change of the contentOffset prop jumps the scroll position at once,
+// even mid-drag or mid-animation, so it must never follow the selected day.
+// That feedback loop made a tap land on the wrong day and a swipe jerk.
+function DayPager({
+  scrollRef,
+  initialPage,
+  width,
+  onScroll,
+  onScrollBeginDrag,
+  onMomentumScrollEnd,
+  children,
+}: {
+  scrollRef: React.RefObject<React.ComponentRef<typeof ScrollView> | null>;
+  initialPage: number;
+  width: number;
+  onScroll: ScrollHandler;
+  onScrollBeginDrag: ScrollHandler;
+  onMomentumScrollEnd: ScrollHandler;
+  children: React.ReactNode;
+}) {
+  const [contentOffset] = useState(() => ({ x: initialPage * width, y: 0 }));
+  return (
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      contentOffset={contentOffset}
+      onScroll={onScroll}
+      onScrollBeginDrag={onScrollBeginDrag}
+      onMomentumScrollEnd={onMomentumScrollEnd}
+      scrollEventThrottle={16}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
   );
 }
 

@@ -3,28 +3,48 @@ import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-
 import { BottomSheet } from './ui/BottomSheet';
 import { useSettingsStore } from '../store/settingsStore';
 import { useBlockStore } from '../store/blockStore';
-import { estimateBeginnerOneRepMax } from '../domain/energy/blockEngine';
+import { estimateBeginnerOneRepMax, resolveOneRepMax } from '../domain/energy/blockEngine';
 import { blockStartForCurrentWeek, nextBlockNumber } from '../domain/energy/blockStart';
 import { blockWeekDates, mergeSameWeekday } from '../domain/energy/blockSchedule';
-import { formatDisplayDate, upcomingMondays } from '../lib/dateUtils';
 import { parseDecimal } from '../lib/units';
 import { useT } from '../i18n/useT';
 import * as haptics from '../lib/haptics';
 import type { ThemeColors } from '../lib/theme';
 import { useThemedStyles } from '../hooks/useThemeColors';
 import { LIFTING_EXERCISES } from '../types/energy';
+import type { LiftingExercise } from '../types/energy';
 import { BlockScheduleEditor } from './training/BlockScheduleEditor';
+import { LinearProgressionEditor } from './training/LinearProgressionEditor';
+import {
+  defaultLinearProgression,
+  linearWeekPct,
+  nextBlockOneRepMax,
+  nextBlockTrainingMax,
+  resizeLinearWeeks,
+  suggestTrainingMax,
+  type NextBlockOneRepMax,
+} from '../domain/energy/linearProgression';
 import type {
   BlockDayPlan,
   GeneratedBlockPlan,
+  LinearProgression,
   NewTrainingBlockConfig,
   OneRepMaxInput,
   TrainingFocus,
 } from '../types/powerliftingBlock';
 import { listTrainingBlocks } from '../data/repositories/trainingBlockRepository';
+import { getActivityLogInRange } from '../data/repositories/activityLogRepository';
+import { listLiftMaxes } from '../data/repositories/liftMaxRepository';
+import { HISTORY_LOOKBACK_DAYS, inferBlockSetup, type HistoryBlockSetup } from '../domain/energy/blockFromHistory';
+import { daysAgo, formatDisplayDate, todayString, upcomingMondays } from '../lib/dateUtils';
+import { LOCALE_TAGS } from '../i18n/types';
 
-const STEPS = ['length', 'profile', 'focus', 'schedule', 'deficit', 'summary'] as const;
-type Step = (typeof STEPS)[number];
+const ALL_STEPS = ['length', 'profile', 'focus', 'schedule', 'tm', 'deficit', 'summary'] as const;
+type Step = (typeof ALL_STEPS)[number];
+// The Training Max step only matters for "Tịnh tiến", whose weeks are % of TM.
+function stepsFor(focus: TrainingFocus): readonly Step[] {
+  return focus === 'linear' ? ALL_STEPS : ALL_STEPS.filter((s) => s !== 'tm');
+}
 
 // How many upcoming Mondays to offer as quick-picks for "which week does
 // this block start" — people typically plan 1-2 weeks ahead, so a handful
@@ -34,6 +54,15 @@ const MONDAY_QUICK_PICK_COUNT = 5;
 // The user's own SBD split (Mon paused bench+incline / Wed main squat+paused
 // deadlift / Fri touch-and-go bench+low grip / Sun main deadlift+paused
 // squat) — offered as a one-tap starting point in the schedule step.
+function tmToInputs(tm: Record<string, number>): Record<string, string> {
+  return Object.fromEntries(Object.entries(tm).map(([id, kg]) => [id, String(kg)]));
+}
+
+// Module-level wrapper so the clock read stays out of the component body.
+function historyRange(): { from: string; to: string } {
+  return { from: daysAgo(HISTORY_LOOKBACK_DAYS), to: todayString() };
+}
+
 function suggestedTemplateDays(): BlockDayPlan[] {
   return [
     {
@@ -102,6 +131,11 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   const [bodyWeightInput, setBodyWeightInput] = useState(String(profile.weightKg));
   const [oneRm, setOneRm] = useState<OneRmInputs>({ squat: '', bench_press: '', deadlift: '' });
   const [focus, setFocus] = useState<TrainingFocus>('normal');
+  // "Tịnh tiến" set-up; fitted to the block's length wherever it is read.
+  const [progressionDraft, setProgressionDraft] = useState<LinearProgression>(() => defaultLinearProgression(5));
+  // The block's Training Max per variation (variationId → typed kg); blank =
+  // the suggestion (90% of the lift's 1RM × the variation's load factor).
+  const [tmInputs, setTmInputs] = useState<Record<string, string>>({});
   const [days, setDays] = useState<BlockDayPlan[]>([]);
   const [deficitModeEnabled, setDeficitModeEnabled] = useState(
     profile.goalWeightKg != null && profile.goalWeightKg < profile.weightKg
@@ -113,6 +147,10 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   // block. Same promise + cancelled-flag pattern as PowerliftingSheet's
   // "Dùng làm mẫu" history fetch.
   const [prevBlock, setPrevBlock] = useState<GeneratedBlockPlan | null>(null);
+  // "Tạo tự động": what the last weeks of training say (blockFromHistory.ts);
+  // null = no lifting history to read. `autoFilled` marks that the user used it.
+  const [historySetup, setHistorySetup] = useState<HistoryBlockSetup | null>(null);
+  const [autoFilled, setAutoFilled] = useState(false);
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
@@ -121,12 +159,19 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       setPrevBlock(blocks[0] ?? null);
       setBlockNumberInput(String(nextBlockNumber(blocks)));
     });
+    const range = historyRange();
+    Promise.all([getActivityLogInRange(range.from, range.to), listLiftMaxes()])
+      .then(([entries, liftMaxes]) => {
+        if (!cancelled) setHistorySetup(inferBlockSetup({ entries, liftMaxes, today: range.to }));
+      })
+      .catch((e) => console.warn('BlockBuilderWizard: reading the training history failed', e));
     return () => {
       cancelled = true;
     };
   }, [visible]);
 
-  const step: Step = STEPS[stepIndex];
+  const steps = stepsFor(focus);
+  const step: Step = steps[Math.min(stepIndex, steps.length - 1)];
   const bodyWeightKg = parseDecimal(bodyWeightInput) || 0;
   const progressiveWeeks = Math.max(1, Math.round(parseDecimal(progressiveWeeksInput)) || 1);
   const totalWeeks = progressiveWeeks + (hasDeload ? 1 : 0);
@@ -137,6 +182,27 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   const weekStartDate = currentWeek > 1 ? blockStartForCurrentWeek(mondayChoices[0], currentWeek) : pickedStartDate;
   const scheduleInvalid = days.length === 0 || days.some((d) => d.variations.length === 0);
   const weekDates = blockWeekDates(weekStartDate, progressiveWeeks, hasDeload);
+  // Every variation in the schedule, once, in schedule order — the TM rows.
+  const tmVariations = days
+    .flatMap((d) => d.variations)
+    .filter((v, i, all) => all.findIndex((x) => x.variationId === v.variationId) === i);
+  const liftMaxes = resolveOneRepMax(
+    {
+      squat: parseDecimal(oneRm.squat) || undefined,
+      bench_press: parseDecimal(oneRm.bench_press) || undefined,
+      deadlift: parseDecimal(oneRm.deadlift) || undefined,
+    },
+    bodyWeightKg
+  );
+  const tmSuggestion = (v: { variationId: string; exercise: LiftingExercise }) =>
+    suggestTrainingMax(v.variationId, liftMaxes[v.exercise].value);
+  const trainingMax: Record<string, number> = Object.fromEntries(
+    tmVariations.map((v) => [v.variationId, parseDecimal(tmInputs[v.variationId] ?? '') || tmSuggestion(v)])
+  );
+  const progression: LinearProgression = {
+    ...progressionDraft,
+    weeks: resizeLinearWeeks(progressionDraft.weeks, progressiveWeeks),
+  };
   const weekName = (w: { week: number; isDeload: boolean }) =>
     w.isDeload ? t('trainingLog.deloadLabel', { b: blockNumber }) : t('trainingLog.weekLabel', { b: blockNumber, n: w.week });
 
@@ -149,8 +215,27 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
     setBodyWeightInput(String(profile.weightKg));
     setOneRm({ squat: '', bench_press: '', deadlift: '' });
     setFocus('normal');
+    setProgressionDraft(defaultLinearProgression(5));
+    setTmInputs({});
     setDays([]);
+    setAutoFilled(false);
     onClose();
+  }
+
+  // Fills every step from the training history, then shows the summary: the
+  // user checks it, goes back to change any step, or creates the block. Only
+  // fills what the history knows; the rest keeps its current value.
+  function applyHistorySetup() {
+    if (!historySetup) return;
+    const kg = (lift: keyof OneRmInputs) => {
+      const v = historySetup.oneRepMax[lift]?.kg;
+      return v != null ? String(v) : oneRm[lift];
+    };
+    setOneRm({ squat: kg('squat'), bench_press: kg('bench_press'), deadlift: kg('deadlift') });
+    if (historySetup.schedule.length > 0) setDays(historySetup.schedule);
+    setAutoFilled(true);
+    haptics.success();
+    setStepIndex(steps.indexOf('summary'));
   }
 
   // Copies the previous block's bodyweight/1RM/schedule as a starting point
@@ -167,6 +252,36 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       deadlift: prev.oneRepMax.deadlift ? String(prev.oneRepMax.deadlift) : '',
     });
     setDays(mergeSameWeekday(prev.schedule));
+    // A linear set-up comes along too, ready if the user picks "Tịnh tiến".
+    if (prev.progression) setProgressionDraft(prev.progression);
+    if (prev.trainingMax) setTmInputs(tmToInputs(prev.trainingMax));
+  }
+
+  // The last block's TMs for this one: the same, +5% or +5 kg.
+  function applyNextBlockTm(mode: NextBlockOneRepMax) {
+    const prevTm = prevBlock?.config.trainingMax;
+    if (!prevTm) return;
+    setTmInputs(tmToInputs(nextBlockTrainingMax(prevTm, mode)));
+    haptics.tapLight();
+  }
+
+  // The 1RMs for the next block, from the last block's: the same, +5% or +5 kg.
+  function applyNextBlockOneRm(mode: NextBlockOneRepMax) {
+    if (!prevBlock) return;
+    const next = nextBlockOneRepMax(prevBlock.config.oneRepMax, mode);
+    const str = (kg?: number) => (kg ? String(kg) : '');
+    setOneRm({ squat: str(next.squat), bench_press: str(next.bench_press), deadlift: str(next.deadlift) });
+    haptics.tapLight();
+  }
+
+  function applyHistoryOneRm() {
+    if (!historySetup) return;
+    const kg = (lift: keyof OneRmInputs) => {
+      const v = historySetup.oneRepMax[lift]?.kg;
+      return v != null ? String(v) : oneRm[lift];
+    };
+    setOneRm({ squat: kg('squat'), bench_press: kg('bench_press'), deadlift: kg('deadlift') });
+    haptics.tapLight();
   }
 
   function goNext() {
@@ -178,7 +293,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       haptics.warning();
       return;
     }
-    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   }
   function goBack() {
     setStepIndex((i) => Math.max(i - 1, 0));
@@ -206,6 +321,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       },
       bodyWeightKg,
       deficitModeEnabled,
+      ...(focus === 'linear' ? { progression, trainingMax } : {}),
     };
     const plan = await createBlock(config, { ...profile, weightKg: bodyWeightKg });
     haptics.success();
@@ -229,6 +345,17 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   function renderLengthStep() {
     return (
       <View style={styles.stepBody}>
+        {historySetup && historySetup.schedule.length > 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.templateBtn, styles.autoBtn, pressed && styles.pressed]}
+            onPress={applyHistorySetup}
+          >
+            <Text style={styles.templateBtnText}>{t('blockBuilder.autoFromHistoryButton')}</Text>
+            <Text style={styles.description}>
+              {t('blockBuilder.autoFromHistoryHint', { sessions: historySetup.sessions, weeks: historySetup.weeks })}
+            </Text>
+          </Pressable>
+        )}
         {prevBlock && (
           <Pressable
             style={({ pressed }) => [styles.templateBtn, pressed && styles.pressed]}
@@ -331,6 +458,19 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
           onChangeText={setBodyWeightInput}
         />
         <Text style={styles.sectionTitle}>{t('blockBuilder.oneRmSectionTitle')}</Text>
+        {prevBlock && (
+          <View style={styles.nextBlockBox}>
+            <Text style={styles.description}>{t('blockBuilder.nextBlock.title')}</Text>
+            <View style={styles.chipRow}>
+              {(['same', 'pct5', 'kg5'] as const).map((mode) =>
+                renderChip(t(`blockBuilder.nextBlock.${mode}`), false, () => applyNextBlockOneRm(mode), mode)
+              )}
+              {historySetup && Object.keys(historySetup.oneRepMax).length > 0
+                ? renderChip(t('blockBuilder.nextBlock.fromHistory'), false, applyHistoryOneRm, 'history')
+                : null}
+            </View>
+          </View>
+        )}
         {LIFTING_EXERCISES.map((exercise) => {
           const key = exercise === 'squat' ? 'squat' : exercise === 'bench_press' ? 'bench_press' : 'deadlift';
           const labelKey =
@@ -374,6 +514,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
       },
       { key: 'normal', labelKey: 'blockBuilder.focusNormalLabel', descKey: 'blockBuilder.focusNormalDescription' },
       { key: 'peaking', labelKey: 'blockBuilder.focusPeakingLabel', descKey: 'blockBuilder.focusPeakingDescription' },
+      { key: 'linear', labelKey: 'blockBuilder.focusLinearLabel', descKey: 'blockBuilder.focusLinearDescription' },
     ];
     return (
       <View style={styles.stepBody}>
@@ -390,6 +531,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
             </Pressable>
           );
         })}
+        {focus === 'linear' && <LinearProgressionEditor value={progression} onChange={setProgressionDraft} />}
       </View>
     );
   }
@@ -403,6 +545,39 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
             {days.length === 0 ? t('blockBuilder.validationNeedDay') : t('blockBuilder.validationNeedVariation')}
           </Text>
         )}
+      </View>
+    );
+  }
+
+  function renderTrainingMaxStep() {
+    const prevTm = prevBlock?.config.trainingMax;
+    return (
+      <View style={styles.stepBody}>
+        <Text style={styles.description}>{t('blockBuilder.tm.hint')}</Text>
+        {prevTm && (
+          <View style={styles.nextBlockBox}>
+            <Text style={styles.description}>{t('blockBuilder.tm.fromPrev')}</Text>
+            <View style={styles.chipRow}>
+              {(['same', 'pct5', 'kg5'] as const).map((mode) =>
+                renderChip(t(`blockBuilder.nextBlock.${mode}`), false, () => applyNextBlockTm(mode), `tm-${mode}`)
+              )}
+            </View>
+          </View>
+        )}
+        {tmVariations.map((v) => (
+          <View key={v.variationId} style={styles.inlineRow}>
+            <Text style={[styles.fieldLabel, styles.inlineLabel]}>{t(`blockVariations.${v.variationId}.label`)}</Text>
+            <TextInput
+              style={[styles.input, styles.inlineInput]}
+              keyboardType="decimal-pad"
+              placeholder={String(tmSuggestion(v))}
+              value={tmInputs[v.variationId] ?? ''}
+              onChangeText={(text) => setTmInputs((cur) => ({ ...cur, [v.variationId]: text }))}
+              accessibilityLabel={t('blockBuilder.tm.inputA11y', { lift: t(`blockVariations.${v.variationId}.label`) })}
+            />
+          </View>
+        ))}
+        <Text style={styles.description}>{t('blockBuilder.tm.blankHint')}</Text>
       </View>
     );
   }
@@ -431,8 +606,19 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
   }
 
   function renderSummaryStep() {
+    const num = (n: number) => n.toLocaleString(LOCALE_TAGS[language]);
+    const oneRmValues = LIFTING_EXERCISES.map((exercise) => {
+      const kg = parseDecimal(oneRm[exercise]);
+      const value = kg > 0 ? `${kg.toLocaleString(LOCALE_TAGS[language])} kg` : t('blockBuilder.summaryOneRmBlank');
+      return `${t(`activities.${exercise}`)} ${value}`;
+    }).join(' · ');
     return (
       <View style={styles.stepBody}>
+        {autoFilled && historySetup && (
+          <Text style={styles.autoNote}>
+            {t('blockBuilder.summaryAutoLine', { sessions: historySetup.sessions, weeks: historySetup.weeks })}
+          </Text>
+        )}
         <Text style={styles.summaryLine}>{t('blockBuilder.summaryBlockNumberLine', { n: blockNumber })}</Text>
         <Text style={styles.summaryLine}>
           {t('blockBuilder.summaryStartDateLine', { date: formatDisplayDate(weekStartDate, language) })}
@@ -447,6 +633,32 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
           {t('blockBuilder.summaryFocusLine', { focus: t(`blockBuilder.focus${capitalize(focus)}Label`) })}
         </Text>
         <Text style={styles.summaryLine}>{t('blockBuilder.summaryDayCountLine', { count: days.length })}</Text>
+        <Text style={styles.summaryLine}>{t('blockBuilder.summaryOneRmLine', { values: oneRmValues })}</Text>
+        {focus === 'linear' && tmVariations.length > 0 && (
+          <Text style={styles.summaryLine}>
+            {t('blockBuilder.summaryTmLine', {
+              values: tmVariations
+                .map((v) => `${t(`blockVariations.${v.variationId}.label`)} ${num(trainingMax[v.variationId])}`)
+                .join(' · '),
+            })}
+          </Text>
+        )}
+        {focus === 'linear' && (
+          <Text style={styles.summaryLine}>
+            {t('blockBuilder.summaryLinearLine', {
+              start: num(progression.startPct),
+              n: progression.weeks.length,
+              end:
+                progression.stepMode === 'pct'
+                  ? `${num(linearWeekPct(progression, progression.weeks.length - 1))}%`
+                  : `${num(progression.startPct)}% +${num(progression.step * (progression.weeks.length - 1))} kg`,
+              step: progression.stepMode === 'pct' ? `+${num(progression.step)}%` : `+${num(progression.step)} kg`,
+              weeks: progression.weeks
+                .map((w) => (w.test ? t('blockBuilder.linear.testShort') : `${w.sets}×${w.reps}`))
+                .join(' · '),
+            })}
+          </Text>
+        )}
         <Text style={styles.summaryLine}>
           {deficitModeEnabled ? t('blockBuilder.summaryDeficitOnLine') : t('blockBuilder.summaryDeficitOffLine')}
         </Text>
@@ -472,6 +684,7 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
     profile: renderProfileStep,
     focus: renderFocusStep,
     schedule: renderScheduleStep,
+    tm: renderTrainingMaxStep,
     deficit: renderDeficitStep,
     summary: renderSummaryStep,
   };
@@ -481,11 +694,12 @@ export function BlockBuilderWizard({ visible, onClose, onCreated }: Props) {
     profile: 'blockBuilder.stepProfile',
     focus: 'blockBuilder.stepFocus',
     schedule: 'blockBuilder.stepSchedule',
+    tm: 'blockBuilder.stepTm',
     deficit: 'blockBuilder.stepDeficit',
     summary: 'blockBuilder.stepSummary',
   };
 
-  const isLastStep = stepIndex === STEPS.length - 1;
+  const isLastStep = step === 'summary';
 
   return (
     <BottomSheet visible={visible} onClose={resetAndClose} sheetOffset={700}>
@@ -603,6 +817,9 @@ const createStyles = (c: ThemeColors) =>
       borderColor: c.accentAlt,
     },
     templateBtnText: { color: c.accentAltLight, fontSize: 12, fontWeight: '700' },
+    autoBtn: { gap: 4, borderColor: c.accent },
+    nextBlockBox: { gap: 6 },
+    autoNote: { color: c.accent, fontSize: 12, fontWeight: '600', lineHeight: 17 },
     validationText: { color: c.dangerStrong, fontSize: 12, marginTop: 4 },
     inlineRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     inlineLabel: { flex: 1 },

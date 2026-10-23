@@ -24,9 +24,10 @@ export const POWERLIFTING_VARIATIONS: PowerliftingVariation[] = [
   // assist out of the hole — same rationale as deadlift_paused below.
   { id: 'squat_paused', exercise: 'squat', loadFactor: 0.9 },
 
-  // Bench press — touch-and-go (touch chest, no pause) IS the standard
-  // competition-legal technique, so it doubles as this lift's "straight 1RM"
-  // entry; there is no separate bench_standard.
+  // Bench press — touch-and-go ("TnG Bench") is this lift's straight-1RM entry
+  // (loadFactor 1): it moves the most weight. It is NOT the competition lift —
+  // IPF rules require the bar motionless on the chest until "Press", which is
+  // bench_paused ("Comp Bench"). See docs/nghien-cuu/2026-10-23-tm-rpe-coach.md.
   { id: 'bench_touch_and_go', exercise: 'bench_press', loadFactor: 1.0 },
   // 1s dead-stop pause on the chest before pressing — removes the SSC assist,
   // trains starting strength from a true dead position (competition-judging

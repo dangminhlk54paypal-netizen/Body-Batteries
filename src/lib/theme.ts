@@ -23,6 +23,12 @@ export const darkColors = {
   bgElevated: '#2d2d44',
   bgHighlight: '#16213e',
   bgAlt: '#26263d',
+  // Block plan session squares (Kế hoạch block): trained = soft green, taken
+  // off = grey; not yet trained keeps the card's own colour. Opaque, so the
+  // set text on them keeps its normal contrast.
+  planDoneBg: '#1C3B2B',
+  planDoneBorder: '#2F6B47',
+  planSkippedBg: '#2A2A33',
 
   // ── Borders / dividers ───────────────────────────────────────────────────
   border: '#444',
@@ -137,6 +143,9 @@ export const lightColors: ThemeColors = {
   bgElevated: '#E8E8F0',
   bgHighlight: '#EDF1FA',
   bgAlt: '#EFEFF5',
+  planDoneBg: '#E3F5DD',
+  planDoneBorder: '#9BD58A',
+  planSkippedBg: '#E2E2E8',
 
   // ── Borders / dividers ───────────────────────────────────────────────────
   border: '#CCC',

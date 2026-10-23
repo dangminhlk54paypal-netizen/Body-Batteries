@@ -2,6 +2,9 @@ import type { LiftingExercise, LiftingSet, UserProfile } from '../../types/energ
 import { LIFTING_EXERCISES } from '../../types/energy';
 import type {
   BlockDayPlan,
+  BlockDayVariation,
+  LinearProgression,
+  LinearWeekStep,
   BlockWeekPlan,
   GeneratedBlockPlan,
   OneRepMaxInput,
@@ -16,6 +19,7 @@ import { liftingSessionKcal, estimateLiftingMinutes } from './liftingEngine';
 import { dailyCalorieTarget } from './weightGoal';
 import { BARBELL_WEIGHT_KG } from '../../lib/metabolicConstants';
 import { addDaysToDateString, mondayFirstRank } from '../../lib/dateUtils';
+import { LINEAR_LIMITS, defaultLinearProgression, linearWeekPct, resizeLinearWeeks } from './linearProgression';
 
 // Pure functions for the S-PL Block Builder's programming engine. Every
 // constant here is grounded in docs/08-powerlifting-engine.md — read that
@@ -214,7 +218,7 @@ function weekPosition(weekIndex: number, progressiveWeeks: number): number {
 // focus, how far into the block this week is, and which day-in-order
 // (0-based, by schedule order) this is — only 'normal' uses the day index.
 export function focusCurvePoint(
-  focus: TrainingFocus,
+  focus: Exclude<TrainingFocus, 'linear'>,
   weekIndex: number,
   progressiveWeeks: number,
   dayIndexInWeek: number
@@ -340,6 +344,119 @@ function resolveDayWithPoint(
   return { dayOfWeek: day.dayOfWeek, variations, accessories: day.accessories, totalKcal, totalMinutes };
 }
 
+// ---- 3c. Linear progression ("Tịnh tiến") ----------------------------------
+
+// The user's own frame (TrainingBlockConfig.progression, linearProgression.ts):
+// the week's %1RM (or a kg step on the bar), their sets × reps, and a lighter
+// variation a few %1RM points lower. No RPE model and no prime — the plan
+// shows exactly the numbers they set; the RPE is only read back for display.
+function linearVariation(
+  variation: BlockDayVariation,
+  pctOfLift: number,
+  extraKg: number,
+  step: LinearWeekStep,
+  method: 'linear' | 'deload',
+  baseMaxKg: number, // the variation's Training Max, else its lift's 1RM
+  bodyWeightKg: number,
+  heightCm: number
+): ResolvedVariationPlan {
+  const oneRepMax = baseMaxKg;
+  const weightKg = Math.max(roundToPlate(oneRepMax * (pctOfLift / 100) + extraKg), oneRepMax > 0 ? BARBELL_WEIGHT_KG : 0);
+  const sets: LiftingSet[] = Array.from({ length: step.sets }, () => ({ kind: 'working', weightKg, reps: step.reps }));
+  // What the bar really is as % of the lift's 1RM (the kg step moves it).
+  const pct1rm = oneRepMax > 0 ? Math.round((weightKg / oneRepMax) * 100) : Math.round(pctOfLift);
+  const estimatedKcal = liftingSessionKcal(variation.exercise, sets, bodyWeightKg, heightCm);
+  const reference: VariationReference = {
+    sets,
+    pct1rm,
+    estimatedKcal,
+    method,
+    targetRpe: pct1rm > 0 ? rpeForLoad(pct1rm, step.sets, step.reps) : 0,
+    fatigueRir: fatigueRir(step.sets, step.reps),
+    extraRir: 0,
+    repsToFailure: 0,
+    oneRepMaxKg: oneRepMax, // the TM when the block has one — "% of TM"
+    loadFactor: 1, // the offset (or the variation's own TM) already sits in pct1rm
+  };
+  return { variation, pct1rm, sets, estimatedKcal, reference };
+}
+
+function isLighterVariation(variationId: string): boolean {
+  return (findVariation(variationId)?.loadFactor ?? 1) < 1;
+}
+
+function linearDay(
+  day: BlockDayPlan,
+  variationFor: (v: BlockDayVariation) => ResolvedVariationPlan
+): ResolvedDayPlan {
+  const variations = day.variations.map(variationFor);
+  return {
+    dayOfWeek: day.dayOfWeek,
+    variations,
+    accessories: day.accessories,
+    totalKcal: variations.reduce((sum, v) => sum + v.estimatedKcal, 0),
+    totalMinutes: estimateLiftingMinutes(variations.flatMap((v) => v.sets)),
+  };
+}
+
+// The kg a variation's % is taken of, and the points it runs below the week's
+// %: its own Training Max at the full %, else the lift's 1RM minus the offset
+// for a lighter variation.
+function linearBase(
+  v: BlockDayVariation,
+  p: LinearProgression,
+  trainingMax: Record<string, number> | undefined,
+  oneRepMaxByExercise: Record<LiftingExercise, ResolvedOneRepMax>
+): { maxKg: number; offsetPct: number } {
+  const tm = trainingMax?.[v.variationId];
+  if (tm != null && tm > 0) return { maxKg: tm, offsetPct: 0 };
+  return {
+    maxKg: oneRepMaxByExercise[v.exercise].value,
+    offsetPct: isLighterVariation(v.variationId) ? p.variationOffsetPct : 0,
+  };
+}
+
+// One progressive week of a linear block.
+export function resolveLinearDay(
+  day: BlockDayPlan,
+  weekIndex: number,
+  p: LinearProgression,
+  trainingMax: Record<string, number> | undefined,
+  oneRepMaxByExercise: Record<LiftingExercise, ResolvedOneRepMax>,
+  bodyWeightKg: number,
+  heightCm: number
+): ResolvedDayPlan {
+  const step = p.weeks[weekIndex] ?? p.weeks[p.weeks.length - 1];
+  const extraKg = p.stepMode === 'kg' ? p.step * weekIndex : 0;
+  return linearDay(day, (v) => {
+    const base = linearBase(v, p, trainingMax, oneRepMaxByExercise);
+    const pct = Math.max(LINEAR_LIMITS.minPct, linearWeekPct(p, weekIndex) - base.offsetPct);
+    return linearVariation(v, pct, extraKg, step, 'linear', base.maxKg, bodyWeightKg, heightCm);
+  });
+}
+
+// A linear block's deload — the same rule as every deload (docs/08 §2.1): the
+// last working (non-test) week minus 10 %1RM points, at half its sets.
+export function resolveLinearDeloadDay(
+  day: BlockDayPlan,
+  p: LinearProgression,
+  trainingMax: Record<string, number> | undefined,
+  oneRepMaxByExercise: Record<LiftingExercise, ResolvedOneRepMax>,
+  bodyWeightKg: number,
+  heightCm: number
+): ResolvedDayPlan {
+  const fromEnd = [...p.weeks].reverse().findIndex((w) => !w.test);
+  const lastWorking = fromEnd < 0 ? 0 : p.weeks.length - 1 - fromEnd;
+  const base = p.weeks[lastWorking] ?? { sets: 3, reps: 5 };
+  const step = { sets: Math.max(1, Math.round(base.sets * 0.5)), reps: base.reps };
+  const extraKg = p.stepMode === 'kg' ? p.step * lastWorking : 0;
+  return linearDay(day, (v) => {
+    const base = linearBase(v, p, trainingMax, oneRepMaxByExercise);
+    const pct = Math.max(LINEAR_LIMITS.minPct, linearWeekPct(p, lastWorking) - 10 - base.offsetPct);
+    return linearVariation(v, pct, extraKg, step, 'deload', base.maxKg, bodyWeightKg, heightCm);
+  });
+}
+
 // ---- 4. Deficit Mode -------------------------------------------------------
 
 // docs/08 §5.3: cut accessory VOLUME (sets) 15-20%, leave main/secondary
@@ -359,6 +476,14 @@ export function applyDeficitMode(week: BlockWeekPlan, cutPct = 0.825): BlockWeek
 
 // ---- 5. Full block generation ----------------------------------------------
 
+// "Tịnh tiến": the user's table fitted to the block's length (null for the
+// RPE-model focuses).
+function linearProgressionOf(config: TrainingBlockConfig): LinearProgression | null {
+  if (config.focus !== 'linear') return null;
+  const p = config.progression ?? defaultLinearProgression(config.progressiveWeeks);
+  return { ...p, weeks: resizeLinearWeeks(p.weeks, config.progressiveWeeks) };
+}
+
 export function generateBlockPlan(config: TrainingBlockConfig, profile: UserProfile): GeneratedBlockPlan {
   const oneRepMaxByExercise = resolveOneRepMax(config.oneRepMax, config.bodyWeightKg);
   // Monday-first: JS Date's raw dayOfWeek (0=Sun) would otherwise sort
@@ -371,10 +496,23 @@ export function generateBlockPlan(config: TrainingBlockConfig, profile: UserProf
     : null;
 
   const weeks: BlockWeekPlan[] = [];
+  const linear = linearProgressionOf(config);
+  const rpeFocus = config.focus === 'linear' ? 'normal' : config.focus;
 
   for (let weekIndex = 0; weekIndex < config.progressiveWeeks; weekIndex++) {
     const days = sortedSchedule.map((day, dayIndexInWeek) => {
-      const curvePoint = focusCurvePoint(config.focus, weekIndex, config.progressiveWeeks, dayIndexInWeek);
+      if (linear) {
+        return resolveLinearDay(
+          day,
+          weekIndex,
+          linear,
+          config.trainingMax,
+          oneRepMaxByExercise,
+          config.bodyWeightKg,
+          profile.heightCm
+        );
+      }
+      const curvePoint = focusCurvePoint(rpeFocus, weekIndex, config.progressiveWeeks, dayIndexInWeek);
       return resolveDayWithPoint(day, curvePoint, 'rpe', oneRepMaxByExercise, config.bodyWeightKg, profile.heightCm);
     });
     const startDate = addDaysToDateString(config.weekStartDate, weekIndex * 7);
@@ -393,8 +531,11 @@ export function generateBlockPlan(config: TrainingBlockConfig, profile: UserProf
 
   if (config.hasDeload) {
     const days = sortedSchedule.map((day, dayIndexInWeek) => {
+      if (linear) {
+        return resolveLinearDeloadDay(day, linear, config.trainingMax, oneRepMaxByExercise, config.bodyWeightKg, profile.heightCm);
+      }
       const basePoint = focusCurvePoint(
-        config.focus,
+        rpeFocus,
         config.progressiveWeeks - 1,
         config.progressiveWeeks,
         dayIndexInWeek

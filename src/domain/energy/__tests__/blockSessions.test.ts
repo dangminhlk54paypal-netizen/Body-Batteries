@@ -2,6 +2,7 @@ import {
   confirmTiming,
   daySessionStatus,
   dueSessions,
+  planDayState,
   liftingDates,
   sessionTimestamp,
   setDaySession,
@@ -77,6 +78,30 @@ describe('blockSessions — the pure part', () => {
     expect(dueSessions(p, sessionTimestamp('2026-09-27'))).toEqual([
       { at: SUN, date: '2026-09-27', timestamp: sessionTimestamp('2026-09-27') },
     ]);
+  });
+
+  it('planDayState: trained (logged and still there, or in the log by hand), open, or taken off', () => {
+    const p = plan();
+    const week = p.weeks[0];
+    const none = new Set<string>();
+    expect(planDayState(week, week.days[0], none)).toBe('open');
+    expect(planDayState(week, week.days[0], new Set(['2026-09-21']))).toBe('done');
+    const logged = setDaySession(p, MON, { status: 'logged', date: '2026-09-22', confirmedAt: 1 }).weeks[0];
+    expect(planDayState(logged, logged.days[0], new Set(['2026-09-22']))).toBe('done');
+    expect(planDayState(logged, logged.days[0], none)).toBe('open'); // deleted from the log since
+    const planned = setDaySession(p, MON, { status: 'planned', date: '2026-09-21', confirmedAt: 1 }).weeks[0];
+    expect(planDayState(planned, planned.days[0], none)).toBe('open');
+    expect(planDayState({ ...week, skipped: true }, week.days[0], new Set(['2026-09-21']))).toBe('skipped');
+    expect(planDayState(week, { ...week.days[0], skipped: true }, none)).toBe('skipped');
+  });
+
+  it('a dropped day or week is never due, even with a stale confirmation', () => {
+    const p = setDaySession(plan(), SUN, { status: 'planned', date: '2026-09-27', confirmedAt: 1 });
+    const at = sessionTimestamp('2026-09-27');
+    const dayOff = { ...p, weeks: p.weeks.map((w) => ({ ...w, days: w.days.map((d) => ({ ...d, skipped: true })) })) };
+    const weekOff = { ...p, weeks: p.weeks.map((w) => ({ ...w, skipped: true })) };
+    expect(dueSessions(dayOff, at)).toEqual([]);
+    expect(dueSessions(weekOff, at)).toEqual([]);
   });
 
   it('status: open, already in the log, planned (moved or not), logged (still there or not)', () => {

@@ -14,9 +14,30 @@ import type { LiftingExercise, LiftingSet } from './energy';
 // The four "calculation styles" the user picks for a whole block (S-PL Block
 // Builder request) — see docs/08-powerlifting-engine.md §2.1 for the %1RM ×
 // set × rep table each one drives.
-export type TrainingFocus = 'volume' | 'intensity' | 'normal' | 'peaking';
+export type TrainingFocus = 'volume' | 'intensity' | 'normal' | 'peaking' | 'linear';
 
-export const TRAINING_FOCUSES: TrainingFocus[] = ['volume', 'intensity', 'normal', 'peaking'];
+export const TRAINING_FOCUSES: TrainingFocus[] = ['volume', 'intensity', 'normal', 'peaking', 'linear'];
+
+// 'linear' ("Tịnh tiến"): the load climbs a fixed step every week while the
+// volume comes down — a classic linear block the user sets up themselves
+// (docs/08 §14). Every number here is the user's to change.
+export interface LinearWeekStep {
+  sets: number;
+  reps: number;
+  // The block's last week as a test: one top single at the week's %1RM (a
+  // rep-max/1RM attempt). The user decides whether to take it.
+  test?: boolean;
+}
+
+export interface LinearProgression {
+  startPct: number; // week 1, %1RM of the straight lift (e.g. 70)
+  stepMode: 'pct' | 'kg'; // what is added each week: %1RM points, or kg on the bar
+  step: number; // e.g. +5 (%) or +2.5 (kg) per week
+  // A lighter variation (paused, incline, low grip…) runs this many %1RM points
+  // below the straight lift — paused bench 65% beside touch-and-go 70%.
+  variationOffsetPct: number;
+  weeks: LinearWeekStep[]; // one per progressive week
+}
 
 // User-declared 1RM per lift at block-creation time. A missing/zero value
 // means "estimate it safely" — see blockEngine.estimateBeginnerOneRepMax.
@@ -72,7 +93,9 @@ export interface VariationReference {
   // 'rpe' = built from reps + target RPE + per-set fatigue; 'deload' = derived
   // from the last progressive week (%1RM −10 points, half the sets); 'legacy' =
   // a block made before the RPE model — only `sets`/`pct1rm` are meaningful.
-  method: 'rpe' | 'deload' | 'legacy';
+  // 'linear' = the user's "Tịnh tiến" set-up (TrainingBlockConfig.progression):
+  // a fixed %1RM (or kg) step per week and their own sets × reps.
+  method: 'rpe' | 'deload' | 'legacy' | 'linear';
   targetRpe: number; // RPE the LAST set should feel like (10 = no reps left)
   fatigueRir: number; // reps in reserve added to the FIRST set for fatigue across sets
   extraRir: number; // secondary movements: extra reps in reserve for being done after the main lift
@@ -99,6 +122,9 @@ export interface ResolvedVariationPlan {
   // the RPE model existed (their `sets` came from the old fixed-%1RM curve).
   reference?: VariationReference;
   userEdited?: boolean; // true once the user replaced `sets` with their own
+  // How hard the last set felt, as the lifter rated it after the session (RPE
+  // on the reps-in-reserve scale, 6–10). Read by the RPE coach (rpeCoach.ts).
+  actualRpe?: number;
 }
 
 // "I'll train this": the lifter confirmed one planned day. At `date` 18:00
@@ -119,6 +145,12 @@ export interface ResolvedDayPlan {
   totalKcal: number;
   totalMinutes: number;
   session?: PlannedSessionConfirmation;
+  // "Không tập buổi này": the user dropped this one day (the plan stays visible,
+  // dimmed, and is never logged). Undone by setting it back.
+  skipped?: boolean;
+  // The user changed this day's accessories in the plan itself — a refresh of
+  // the suggestions keeps them instead of re-copying the template's.
+  accessoriesEdited?: boolean;
 }
 
 export interface BlockWeekPlan {
@@ -134,6 +166,17 @@ export interface BlockWeekPlan {
   // weeks ahead, so the plan needs a real date reference, not just an
   // abstract "Week N".
   startDate: string;
+  endDate: string;
+  // "Bỏ tuần này": a holiday/away week the user will not train — its days stay
+  // visible, dimmed, and none is logged. The block keeps its end date.
+  skipped?: boolean;
+}
+
+// A week off inserted INTO a running block ("Dời các tuần sau"): the weeks
+// from here on moved one calendar week later. Kept so the plan can show the
+// gap and the user can take it back out.
+export interface BlockBreak {
+  startDate: string; // YYYY-MM-DD, inclusive
   endDate: string;
 }
 
@@ -158,6 +201,16 @@ export interface TrainingBlockConfig {
   isBeginnerEstimated: Record<LiftingExercise, boolean>;
   bodyWeightKg: number;
   deficitModeEnabled: boolean;
+  breaks?: BlockBreak[];
+  // focus 'linear' only: the user's progression set-up.
+  progression?: LinearProgression;
+  // focus 'linear' only: the block's Training Max per variation (variationId →
+  // kg) — the user's own target numbers ("Comp Bench TM = 117,5") that every
+  // week's % is taken of. A variation without one falls back to the lift's
+  // 1RM and progression.variationOffsetPct.
+  trainingMax?: Record<string, number>;
+  // RPE-coach suggestions the user waved away (rpeCoach.ts CoachAdvice.key).
+  coachDismissed?: string[];
 }
 
 export interface GeneratedBlockPlan {

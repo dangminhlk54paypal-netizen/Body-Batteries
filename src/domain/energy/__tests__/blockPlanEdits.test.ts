@@ -1,10 +1,15 @@
 import {
   dateForWeekday,
   hasLegacySuggestions,
+  pauseAtWeek,
   referenceOf,
   refreshSuggestions,
+  removeBreak,
+  setDayAccessories,
+  setDaySkipped,
   setVariationSets,
   setWeekDates,
+  setWeekSkipped,
 } from '../blockPlanEdits';
 import { generateBlockPlan } from '../blockEngine';
 import type { LiftingSet, UserProfile } from '../../../types/energy';
@@ -207,5 +212,78 @@ describe('refreshSuggestions / hasLegacySuggestions', () => {
     // dates kept
     expect(refreshed.weeks[1].startDate).toBe('2026-09-21');
     expect(hasLegacySuggestions(refreshed)).toBe(false);
+  });
+});
+
+describe('days and weeks off', () => {
+  const planned = { status: 'planned' as const, date: '2026-09-14', confirmedAt: 1 };
+  const logged = { status: 'logged' as const, date: '2026-09-14', confirmedAt: 1, loggedAt: 2 };
+  const withSession = (p: GeneratedBlockPlan, weekIndex: number, session: typeof planned | typeof logged) => ({
+    ...p,
+    weeks: p.weeks.map((w, i) =>
+      i === weekIndex ? { ...w, days: w.days.map((d, di) => (di === 0 ? { ...d, session } : d)) } : w
+    ),
+  });
+
+  it('skips one day (clearing its not-yet-logged session) and takes it back', () => {
+    const skipped = setDaySkipped(withSession(plan(), 1, planned), { weekIndex: 1, dayIndex: 0 }, true);
+    expect(skipped.weeks[1].days[0].skipped).toBe(true);
+    expect(skipped.weeks[1].days[0].session).toBeUndefined();
+    expect(skipped.weeks[1].days[1].skipped).toBeUndefined();
+    const back = setDaySkipped(skipped, { weekIndex: 1, dayIndex: 0 }, false);
+    expect(back.weeks[1].days[0].skipped).toBeUndefined();
+  });
+
+  it('"skip this week" leaves every date as it was; a logged session stays', () => {
+    const before = withSession(plan(), 1, logged);
+    const after = setWeekSkipped(before, 1, true);
+    expect(after.weeks[1].skipped).toBe(true);
+    expect(after.weeks.map((w) => w.startDate)).toEqual(before.weeks.map((w) => w.startDate));
+    expect(after.weeks[1].days[0].session).toEqual(logged);
+    expect(setWeekSkipped(after, 1, false).weeks[1].skipped).toBeUndefined();
+  });
+
+  it('"move the later weeks" puts a week off in, and removing it closes the gap again', () => {
+    const before = withSession(plan(), 2, planned);
+    const result = pauseAtWeek(before, 1);
+    if (!result.ok) throw new Error(result.error);
+    const paused = result.plan;
+    expect(paused.config.breaks).toEqual([{ startDate: '2026-09-14', endDate: '2026-09-20' }]);
+    expect(paused.weeks.map((w) => w.startDate)).toEqual(['2026-09-07', '2026-09-21', '2026-09-28', '2026-10-05']);
+    expect(paused.weeks[2].days[0].session).toBeUndefined(); // its date moved
+    const restored = removeBreak(paused, 0);
+    expect(restored.config.breaks).toBeUndefined();
+    expect(restored.weeks.map((w) => w.startDate)).toEqual(before.weeks.map((w) => w.startDate));
+  });
+
+  it('will not move a week the user already trained in', () => {
+    expect(pauseAtWeek(withSession(plan(), 1, logged), 1)).toEqual({ ok: false, error: 'hasLoggedSession' });
+  });
+});
+
+describe('setDayAccessories', () => {
+  const lines = [
+    { customName: '  Face pull ', sets: 3, reps: '15 @12.5kg' },
+    { customName: '', sets: 3, reps: '10' },
+  ];
+
+  it('sets one day only, trimming and dropping empty lines', () => {
+    const after = setDayAccessories(plan(), { weekIndex: 1, dayIndex: 0 }, lines, false);
+    expect(after.weeks[1].days[0].accessories).toEqual([{ customName: 'Face pull', sets: 3, reps: '15 @12.5kg' }]);
+    expect(after.weeks[1].days[0].accessoriesEdited).toBe(true);
+    expect(after.weeks[2].days[0].accessories).toEqual(plan().weeks[2].days[0].accessories);
+  });
+
+  it('can carry the list to the same weekday of every later week, never earlier ones', () => {
+    const after = setDayAccessories(plan(), { weekIndex: 1, dayIndex: 0 }, lines, true);
+    expect(after.weeks[0].days[0].accessoriesEdited).toBeUndefined();
+    expect(after.weeks[2].days[0].accessories[0].customName).toBe('Face pull');
+    expect(after.weeks[3].days[0].accessories[0].customName).toBe('Face pull');
+    expect(after.weeks[2].days[1].accessories).toEqual([]); // Thursday untouched
+  });
+
+  it('survives a refresh of the suggestions', () => {
+    const edited = setDayAccessories(plan(), { weekIndex: 1, dayIndex: 0 }, lines, false);
+    expect(refreshSuggestions(edited, profile).weeks[1].days[0].accessories[0].customName).toBe('Face pull');
   });
 });

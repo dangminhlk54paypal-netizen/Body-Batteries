@@ -93,7 +93,8 @@ export function dueSessions(plan: GeneratedBlockPlan, now: number): DueSession[]
   plan.weeks.forEach((week, weekIndex) =>
     week.days.forEach((day, dayIndex) => {
       const s = day.session;
-      if (s?.status !== 'planned') return;
+      // A day or week the user dropped is never logged.
+      if (s?.status !== 'planned' || day.skipped || week.skipped) return;
       const timestamp = sessionTimestamp(s.date);
       if (timestamp <= now) due.push({ at: { weekIndex, dayIndex }, date: s.date, timestamp });
     })
@@ -126,4 +127,15 @@ export function daySessionStatus(
   if (s?.status === 'planned') return { kind: 'planned', date: s.date, moved: s.date !== planDate };
   if (s?.status === 'logged') return { kind: 'logged', date: s.date, present: lifted.has(s.date) };
   return planDate && lifted.has(planDate) ? { kind: 'inLog' } : { kind: 'open' };
+}
+
+// How a planned day reads at a glance (the colour of its square): taken off,
+// trained (its lifts are in the log — confirmed from the plan or logged by
+// hand that day), or not trained yet.
+export type PlanDayState = 'done' | 'open' | 'skipped';
+
+export function planDayState(week: BlockWeekPlan, day: ResolvedDayPlan, lifted: Set<string>): PlanDayState {
+  if (week.skipped || day.skipped) return 'skipped';
+  const status = daySessionStatus(week, day, lifted);
+  return status.kind === 'inLog' || (status.kind === 'logged' && status.present) ? 'done' : 'open';
 }

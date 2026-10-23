@@ -4,6 +4,7 @@ import { generateBlockPlan, resolveOneRepMax } from './blockEngine';
 import { findVariation } from '../../lib/powerliftingVariations';
 import type { LiftingSet, UserProfile } from '../../types/energy';
 import type {
+  AccessoryLineItem,
   BlockWeekPlan,
   GeneratedBlockPlan,
   ResolvedDayPlan,
@@ -190,9 +191,131 @@ export function refreshSuggestions(plan: GeneratedBlockPlan, profile: UserProfil
         const estimatedKcal = liftingSessionKcal(v.variation.exercise, sets, plan.config.bodyWeightKg, profile.heightCm);
         return { ...v, sets, estimatedKcal, reference: next.reference };
       });
-      return withDayTotals({ ...day, variations, accessories: freshDay.accessories });
+      // Accessories the user changed in the plan stay theirs.
+      const accessories = day.accessoriesEdited ? day.accessories : freshDay.accessories;
+      return withDayTotals({ ...day, variations, accessories });
     });
     return withWeekTotals({ ...week, days });
   });
   return { ...plan, weeks };
+}
+
+// ---- Weeks off, days off ----------------------------------------------------
+// The user decides how the plan bends around real life (a holiday, a trip, a
+// busy day): drop one day, drop a whole week, or put a week off INTO the block
+// so everything after it moves later. Every one of these can be undone. A
+// confirmed-but-not-yet-logged session in what is dropped or moved is cleared
+// (its date no longer means anything); a session already in Xả is the user's
+// to delete from the log and is never touched here.
+
+const BREAK_DAYS = 7;
+
+export interface DayAt {
+  weekIndex: number;
+  dayIndex: number;
+}
+
+function withoutPlannedSession(day: ResolvedDayPlan): ResolvedDayPlan {
+  return day.session?.status === 'planned' ? { ...day, session: undefined } : day;
+}
+
+function mapWeek(plan: GeneratedBlockPlan, weekIndex: number, fn: (w: BlockWeekPlan) => BlockWeekPlan): GeneratedBlockPlan {
+  return { ...plan, weeks: plan.weeks.map((w, i) => (i === weekIndex ? fn(w) : w)) };
+}
+
+export function setDaySkipped(plan: GeneratedBlockPlan, at: DayAt, skipped: boolean): GeneratedBlockPlan {
+  return mapWeek(plan, at.weekIndex, (week) => ({
+    ...week,
+    days: week.days.map((d, i) => {
+      if (i !== at.dayIndex) return d;
+      return skipped ? { ...withoutPlannedSession(d), skipped: true } : { ...d, skipped: undefined };
+    }),
+  }));
+}
+
+// "Bỏ tuần này": the week stays where it is, empty. The block ends as before.
+export function setWeekSkipped(plan: GeneratedBlockPlan, weekIndex: number, skipped: boolean): GeneratedBlockPlan {
+  return mapWeek(plan, weekIndex, (week) =>
+    skipped ? { ...week, skipped: true, days: week.days.map(withoutPlannedSession) } : { ...week, skipped: undefined }
+  );
+}
+
+function hasLoggedSession(week: BlockWeekPlan): boolean {
+  return week.days.some((d) => d.session?.status === 'logged');
+}
+
+function shiftFrom(plan: GeneratedBlockPlan, weekIndex: number, days: number): GeneratedBlockPlan | null {
+  const week = plan.weeks[weekIndex];
+  const moved = setWeekDates(
+    plan,
+    weekIndex,
+    addDaysToDateString(week.startDate, days),
+    addDaysToDateString(week.endDate, days)
+  );
+  if (!moved.ok) return null;
+  return {
+    ...moved.plan,
+    weeks: moved.plan.weeks.map((w, i) => (i >= weekIndex ? { ...w, days: w.days.map(withoutPlannedSession) } : w)),
+  };
+}
+
+export type PauseWeekError = 'hasLoggedSession';
+
+// "Dời các tuần sau": a calendar week off where this week was; this week and
+// every later one move one week later, so no planned training is lost. Not for
+// a week the user already trained in (move its dates instead).
+export function pauseAtWeek(
+  plan: GeneratedBlockPlan,
+  weekIndex: number
+): { ok: true; plan: GeneratedBlockPlan } | { ok: false; error: PauseWeekError } {
+  const week = plan.weeks[weekIndex];
+  if (plan.weeks.slice(weekIndex).some(hasLoggedSession)) return { ok: false, error: 'hasLoggedSession' };
+  const brk = { startDate: week.startDate, endDate: addDaysToDateString(week.startDate, BREAK_DAYS - 1) };
+  const shifted = shiftFrom(plan, weekIndex, BREAK_DAYS)!; // moving later never overlaps
+  const breaks = [...(plan.config.breaks ?? []), brk].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  return { ok: true, plan: { ...shifted, config: { ...shifted.config, breaks } } };
+}
+
+// Takes a week off back out: the weeks after it move back to close the gap.
+export function removeBreak(plan: GeneratedBlockPlan, breakIndex: number): GeneratedBlockPlan {
+  const breaks = plan.config.breaks ?? [];
+  const brk = breaks[breakIndex];
+  if (!brk) return plan;
+  const rest = breaks.filter((_, i) => i !== breakIndex);
+  const after = plan.weeks.findIndex((w) => w.startDate > brk.endDate);
+  const lengthDays = lengthInDays(brk.startDate, brk.endDate);
+  const shifted = after >= 0 ? (shiftFrom(plan, after, -lengthDays) ?? plan) : plan;
+  return { ...shifted, config: { ...shifted.config, breaks: rest.length > 0 ? rest : undefined } };
+}
+
+// ---- Accessories in a running plan -------------------------------------------
+
+// The user's own extra lines for one day (free text — "Face pull 3x15 @12.5kg";
+// nothing the app has to know or calculate). With `laterWeeksToo`, every later
+// week's session on the same weekday gets the same list.
+export function setDayAccessories(
+  plan: GeneratedBlockPlan,
+  at: DayAt,
+  accessories: AccessoryLineItem[],
+  laterWeeksToo: boolean
+): GeneratedBlockPlan {
+  const weekday = plan.weeks[at.weekIndex]?.days[at.dayIndex]?.dayOfWeek;
+  if (weekday == null) return plan;
+  const clean = accessories
+    .map((a) => ({ ...a, customName: a.customName.trim(), reps: a.reps.trim() }))
+    .filter((a) => a.customName !== '');
+  return {
+    ...plan,
+    weeks: plan.weeks.map((week, wi) => {
+      if (wi < at.weekIndex || (wi > at.weekIndex && !laterWeeksToo)) return week;
+      return {
+        ...week,
+        days: week.days.map((d, di) =>
+          (wi === at.weekIndex ? di === at.dayIndex : d.dayOfWeek === weekday)
+            ? { ...d, accessories: clean, accessoriesEdited: true }
+            : d
+        ),
+      };
+    }),
+  };
 }

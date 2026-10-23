@@ -7,6 +7,12 @@ import { BlockBuilderWizard } from '../BlockBuilderWizard';
 import { BlockVariationEditSheet } from './BlockVariationEditSheet';
 import { BlockWeekDatesSheet } from './BlockWeekDatesSheet';
 import { BlockSessionDateSheet } from './BlockSessionDateSheet';
+import { BlockAccessoriesSheet } from './BlockAccessoriesSheet';
+import { BlockLiftGrid } from './BlockLiftGrid';
+import { BlockFormView } from './BlockFormView';
+import { RpeChips } from './RpeChips';
+import { RpeCoachCard } from './RpeCoachCard';
+import { coachAdvice } from '../../domain/energy/rpeCoach';
 import { useBlockStore } from '../../store/blockStore';
 import { usePlanFoldStore } from '../../store/planFoldStore';
 import { useSettingsStore } from '../../store/settingsStore';
@@ -14,7 +20,7 @@ import { useTrainingLogFormat } from '../../hooks/useTrainingLogFormat';
 import { exportTrainingBlockToExcel } from '../../services/export/trainingBlockExportService';
 import { dateForWeekday, hasLegacySuggestions, hasMissingPrimes, referenceOf } from '../../domain/energy/blockPlanEdits';
 import type { VariationAddress } from '../../domain/energy/blockPlanEdits';
-import { confirmTiming, daySessionStatus, liftingDates, SESSION_HOUR } from '../../domain/energy/blockSessions';
+import { confirmTiming, daySessionStatus, liftingDates, planDayState, SESSION_HOUR } from '../../domain/energy/blockSessions';
 import type { DayAddress, DaySessionStatus } from '../../domain/energy/blockSessions';
 import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
 import * as haptics from '../../lib/haptics';
@@ -24,6 +30,7 @@ import { sectionsScrolledPast } from '../../domain/training/scrollFold';
 import type { SectionLayout } from '../../domain/training/scrollFold';
 import { weekdayLabel, formatDisplayDate, todayString } from '../../lib/dateUtils';
 import { useT } from '../../i18n/useT';
+import { LOCALE_TAGS } from '../../i18n/types';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useScreenBackground } from '../../hooks/useScreenBackground';
@@ -49,6 +56,15 @@ function getTodayString(): string {
 function explainReference(ref: VariationReference, t: TFn): string {
   if (ref.method === 'legacy') return t('planAppendix.calcLegacy');
   if (ref.method === 'deload') return t('planAppendix.calcDeload', { pct: ref.pct1rm });
+  if (ref.method === 'linear') {
+    const first = ref.sets[0];
+    return t('planAppendix.calcLinear', {
+      pct: ref.pct1rm,
+      oneRm: ref.oneRepMaxKg,
+      weight: first?.weightKg ?? 0,
+      rpe: ref.targetRpe,
+    });
+  }
   const working = ref.sets.filter((s) => s.kind === 'working');
   const first = working[0];
   const prime = ref.sets.find((s) => s.kind === 'warmup');
@@ -90,6 +106,16 @@ export function BlockPlanView() {
   const rescheduleSession = useBlockStore((s) => s.rescheduleSession);
   const cancelSession = useBlockStore((s) => s.cancelSession);
   const runDueSessions = useBlockStore((s) => s.runDueSessions);
+  const setDaySkipped = useBlockStore((s) => s.setDaySkipped);
+  const setWeekSkipped = useBlockStore((s) => s.setWeekSkipped);
+  const pauseAtWeek = useBlockStore((s) => s.pauseAtWeek);
+  const removeBreak = useBlockStore((s) => s.removeBreak);
+  const editDayAccessories = useBlockStore((s) => s.editDayAccessories);
+  const rateVariation = useBlockStore((s) => s.rateVariation);
+  const applyCoach = useBlockStore((s) => s.applyCoach);
+  const dismissCoach = useBlockStore((s) => s.dismissCoach);
+  const editFormRows = useBlockStore((s) => s.editFormRows);
+  const setTrainingMax = useBlockStore((s) => s.setTrainingMax);
   const profile = useSettingsStore((s) => s.userProfile);
   // The plan always shows its prime ("95 + 4x6x72.5"), never the warm-up ramp.
   const userFormat = useTrainingLogFormat();
@@ -107,6 +133,12 @@ export function BlockPlanView() {
   const [movingSession, setMovingSession] = useState<{ key: number; visible: boolean; at: DayAddress; date: string } | null>(
     null
   );
+  // The variation whose RPE chips are open in the week view ("w.d.v").
+  const [ratingFor, setRatingFor] = useState<string | null>(null);
+  // "Theo tuần" (week cards), "Theo bài" (one lift across the block, BlockLiftGrid)
+  // or "Form" (one lift's TM + a row per session, BlockFormView).
+  const [viewMode, setViewMode] = useState<'week' | 'lift' | 'form'>('week');
+  const [accessoriesFor, setAccessoriesFor] = useState<{ key: number; visible: boolean; at: DayAddress } | null>(null);
   // Days that already hold a lifting Xả — what "logged" is checked against.
   const [lifted, setLifted] = useState<Set<string>>(() => new Set());
 
@@ -192,6 +224,30 @@ export function BlockPlanView() {
     );
   }
 
+  // Real life first: the user picks how the plan bends around a week away.
+  function weekOffMenu(weekIndex: number) {
+    const label = weekLabelOf(weekIndex);
+    Alert.alert(t('planAppendix.weekOff.title', { week: label }), t('planAppendix.weekOff.message'), [
+      {
+        text: t('planAppendix.weekOff.pause'),
+        onPress: async () => {
+          const error = await pauseAtWeek(weekIndex);
+          if (error) Alert.alert(label, t('planAppendix.weekOff.pauseBlocked'));
+          else haptics.success();
+        },
+      },
+      { text: t('planAppendix.weekOff.skip'), onPress: () => setWeekSkipped(weekIndex, true).then(haptics.success) },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  }
+
+  function breakMenu(breakIndex: number) {
+    Alert.alert(t('planAppendix.weekOff.removeTitle'), t('planAppendix.weekOff.removeMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('planAppendix.weekOff.removeConfirm'), onPress: () => removeBreak(breakIndex) },
+    ]);
+  }
+
   // Confirming a day: behind you → straight into Xả; today → trained already
   // or at 18:00?; ahead → remembered and logged when the day comes.
   function confirmDay(at: DayAddress, date: string) {
@@ -224,6 +280,7 @@ export function BlockPlanView() {
       Alert.alert(title, t('planAppendix.session.plannedMessage', { date: formatDisplayDate(status.date, language), hour: SESSION_HOUR }), [
         { text: t('planAppendix.session.logNow'), onPress: () => confirmSession(at, status.date, 'now').then(haptics.success) },
         move,
+        { text: t('planAppendix.dayOff.skip'), onPress: () => setDaySkipped(at, true) },
         cancel,
         close,
       ]);
@@ -251,16 +308,27 @@ export function BlockPlanView() {
     switch (status.kind) {
       case 'open':
         return (
-          <Pressable
-            hitSlop={6}
-            onPress={() => confirmDay(at, date)}
-            style={({ pressed }) => [styles.sessionBtn, pressed && styles.pressed]}
-            accessibilityRole="button"
-          >
-            <Text style={styles.sessionBtnText}>
-              {date < getTodayString() ? t('planAppendix.session.confirmPast') : t('planAppendix.session.confirm')}
-            </Text>
-          </Pressable>
+          <View style={styles.sessionPair}>
+            <Pressable
+              hitSlop={6}
+              onPress={() => setDaySkipped(at, true)}
+              style={({ pressed }) => [styles.skipBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('planAppendix.dayOff.skipA11y', { day: title })}
+            >
+              <Text style={styles.skipBtnText}>{t('planAppendix.dayOff.skip')}</Text>
+            </Pressable>
+            <Pressable
+              hitSlop={6}
+              onPress={() => confirmDay(at, date)}
+              style={({ pressed }) => [styles.sessionBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Text style={styles.sessionBtnText}>
+                {date < getTodayString() ? t('planAppendix.session.confirmPast') : t('planAppendix.session.confirm')}
+              </Text>
+            </Pressable>
+          </View>
         );
       case 'inLog':
         return <Text style={styles.sessionDone}>{t('planAppendix.session.inLog')}</Text>;
@@ -291,7 +359,7 @@ export function BlockPlanView() {
   }
 
   // One table row: lift (the notebook's abbreviation) | sets | ⓘ | ✎.
-  function renderVariation(variation: ResolvedVariationPlan, at: VariationAddress) {
+  function renderVariation(variation: ResolvedVariationPlan, at: VariationAddress, done: boolean) {
     if (!activeBlock || variation.sets.length === 0) return null;
     const { exercise, variationId } = variation.variation;
     const label = t(`blockVariations.${variationId}.label`);
@@ -303,67 +371,152 @@ export function BlockPlanView() {
         ? t('planAppendix.referenceLineRpe', { sets: refSets, pct: ref.pct1rm, rpe: ref.targetRpe })
         : ref.method === 'deload'
           ? t('planAppendix.referenceLineDeload', { sets: refSets, pct: ref.pct1rm })
+          : ref.method === 'linear'
+            ? t('planAppendix.referenceLineLinear', { sets: refSets, pct: ref.pct1rm })
           : t('planAppendix.referenceLineLegacy', { sets: refSets, pct: ref.pct1rm });
+    const rateKey = `${at.weekIndex}.${at.dayIndex}.${at.variationIndex}`;
     return (
-      <View key={`v${at.variationIndex}`} style={styles.tableRow}>
-        <Text style={styles.cellLift} numberOfLines={1}>
-          {short}
-        </Text>
-        {/* The plan — the user's own sets once edited, else the suggestion —
-            its prime in italics first, like the training log. */}
-        <Text style={styles.cellSets}>
-          {renderSets(variation.sets)}
-          {variation.userEdited ? <Text style={styles.editedMark}> ✎</Text> : null}
-        </Text>
-        {/* One ⓘ holds everything secondary: the full name and what it is,
-            the app's suggestion, how it was calculated, and the kcal. */}
-        <InfoPopover
-          title={label}
-          sections={[
-            { body: t(`blockVariations.${variationId}.rationale`) },
-            { body: refLine },
-            { heading: t('planAppendix.howCalcTitle'), body: explainReference(ref, t) },
-            { body: t('planAppendix.kcalLine', { kcal: variation.estimatedKcal }) },
-            ...(variation.userEdited ? [{ body: t('planAppendix.editedBadge') }] : []),
-          ]}
-        />
-        <Pressable
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={t('planAppendix.editA11y', { label })}
-          style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-          onPress={() => setEditing((prev) => ({ key: (prev?.key ?? 0) + 1, visible: true, at }))}
-        >
-          <Text style={styles.iconBtnText}>{t('planAppendix.editButton')}</Text>
-        </Pressable>
+      <View key={`v${at.variationIndex}`} style={styles.variationBlock}>
+        <View style={styles.tableRow}>
+          <Text style={styles.cellLift} numberOfLines={1}>
+            {short}
+          </Text>
+          {/* The plan — the user's own sets once edited, else the suggestion —
+              its prime in italics first, like the training log. */}
+          <Text style={styles.cellSets}>
+            {renderSets(variation.sets)}
+            {variation.userEdited ? <Text style={styles.editedMark}> ✎</Text> : null}
+          </Text>
+          {/* One ⓘ holds everything secondary: the full name and what it is,
+              the app's suggestion, how it was calculated, and the kcal. */}
+          <InfoPopover
+            title={label}
+            sections={[
+              { body: t(`blockVariations.${variationId}.rationale`) },
+              { body: refLine },
+              { heading: t('planAppendix.howCalcTitle'), body: explainReference(ref, t) },
+              { body: t('planAppendix.kcalLine', { kcal: variation.estimatedKcal }) },
+              ...(variation.userEdited ? [{ body: t('planAppendix.editedBadge') }] : []),
+            ]}
+          />
+          <Pressable
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('planAppendix.editA11y', { label })}
+            style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+            onPress={() => setEditing((prev) => ({ key: (prev?.key ?? 0) + 1, visible: true, at }))}
+          >
+            <Text style={styles.iconBtnText}>{t('planAppendix.editButton')}</Text>
+          </Pressable>
+        </View>
+        {/* A trained day: how hard did it feel? (the RPE coach reads it) */}
+        {done && (
+          <Pressable
+            hitSlop={6}
+            onPress={() => setRatingFor((cur) => (cur === rateKey ? null : rateKey))}
+            style={({ pressed }) => [styles.rpeChip, variation.actualRpe != null && styles.rpeChipSet, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.rpeChipText, variation.actualRpe != null && styles.rpeChipTextSet]}>
+              {variation.actualRpe != null
+                ? t('planAppendix.rpe.value', { rpe: variation.actualRpe.toLocaleString(LOCALE_TAGS[language]) })
+                : t('planAppendix.rpe.ask')}
+            </Text>
+          </Pressable>
+        )}
+        {done && ratingFor === rateKey && (
+          <RpeChips
+            label={t('planAppendix.rpe.label', { lift: label })}
+            value={variation.actualRpe}
+            onChange={(rpe) => {
+              rateVariation(at, rpe);
+              setRatingFor(null);
+            }}
+          />
+        )}
       </View>
     );
   }
 
   function renderDay(week: BlockWeekPlan, weekIndex: number, day: ResolvedDayPlan, dayIndex: number) {
     const date = dateForWeekday(week, day.dayOfWeek);
+    const at = { weekIndex, dayIndex };
+    const off = week.skipped || day.skipped;
+    const state = planDayState(week, day, lifted);
     return (
-      <View key={dayIndex} style={styles.dayCard}>
+      <View key={dayIndex} style={[styles.dayCard, state === 'done' && styles.dayDone, off && styles.dayOff]}>
         <View style={styles.dayHeader}>
           <Text style={styles.dayTitle}>
             {date ? formatDisplayDate(date, language) : weekdayLabel(day.dayOfWeek, language, 'long')}
           </Text>
           <Text style={styles.dayKcal}>{t('planAppendix.kcalLine', { kcal: day.totalKcal })}</Text>
           <View style={styles.flex} />
-          {renderSessionControl(week, day, { weekIndex, dayIndex }, date)}
+          {week.skipped ? null : day.skipped ? (
+            <Pressable
+              hitSlop={6}
+              onPress={() => setDaySkipped(at, false)}
+              style={({ pressed }) => [styles.skipBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <Text style={styles.skipBtnText}>{t('planAppendix.dayOff.skipped')}</Text>
+            </Pressable>
+          ) : (
+            renderSessionControl(week, day, at, date)
+          )}
         </View>
-        {day.variations.map((v, variationIndex) => renderVariation(v, { weekIndex, dayIndex, variationIndex }))}
+        {day.variations.map((v, variationIndex) =>
+          renderVariation(v, { weekIndex, dayIndex, variationIndex }, state === 'done')
+        )}
         {day.accessories.map((acc, i) => (
           <View key={`a${i}`} style={styles.tableRow}>
             <Text style={[styles.cellLift, styles.cellAccessory]} numberOfLines={1}>
               {acc.customName}
             </Text>
             <Text style={[styles.cellSets, styles.cellAccessory]}>
-              {t('planAppendix.accessorySets', { sets: acc.sets, reps: acc.reps })}
+              {acc.reps
+                ? t('planAppendix.accessorySets', { sets: acc.sets, reps: acc.reps })
+                : t('planAppendix.accessories.sets', { n: acc.sets })}
             </Text>
           </View>
         ))}
+        {!off && (
+          <Pressable
+            hitSlop={6}
+            onPress={() => setAccessoriesFor((prev) => ({ key: (prev?.key ?? 0) + 1, visible: true, at }))}
+            style={({ pressed }) => [styles.accessoryBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.accessoryBtnText}>
+              {day.accessories.length > 0 ? t('planAppendix.accessories.editButton') : t('planAppendix.accessories.addButton')}
+            </Text>
+          </Pressable>
+        )}
       </View>
+    );
+  }
+
+  // Weeks off the user put into the block, shown in the gap before `weekIndex`.
+  function renderBreaksBefore(weekIndex: number) {
+    if (!activeBlock) return null;
+    const week = activeBlock.weeks[weekIndex];
+    const prev = activeBlock.weeks[weekIndex - 1];
+    return (activeBlock.config.breaks ?? []).map((brk, i) =>
+      brk.endDate < week.startDate && (!prev || brk.startDate > prev.endDate) ? (
+        <Pressable
+          key={`break-${brk.startDate}`}
+          onPress={() => breakMenu(i)}
+          style={({ pressed }) => [styles.breakRow, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.breakText}>
+            {t('planAppendix.weekOff.breakRow', {
+              start: formatDisplayDate(brk.startDate, language),
+              end: formatDisplayDate(brk.endDate, language),
+            })}
+          </Text>
+          <Text style={styles.breakUndo}>↺</Text>
+        </Pressable>
+      ) : null
     );
   }
 
@@ -391,8 +544,13 @@ export function BlockPlanView() {
         >
           <Text style={[styles.weekTitle, isCurrent && styles.weekTitleCurrent]}>{label}</Text>
           {isCurrent && <View style={styles.currentDot} />}
+          {week.skipped && <Text style={styles.offBadge}>{t('planAppendix.weekOff.badge')}</Text>}
           <View style={styles.flex} />
-          {!open && <Text style={styles.weekFoldedInfo}>{t('planAppendix.sessionsCount', { count: week.days.length })}</Text>}
+          {!open && !week.skipped && (
+            <Text style={styles.weekFoldedInfo}>
+              {t('planAppendix.sessionsCount', { count: week.days.filter((d) => !d.skipped).length })}
+            </Text>
+          )}
           <Text style={styles.chevron}>{open ? '⌃' : '⌄'}</Text>
         </Pressable>
         {open && (
@@ -411,7 +569,17 @@ export function BlockPlanView() {
               >
                 <Text style={styles.editBtnText}>{t('planAppendix.weekDatesButton')}</Text>
               </Pressable>
+              <Pressable
+                hitSlop={8}
+                style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                onPress={() => (week.skipped ? setWeekSkipped(weekIndex, false) : weekOffMenu(weekIndex))}
+              >
+                <Text style={styles.editBtnText}>
+                  {week.skipped ? t('planAppendix.weekOff.resume') : t('planAppendix.weekOff.button')}
+                </Text>
+              </Pressable>
             </View>
+            {week.skipped && <Text style={styles.offNote}>{t('planAppendix.weekOff.skippedNote')}</Text>}
             {week.days.map((day, dayIndex) => renderDay(week, weekIndex, day, dayIndex))}
             <Text style={styles.weekTotal}>
               {t('planAppendix.weekTotalLabel', { kcal: week.totalKcal })}
@@ -512,7 +680,69 @@ export function BlockPlanView() {
               </View>
             )}
 
-            {activeBlock.weeks.map(renderWeek)}
+            <RpeCoachCard
+              advice={coachAdvice(activeBlock)}
+              weekLabel={weekLabelOf}
+              onApply={(a, change) =>
+                applyCoach(a.variationId, a.fromWeekIndex, change, profile.heightCm).then(() => {
+                  haptics.success();
+                  return dismissCoach(a.key);
+                })
+              }
+              onDismiss={(a) => dismissCoach(a.key)}
+            />
+
+            <View style={styles.viewToggle}>
+              {(['week', 'lift', 'form'] as const).map((mode) => {
+                const active = viewMode === mode;
+                return (
+                  <Pressable
+                    key={mode}
+                    onPress={() => setViewMode(mode)}
+                    style={({ pressed }) => [styles.viewTab, active && styles.viewTabActive, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[styles.viewTabText, active && styles.viewTabTextActive]}>
+                      {mode === 'week'
+                        ? t('planAppendix.viewByWeek')
+                        : mode === 'lift'
+                          ? t('planAppendix.viewByLift')
+                          : t('planAppendix.viewForm')}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {viewMode === 'form' ? (
+              <BlockFormView
+                plan={activeBlock}
+                currentWeekIndex={currentWeekIndex}
+                weekLabel={weekLabelOf}
+                lifted={lifted}
+                onSaveRows={(edits) => editFormRows(edits, profile.heightCm).then(() => haptics.success())}
+                onSetTrainingMax={(lift, kg) => setTrainingMax(lift, kg, profile.heightCm, lifted).then(() => haptics.success())}
+              />
+            ) : viewMode === 'lift' ? (
+              <BlockLiftGrid
+                plan={activeBlock}
+                format={format}
+                currentWeekIndex={currentWeekIndex}
+                weekLabel={weekLabelOf}
+                heightCm={profile.heightCm}
+                lifted={lifted}
+                onRate={rateVariation}
+                onEdit={(at, sets) => editVariationSets(at, sets, profile.heightCm)}
+              />
+            ) : (
+              activeBlock.weeks.map((week, weekIndex) => (
+                <React.Fragment key={week.weekNumber}>
+                  {renderBreaksBefore(weekIndex)}
+                  {renderWeek(week, weekIndex)}
+                </React.Fragment>
+              ))
+            )}
             <Pressable style={({ pressed }) => [styles.deleteBtn, pressed && styles.pressed]} onPress={handleDelete}>
               <Text style={styles.deleteBtnText}>{t('planAppendix.deleteBlockButton')}</Text>
             </Pressable>
@@ -547,6 +777,30 @@ export function BlockPlanView() {
           weekLabel={weekLabelOf}
           onSave={(start, end) => editWeekDates(datesFor.weekIndex, start, end)}
           onClose={() => setDatesFor((d) => (d ? { ...d, visible: false } : d))}
+        />
+      )}
+
+      {accessoriesFor && activeBlock && activeBlock.weeks[accessoriesFor.at.weekIndex]?.days[accessoriesFor.at.dayIndex] && (
+        <BlockAccessoriesSheet
+          key={`acc-${accessoriesFor.key}`}
+          visible={accessoriesFor.visible}
+          title={t('planAppendix.accessories.title', {
+            week: weekLabelOf(accessoriesFor.at.weekIndex),
+            day: weekdayLabel(
+              activeBlock.weeks[accessoriesFor.at.weekIndex].days[accessoriesFor.at.dayIndex].dayOfWeek,
+              language,
+              'long'
+            ),
+          })}
+          weekdayName={weekdayLabel(
+            activeBlock.weeks[accessoriesFor.at.weekIndex].days[accessoriesFor.at.dayIndex].dayOfWeek,
+            language,
+            'long'
+          )}
+          initial={activeBlock.weeks[accessoriesFor.at.weekIndex].days[accessoriesFor.at.dayIndex].accessories}
+          hasLaterWeeks={accessoriesFor.at.weekIndex < activeBlock.weeks.length - 1}
+          onSave={(list, laterWeeksToo) => editDayAccessories(accessoriesFor.at, list, laterWeeksToo)}
+          onClose={() => setAccessoriesFor((a) => (a ? { ...a, visible: false } : a))}
         />
       )}
 
@@ -598,6 +852,63 @@ const createStyles = (c: ThemeColors) =>
     weekTitleCurrent: { color: c.accent },
     currentDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: c.accent },
     flex: { flex: 1 },
+    variationBlock: { gap: 4 },
+    rpeChip: {
+      alignSelf: 'flex-start',
+      marginLeft: '26%',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 9,
+      backgroundColor: c.bgElevated,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+    },
+    rpeChipSet: { borderColor: c.planDoneBorder },
+    rpeChipText: { color: c.textSecondary, fontSize: 11, fontWeight: '700' },
+    rpeChipTextSet: { color: c.textPrimary },
+    dayDone: { backgroundColor: c.planDoneBg, borderWidth: 1, borderColor: c.planDoneBorder },
+    dayOff: { backgroundColor: c.planSkippedBg, opacity: 0.75 },
+    viewToggle: { flexDirection: 'row', gap: 6, padding: 4, borderRadius: 12, backgroundColor: c.bgElevated },
+    viewTab: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 9 },
+    viewTabActive: { backgroundColor: c.accent },
+    viewTabText: { color: c.textSecondary, fontSize: 13, fontWeight: '700' },
+    viewTabTextActive: { color: c.onAccent },
+    sessionPair: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    skipBtn: {
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 10,
+      backgroundColor: c.bgElevated,
+      borderWidth: 1,
+      borderColor: c.borderSubtle,
+    },
+    skipBtnText: { color: c.textSecondary, fontSize: 11, fontWeight: '700' },
+    accessoryBtn: { alignSelf: 'flex-start', paddingVertical: 4 },
+    accessoryBtnText: { color: c.accent, fontSize: 12, fontWeight: '700' },
+    offBadge: {
+      color: c.textSecondary,
+      fontSize: 11,
+      fontWeight: '700',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 8,
+      overflow: 'hidden',
+      backgroundColor: c.bgElevated,
+    },
+    offNote: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
+    breakRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: c.border,
+    },
+    breakText: { flex: 1, color: c.textSecondary, fontSize: 13, fontWeight: '600' },
+    breakUndo: { color: c.accent, fontSize: 16, fontWeight: '700' },
     weekFoldedInfo: { color: c.textMuted, fontSize: 12 },
     chevron: { color: c.textTertiary, fontSize: 16, width: 16, textAlign: 'center' },
     weekWindow: { maxHeight: WEEK_WINDOW_HEIGHT },

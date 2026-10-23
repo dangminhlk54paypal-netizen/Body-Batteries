@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
 import { BlockVariationEditSheet } from '../BlockVariationEditSheet';
 import { BlockWeekDatesSheet } from '../BlockWeekDatesSheet';
@@ -235,7 +236,7 @@ describe('BlockPlanView', () => {
     jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
     const tree = await mount(<BlockPlanView />);
     const badge = tree.root.findAll(
-      (n) => typeof n.props.onPress === 'function' && n.props.accessibilityLabel === 'Giải thích: Bench chạm ngực-đẩy liên tục (Touch-and-go)'
+      (n) => typeof n.props.onPress === 'function' && n.props.accessibilityLabel === 'Giải thích: TnG Bench'
     )[0];
     expect(badge).toBeDefined();
     await act(async () => {
@@ -325,6 +326,125 @@ describe('BlockPlanView', () => {
     expect(workouts[0].type).toBe('bench_press');
     expect(workouts[0].sets[0].kind).toBe('warmup');
     expect(useBlockStore.getState().activeBlock?.weeks[0].days[0].session?.status).toBe('logged');
+  });
+
+  it('a day can be dropped ("Nghỉ") and taken back', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    await act(async () => {
+      tree.root.findAll((n) => typeof n.props.onPress === 'function' && textOf(n) === 'Nghỉ')[0].props.onPress();
+    });
+    const day = () => useBlockStore.getState().activeBlock!.weeks.find((w) => w.days[0].skipped)?.days[0];
+    expect(day()?.skipped).toBe(true);
+    await press(tree, 'Không tập · ↺');
+    expect(day()).toBeUndefined();
+  });
+
+  it('a week off: the user picks "skip this week" (dates stay) or "move the later weeks"', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    let choice = 'Bỏ tuần này';
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
+      buttons?.find((b) => b.text === choice)?.onPress?.();
+    });
+    const tree = await mount(<BlockPlanView />);
+    const before = plan().weeks.map((w) => w.startDate);
+
+    await press(tree, '🏖 Nghỉ');
+    const skipped = useBlockStore.getState().activeBlock!;
+    expect(skipped.weeks.some((w) => w.skipped)).toBe(true);
+    expect(skipped.weeks.map((w) => w.startDate)).toEqual(before);
+    await press(tree, '↺ Tập lại');
+    expect(useBlockStore.getState().activeBlock!.weeks.some((w) => w.skipped)).toBe(false);
+
+    choice = 'Dời các tuần sau';
+    await press(tree, '🏖 Nghỉ');
+    const paused = useBlockStore.getState().activeBlock!;
+    expect(paused.config.breaks).toHaveLength(1);
+    expect(textOf(tree.root)).toContain('🏖 Tuần nghỉ');
+    alert.mockRestore();
+  });
+
+  it('adds the user’s own accessory lines to a planned day, for the later weeks too', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    await act(async () => {
+      tree.root.findAll((n) => typeof n.props.onPress === 'function' && textOf(n) === '＋ Bài phụ')[0].props.onPress();
+    });
+    await type(tree, 'Tên bài', 'Hip thrust tạ đòn');
+    await type(tree, 'Rep / ghi chú', '8 @60kg');
+    await press(tree, 'Lưu');
+    const weeks = useBlockStore.getState().activeBlock!.weeks;
+    const edited = weeks.findIndex((w) => w.days[0].accessories.length > 0);
+    expect(weeks[edited].days[0].accessories).toEqual([{ customName: 'Hip thrust tạ đòn', sets: 3, reps: '8 @60kg' }]);
+    expect(weeks.slice(edited).every((w) => w.days[0].accessories[0]?.customName === 'Hip thrust tạ đòn')).toBe(true);
+    expect(textOf(tree.root)).toContain('Hip thrust tạ đòn');
+  });
+
+  it('"Theo bài": one lift as a week × day grid; tapping a square edits that session in place', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    await press(tree, '🏋️ Theo bài');
+    const cells = tree.root.findAll(
+      (n) => typeof n.props.onPress === 'function' && String(n.props.accessibilityLabel ?? '').startsWith('Sửa ')
+    );
+    expect(cells).toHaveLength(3); // bench on Monday × 3 weeks (2 progressive + deload)
+    await act(async () => cells[1].props.onPress()); // week 2
+    const label = tree.root.findAll((n) => typeof n.props.onChangeText === 'function')[0].props.accessibilityLabel;
+    await type(tree, label, '100x1 5x5x85');
+    await press(tree, 'Lưu');
+    const v = useBlockStore.getState().activeBlock!.weeks[1].days[0].variations[0];
+    expect(v.userEdited).toBe(true);
+    expect(v.sets.map((s) => `${s.weightKg}x${s.reps}`)).toEqual(['100x1', ...Array(5).fill('85x5')]);
+    expect(textOf(tree.root)).toContain('✎');
+  });
+
+  it('"Form": TM on top, rows typed in % of the TM, and a new TM moves the sessions ahead', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    const tree = await mount(<BlockPlanView />);
+    await press(tree, '📋 Form');
+    expect(input(tree, 'Training Max của TnG Bench').props.value).toBe('120');
+    await type(tree, 'TnG Bench, B1W2', '1x1@94% 5x5@81%');
+    expect(textOf(tree.root)).toContain('1×1 @ 112,5 94%');
+    await press(tree, 'Lưu 1 dòng');
+    const working = (w: number) =>
+      useBlockStore.getState().activeBlock!.weeks[w].days[0].variations[0].sets.filter((s) => s.kind === 'working').map((s) => s.weightKg);
+    expect(working(1)).toEqual([112.5, ...Array(5).fill(97.5)]);
+
+    await type(tree, 'Training Max của TnG Bench', '125');
+    await press(tree, 'Áp dụng');
+    expect(useBlockStore.getState().activeBlock!.config.trainingMax).toEqual({ bench_touch_and_go: 125 });
+    // 112,5 × 125/120 = 117,2 → 117,5; 97,5 → 101,6 → 102,5 (rounded to 2,5 kg).
+    expect(working(1)).toEqual([117.5, ...Array(5).fill(102.5)]);
+  });
+
+  it('a trained day takes an RPE rating; two easy sessions bring a coach suggestion the user can apply', async () => {
+    jest.mocked(trainingBlockRepository.getActiveTrainingBlock).mockResolvedValue(plan());
+    // Both Mondays already have a lifting Xả → the squares are "done".
+    const lifted = ['2026-09-07', '2026-09-14'].map((date, i) => ({
+      id: `x${i}`,
+      timestamp: new Date(`${date}T18:00:00`).getTime(),
+      steps: 0,
+      energyKcal: 100,
+      satietyDrainKcal: 0,
+      energyDayApplied: date,
+      workouts: [{ type: 'bench_press' as const, minutes: 30, sets: [{ kind: 'working' as const, weightKg: 70, reps: 5 }] }],
+    }));
+    jest.mocked(getActivityLogInRange).mockResolvedValue(lifted);
+    const tree = await mount(<BlockPlanView />);
+    await act(async () => {}); // the log loads
+    for (let i = 0; i < 2; i++) {
+      await press(tree, 'RPE ?');
+      await act(async () => {
+        tree.root.findAll((n) => typeof n.props.onPress === 'function' && n.props.accessibilityLabel === 'RPE 5')[0].props.onPress();
+      });
+    }
+    const weeks = () => useBlockStore.getState().activeBlock!.weeks;
+    expect(weeks().slice(0, 2).map((w) => w.days[0].variations[0].actualRpe)).toEqual([5, 5]);
+    expect(textOf(tree.root)).toContain('🧭 Gợi ý theo RPE');
+    const before = weeks()[2].days[0].variations[0].sets.filter((x) => x.kind === 'working')[0].weightKg;
+    await press(tree, '＋2,5 kg');
+    expect(weeks()[2].days[0].variations[0].sets.filter((x) => x.kind === 'working')[0].weightKg).toBe(before + 2.5);
+    expect(textOf(tree.root)).not.toContain('🧭 Gợi ý theo RPE'); // applied → gone
   });
 
   it('offers to recalculate an old-model block, keeping it until the user taps', async () => {
