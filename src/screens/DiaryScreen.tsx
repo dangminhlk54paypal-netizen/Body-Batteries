@@ -20,6 +20,7 @@ import { saveDiaryEntry } from '../data/repositories/dailyLogRepository';
 import { todayString, formatDisplayDate } from '../lib/dateUtils';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { useScreenBackground } from '../hooks/useScreenBackground';
 import { useT } from '../i18n/useT';
 import { LOCALE_TAGS } from '../i18n/types';
 
@@ -94,6 +95,7 @@ export function DiaryScreen() {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const screenBg = useScreenBackground();
   const navigation = useNavigation<any>();
   const [text, setText] = useState('');
   const [saved, setSaved] = useState(false);
@@ -180,7 +182,7 @@ export function DiaryScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenBg]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={c.accentAlt} />
           <Text style={styles.loadingText}>{t('screens.diary.loadingText')}</Text>
@@ -190,7 +192,7 @@ export function DiaryScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenBg]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}

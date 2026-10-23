@@ -52,6 +52,7 @@ import { formatDisplayDate, todayString } from '../lib/dateUtils';
 import { nextWaterDisplayUnit, nextMovementDisplayUnit } from '../lib/units';
 import type { ThemeColors } from '../lib/theme';
 import { useResolvedThemeMode, useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { useScreenBackground } from '../hooks/useScreenBackground';
 import * as haptics from '../lib/haptics';
 import { useT } from '../i18n/useT';
 import { foodLogEntryDisplayName, getAnyFoodById } from '../data/food/foodLookup';
@@ -143,6 +144,7 @@ export function HomeScreen() {
   const themeMode = useResolvedThemeMode();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const screenBg = useScreenBackground();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedBattery, setSelectedBattery] = useState<BatteryType | null>(null);
   // water/sleep: manual charge form (unchanged input, now with a recommendation hint)
@@ -339,7 +341,7 @@ export function HomeScreen() {
 
   if (!isLoaded) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenBg]}>
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>{t('screens.home.loading')}</Text>
         </View>
@@ -348,7 +350,7 @@ export function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenBg]}>
       <StatusBar
         barStyle={themeMode === 'dark' ? 'light-content' : 'dark-content'} />
       <ScrollView

@@ -544,6 +544,11 @@ export const de: TranslationSchema = {
       themeDark: 'Dunkel',
       themeLight: 'Hell',
       themeSystem: 'Auto',
+      ambientLabel: 'Farbhintergrund 🌈',
+      ambientDesc:
+        'Ein sanfter Farbschein zieht langsam hinter jeder Seite vorbei. Die Farbe folgt dem Körperenergie-Akku: voll → Türkis, halb → Bernstein, leer → Koralle. Bei jedem Essenseintrag leuchtet er einmal gelb auf und bleibt still, wenn „Bewegung reduzieren“ am Handy aktiv ist.',
+      startTabLabel: 'App öffnet mit',
+      startTabDesc: 'Die Seite, die beim Öffnen der App zuerst erscheint. Eine Änderung gilt ab dem nächsten Start.',
     },
     disclaimer:
       '⚠️ Diese App dient nur der persönlichen Orientierung — sie ist kein Medizinprodukt. Wende dich vor Ernährungsumstellungen an eine Fachperson.',

@@ -10,6 +10,7 @@ import type { Language } from '../i18n/types';
 import { DEFAULT_TRAINING_LOG_FORMAT, resolveTrainingLogFormat } from '../types/trainingLog';
 import type { TrainingLogFormat } from '../types/trainingLog';
 import type { RingMetricId } from '../domain/battery/ringMetrics';
+import type { MainTab } from '../navigation/mainTabs';
 
 // Default body profile (the user's own example values; age/sex are placeholders
 // the user can correct in Settings → "Hồ sơ cơ thể"). Used to size the energy
@@ -80,6 +81,12 @@ interface SettingsState {
   // the default 6 sub-batteries. Read it through resolveRingMetrics() — it
   // drops ids a later version no longer knows.
   ringMetrics: RingMetricId[] | null;
+  // Slow colour glow behind every tab, tinted by the fullness battery
+  // (AmbientBackground.tsx). Settings → Giao diện switch.
+  ambientBackgroundEnabled: boolean;
+  // Which tab the app opens on. Read it through resolveStartTab() — it falls
+  // back to Home for a name a later version no longer has.
+  startTab: MainTab;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -102,6 +109,8 @@ interface SettingsState {
   // Sets (or, with an empty/blank value, removes) one abbreviation override.
   setTrainingLogAbbreviation: (key: string, value: string) => void;
   setRingMetrics: (ids: RingMetricId[] | null) => void;
+  setAmbientBackgroundEnabled: (enabled: boolean) => void;
+  setStartTab: (tab: MainTab) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -127,6 +136,8 @@ export const useSettingsStore = create<SettingsState>()(
       foodNameTranslationsCheckedV1: false,
       trainingLogFormat: DEFAULT_TRAINING_LOG_FORMAT,
       ringMetrics: null,
+      ambientBackgroundEnabled: true,
+      startTab: 'Home',
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -167,6 +178,8 @@ export const useSettingsStore = create<SettingsState>()(
           return { trainingLogFormat: { ...current, abbreviations } };
         }),
       setRingMetrics: (ids) => set({ ringMetrics: ids }),
+      setAmbientBackgroundEnabled: (enabled) => set({ ambientBackgroundEnabled: enabled }),
+      setStartTab: (tab) => set({ startTab: tab }),
     }),
     {
       name: 'settings-storage',

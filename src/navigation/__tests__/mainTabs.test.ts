@@ -1,4 +1,4 @@
-import { MAIN_TABS, cycleTab, swipeStep } from '../mainTabs';
+import { MAIN_TABS, cycleTab, resolveStartTab, swipeStep } from '../mainTabs';
 
 describe('cycleTab', () => {
   it('walks forward through the tabs and wraps to the first', () => {
@@ -43,5 +43,17 @@ describe('swipeStep', () => {
 
   it('cancels when the finger flicks back toward the start', () => {
     expect(swipeStep(-200, 1200, W)).toBe(0);
+  });
+});
+
+describe('resolveStartTab', () => {
+  it('keeps a known tab', () => {
+    MAIN_TABS.forEach((tab) => expect(resolveStartTab(tab)).toBe(tab));
+  });
+
+  it('falls back to Home for a missing or unknown name', () => {
+    expect(resolveStartTab(undefined)).toBe('Home');
+    expect(resolveStartTab(null)).toBe('Home');
+    expect(resolveStartTab('Stats')).toBe('Home');
   });
 });

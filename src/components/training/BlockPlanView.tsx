@@ -26,6 +26,7 @@ import { weekdayLabel, formatDisplayDate, todayString } from '../../lib/dateUtil
 import { useT } from '../../i18n/useT';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
+import { useScreenBackground } from '../../hooks/useScreenBackground';
 import type { LiftingSet } from '../../types/energy';
 import type {
   ResolvedDayPlan,
@@ -75,6 +76,7 @@ function explainReference(ref: VariationReference, t: TFn): string {
 export function BlockPlanView() {
   const { t, language } = useT();
   const styles = useThemedStyles(createStyles);
+  const screenBg = useScreenBackground();
   const c = useThemeColors();
   const activeBlock = useBlockStore((s) => s.activeBlock);
   const allBlocks = useBlockStore((s) => s.blocks);
@@ -437,7 +439,7 @@ export function BlockPlanView() {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, screenBg]}>
         <ActivityIndicator color={c.textPrimary} style={{ marginTop: 40 }} />
       </View>
     );
@@ -449,7 +451,7 @@ export function BlockPlanView() {
     : false;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, screenBg]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         onScroll={onPlanScroll}

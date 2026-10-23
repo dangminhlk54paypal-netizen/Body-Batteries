@@ -25,11 +25,19 @@ jest.mock('react-native-reanimated', () => ({
   useSharedValue: (init: unknown) => require('react').useState(() => ({ value: init }))[0],
 }));
 // The mock's makeMutable returns a bare number; give each tab a real box.
-jest.mock('../pageOffsets', () => ({
-  pageOffsets: Object.fromEntries(
-    ['Home', 'History', 'Training', 'Diary', 'Settings'].map((t, i) => [t, { value: i === 0 ? 0 : 1 }])
-  ),
-}));
+jest.mock('../pageOffsets', () => {
+  const tabs = ['Home', 'History', 'Training', 'Diary', 'Settings'];
+  const pageOffsets: Record<string, { value: number }> = Object.fromEntries(
+    tabs.map((t, i) => [t, { value: i === 0 ? 0 : 1 }])
+  );
+  return {
+    pageOffsets,
+    placePagesAt: (focused: string) =>
+      tabs.forEach((t) => {
+        pageOffsets[t].value = t === focused ? 0 : 1;
+      }),
+  };
+});
 jest.mock('react-native-safe-area-context', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('react-native-safe-area-context/jest/mock').default
@@ -115,5 +123,27 @@ it('keeps the same tab-bar gesture across tab switches (so finger-up is never lo
   await act(async () => tabs()[3].props.onAccessibilityTap());
   await act(async () => tabs()[1].props.onAccessibilityTap());
   expect(barGesture()).toBe(before);
+  await act(async () => tree.unmount());
+});
+
+it('opens on the chosen start tab with that page on screen', async () => {
+  let tree!: TestRenderer.ReactTestRenderer;
+  await act(async () => {
+    tree = TestRenderer.create(
+      <GestureHandlerRootView>
+        <NavigationContainer>
+          <Tab.Navigator initialRouteName="Training" tabBar={(props) => <BubbleTabBar {...props} />}>
+            {MAIN_TABS.map((name) => (
+              <Tab.Screen key={name} name={name} component={screens[name]} options={{ tabBarLabel: name }} />
+            ))}
+          </Tab.Navigator>
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    );
+  });
+  const text = textOf(tree.root);
+  expect(text).toContain('PAGE_Training');
+  expect(pageOffsets.Training.value).toBe(0);
+  expect(pageOffsets.Home.value).toBe(1);
   await act(async () => tree.unmount());
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import {
   createNavigatorFactory,
@@ -14,7 +14,7 @@ import {
 import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, withTiming, type SharedValue } from 'react-native-reanimated';
 import { cycleTab, type MainTab } from './mainTabs';
-import { pageOffsets } from './pageOffsets';
+import { pageOffsets, placePagesAt } from './pageOffsets';
 import { SLIDE_MS, slideDirection, slidePlan } from './slideTransition';
 
 // A small tab navigator of our own (React Navigation's TabRouter + builder,
@@ -76,6 +76,13 @@ function SlideTabNavigator({ initialRouteName, backBehavior, children, screenOpt
 
   // Slide on every tab change (tab bar tap/scrub, long swipe, navigate()).
   const prevIndex = useRef(state.index);
+  // Opening on a start tab other than Home (Settings → Giao diện): put that
+  // page on screen before the first paint, no slide. Mount only — later
+  // switches slide via the effect below.
+  const startTab = useRef(focusedName);
+  useLayoutEffect(() => {
+    placePagesAt(startTab.current);
+  }, []);
   useEffect(() => {
     const from = prevIndex.current;
     const to = state.index;

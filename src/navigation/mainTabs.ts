@@ -13,6 +13,12 @@ export const MAIN_TAB_META: Record<MainTab, { icon: string; labelKey: string }> 
   Settings: { icon: '⚙️', labelKey: 'nav.settings' },
 };
 
+// The tab the app opens on (Settings → Giao diện). A stored name a later
+// version dropped falls back to Home.
+export function resolveStartTab(stored: string | null | undefined): MainTab {
+  return MAIN_TABS.find((tab) => tab === stored) ?? 'Home';
+}
+
 export type SwipeStep = 1 | -1; // +1 = next tab (swipe left), -1 = previous (swipe right)
 
 export function cycleTab(current: MainTab, step: SwipeStep): MainTab {

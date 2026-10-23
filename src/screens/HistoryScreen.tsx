@@ -32,6 +32,7 @@ import { DayDetailSheet } from '../components/DayDetailSheet';
 import { FoodLogModal } from '../components/FoodLogModal';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { useScreenBackground } from '../hooks/useScreenBackground';
 import { useT } from '../i18n/useT';
 
 // The week card covers today + the 6 days before it.
@@ -41,6 +42,7 @@ export function HistoryScreen() {
   const { t } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const screenBg = useScreenBackground();
   // Battery readings of the week — the day sheet's sleep/water come from here.
   const [readings, setReadings] = useState<BatteryReading[]>([]);
   const [week, setWeek] = useState<WeekRingsSummary | null>(null);
@@ -160,7 +162,7 @@ export function HistoryScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, screenBg]}>
         <ActivityIndicator color={c.textPrimary} style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
@@ -176,7 +178,7 @@ export function HistoryScreen() {
   const sheetWeightKg = sheetDate ? weightOnOrBefore(sheetDate, weights) : '';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenBg]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         onScrollBeginDrag={() => setScrollKey((k) => k + 1)}

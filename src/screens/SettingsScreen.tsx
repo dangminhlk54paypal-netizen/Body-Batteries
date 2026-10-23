@@ -28,11 +28,13 @@ import {
 import type { ThemeColors, ThemeMode } from '../lib/theme';
 import { useReduceMotionSetting } from '../hooks/useReduceMotionSetting';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { useScreenBackground } from '../hooks/useScreenBackground';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { useT } from '../i18n/useT';
 import { MyFoodsSheet } from '../components/food/MyFoodsSheet';
 import { LANGUAGES, LANGUAGE_NAMES } from '../i18n/types';
 import type { Language } from '../i18n/types';
+import { MAIN_TABS, MAIN_TAB_META, resolveStartTab } from '../navigation/mainTabs';
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -60,7 +62,8 @@ function Segmented<T extends string | number>({
   onChange,
   compact = false,
 }: {
-  options: { value: T; label: string }[];
+  // a11yLabel: spoken name when the label is only an icon.
+  options: { value: T; label: string; a11yLabel?: string }[];
   value: T;
   onChange: (v: T) => void;
   compact?: boolean;
@@ -76,6 +79,7 @@ function Segmented<T extends string | number>({
             onPress={() => onChange(o.value)}
             style={({ pressed }) => [styles.segment, active && styles.segmentActive, pressed && styles.pressed]}
             accessibilityRole="button"
+            accessibilityLabel={o.a11yLabel}
             accessibilityState={{ selected: active }}
           >
             <Text style={[styles.segmentText, active && styles.segmentTextActive]} numberOfLines={1}>
@@ -165,6 +169,10 @@ export function SettingsScreen() {
     setMealWindow,
     particleEffectsEnabled,
     setParticleEffectsEnabled,
+    ambientBackgroundEnabled,
+    setAmbientBackgroundEnabled,
+    startTab,
+    setStartTab,
     setLanguage,
     themeMode,
     setThemeMode,
@@ -175,6 +183,7 @@ export function SettingsScreen() {
   const { appleHealthStatus, lastAppleHealthSync, syncAppleHealthBurned } = useEnergyStore();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
+  const screenBg = useScreenBackground();
 
   const [exporting, setExporting] = useState(false);
   // One card open at a time — the screen stays a short list of headings.
@@ -343,6 +352,8 @@ export function SettingsScreen() {
     interface: t('settings.summary.interface', {
       theme: t(THEME_LABEL_KEYS[themeMode]),
       fx: onOff(particleEffectsEnabled),
+      bg: onOff(ambientBackgroundEnabled),
+      start: MAIN_TAB_META[resolveStartTab(startTab)].icon,
     }),
   };
 
@@ -554,7 +565,11 @@ export function SettingsScreen() {
           icon="✨"
           title={t('settings.interface.sectionTitle')}
           summary={summaries.interface}
-          info={[{ heading: t('settings.interface.particleEffectsLabel'), body: t('settings.interface.particleEffectsDesc') }]}
+          info={[
+            { heading: t('settings.interface.particleEffectsLabel'), body: t('settings.interface.particleEffectsDesc') },
+            { heading: t('settings.interface.ambientLabel'), body: t('settings.interface.ambientDesc') },
+            { heading: t('settings.interface.startTabLabel'), body: t('settings.interface.startTabDesc') },
+          ]}
           open={openSection === 'interface'}
           onToggle={() => toggle('interface')}
         >
@@ -573,13 +588,28 @@ export function SettingsScreen() {
           <SettingRow label={t('settings.interface.particleEffectsLabel')}>
             <Switch value={particleEffectsEnabled} onValueChange={setParticleEffectsEnabled} trackColor={{ true: c.accent }} />
           </SettingRow>
+          <SettingRow label={t('settings.interface.ambientLabel')}>
+            <Switch value={ambientBackgroundEnabled} onValueChange={setAmbientBackgroundEnabled} trackColor={{ true: c.accent }} />
+          </SettingRow>
+          <SettingRow label={t('settings.interface.startTabLabel')}>
+            <Segmented
+              compact
+              options={MAIN_TABS.map((tab) => ({
+                value: tab,
+                label: MAIN_TAB_META[tab].icon,
+                a11yLabel: t(MAIN_TAB_META[tab].labelKey),
+              }))}
+              value={resolveStartTab(startTab)}
+              onChange={setStartTab}
+            />
+          </SettingRow>
         </SettingsSection>
       ),
     },
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenBg]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Page title */}
         <View style={styles.titleWrap}>

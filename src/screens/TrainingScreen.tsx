@@ -5,6 +5,7 @@ import { BlockPlanView } from '../components/training/BlockPlanView';
 import { useT } from '../i18n/useT';
 import type { ThemeColors } from '../lib/theme';
 import { useThemedStyles } from '../hooks/useThemeColors';
+import { useScreenBackground } from '../hooks/useScreenBackground';
 
 type Mode = 'log' | 'plan';
 
@@ -14,6 +15,7 @@ type Mode = 'log' | 'plan';
 export function TrainingScreen() {
   const { t } = useT();
   const styles = useThemedStyles(createStyles);
+  const screenBg = useScreenBackground();
   const [mode, setMode] = useState<Mode>('log');
 
   const tabs: { key: Mode; label: string }[] = [
@@ -22,7 +24,7 @@ export function TrainingScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, screenBg]}>
       <View style={styles.tabRow}>
         {tabs.map((tab) => {
           const active = mode === tab.key;

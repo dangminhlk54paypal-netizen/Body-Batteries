@@ -544,6 +544,11 @@ export const en: TranslationSchema = {
       themeDark: 'Dark',
       themeLight: 'Light',
       themeSystem: 'Auto',
+      ambientLabel: 'Colour background 🌈',
+      ambientDesc:
+        'A soft glow drifts slowly behind every page. Its colour follows the Body energy battery: full → teal, half → amber, low → coral. It flashes amber once each time you log food, and stays still when the phone has "Reduce Motion" on.',
+      startTabLabel: 'Open app on',
+      startTabDesc: 'The page you see first each time you open the app. A change applies from the next launch.',
     },
     disclaimer:
       '⚠️ This app is for personal reference only — not a medical device. See a healthcare professional before changing your diet.',

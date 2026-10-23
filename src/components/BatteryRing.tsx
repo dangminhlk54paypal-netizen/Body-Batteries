@@ -33,6 +33,7 @@ import type { FoodLogEntry } from '../types/food';
 import type { ActivityLogEntry } from '../types/energy';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
+import { useScreenBackground } from '../hooks/useScreenBackground';
 import { useT } from '../i18n/useT';
 
 // Cap for "larger text" accessibility settings on the compact legend grid.
@@ -184,6 +185,22 @@ export function BatteryRing({
   const styles = useThemedStyles(createStyles);
   const totals = computeDailyBatteryTotals(foodLog, activityLog, intakeLog);
   const { ref: shareRef, onLongPress: holdToShare } = useHoldToShare(t('components.batteryRing.shareDialogTitle'));
+  // See-through over the ambient glow, but the saved PNG needs a solid
+  // background: go solid, wait two frames for it to be on screen, capture.
+  const screenBg = useScreenBackground();
+  const [capturing, setCapturing] = useState(false);
+  function handleHoldToShare() {
+    if (!screenBg) {
+      holdToShare();
+      return;
+    }
+    setCapturing(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        holdToShare().finally(() => setCapturing(false));
+      })
+    );
+  }
   // With a small ring in the corner, tapping it swaps which group is big.
   const [microBig, setMicroBig] = useState(false);
 
@@ -214,11 +231,11 @@ export function BatteryRing({
 
   return (
     // collapsable={false} + solid background: what the hold-to-share capture needs.
-    <View ref={shareRef} collapsable={false} style={styles.container}>
+    <View ref={shareRef} collapsable={false} style={[styles.container, !capturing && screenBg]}>
       <View style={styles.ringRow}>
         <Pressable
           onPress={handleRingPress}
-          onLongPress={holdToShare}
+          onLongPress={handleHoldToShare}
           accessibilityHint={t('common.holdToShareHint')}
         >
           <RingArcs
@@ -231,7 +248,7 @@ export function BatteryRing({
         {small && (
           <Pressable
             onPress={() => setMicroBig((v) => !v)}
-            onLongPress={holdToShare}
+            onLongPress={handleHoldToShare}
             hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel={t('components.batteryRing.miniA11y', {
@@ -257,7 +274,7 @@ export function BatteryRing({
             <Pressable
               key={it.id}
               onPress={() => onPressCell?.(it.id)}
-              onLongPress={holdToShare}
+              onLongPress={handleHoldToShare}
               accessibilityRole="button"
               accessibilityLabel={t('components.batteryCell.a11yLabel', { name: fullName, percentage, amount })}
               accessibilityHint={t('common.holdToShareHint')}

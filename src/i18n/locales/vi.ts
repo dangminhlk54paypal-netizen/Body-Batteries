@@ -568,6 +568,11 @@ export const vi = {
       themeDark: 'Tối',
       themeLight: 'Sáng',
       themeSystem: 'Tự động',
+      ambientLabel: 'Nền đổi màu 🌈',
+      ambientDesc:
+        'Quầng màu dịu trôi chậm phía sau mọi trang. Màu theo pin Năng lượng cơ thể: đầy → xanh ngọc, còn nửa → vàng hổ phách, vơi → hồng san hô. Loé vàng một nhịp mỗi khi ghi món. Đứng yên nếu máy bật "Giảm chuyển động".',
+      startTabLabel: 'Mở app ở',
+      startTabDesc: 'Trang hiện ra đầu tiên mỗi khi mở app. Đổi xong sẽ áp dụng từ lần mở app sau.',
     },
     disclaimer:
       '⚠️ App này chỉ để tham khảo cá nhân — không phải thiết bị y tế. Hãy gặp chuyên gia y tế trước khi thay đổi chế độ dinh dưỡng.',
