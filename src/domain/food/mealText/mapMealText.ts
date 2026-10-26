@@ -1,12 +1,20 @@
+import type { Language } from '../../../i18n/types';
 import type { FoodItem, FoodLogEntry, MealType, MeasureUnit, ServingPreset } from '../../../types/food';
 import type { MealWindow } from '../../../lib/constants';
 import { addDaysToDateString, dateString } from '../../../lib/dateUtils';
 import { gramsForPortion, nutritionForGrams } from '../foodNutrition';
 import { isPortionCounted } from '../portionUnits';
 import { validateBackfillDate } from '../backfillEngine';
+import { withLocalName } from '../foodNameText';
 import { foldWord, unitWordFor } from './mealTextLexicon';
 import type { DecodedMealItem, DecodedUnit, MealTimeHint } from './parseMealText';
-import { aiNutritionDiffers, aiNutritionLooksOff, completeNutrition, type StatedNutrition } from './aiNutrition';
+import {
+  aiNutritionDiffers,
+  aiNutritionLooksOff,
+  completeNutrition,
+  type DoubtfulValue,
+  type StatedNutrition,
+} from './aiNutrition';
 
 // "Nạp bằng chữ", step 3 — Mapping & Validation. Turns decoded rows into
 // draft rows the user reviews before anything is logged: which catalog food,
@@ -36,6 +44,7 @@ export type MealDraftIssue =
   | 'largeAmount' // more than LARGE_AMOUNT_G
   | 'defaultAmount' // no amount said, never eaten before — default serving
   | 'aiCheck' // the AI's numbers don't add up (kcal vs macros, > 900 kcal/100 g)
+  | 'aiDoubt' // a mineral read as thousands ("1.500 mg") is far above any food
   | 'aiBasis' // the AI didn't say what amount its numbers are for — read as /100 g
   | 'aiCompare' // the AI's numbers differ from the app's food
   | 'aiNew' // saved as a new "Món của tôi" on logging
@@ -49,6 +58,7 @@ export const ISSUE_ORDER: MealDraftIssue[] = [
   'invalidAmount',
   'duplicate',
   'aiCheck',
+  'aiDoubt',
   'aiBasis',
   'fuzzyMatch',
   'unitGuess',
@@ -95,6 +105,7 @@ export interface AiRow {
   nameEn: string;
   measure: MeasureUnit;
   basisGuessed: boolean;
+  doubtful: DoubtfulValue[];
 }
 
 // Id of the not-yet-saved food of an 'new' row (replaced by aiSavePlan).
@@ -131,6 +142,9 @@ export interface MealTextContext {
   search: (query: string) => { matches: FoodItem[]; similar: FoodItem[] };
   // The live FoodItem with the user's nutrition override applied.
   resolve: (id: string) => FoodItem | undefined;
+  // The app language — the AI answers the prompt in it, so a new food's name
+  // is filed under that language (withLocalName).
+  language: Language;
 }
 
 export const LARGE_AMOUNT_G = 2000;
@@ -156,7 +170,7 @@ export function buildMealDraft(items: DecodedMealItem[], ctx: MealTextContext): 
     const found = findFood(item, ctx);
     const { match, decoded } = found;
     const ai = decoded.ai ? aiRowFor(decoded, found.food, match) : null;
-    const food = ai ? aiFood(id, ai, massGramsOf(decoded) ?? 0) : found.food;
+    const food = ai ? aiFood(id, ai, massGramsOf(decoded) ?? 0, ctx.language) : found.food;
     return validate(
       {
         id,
@@ -213,7 +227,7 @@ export function withFood(row: MealDraftRow, food: FoodItem, ctx: MealTextContext
 export function withAiChoice(row: MealDraftRow, choice: AiChoice, ctx: MealTextContext): MealDraftRow {
   if (!row.ai || row.ai.choice === choice) return row;
   const ai = { ...row.ai, choice };
-  const food = aiFood(row.id, ai, row.grams);
+  const food = aiFood(row.id, ai, row.grams, ctx.language);
   if (!food) return row;
   return validate({ ...row, ai, food, ...sameGrams(row.grams, food) }, ctx);
 }
@@ -223,7 +237,7 @@ export function withAiName(row: MealDraftRow, name: string, ctx: MealTextContext
   const trimmed = name.trim();
   if (!row.ai || row.ai.choice !== 'new' || !trimmed || trimmed === row.ai.name) return row;
   const ai = { ...row.ai, name: trimmed };
-  return validate({ ...row, ai, food: aiFood(row.id, ai, row.grams) }, ctx);
+  return validate({ ...row, ai, food: aiFood(row.id, ai, row.grams, ctx.language) }, ctx);
 }
 
 // After aiSavePlan's foods are written: the row logs the saved food.
@@ -329,15 +343,16 @@ function aiRowFor(decoded: DecodedMealItem, found: FoodItem | null, match: MealD
     nameEn: decoded.nameEn ?? '',
     measure: ai.measure,
     basisGuessed: ai.basisGuessed,
+    doubtful: ai.doubtful ?? [],
   };
 }
 
-function aiFood(rowId: string, ai: AiRow, grams: number): FoodItem | null {
+function aiFood(rowId: string, ai: AiRow, grams: number, language: Language): FoodItem | null {
   if (ai.choice === 'app') return ai.base;
   if (ai.choice === 'ai') return ai.base && { ...ai.base, per100g: { ...ai.base.per100g, ...ai.stated } };
-  return {
+  const food: FoodItem = {
     id: `${AI_DRAFT_PREFIX}${rowId}`,
-    nameVi: ai.name,
+    nameVi: '',
     nameEn: ai.nameEn,
     category: 'custom',
     defaultServingG: grams > 0 ? Math.round(grams) : 100,
@@ -348,6 +363,7 @@ function aiFood(rowId: string, ai: AiRow, grams: number): FoodItem | null {
     portionUnit: 'gram',
     measureUnit: ai.measure,
   };
+  return withLocalName(food, language, ai.name);
 }
 
 // Switching food keeps the amount the user sees, in grams.
@@ -510,6 +526,8 @@ function validate(row: MealDraftRow, ctx: MealTextContext, initial = false): Mea
 
   if (row.ai) {
     if (aiNutritionLooksOff(row.ai.stated)) issues.add('aiCheck');
+    // Only when the AI's numbers are the ones logged.
+    if (row.ai.choice !== 'app' && row.ai.doubtful.length > 0) issues.add('aiDoubt');
     if (row.ai.basisGuessed) issues.add('aiBasis');
     if (row.ai.choice === 'new') issues.add('aiNew');
     else if (row.ai.base && aiNutritionDiffers(row.ai.base.per100g, row.ai.stated)) issues.add('aiCompare');

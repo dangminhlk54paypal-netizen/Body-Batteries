@@ -123,6 +123,9 @@ export function LibrarySourcesPanel() {
   void refreshTick;
   const sources = getLibrarySources();
   const fmt = (n: number) => n.toLocaleString(LOCALE_TAGS[language]);
+  // Nutrition per 100 g: one decimal (a per-serving file scaled to 100 g
+  // would otherwise show "12.153").
+  const fmt1 = (n: number) => n.toLocaleString(LOCALE_TAGS[language], { maximumFractionDigits: 1 });
   const fieldLabel = (field: LibraryField) => t(`myFoods.library.fields.${field}`);
 
   function refresh() {
@@ -626,9 +629,9 @@ export function LibrarySourcesPanel() {
               ? t('myFoods.library.previewRow', {
                   name: r.item.nameVi,
                   kcal: fmt(Math.round(r.item.per100g.energyKcal)),
-                  p: fmt(r.item.per100g.proteinG),
-                  f: fmt(r.item.per100g.fatG),
-                  c: fmt(r.item.per100g.carbG),
+                  p: fmt1(r.item.per100g.proteinG),
+                  f: fmt1(r.item.per100g.fatG),
+                  c: fmt1(r.item.per100g.carbG),
                 })
               : `⚠ ${t(`myFoods.library.issues.${r.issue}`)}`}
           </Text>

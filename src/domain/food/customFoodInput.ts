@@ -144,24 +144,18 @@ function parseNonNegative(s: string): number {
   return Math.max(0, parseNum(s));
 }
 
-// Renders a computed number back into a form field: 6 significant digits is
-// far beyond any nutrition label and strips floating-point tails
-// (609.9999999999 → "610", 128.5714285 → "128.571") that a plain String()
-// would show to the user.
-function formatInputNumber(n: number): string {
-  if (!Number.isFinite(n)) return '0';
-  return String(Number(n.toPrecision(6)));
-}
-
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
-// A number shown PER SERVING (prefilled or converted from per 100 g): one
-// decimal, like a label — 16 g of G7 is "12.2" g carbs, not "12.1552". A
-// trace that would round to 0 (zinc 0.015 mg in an espresso) keeps its first
-// significant digit instead, so saving the form unchanged never erases it.
-function formatServingNumber(n: number): string {
+// A number the form shows that the app computed (prefilled, or converted
+// between per serving and per 100 g): one decimal, like a label — 16 g of G7
+// is "12.2" g carbs, not "12.1552"; 103.1 kcal per 30 g is "343.7" per 100 g,
+// not "343.666666667" (owner, Session 72b for per serving, Session 75 for
+// per 100 g). Floating-point tails go too (609.9999999 → "610"). A trace that
+// would round to 0 (zinc 0.015 mg in an espresso) keeps its first significant
+// digit instead, so saving the form unchanged never erases it.
+function formatNutritionNumber(n: number): string {
   if (!Number.isFinite(n)) return '0';
   const r = round1(n);
   return String(r === 0 && n > 0 ? Number(n.toPrecision(1)) : r);
@@ -194,9 +188,9 @@ export function servingSizeOf(input: CustomFoodInput): number {
 
 // Re-expresses one typed number on the other scale. Blank or unparseable text
 // is left exactly as typed (never turned into "NaN" or a fake 0).
-function convertField(text: string, factor: number, format: (n: number) => string): string {
+function convertField(text: string, factor: number): string {
   const n = parseDecimal(text);
-  return isNaN(n) ? text : format(n * factor);
+  return isNaN(n) ? text : formatNutritionNumber(n * factor);
 }
 
 // Switches the scale the nutrition numbers are typed on, CONVERTING what is
@@ -211,10 +205,9 @@ export function changeNutritionBasis(
   if (next === input.nutritionBasis) return input;
   const size = servingSizeOf(input);
   const factor = next === 'perServing' ? size / 100 : 100 / size;
-  const format = next === 'perServing' ? formatServingNumber : formatInputNumber;
   const out: CustomFoodInput = { ...input, nutritionBasis: next };
   for (const key of NUTRITION_KEYS) {
-    out[key] = size > 0 ? convertField(input[key], factor, format) : '';
+    out[key] = size > 0 ? convertField(input[key], factor) : '';
   }
   return out;
 }
@@ -441,8 +434,8 @@ export function isValidCustomFoodInput(input: CustomFoodInput): boolean {
 // "per serving" (the numbers the user originally typed for a capsule/carton),
 // a weighed food on "per 100 g" — and either is one tap away from the other
 // since a basis change converts rather than wipes. Numbers go through
-// formatInputNumber (per-serving ones through formatServingNumber, 1 decimal)
-// so a converted value doesn't show a floating-point tail
+// formatNutritionNumber (1 decimal) so a converted value doesn't show a long
+// tail
 // (a real 0 still shows "0" — honest for an edit form); optional micros
 // (epaMg/dhaMg) fall back to 0. The id is NOT carried here — edit-mode
 // restores the original id after buildCustomFoodItem so the save becomes an
@@ -457,7 +450,7 @@ export function inputFromFoodItem(item: FoodItem): CustomFoodInput {
     ? scalePer100gToPerServing(item.per100g, item.servingWeightG as number)
     : item.per100g;
   const s = (n: number): string => String(n);
-  const f = isServingBased ? formatServingNumber : formatInputNumber;
+  const f = formatNutritionNumber;
   // Undeclared substances reopen blank, not as a "0" the user never typed.
   const o = (n: number | undefined): string => (n == null ? '' : f(n));
   return {

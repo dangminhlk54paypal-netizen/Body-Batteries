@@ -7,6 +7,7 @@ import {
   repairEncodedFoodNames,
   repairStoredTranslations,
   sameNameLoosely,
+  withLocalName,
 } from '../foodNameText';
 import type { FoodItem } from '../../../types/food';
 
@@ -119,5 +120,35 @@ describe('machine-translated food names', () => {
     expect(namesAfterRename(custom, 'Chuối nướng')).toEqual({ nameVi: 'Chuối nướng', nameEn: '', nameDe: undefined });
     expect(namesAfterRename(custom, 'chuối chiên')).toMatchObject({ nameEn: 'Fried banana' });
     expect(namesAfterRename({ ...custom, source: 'USDA' }, 'Chuối nướng')).toMatchObject({ nameEn: 'Fried banana' });
+  });
+});
+
+describe('withLocalName', () => {
+  const food: FoodItem = {
+    id: 'ai_draft_t0',
+    nameVi: '',
+    nameEn: 'Beef goulash',
+    category: 'custom',
+    defaultServingG: 300,
+    servingPresets: [],
+    per100g: {
+      energyKcal: 120, waterG: 0, proteinG: 12, fatG: 6, carbG: 4, fiberG: 0, sugarG: 0,
+      calciumMg: 0, ironMg: 0, sodiumMg: 0, potassiumMg: 0, magnesiumMg: 0, zincMg: 0,
+    },
+    source: 'custom',
+    note: '',
+  };
+
+  it('puts the name in the app language field and keeps nameVi filled as the fallback', () => {
+    expect(withLocalName(food, 'de', 'Rindergulasch')).toMatchObject({
+      nameDe: 'Rindergulasch',
+      nameEn: 'Beef goulash',
+      nameVi: 'Rindergulasch',
+    });
+    expect(withLocalName(food, 'vi', 'Bò hầm')).toMatchObject({ nameVi: 'Bò hầm', nameEn: 'Beef goulash' });
+    expect(withLocalName({ ...food, nameVi: 'Bò hầm' }, 'en', 'Goulash')).toMatchObject({
+      nameVi: 'Bò hầm',
+      nameEn: 'Goulash',
+    });
   });
 });

@@ -753,7 +753,8 @@ export function FoodLogModal({ visible, onClose, initialDate, startInText = fals
                 );
               })()}
               <Text style={styles.subtitle}>
-                {foodCategoryLabel(selected.category, language)} · {selected.per100g.energyKcal} kcal / 100g
+                {foodCategoryLabel(selected.category, language)} ·{' '}
+                {selected.per100g.energyKcal.toLocaleString(LOCALE_TAGS[language], { maximumFractionDigits: 1 })} kcal / 100g
               </Text>
               <Pressable
                 onPress={() => setEditingNutrition(true)}

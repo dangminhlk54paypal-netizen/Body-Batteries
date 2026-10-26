@@ -53,12 +53,18 @@ export async function deleteCustomFoodAndUnregister(id: string): Promise<void> {
   customFoods = customFoods.filter((f) => f.id !== id);
 }
 
-// Rewrites only a custom food's two stored names (no created_at reset, so the
-// "Mine" list keeps its order) and updates the registry in place.
-export async function updateCustomFoodNamesAndRegister(id: string, nameVi: string, nameEn: string): Promise<void> {
+// Rewrites only a custom food's stored names (no created_at reset, so the
+// "Mine" list keeps its order) and updates the registry in place. No German
+// name = none stored (German then shows nameEn / nameVi).
+export async function updateCustomFoodNamesAndRegister(
+  id: string,
+  nameVi: string,
+  nameEn: string,
+  nameDe?: string
+): Promise<void> {
   const { updateCustomFoodNames } = await import('../repositories/customFoodsRepository');
-  await updateCustomFoodNames(id, nameVi, nameEn);
-  customFoods = customFoods.map((f) => (f.id === id ? { ...f, nameVi, nameEn, nameDe: undefined } : f));
+  await updateCustomFoodNames(id, nameVi, nameEn, nameDe);
+  customFoods = customFoods.map((f) => (f.id === id ? { ...f, nameVi, nameEn, nameDe } : f));
 }
 
 // Hydrates the registry from the DB. Call once at app startup, right after
@@ -88,7 +94,7 @@ export async function loadCustomFoodsIntoRegistry(): Promise<void> {
     setCustomFoods(items);
     for (const item of repaired) {
       try {
-        await updateCustomFoodNames(item.id, item.nameVi, item.nameEn);
+        await updateCustomFoodNames(item.id, item.nameVi, item.nameEn, item.nameDe);
       } catch (e) {
         // Registry already shows the decoded name; next startup retries.
         console.warn('Failed to persist repaired custom food name:', e);

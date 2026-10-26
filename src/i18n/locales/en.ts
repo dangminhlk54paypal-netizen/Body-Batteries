@@ -1038,8 +1038,10 @@ export const en: TranslationSchema = {
       askAiButton: '📤 Ask AI',
       pasteButton: '📋 Paste',
       pasteEmpty: 'Nothing to paste yet. Copy the AI answer first.',
-      aiPrompt:
-        'Look at the meal photo I attach (or my description). List EVERY food and drink, including easily hidden parts like sauce, oil, or rice under other food. Estimate the weight of each in grams (drinks: ml) and its nutrition per 100 g (packaged products: use the numbers on the label).\nReply ONLY with JSON in exactly this shape, no other text:\n{"items":[{"name":"food name","name_en":"English name","grams":150,"per_100g":{"kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0,"fiber_g":0,"sugar_g":0,"sodium_mg":0}}]}\nIf I mention when I ate, add "time":"HH:MM" to that item.',
+      aiPromptIntro:
+        'Look at the meal photo I attach (or my description). List EVERY food and drink, including easily hidden parts like sauce, oil, or rice under other food. Estimate the weight of each in grams (drinks: ml) and its nutrition per 100 g (packaged products: use the numbers on the label).\nReply ONLY with JSON in exactly this shape, no other text:',
+      aiPromptOutro:
+        '{{name}} and {{nameEn}} are the food’s name in English. If I mention when I ate, add {{time}} to that item.',
       nothingFound: 'Nothing recognized. Try: “2 bowls of rice, ran 30 minutes”.',
       summary: '{{count}} foods · {{kcal}} kcal',
       timeChip: '🕐 {{when}} ▾',
@@ -1061,6 +1063,7 @@ export const en: TranslationSchema = {
         futureTime: 'Meal time is in the future. Tap ✎ to fix',
         tooOld: 'Only the last {{days}} days can be logged',
         aiCheck: 'AI numbers don’t add up (kcal ≠ protein, carbs, fat). ✎ to check',
+        aiDoubt: '{{nutrient}} {{value}} mg/100g looks too high. Maybe {{alt}} mg? Check the AI answer',
         aiBasis: 'AI didn’t say for how many g — read as per 100 g',
         aiCompare: '🤖 AI {{ai}} · app {{app}} kcal/100g · using app numbers. ✎ to change',
         aiCompareAi: '🤖 Using AI numbers {{ai}} kcal/100g · updates the food on logging',

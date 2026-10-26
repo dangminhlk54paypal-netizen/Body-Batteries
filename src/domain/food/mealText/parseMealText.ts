@@ -333,7 +333,7 @@ function takeAmount(
 }
 
 // ── JSON from an AI answer ───────────────────────────────────────────────
-// The prompt (i18n components.textMealEntry.aiPrompt) asks for
+// The prompt (domain/food/aiImport/aiPrompt.ts AI_MEAL_JSON_SHAPE) asks for
 //   {"items":[{"name":"…","name_en":"…","grams":150,"time":"12:30",
 //              "per_100g":{"kcal":…,"protein_g":…,"carbs_g":…,"fat_g":…}}]}
 // but answers drift: a bare array, ```json fences, "quantity"+"unit" instead

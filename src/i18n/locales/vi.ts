@@ -1078,8 +1078,10 @@ export const vi = {
       askAiButton: '📤 Hỏi AI',
       pasteButton: '📋 Dán',
       pasteEmpty: 'Chưa có gì để dán. Copy câu trả lời của AI trước.',
-      aiPrompt:
-        'Hãy xem ảnh bữa ăn tôi gửi kèm (hoặc mô tả của tôi). Liệt kê TỪNG món ăn và đồ uống, kể cả phần dễ bị che như nước sốt, dầu mỡ, cơm dưới đáy bát. Ước lượng khối lượng mỗi món bằng gram (đồ uống: ml) và dinh dưỡng trên 100 g của món đó (sản phẩm đóng gói: lấy đúng số trên nhãn).\nChỉ trả lời bằng JSON đúng mẫu sau, không thêm chữ nào khác:\n{"items":[{"name":"tên món bằng tiếng Việt","name_en":"English name","grams":150,"per_100g":{"kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0,"fiber_g":0,"sugar_g":0,"sodium_mg":0}}]}\nNếu tôi có nói giờ ăn, thêm "time":"HH:MM" vào món đó.',
+      aiPromptIntro:
+        'Hãy xem ảnh bữa ăn tôi gửi kèm (hoặc mô tả của tôi). Liệt kê TỪNG món ăn và đồ uống, kể cả phần dễ bị che như nước sốt, dầu mỡ, cơm dưới đáy bát. Ước lượng khối lượng mỗi món bằng gram (đồ uống: ml) và dinh dưỡng trên 100 g của món đó (sản phẩm đóng gói: lấy đúng số trên nhãn).\nChỉ trả lời bằng JSON đúng mẫu sau, không thêm chữ nào khác:',
+      aiPromptOutro:
+        '{{name}} là tên món bằng tiếng Việt, {{nameEn}} là tên tiếng Anh. Nếu tôi có nói giờ ăn, thêm {{time}} vào món đó.',
       nothingFound: 'Chưa nhận ra món hay bài tập nào. Thử: “2 chén cơm, chạy bộ 30 phút”.',
       summary: '{{count}} món · {{kcal}} kcal',
       timeChip: '🕐 {{when}} ▾',
@@ -1101,6 +1103,7 @@ export const vi = {
         futureTime: 'Giờ ăn ở tương lai. Bấm ✎ để sửa',
         tooOld: 'Chỉ nạp được trong {{days}} ngày gần đây',
         aiCheck: 'Số AI chưa khớp (kcal ≠ đạm, carbs, béo). ✎ kiểm tra',
+        aiDoubt: '{{nutrient}} {{value}} mg/100g có vẻ quá cao. Có thể là {{alt}} mg? Xem lại câu trả lời AI',
         aiBasis: 'AI không nói số cho bao nhiêu g, app hiểu là /100 g',
         aiCompare: '🤖 AI {{ai}} · app {{app}} kcal/100g · đang dùng số app. ✎ đổi',
         aiCompareAi: '🤖 Dùng số AI {{ai}} kcal/100g · cập nhật món khi nạp',

@@ -1040,8 +1040,10 @@ export const de: TranslationSchema = {
       askAiButton: '📤 KI fragen',
       pasteButton: '📋 Einfügen',
       pasteEmpty: 'Nichts zum Einfügen. Kopiere zuerst die KI-Antwort.',
-      aiPrompt:
-        'Sieh dir das Foto meiner Mahlzeit an (oder meine Beschreibung). Liste JEDES Essen und Getränk auf, auch leicht verdeckte Teile wie Soße, Öl oder Reis unter anderem Essen. Schätze das Gewicht von allem in Gramm (Getränke: ml) und die Nährwerte pro 100 g (verpackte Produkte: genau die Werte vom Etikett).\nAntworte NUR mit JSON genau in dieser Form, ohne weiteren Text:\n{"items":[{"name":"Name auf Deutsch","name_en":"English name","grams":150,"per_100g":{"kcal":0,"protein_g":0,"carbs_g":0,"fat_g":0,"fiber_g":0,"sugar_g":0,"sodium_mg":0}}]}\nWenn ich die Uhrzeit nenne, füge bei diesem Eintrag "time":"HH:MM" hinzu.',
+      aiPromptIntro:
+        'Sieh dir das Foto meiner Mahlzeit an (oder meine Beschreibung). Liste JEDES Essen und Getränk auf, auch leicht verdeckte Teile wie Soße, Öl oder Reis unter anderem Essen. Schätze das Gewicht von allem in Gramm (Getränke: ml) und die Nährwerte pro 100 g (verpackte Produkte: genau die Werte vom Etikett).\nAntworte NUR mit JSON genau in dieser Form, ohne weiteren Text:',
+      aiPromptOutro:
+        '{{name}} ist der Name auf Deutsch, {{nameEn}} der englische Name. Wenn ich die Uhrzeit nenne, füge bei diesem Eintrag {{time}} hinzu.',
       nothingFound: 'Nichts erkannt. Versuch: „2 Schüsseln Reis, 30 Minuten joggen“.',
       summary: '{{count}} Essen · {{kcal}} kcal',
       timeChip: '🕐 {{when}} ▾',
@@ -1063,6 +1065,7 @@ export const de: TranslationSchema = {
         futureTime: 'Zeit liegt in der Zukunft. ✎ zum Ändern',
         tooOld: 'Nur die letzten {{days}} Tage möglich',
         aiCheck: 'KI-Werte passen nicht (kcal ≠ Eiweiß, KH, Fett). ✎ prüfen',
+        aiDoubt: '{{nutrient}} {{value}} mg/100g wirkt zu hoch. Vielleicht {{alt}} mg? KI-Antwort prüfen',
         aiBasis: 'KI nennt keine Menge — gelesen als pro 100 g',
         aiCompare: '🤖 KI {{ai}} · App {{app}} kcal/100g · App-Werte aktiv. ✎ ändern',
         aiCompareAi: '🤖 KI-Werte {{ai}} kcal/100g · aktualisiert das Lebensmittel beim Loggen',

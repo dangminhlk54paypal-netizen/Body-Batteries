@@ -2,7 +2,9 @@ import {
   aiNutritionDiffers,
   aiNutritionLooksOff,
   completeNutrition,
+  halfWidth,
   jsonNutrition,
+  normaliseLabel,
   parseNutritionText,
 } from '../aiNutrition';
 
@@ -122,5 +124,73 @@ describe('checks', () => {
     const full = completeNutrition({ energyKcal: 50, caffeineMg: 30 });
     expect(full).toMatchObject({ energyKcal: 50, proteinG: 0, sodiumMg: 0, caffeineMg: 30 });
     expect('epaMg' in full).toBe(false);
+  });
+});
+
+describe('thousands separators', () => {
+  it('reads "1.046 kJ" (de) and "1,046 kJ" (en) as one thousand, not 1.046', () => {
+    const de = parseNutritionText('Brennwert 1.046 kJ\nEiweiß 10 g\nKohlenhydrate 30 g\nFett 2 g\npro 100 g');
+    expect(de?.nutrition.per100g.energyKcal).toBe(250);
+    const en = parseNutritionText('Energy 1,046 kJ\nProtein 10 g\nCarbohydrate 30 g\nFat 2 g\nper 100 g');
+    expect(en?.nutrition.per100g.energyKcal).toBe(250);
+  });
+
+  it('reads "Natrium 1.200 mg" as 1200 mg and keeps decimal commas', () => {
+    const r = parseNutritionText('je 100 g: Brennwert 120 kcal, Fett 0,125 g, Eiweiß 12,4 g, Natrium 1.200 mg');
+    expect(r?.nutrition.per100g).toEqual({ energyKcal: 120, fatG: 0.1, proteinG: 12.4, sodiumMg: 1200 });
+  });
+
+  it('reads a range of thousands', () => {
+    const r = parseNutritionText('Calories 250 kcal\nProtein 10 g\nSodium 1,000–1,200 mg\nper 100 g');
+    expect(r?.nutrition.per100g.sodiumMg).toBe(1100);
+  });
+
+  it('reads thousands in JSON string values, from the key unit or the value unit', () => {
+    const ai = jsonNutrition({ per_100g: { energy_kj: '1.046', sodium_mg: '1,200', protein_g: '12,4' } }, null, 'g');
+    expect(ai?.per100g).toEqual({ energyKcal: 250, sodiumMg: 1200, proteinG: 12.4 });
+    expect(jsonNutrition({ per_100g: { energy: '1.046 kJ' } }, null, 'g')?.per100g.energyKcal).toBe(250);
+  });
+
+  it('turns on the aiCheck warning once kJ is read right (250 kcal from macros of 600)', () => {
+    const r = parseNutritionText('Energie 1.046 kJ\nEiweiß 50 g\nKohlenhydrate 50 g\nFett 22 g\npro 100 g');
+    expect(aiNutritionLooksOff(r!.nutrition.per100g)).toBe(true);
+  });
+});
+
+describe('Unicode labels', () => {
+  it('splits full-width punctuation like its plain form', () => {
+    const r = parseNutritionText('Protein：30 g，Fat：10 g，Calories：250 kcal（per 100 g）');
+    expect(r?.nutrition.per100g).toEqual({ energyKcal: 250, proteinG: 30, fatG: 10 });
+    expect(r?.nutrition.basisGuessed).toBe(false);
+  });
+
+  it('keeps letters of every script in a label instead of erasing them', () => {
+    expect(normaliseLabel('蛋白质 (g)')).toBe('蛋白质 g');
+    expect(normaliseLabel('Énergie_kJ')).toBe('energie kj');
+    expect(halfWidth('３０ｇ')).toBe('30g');
+  });
+});
+
+describe('doubtful thousands', () => {
+  it('flags "Eisen 1,500 mg" (1500 mg iron is far above any food) with the decimal reading', () => {
+    const r = parseNutritionText('pro 100 g: Brennwert 120 kcal, Eiweiß 10 g, Eisen 1,500 mg');
+    expect(r?.nutrition.per100g.ironMg).toBe(1500);
+    expect(r?.nutrition.doubtful).toEqual([{ key: 'ironMg', value: 1500, alt: 1.5 }]);
+  });
+
+  it('does not doubt a mineral that really reaches thousands (calcium in cheese, sodium)', () => {
+    const r = parseNutritionText('per 100 g: Calories 330 kcal, Protein 18 g, Calcium 1,500 mg, Sodium 1,200 mg');
+    expect(r?.nutrition.per100g).toMatchObject({ calciumMg: 1500, sodiumMg: 1200 });
+    expect(r?.nutrition.doubtful).toBeUndefined();
+  });
+
+  it('does not doubt a value written without a separator', () => {
+    const r = parseNutritionText('per 100 g: Calories 120 kcal, Protein 10 g, Iron 1500 mg');
+    expect(r?.nutrition.doubtful).toBeUndefined();
+  });
+
+  it('flags a doubtful JSON string value too', () => {
+    const ai = jsonNutrition({ per_100g: { kcal: 120, zinc_mg: '2.500' } }, null, 'g');
+    expect(ai?.doubtful).toEqual([{ key: 'zincMg', value: 2500, alt: 2.5 }]);
   });
 });

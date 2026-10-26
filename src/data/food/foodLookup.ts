@@ -5,7 +5,7 @@ import { getUsdaFoodById } from './usdaFoods';
 import { getCustomFoodByIdSync } from './customFoodRegistry';
 import { getOverrideByIdSync } from './foodOverrideRegistry';
 import { getLibraryFoodByIdSync } from './libraryFoodRegistry';
-import { decodePercentEncodedText } from '../../domain/food/foodNameText';
+import { decodePercentEncodedText, namesAfterRename } from '../../domain/food/foodNameText';
 
 // Resolves a logged foodId no matter which catalog it came from: the
 // Vietnamese CSV ("rice_white_cooked"), the USDA lookup ("usda_2727589"), a
@@ -72,6 +72,10 @@ export function getAnyFoodById(id: string): FoodItem | undefined {
     ...base,
     nameVi: override.nameVi,
     nameEn: override.nameEn,
+    // The override row has no German name: the base's stays, unless a custom
+    // food was renamed — then the new name shows in German too, like the
+    // edit flow does for nameEn (namesAfterRename).
+    nameDe: namesAfterRename(base, override.nameVi).nameDe,
     category: override.category,
     defaultServingG: override.defaultServingG,
     per100g: { ...base.per100g, ...override.per100g },

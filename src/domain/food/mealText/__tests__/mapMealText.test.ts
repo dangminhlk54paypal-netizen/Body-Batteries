@@ -92,6 +92,7 @@ function ctx(over: Partial<MealTextContext> = {}): MealTextContext {
     recentLog: [],
     search,
     resolve: (id) => CATALOG.find((f) => f.id === id),
+    language: 'vi',
     ...over,
   };
 }
@@ -295,6 +296,29 @@ describe('mapping — nutrition from an AI', () => {
       per100g: { energyKcal: 160, proteinG: 8, sodiumMg: 0 },
     });
     expect(row.grams).toBe(350);
+  });
+
+  it('warns when an AI mineral read as thousands is far above any food — only if the AI numbers are used', () => {
+    const json = (name: string) =>
+      `{"items":[{"name":"${name}","grams":500,"per_100g":{"kcal":130,"protein_g":8,"carbs_g":15,"fat_g":4,"iron_mg":"1,500"}}]}`;
+    const [unknown] = draft(json('món lạ'));
+    expect(unknown.ai?.doubtful).toEqual([{ key: 'ironMg', value: 1500, alt: 1.5 }]);
+    expect(unknown.issues).toContain('aiDoubt');
+    // An exact match keeps the app's numbers — the AI's iron isn't logged.
+    const [pho] = draft(json('phở bò'));
+    expect(pho.issues).not.toContain('aiDoubt');
+    expect(withAiChoice(pho, 'ai', ctx()).issues).toContain('aiDoubt');
+  });
+
+  it('files the new food\'s name under the app language (German stays German, English as the fallback)', () => {
+    const json =
+      '{"items":[{"name":"Rindergulasch","name_en":"Beef goulash","grams":300,"per_100g":{"kcal":120,"protein_g":12,"carbs_g":4,"fat_g":6}}]}';
+    const [de] = buildMealDraft(parseMealText(json), ctx({ language: 'de' }));
+    expect(de.food).toMatchObject({ nameDe: 'Rindergulasch', nameEn: 'Beef goulash', nameVi: 'Rindergulasch' });
+    const [en] = buildMealDraft(parseMealText(json), ctx({ language: 'en' }));
+    expect(en.food).toMatchObject({ nameEn: 'Rindergulasch', nameVi: 'Rindergulasch' });
+    const renamed = withAiName(de, 'Gulasch vom Rind', ctx({ language: 'de' }));
+    expect(renamed.food).toMatchObject({ nameDe: 'Gulasch vom Rind', nameVi: 'Gulasch vom Rind' });
   });
 
   it('a near match becomes a new food, the near match kept to switch back to', () => {

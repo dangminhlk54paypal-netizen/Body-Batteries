@@ -56,6 +56,9 @@ export const CUSTOM_FOODS_MIGRATION_COLUMNS = [
   { name: 'taurine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN taurine_mg REAL' },
   { name: 'carnitine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN carnitine_mg REAL' },
   { name: 'creatine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN creatine_mg REAL' },
+  // German name (a food saved from an AI answer while the app is in German,
+  // or auto-translated). NULL = none, so German falls back to nameEn/nameVi.
+  { name: 'name_de', ddl: 'ALTER TABLE custom_foods ADD COLUMN name_de TEXT' },
 ];
 
 export const FOOD_OVERRIDES_MIGRATION_COLUMNS = [
@@ -141,6 +144,7 @@ export const CREATE_CUSTOM_FOODS = `
     id TEXT PRIMARY KEY,
     name_vi TEXT,
     name_en TEXT,
+    name_de TEXT,
     category TEXT,
     default_serving_g REAL,
     energy_kcal REAL,

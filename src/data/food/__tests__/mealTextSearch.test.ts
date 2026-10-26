@@ -16,6 +16,7 @@ function rows(text: string, preferIds: ReadonlySet<string> = new Set()) {
     recentLog: [],
     search: (q) => searchForMealText(q, preferIds),
     resolve: getAnyFoodById,
+    language: 'vi',
   }).map((r) => [r.food?.id ?? null, r.grams]);
 }
 

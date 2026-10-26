@@ -493,8 +493,20 @@ describe('changeNutritionBasis', () => {
     };
     const r = changeNutritionBasis(perServing, 'per100');
     expect(r.nutritionBasis).toBe('per100');
-    // 450 / 350 * 100 = 128.5714285… — shown to 6 significant digits.
-    expect(r.energyKcal).toBe('128.571');
+    // 450 / 350 * 100 = 128.5714285… — shown to 1 decimal, like per serving.
+    expect(r.energyKcal).toBe('128.6');
+  });
+
+  it('per-100 g numbers converted from an odd serving show 1 decimal (103.1 kcal per 30 g → 343.7)', () => {
+    const perServing: CustomFoodInput = {
+      ...per100,
+      defaultServingG: '30',
+      nutritionBasis: 'perServing',
+      energyKcal: '103.1',
+      proteinG: '',
+      carbG: '',
+    };
+    expect(changeNutritionBasis(perServing, 'per100').energyKcal).toBe('343.7'); // 343.6666…
   });
 
   it('round-trips per100 -> perServing -> per100 back to the typed numbers (within the 1-decimal serving rounding)', () => {

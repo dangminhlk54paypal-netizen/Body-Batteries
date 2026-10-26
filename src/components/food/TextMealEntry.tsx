@@ -78,6 +78,9 @@ import type { FoodItem, FoodLogEntry, Nutrition } from '../../types/food';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
+import { buildAiPrompt, PROMPT_KEYS } from '../../domain/food/aiImport/aiPrompt';
+import { DOUBT_LIMITS } from '../../domain/food/mealText/aiNutrition';
+import { withLocalName } from '../../domain/food/foodNameText';
 import { LOCALE_TAGS } from '../../i18n';
 
 // "Nạp bằng chữ" — one box for typed, dictated (the keyboard's 🎤) or pasted
@@ -233,6 +236,7 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
       recentLog,
       search: (q) => searchForMealText(q, preferIds, library),
       resolve: getAnyFoodById,
+      language,
     };
   }
 
@@ -279,7 +283,11 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
   // picks ChatGPT / Gemini / Claude, attaches the meal photo there, and
   // copies the JSON answer back. Nothing is sent by the app itself.
   function askAi() {
-    Share.share({ message: t('components.textMealEntry.aiPrompt') }).catch(() => {});
+    const prompt = buildAiPrompt(
+      t('components.textMealEntry.aiPromptIntro'),
+      t('components.textMealEntry.aiPromptOutro', PROMPT_KEYS)
+    );
+    Share.share({ message: prompt }).catch(() => {});
   }
 
   async function paste() {
@@ -457,7 +465,7 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
     for (const step of aiSavePlan(target, newCustomFoodId)) {
       const food = step.food.nameVi.trim()
         ? step.food
-        : { ...step.food, nameVi: t('components.textMealEntry.ai.unnamed') };
+        : withLocalName(step.food, language, t('components.textMealEntry.ai.unnamed'));
       if (step.kind === 'add') await addCustomFoodAndRegister(food);
       else await upsertOverrideAndRegister(food);
       const live = getAnyFoodById(food.id) ?? food;
@@ -587,6 +595,14 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
       }
       case 'aiNew':
         return t('components.textMealEntry.notes.aiNew', { kcal: Math.round(row.food?.per100g.energyKcal ?? 0) });
+      case 'aiDoubt': {
+        const doubt = row.ai?.doubtful[0];
+        const nutrient = DOUBT_LIMITS.find((limit) => limit.key === doubt?.key)?.nutrient;
+        if (!doubt || !nutrient) return '';
+        // No grouping: "1500" can't be misread again the way "1.500" was.
+        const mg = (n: number) => n.toLocaleString(LOCALE_TAGS[language], { maximumFractionDigits: 2, useGrouping: false });
+        return t(key, { nutrient: t(`nutrients.${nutrient}.name`), value: mg(doubt.value), alt: mg(doubt.alt) });
+      }
       default:
         return t(key);
     }

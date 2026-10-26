@@ -13,15 +13,16 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
   const n = item.per100g;
   await db.runAsync(
     `INSERT OR REPLACE INTO custom_foods
-       (id, name_vi, name_en, category, default_serving_g,
+       (id, name_vi, name_en, name_de, category, default_serving_g,
         energy_kcal, water_g, protein_g, fat_g, carb_g, fiber_g, sugar_g,
         calcium_mg, iron_mg, sodium_mg, potassium_mg, magnesium_mg, zinc_mg,
         epa_mg, dha_mg, portion_unit, serving_weight_g, serving_label,
         measure_unit, caffeine_mg, taurine_mg, carnitine_mg, creatine_mg, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     item.id,
     item.nameVi,
     item.nameEn,
+    item.nameDe || null,
     item.category,
     item.defaultServingG,
     n.energyKcal,
@@ -51,20 +52,22 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
   );
 }
 
-// Rewrites only the two stored name columns — used by the startup repair of
+// Rewrites only the stored name columns — used by the startup repair of
 // URL-encoded names (see loadCustomFoodsIntoRegistry). Deliberately not
 // addCustomFood: its INSERT OR REPLACE would reset created_at and reorder
 // the user's "Mine" list.
 export async function updateCustomFoodNames(
   id: string,
   nameVi: string,
-  nameEn: string
+  nameEn: string,
+  nameDe: string | undefined
 ): Promise<void> {
   const db = getDb();
   await db.runAsync(
-    'UPDATE custom_foods SET name_vi = ?, name_en = ? WHERE id = ?',
+    'UPDATE custom_foods SET name_vi = ?, name_en = ?, name_de = ? WHERE id = ?',
     nameVi,
     nameEn,
+    nameDe || null,
     id
   );
 }

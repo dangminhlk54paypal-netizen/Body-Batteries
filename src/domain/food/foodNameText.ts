@@ -149,3 +149,15 @@ export function namesAfterRename(item: FoodItem, newNameVi: string): Pick<FoodIt
   }
   return { nameVi: newNameVi, nameEn: '', nameDe: undefined };
 }
+
+// The FoodItem field that holds a name in each app language.
+const NAME_FIELD: Record<Language, 'nameVi' | 'nameEn' | 'nameDe'> = { vi: 'nameVi', en: 'nameEn', de: 'nameDe' };
+
+// A name given in the app's language (an AI answer to a German prompt names
+// the dish in German) goes into that language's field, so foodDisplayName
+// shows it there instead of the AI's English name. nameVi always stays
+// filled: every language falls back to it and a food log entry snapshots it.
+export function withLocalName(food: FoodItem, language: Language, name: string): FoodItem {
+  const named: FoodItem = { ...food, [NAME_FIELD[language]]: name };
+  return named.nameVi.trim() ? named : { ...named, nameVi: name };
+}

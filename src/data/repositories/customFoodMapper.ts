@@ -5,6 +5,8 @@ export interface CustomFoodRow {
   id: string;
   name_vi: string;
   name_en: string;
+  // NULL on rows written before this column existed.
+  name_de: string | null;
   category: string;
   default_serving_g: number;
   energy_kcal: number;
@@ -39,7 +41,7 @@ export interface CustomFoodRow {
 // directly unit-testable (importing customFoodsRepository.ts pulls in
 // expo-sqlite, which can't load under plain Jest — see
 // __tests__/customFoodMapper.test.ts). Custom foods have no serving presets
-// / German name / source note yet — defaulted here.
+// / source note yet — defaulted here.
 export function rowToCustomFoodItem(r: CustomFoodRow): FoodItem {
   const per100g: Nutrition = {
     energyKcal: r.energy_kcal,
@@ -66,7 +68,7 @@ export function rowToCustomFoodItem(r: CustomFoodRow): FoodItem {
     id: r.id,
     nameVi: r.name_vi,
     nameEn: r.name_en,
-    nameDe: '',
+    nameDe: r.name_de ?? '',
     category: r.category,
     defaultServingG: r.default_serving_g,
     servingPresets: [],
