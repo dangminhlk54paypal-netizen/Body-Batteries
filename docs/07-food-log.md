@@ -232,6 +232,19 @@ Người dùng phải kiểm tra được mọi con số, không phải tin suô
 - Mốc ngày cũng được nói rõ: pin vi chất theo **ngày lịch**, pin Năng lượng **reset
   6h sáng**.
 
+## 4d. ☕ Caffeine & hoạt chất (Session 72)
+- 4 trường tuỳ chọn trên `Nutrition` (mg/100 g): `caffeineMg`, `taurineMg`, `carnitineMg`, `creatineMg` — CSV
+  `caffeine_mg/taurine_mg/carnitine_mg/creatine_mg`, cột cùng tên trong `custom_foods`/`food_overrides` (migration
+  ALTER). Để trống = **không khai báo** (undefined), khác với 0. Form tự tạo/sửa món có mục "Hoạt chất" (creatine nhập g).
+- Món mới: Monster Energy, Monster Ultra, G7 3in1, cà phê hoà tan đen, espresso, Creatine monohydrate, L-Carnitine;
+  thêm caffeine cho cà phê đen, cappuccino, cola, cola zero, Red Bull. Nguồn từng số:
+  `docs/nghien-cuu/2026-10-26-caffeine-nuoc-tang-luc-va-tpcn.md`.
+- `domain/nutrition/substanceEngine.ts` (thuần, có test) tính lại từ nhật ký món ăn — **nhật ký món chính là nhật ký
+  hoạt chất**, không có bảng mới. Cảnh báo: caffeine > 400 mg/ngày, > 200 mg trong 60 phút, ≥ 100 mg trong 6 giờ trước
+  giờ ngủ (`settingsStore.bedtimeHour`, mặc định 23), taurine > 3 g, L-carnitine > 2 g, creatine > 20 g; thói quen khi
+  ≥ 3/7 ngày lặp lại. Mốc: `lib/substanceLimits.ts`.
+- Giao diện: dòng ☕ trong "Chi tiết hôm nay" (`SubstancePanel`, `hooks/useSubstanceJournal.ts`), đủ vi/en/de.
+
 ## 5. Nguồn dữ liệu món ăn — `food_items.csv`
 - CSV là **nguồn gốc duy nhất**; thêm món = thêm dòng vào CSV (không hard-code).
 - `scripts/generate-food-db.js` nhúng CSV thô vào

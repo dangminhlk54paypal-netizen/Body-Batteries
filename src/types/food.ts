@@ -70,6 +70,15 @@ export interface Nutrition {
   // fish and fish-oil supplements declare them; absent means "not tracked".
   epaMg?: number;
   dhaMg?: number;
+  // Active substances from energy drinks, coffee and sports supplements (CSV
+  // columns caffeine_mg/taurine_mg/carnitine_mg/creatine_mg). Optional like
+  // EPA/DHA: absent means "not declared", never "zero". All in mg, creatine
+  // included (5 g = 5000 mg) so the substance engine needs no unit switch —
+  // the view shows creatine in g. Limits/references: src/lib/substanceLimits.ts.
+  caffeineMg?: number;
+  taurineMg?: number;
+  carnitineMg?: number;
+  creatineMg?: number;
 }
 
 // One row of the food database (one dish/ingredient).

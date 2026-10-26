@@ -358,6 +358,12 @@ export const vi = {
   // ever surfaced for a nutrient id when ASSESSMENT_RULES defines that
   // threshold — every id still gets both strings here so the 3 locale files
   // keep one uniform shape (see the file-level comment above).
+  substances: {
+    caffeine: { name: 'Caffeine', short: 'Caffeine' },
+    taurine: { name: 'Taurine', short: 'Taurine' },
+    carnitine: { name: 'L-carnitine', short: 'Carnitine' },
+    creatine: { name: 'Creatine', short: 'Creatine' },
+  },
   nutrients: {
     // `short`: the one-word label under each micro battery cell (MicroBatteryStack);
     // `name` stays the full label everywhere else (sheet, a11y, Excel).
@@ -807,6 +813,8 @@ export const vi = {
         microSummary: '{{count}} vi chất',
         microWarnSuffix: ' · ⚠️ {{count}}',
         supplementsSummary: '{{count}} liều',
+        substances: 'Caffeine',
+        substancesSummary: '{{mg}}/{{limit}} mg',
         intakesSummary: '{{count}} lần',
         balanceInfo: 'Đã đốt (Apple Health, hoặc ước tính theo BMR) so với đã ăn hôm nay.',
         modeSingleA11y: 'Đang xem một mục mỗi lần. Chạm để xem tối đa 3 mục cùng lúc',
@@ -1154,6 +1162,45 @@ export const vi = {
       electrolytePotassium: 'Kali (mg)',
       electrolyteMagnesium: 'Magie (mg)',
       saltDerivedLabel: '≈ {{grams}} g muối (NaCl) — quy đổi từ natri',
+      substanceSectionLabel: 'Hoạt chất (nước tăng lực, TPCN)',
+      substanceCaffeine: 'Caffeine (mg)',
+      substanceTaurine: 'Taurine (mg)',
+      substanceCarnitine: 'L-carnitine (mg)',
+      substanceCreatine: 'Creatine (g)',
+    },
+    substancePanel: {
+      flagDaily: '⚠ {{value}}/{{mark}} mg/ngày',
+      flagDose: '⚠ {{value}} mg trong 1 giờ (> {{mark}})',
+      flagLate: '🌙 {{value}} mg sau {{from}}',
+      flagTaurine: 'Taurine {{value}} g (> {{mark}} g)',
+      flagCarnitine: 'L-carnitine {{value}} mg (> {{mark}})',
+      flagCreatine: 'Creatine {{value}} g (> {{mark}} g)',
+      stripA11y: '{{day}}: {{mg}} mg caffeine',
+      diaryEmpty: 'Ngày này chưa ghi caffeine.',
+      weekAverage: '7 ngày: TB {{mg}} mg · {{days}} ngày có caffeine',
+      habitDaily: '⚠ {{days}}/7 ngày vượt 400 mg — đang thành thói quen',
+      habitLate: '🌙 {{days}}/7 ngày dùng caffeine sát giờ ngủ',
+      quickA11y: 'Ghi 1 phần {{name}}, khoảng {{mg}} mg caffeine',
+      bedtimeLabel: '🌙 Giờ đi ngủ',
+      bedtimeEarlier: 'Ngủ sớm hơn 1 giờ',
+      bedtimeLater: 'Ngủ muộn hơn 1 giờ',
+      infoLimitsTitle: 'Mốc tham khảo (người lớn khoẻ mạnh)',
+      infoLimits:
+        'EFSA (2015): tới 400 mg caffeine/ngày và tới 200 mg mỗi lần (≈3 mg/kg) không gây lo ngại an toàn cho người lớn khoẻ mạnh, trừ phụ nữ mang thai. Mang thai/cho con bú: tới 200 mg/ngày. App gộp mọi lần ghi trong 60 phút thành "một lần". Ví dụ: 1 lon Monster 355 ml ≈ 114 mg, Monster Ultra ≈ 107 mg, 1 gói G7 3in1 ≈ 65 mg (ước tính), 1 tách cà phê đen 240 ml ≈ 96 mg.',
+      infoSleepTitle: 'Caffeine & giấc ngủ',
+      infoSleep:
+        'EFSA: chỉ 100 mg gần giờ ngủ đã có thể ảnh hưởng giấc ngủ ở một số người. Nghiên cứu Drake 2013: caffeine uống 6 giờ trước khi ngủ vẫn làm giảm thời gian ngủ. App đánh dấu 🌙 khi từ 100 mg trở lên rơi vào 6 giờ trước giờ đi ngủ bạn đặt. Cơ thể đào thải một nửa lượng caffeine sau khoảng 4 giờ (2–8 giờ tuỳ người).',
+      infoTrainingTitle: 'Caffeine trước buổi tập',
+      infoTraining:
+        'ISSN (2021): 3–6 mg/kg giúp cải thiện thành tích, thường uống khoảng {{minutes}} phút trước tập — với {{weight}} kg là {{min}}–{{max}} mg. Liều rất cao (~9 mg/kg) gây nhiều tác dụng phụ. Mốc an toàn mỗi lần của EFSA vẫn là {{single}} mg, nên liều tập cao hơn mốc này cần cân nhắc.',
+      infoOthersTitle: 'Taurine · L-carnitine · Creatine',
+      infoOthers:
+        'Taurine: EFSA (2009) đánh giá mức tiêu thụ cao tới ~3 g/ngày từ nước tăng lực là không đáng lo (1 lon Monster 355 ml ≈ 1,4 g). L-carnitine: mức an toàn quan sát được khi dùng lâu dài là 2 g/ngày (Hathcock & Shao 2006). Creatine: duy trì 3–5 g/ngày, giai đoạn nạp ~20 g/ngày trong 5–7 ngày (ISSN 2017); tác dụng phụ hay gặp nhất là tăng cân do giữ nước. Đường trong nước tăng lực được tính vào pin Đường.',
+      infoLongTermTitle: 'Về lâu dài',
+      infoLongTerm:
+        'EFSA: dùng quá nhiều caffeine lâu ngày có liên quan đến vấn đề tim mạch; ngắn hạn có thể gây mất ngủ, lo âu, thay đổi hành vi. FDA liệt kê các dấu hiệu: tim đập nhanh, hồi hộp, tăng huyết áp, mất ngủ, bồn chồn, khó chịu dạ dày, buồn nôn, đau đầu. Nhật ký 7 ngày giúp bạn thấy khi một ngày "quá tay" đang thành thói quen.',
+      disclaimer:
+        'Chỉ để tham khảo, không phải lời khuyên y tế. Nếu có bệnh tim mạch, huyết áp, đang dùng thuốc, mang thai hoặc dưới 18 tuổi, hãy hỏi bác sĩ.',
     },
     pastDateField: {
       errorFutureDate: 'Không thể chọn ngày tương lai',

@@ -67,6 +67,13 @@ function buildFromItem(entry: FoodLogEntry, item: FoodItem, language: Language):
     pushIfNonZero(rows, t('domain.nutritionDetail.epaDha'), omega3, 'mg');
   }
 
+  // Active substances (energy drinks, coffee, sports supplements) — undeclared
+  // ones are undefined and fall out through pushIfNonZero like the micros.
+  pushIfNonZero(rows, t('substances.caffeine.name'), (p.caffeineMg ?? 0) * factor, 'mg');
+  pushIfNonZero(rows, t('substances.taurine.name'), (p.taurineMg ?? 0) * factor, 'mg');
+  pushIfNonZero(rows, t('substances.carnitine.name'), (p.carnitineMg ?? 0) * factor, 'mg');
+  pushIfNonZero(rows, t('substances.creatine.name'), ((p.creatineMg ?? 0) * factor) / 1000, 'g');
+
   return rows;
 }
 

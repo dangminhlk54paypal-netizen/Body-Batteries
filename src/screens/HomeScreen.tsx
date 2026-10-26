@@ -34,6 +34,15 @@ import { computeMicroBatteries } from '../domain/nutrition/microBatteryEngine';
 import { nutrientTargetsForProfile } from '../lib/nutrientTargets';
 import type { MicroBatteryState } from '../types/nutrition';
 import { SupplementQuickLog } from '../components/SupplementQuickLog';
+import { SubstancePanel } from '../components/SubstancePanel';
+import { useSubstanceJournal } from '../hooks/useSubstanceJournal';
+import { caffeinePerformanceRangeMg } from '../domain/nutrition/substanceEngine';
+import {
+  CAFFEINE_DAILY_LIMIT_MG,
+  CAFFEINE_PERFORMANCE_MG_PER_KG,
+  CAFFEINE_PRE_WORKOUT_MIN,
+  CAFFEINE_SINGLE_DOSE_MG,
+} from '../lib/substanceLimits';
 import { FoldRow } from '../components/ui/FoldRow';
 import { DetailsViewSuggestion } from '../components/DetailsViewSuggestion';
 import { useHomeDetailsStore } from '../store/homeDetailsStore';
@@ -101,7 +110,7 @@ function buildRecommendation(
 }
 
 // The folded rows under "Chi tiết hôm nay" — one open at a time.
-type DetailId = 'meals' | 'activities' | 'balance' | 'micro' | 'supplements' | 'intakes';
+type DetailId = 'meals' | 'activities' | 'balance' | 'micro' | 'supplements' | 'substances' | 'intakes';
 
 // With 2–3 rows open, each scroll box shrinks to this so they share one screen.
 const COMPACT_BODY_H = 220;
@@ -170,6 +179,7 @@ export function HomeScreen() {
 
   useLowEnergyWatch();
   const microBattery = useMicroBatteryHistory(foodLog, userProfile);
+  const substances = useSubstanceJournal(foodLog);
   const ringMetricIds = resolveRingMetrics(ringMetrics);
   // The ring is always today — the micro section below may be showing a past day.
   const todayMicroStates = useMemo(
@@ -563,6 +573,43 @@ export function HomeScreen() {
           >
             {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
             <SupplementQuickLog todayLog={foodLog} embedded />
+          </FoldRow>
+
+          <FoldRow
+            icon="☕"
+            title={t('screens.home.details.substances')}
+            value={
+              substances.today.totals.caffeine > 0
+                ? t('screens.home.details.substancesSummary', {
+                    mg: num(Math.round(substances.today.totals.caffeine)),
+                    limit: num(CAFFEINE_DAILY_LIMIT_MG),
+                  }) +
+                  (substances.today.flags.length > 0
+                    ? t('screens.home.details.microWarnSuffix', { count: substances.today.flags.length })
+                    : '')
+                : empty
+            }
+            info={[
+              { heading: t('components.substancePanel.infoLimitsTitle'), body: t('components.substancePanel.infoLimits') },
+              { heading: t('components.substancePanel.infoSleepTitle'), body: t('components.substancePanel.infoSleep') },
+              {
+                heading: t('components.substancePanel.infoTrainingTitle'),
+                body: t('components.substancePanel.infoTraining', {
+                  ...caffeinePerformanceRangeMg(userProfile.weightKg, CAFFEINE_PERFORMANCE_MG_PER_KG),
+                  weight: num(userProfile.weightKg),
+                  minutes: CAFFEINE_PRE_WORKOUT_MIN,
+                  single: CAFFEINE_SINGLE_DOSE_MG,
+                }),
+              },
+              { heading: t('components.substancePanel.infoOthersTitle'), body: t('components.substancePanel.infoOthers') },
+              { heading: t('components.substancePanel.infoLongTermTitle'), body: t('components.substancePanel.infoLongTerm') },
+              { body: t('components.substancePanel.disclaimer') },
+            ]}
+            open={isOpen('substances')}
+            onToggle={() => toggleDetail('substances')}
+            maxBodyHeight={bodyH()}
+          >
+            <SubstancePanel journal={substances} />
           </FoldRow>
 
           <FoldRow

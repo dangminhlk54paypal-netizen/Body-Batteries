@@ -17,8 +17,8 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
         energy_kcal, water_g, protein_g, fat_g, carb_g, fiber_g, sugar_g,
         calcium_mg, iron_mg, sodium_mg, potassium_mg, magnesium_mg, zinc_mg,
         epa_mg, dha_mg, portion_unit, serving_weight_g, serving_label,
-        measure_unit, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        measure_unit, caffeine_mg, taurine_mg, carnitine_mg, creatine_mg, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     item.id,
     item.nameVi,
     item.nameEn,
@@ -43,6 +43,10 @@ export async function addCustomFood(item: FoodItem): Promise<void> {
     item.servingWeightG ?? null,
     item.servingLabel ?? null,
     item.measureUnit ?? null,
+    n.caffeineMg ?? null,
+    n.taurineMg ?? null,
+    n.carnitineMg ?? null,
+    n.creatineMg ?? null,
     Date.now()
   );
 }

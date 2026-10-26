@@ -63,6 +63,14 @@ export interface CustomFoodInput {
   zincMg: string;
   epaMg: string;
   dhaMg: string;
+  // Active substances (energy drinks, coffee, sports supplements), same
+  // scale. Blank = "not declared" (stored as undefined, never 0). Creatine is
+  // typed in g because that is how every label prints it; the FoodItem keeps
+  // mg like the others (types/food.ts Nutrition).
+  caffeineMg: string;
+  taurineMg: string;
+  carnitineMg: string;
+  creatineG: string;
 }
 
 export const EMPTY_CUSTOM_FOOD_INPUT: CustomFoodInput = {
@@ -89,6 +97,10 @@ export const EMPTY_CUSTOM_FOOD_INPUT: CustomFoodInput = {
   zincMg: '',
   epaMg: '',
   dhaMg: '',
+  caffeineMg: '',
+  taurineMg: '',
+  carnitineMg: '',
+  creatineG: '',
 };
 
 // Every form field that holds a nutrition number — the ones a basis change
@@ -110,6 +122,10 @@ export const NUTRITION_KEYS = [
   'zincMg',
   'epaMg',
   'dhaMg',
+  'caffeineMg',
+  'taurineMg',
+  'carnitineMg',
+  'creatineG',
 ] as const satisfies readonly (keyof CustomFoodInput)[];
 
 // Tolerant numeric parse: blank/whitespace/NaN → 0 (never throws, never
@@ -140,6 +156,20 @@ function formatInputNumber(n: number): string {
 function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
+
+// Optional active-substance field: blank (or garbage) stays undefined so an
+// undeclared substance never turns into a fake "0 mg".
+function parseOptionalNonNegative(s: string): number | undefined {
+  const n = parseDecimal(s);
+  return isNaN(n) ? undefined : Math.max(0, n);
+}
+
+// Scales an optional value, keeping "not declared" as undefined.
+function scaleOptional(n: number | undefined, factor: number): number | undefined {
+  return n == null ? undefined : n * factor;
+}
+
+const MG_PER_G = 1000;
 
 // The size of ONE serving, in the food's measure unit — the anchor every
 // per-100 ↔ per-serving conversion scales by. A counted food defines it in
@@ -255,6 +285,10 @@ function scalePerServingToPer100g(n: Nutrition, servingSize: number): Nutrition 
     zincMg: n.zincMg * factor,
     epaMg: (n.epaMg ?? 0) * factor,
     dhaMg: (n.dhaMg ?? 0) * factor,
+    caffeineMg: scaleOptional(n.caffeineMg, factor),
+    taurineMg: scaleOptional(n.taurineMg, factor),
+    carnitineMg: scaleOptional(n.carnitineMg, factor),
+    creatineMg: scaleOptional(n.creatineMg, factor),
   };
 }
 
@@ -278,6 +312,10 @@ function scalePer100gToPerServing(n: Nutrition, servingWeightG: number): Nutriti
     zincMg: n.zincMg * factor,
     epaMg: (n.epaMg ?? 0) * factor,
     dhaMg: (n.dhaMg ?? 0) * factor,
+    caffeineMg: scaleOptional(n.caffeineMg, factor),
+    taurineMg: scaleOptional(n.taurineMg, factor),
+    carnitineMg: scaleOptional(n.carnitineMg, factor),
+    creatineMg: scaleOptional(n.creatineMg, factor),
   };
 }
 
@@ -314,6 +352,10 @@ function enteredNutritionOf(input: CustomFoodInput): Nutrition {
     zincMg: parseNonNegative(input.zincMg),
     epaMg: parseNonNegative(input.epaMg),
     dhaMg: parseNonNegative(input.dhaMg),
+    caffeineMg: parseOptionalNonNegative(input.caffeineMg),
+    taurineMg: parseOptionalNonNegative(input.taurineMg),
+    carnitineMg: parseOptionalNonNegative(input.carnitineMg),
+    creatineMg: scaleOptional(parseOptionalNonNegative(input.creatineG), MG_PER_G),
   };
 }
 
@@ -404,6 +446,8 @@ export function inputFromFoodItem(item: FoodItem): CustomFoodInput {
     : item.per100g;
   const s = (n: number): string => String(n);
   const f = formatInputNumber;
+  // Undeclared substances reopen blank, not as a "0" the user never typed.
+  const o = (n: number | undefined): string => (n == null ? '' : f(n));
   return {
     name: item.nameVi,
     category: item.category,
@@ -428,6 +472,10 @@ export function inputFromFoodItem(item: FoodItem): CustomFoodInput {
     zincMg: f(p.zincMg),
     epaMg: f(p.epaMg ?? 0),
     dhaMg: f(p.dhaMg ?? 0),
+    caffeineMg: o(p.caffeineMg),
+    taurineMg: o(p.taurineMg),
+    carnitineMg: o(p.carnitineMg),
+    creatineG: o(scaleOptional(p.creatineMg, 1 / MG_PER_G)),
   };
 }
 

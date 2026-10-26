@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ModeId } from '../types/modes';
 import type { CustomActivity, CustomExercise, UserProfile } from '../types/energy';
 import { DEFAULT_MEAL_WINDOWS, type MealWindow } from '../lib/constants';
+import { DEFAULT_BEDTIME_HOUR } from '../lib/substanceLimits';
 import type { MovementDisplayUnit, WaterDisplayUnit } from '../lib/units';
 import type { Language } from '../i18n/types';
 import { DEFAULT_TRAINING_LOG_FORMAT, resolveTrainingLogFormat } from '../types/trainingLog';
@@ -102,6 +103,10 @@ interface SettingsState {
   // user picks it in the import panel (LIBRARY_LIMIT_OPTIONS_MB); a hard cap
   // (LIBRARY_HARD_MAX_MB) applies whatever it says — libraryMapping.ts.
   libraryImportLimitMb: number;
+  // Hour of day the user usually goes to bed (0–23) — the ☕ panel flags
+  // caffeine taken in the 6 h before it (lib/substanceLimits.ts). Old saves
+  // lack it; read through resolveBedtimeHour().
+  bedtimeHour: number;
   setMode: (mode: ModeId) => void;
   setLowBatteryThreshold: (threshold: number) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -129,6 +134,14 @@ interface SettingsState {
   setStartTab: (tab: MainTab) => void;
   setDataRetention: (patch: Partial<Omit<DataRetentionSettings, 'archive'>> & { archive?: Partial<DataRetentionSettings['archive']> }) => void;
   setLibraryImportLimitMb: (mb: number) => void;
+  setBedtimeHour: (hour: number) => void;
+}
+
+// Bedtime from a save that may predate the field (or hold garbage).
+export function resolveBedtimeHour(value: unknown): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 23
+    ? value
+    : DEFAULT_BEDTIME_HOUR;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -159,6 +172,7 @@ export const useSettingsStore = create<SettingsState>()(
       startTab: 'Home',
       dataRetention: DEFAULT_DATA_RETENTION,
       libraryImportLimitMb: DEFAULT_LIBRARY_LIMIT_MB,
+      bedtimeHour: DEFAULT_BEDTIME_HOUR,
 
       setMode: (mode) => set({ currentMode: mode }),
       setLowBatteryThreshold: (threshold) => set({ lowBatteryThreshold: threshold }),
@@ -209,6 +223,7 @@ export const useSettingsStore = create<SettingsState>()(
             dataRetention: { ...current, ...patch, archive: { ...current.archive, ...patch.archive } },
           };
         }),
+      setBedtimeHour: (hour) => set({ bedtimeHour: ((Math.round(hour) % 24) + 24) % 24 }),
       setLibraryImportLimitMb: (mb) => set({ libraryImportLimitMb: mb }),
     }),
     {

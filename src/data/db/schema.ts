@@ -50,6 +50,12 @@ export const CUSTOM_FOODS_MIGRATION_COLUMNS = [
   // undefined/'g' (the original gram-only behaviour).
   { name: 'serving_label', ddl: 'ALTER TABLE custom_foods ADD COLUMN serving_label TEXT' },
   { name: 'measure_unit', ddl: 'ALTER TABLE custom_foods ADD COLUMN measure_unit TEXT' },
+  // Active substances (caffeine/taurine/L-carnitine/creatine, mg per 100 g —
+  // see types/food.ts Nutrition). NULL = not declared.
+  { name: 'caffeine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN caffeine_mg REAL' },
+  { name: 'taurine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN taurine_mg REAL' },
+  { name: 'carnitine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN carnitine_mg REAL' },
+  { name: 'creatine_mg', ddl: 'ALTER TABLE custom_foods ADD COLUMN creatine_mg REAL' },
 ];
 
 export const FOOD_OVERRIDES_MIGRATION_COLUMNS = [
@@ -57,6 +63,10 @@ export const FOOD_OVERRIDES_MIGRATION_COLUMNS = [
   { name: 'serving_weight_g', ddl: 'ALTER TABLE food_overrides ADD COLUMN serving_weight_g REAL' },
   { name: 'serving_label', ddl: 'ALTER TABLE food_overrides ADD COLUMN serving_label TEXT' },
   { name: 'measure_unit', ddl: 'ALTER TABLE food_overrides ADD COLUMN measure_unit TEXT' },
+  { name: 'caffeine_mg', ddl: 'ALTER TABLE food_overrides ADD COLUMN caffeine_mg REAL' },
+  { name: 'taurine_mg', ddl: 'ALTER TABLE food_overrides ADD COLUMN taurine_mg REAL' },
+  { name: 'carnitine_mg', ddl: 'ALTER TABLE food_overrides ADD COLUMN carnitine_mg REAL' },
+  { name: 'creatine_mg', ddl: 'ALTER TABLE food_overrides ADD COLUMN creatine_mg REAL' },
 ];
 
 export const FOOD_LOG_MIGRATION_COLUMNS = [
@@ -152,6 +162,10 @@ export const CREATE_CUSTOM_FOODS = `
     serving_weight_g REAL,
     serving_label TEXT,
     measure_unit TEXT,
+    caffeine_mg REAL,
+    taurine_mg REAL,
+    carnitine_mg REAL,
+    creatine_mg REAL,
     created_at INTEGER
   );
 `;
@@ -190,6 +204,10 @@ export const CREATE_FOOD_OVERRIDES = `
     serving_weight_g REAL,
     serving_label TEXT,
     measure_unit TEXT,
+    caffeine_mg REAL,
+    taurine_mg REAL,
+    carnitine_mg REAL,
+    creatine_mg REAL,
     updated_at INTEGER
   );
 `;

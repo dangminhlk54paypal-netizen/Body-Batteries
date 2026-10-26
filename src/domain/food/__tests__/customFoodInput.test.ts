@@ -949,3 +949,54 @@ describe('changePortionUnit — servingLabel handling', () => {
     expect(changePortionUnit(withLabel, 'gram').servingLabel).toBe('');
   });
 });
+
+describe('active substances (caffeine / taurine / L-carnitine / creatine)', () => {
+  const can: CustomFoodInput = {
+    ...EMPTY_CUSTOM_FOOD_INPUT,
+    name: 'Monster tự nhập',
+    category: 'drink',
+    portionUnit: 'serving',
+    servingLabel: 'lon',
+    measureUnit: 'ml',
+    servingWeightG: '355',
+    nutritionBasis: 'perServing',
+    energyKcal: '167',
+    caffeineMg: '113.6',
+    taurineMg: '1420',
+  };
+
+  it('stores per-serving label figures per 100 g and leaves blanks undeclared', () => {
+    const item = buildCustomFoodItem(can);
+    expect(item.per100g.caffeineMg).toBeCloseTo(32);
+    expect(item.per100g.taurineMg).toBeCloseTo(400);
+    expect(item.per100g.carnitineMg).toBeUndefined();
+    expect(item.per100g.creatineMg).toBeUndefined();
+  });
+
+  it('takes creatine in g and stores mg', () => {
+    const item = buildCustomFoodItem({
+      ...EMPTY_CUSTOM_FOOD_INPUT,
+      name: 'Creatine',
+      category: 'supplement',
+      defaultServingG: '5',
+      energyKcal: '0',
+      creatineG: '100',
+    });
+    expect(item.per100g.creatineMg).toBe(100000);
+  });
+
+  it('round-trips through the edit form', () => {
+    const back = inputFromFoodItem(buildCustomFoodItem(can));
+    expect(back.caffeineMg).toBe('113.6');
+    expect(back.taurineMg).toBe('1420');
+    expect(back.carnitineMg).toBe('');
+    expect(back.creatineG).toBe('');
+  });
+
+  it('converts substance fields on a basis change like every nutrient', () => {
+    expect(NUTRITION_KEYS).toContain('caffeineMg');
+    const per100 = changeNutritionBasis(can, 'per100');
+    expect(per100.caffeineMg).toBe('32');
+    expect(per100.carnitineMg).toBe('');
+  });
+});

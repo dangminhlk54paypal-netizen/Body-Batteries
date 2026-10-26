@@ -24,6 +24,12 @@ export interface FoodOverrideRow {
   zinc_mg: number;
   epa_mg: number | null;
   dha_mg: number | null;
+  // Active substances (types/food.ts Nutrition). NULL = not declared, and on
+  // every row written before these columns existed.
+  caffeine_mg: number | null;
+  taurine_mg: number | null;
+  carnitine_mg: number | null;
+  creatine_mg: number | null;
   portion_unit: string | null;
   serving_weight_g: number | null;
   serving_label: string | null;
@@ -54,6 +60,10 @@ export function rowToOverrideItem(r: FoodOverrideRow): FoodItem {
     zincMg: r.zinc_mg,
     epaMg: r.epa_mg ?? undefined,
     dhaMg: r.dha_mg ?? undefined,
+    caffeineMg: r.caffeine_mg ?? undefined,
+    taurineMg: r.taurine_mg ?? undefined,
+    carnitineMg: r.carnitine_mg ?? undefined,
+    creatineMg: r.creatine_mg ?? undefined,
   };
   return {
     id: r.food_id,

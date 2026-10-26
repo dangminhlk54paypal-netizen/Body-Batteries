@@ -89,6 +89,19 @@ function electrolyteFieldBase(t: TFn): { key: keyof CustomFoodInput; label: stri
   ];
 }
 
+// Active substances from energy drinks / coffee / sports supplements, under
+// their own sub-heading so a label's "Caffeine 32 mg/100 ml" has an obvious
+// home. Blank = not declared (see customFoodInput.ts). Feeds the ☕ panel on
+// Home (domain/nutrition/substanceEngine.ts).
+function substanceFieldBase(t: TFn): { key: keyof CustomFoodInput; label: string }[] {
+  return [
+    { key: 'caffeineMg', label: t('components.customFoodFields.substanceCaffeine') },
+    { key: 'taurineMg', label: t('components.customFoodFields.substanceTaurine') },
+    { key: 'carnitineMg', label: t('components.customFoodFields.substanceCarnitine') },
+    { key: 'creatineG', label: t('components.customFoodFields.substanceCreatine') },
+  ];
+}
+
 // Same conversion microBatteryEngine uses for the derived "salt" micro-battery
 // (2.5 g NaCl per 1 g sodium) — pure display-only preview, nothing is stored.
 function saltGramsFromSodiumMg(sodiumMg: number): number {
@@ -444,6 +457,25 @@ export function CustomFoodFields({
                   })}
                 </Text>
               )}
+            </React.Fragment>
+          ))}
+
+          <Text style={styles.subHeading}>
+            {t('components.customFoodFields.substanceSectionLabel')}
+          </Text>
+          {substanceFieldBase(t).map((f) => (
+            <React.Fragment key={f.key}>
+              <Text style={styles.fieldLabel}>
+                {f.label} {suffix}
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="—"
+                placeholderTextColor={c.textMuted}
+                keyboardType="decimal-pad"
+                value={input[f.key]}
+                onChangeText={(v) => onChange(f.key, v)}
+              />
             </React.Fragment>
           ))}
         </>

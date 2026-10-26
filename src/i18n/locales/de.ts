@@ -343,6 +343,12 @@ export const de: TranslationSchema = {
     romanian_deadlift_dumbbell: 'Rumänisches Kreuzheben mit Kurzhanteln',
   },
 
+  substances: {
+    caffeine: { name: 'Koffein', short: 'Koffein' },
+    taurine: { name: 'Taurin', short: 'Taurin' },
+    carnitine: { name: 'L-Carnitin', short: 'Carnitin' },
+    creatine: { name: 'Kreatin', short: 'Kreatin' },
+  },
   nutrients: {
     fiber: {
       name: 'Ballaststoffe',
@@ -771,6 +777,8 @@ export const de: TranslationSchema = {
         microSummary: '{{count}} Nährstoffe',
         microWarnSuffix: ' · ⚠️ {{count}}',
         supplementsSummary: '{{count}} Dosen',
+        substances: 'Koffein',
+        substancesSummary: '{{mg}}/{{limit}} mg',
         intakesSummary: '{{count}}×',
         balanceInfo: 'Verbrannt (Apple Health oder BMR-Schätzung) gegenüber heute gegessen.',
         modeSingleA11y: 'Ein Bereich auf einmal. Tippen, um bis zu 3 gleichzeitig zu sehen',
@@ -1117,6 +1125,45 @@ export const de: TranslationSchema = {
       electrolytePotassium: 'Kalium (mg)',
       electrolyteMagnesium: 'Magnesium (mg)',
       saltDerivedLabel: '≈ {{grams}} g Salz (NaCl) — umgerechnet aus Natrium',
+      substanceSectionLabel: 'Wirkstoffe (Energydrinks, NEM)',
+      substanceCaffeine: 'Koffein (mg)',
+      substanceTaurine: 'Taurin (mg)',
+      substanceCarnitine: 'L-Carnitin (mg)',
+      substanceCreatine: 'Kreatin (g)',
+    },
+    substancePanel: {
+      flagDaily: '⚠ {{value}}/{{mark}} mg/Tag',
+      flagDose: '⚠ {{value}} mg in 1 Std. (> {{mark}})',
+      flagLate: '🌙 {{value}} mg nach {{from}}',
+      flagTaurine: 'Taurin {{value}} g (> {{mark}} g)',
+      flagCarnitine: 'L-Carnitin {{value}} mg (> {{mark}})',
+      flagCreatine: 'Kreatin {{value}} g (> {{mark}} g)',
+      stripA11y: '{{day}}: {{mg}} mg Koffein',
+      diaryEmpty: 'An diesem Tag kein Koffein erfasst.',
+      weekAverage: '7 Tage: Ø {{mg}} mg · {{days}} Tage mit Koffein',
+      habitDaily: '⚠ {{days}}/7 Tage über 400 mg — wird zur Gewohnheit',
+      habitLate: '🌙 {{days}}/7 Tage Koffein kurz vor dem Schlafen',
+      quickA11y: 'Eine Portion {{name}} erfassen, etwa {{mg}} mg Koffein',
+      bedtimeLabel: '🌙 Schlafenszeit',
+      bedtimeEarlier: 'Eine Stunde früher schlafen',
+      bedtimeLater: 'Eine Stunde später schlafen',
+      infoLimitsTitle: 'Richtwerte (gesunde Erwachsene)',
+      infoLimits:
+        'EFSA (2015): bis 400 mg Koffein pro Tag und bis 200 mg auf einmal (≈3 mg/kg) sind für gesunde Erwachsene unbedenklich, außer in der Schwangerschaft. Schwanger/stillend: bis 200 mg pro Tag. Die App zählt alles, was innerhalb von 60 Minuten erfasst wird, als „eine Dosis“. Beispiele: eine Dose Monster 355 ml ≈ 114 mg, Monster Ultra ≈ 107 mg, ein Beutel G7 3in1 ≈ 65 mg (Schätzung), eine Tasse schwarzer Kaffee 240 ml ≈ 96 mg.',
+      infoSleepTitle: 'Koffein & Schlaf',
+      infoSleep:
+        'EFSA: schon 100 mg kurz vor dem Schlafen können bei manchen den Schlaf beeinflussen. Drake et al. 2013: Koffein 6 Stunden vor dem Schlafen verkürzte den Schlaf noch. Die App markiert 🌙, wenn 100 mg oder mehr in die 6 Stunden vor deiner Schlafenszeit fallen. Der Körper baut die Hälfte des Koffeins in etwa 4 Stunden ab (2–8 Std. je nach Person).',
+      infoTrainingTitle: 'Koffein vor dem Training',
+      infoTraining:
+        'ISSN (2021): 3–6 mg/kg verbessern die Leistung, meist etwa {{minutes}} Minuten vor dem Training — bei {{weight}} kg sind das {{min}}–{{max}} mg. Sehr hohe Dosen (~9 mg/kg) bringen viele Nebenwirkungen. Der EFSA-Richtwert pro Dosis bleibt {{single}} mg; eine höhere Trainingsdosis sollte gut überlegt sein.',
+      infoOthersTitle: 'Taurin · L-Carnitin · Kreatin',
+      infoOthers:
+        'Taurin: Die EFSA (2009) hält hohe Aufnahmen bis ~3 g pro Tag aus Energydrinks für unbedenklich (eine Dose Monster 355 ml ≈ 1,4 g). L-Carnitin: Die beobachtete sichere Menge bei Daueranwendung liegt bei 2 g pro Tag (Hathcock & Shao 2006). Kreatin: 3–5 g pro Tag zur Erhaltung, ~20 g pro Tag für 5–7 Tage beim Laden (ISSN 2017); häufigste Nebenwirkung ist Gewichtszunahme durch Wassereinlagerung. Zucker aus Energydrinks zählt zur Zucker-Batterie.',
+      infoLongTermTitle: 'Auf lange Sicht',
+      infoLongTerm:
+        'EFSA: Dauerhaft zu viel Koffein wird mit Herz-Kreislauf-Problemen in Verbindung gebracht; kurzfristig kann es Schlafstörungen, Angst und Verhaltensänderungen auslösen. Die FDA nennt als Anzeichen: schneller Puls, Herzklopfen, Bluthochdruck, Schlaflosigkeit, Nervosität, Magenbeschwerden, Übelkeit, Kopfschmerzen. Das 7-Tage-Tagebuch zeigt, wann aus einem „zu viel“-Tag eine Gewohnheit wird.',
+      disclaimer:
+        'Nur zur Orientierung, keine medizinische Beratung. Bei Herz- oder Blutdruckerkrankungen, Medikamenteneinnahme, Schwangerschaft oder unter 18 Jahren bitte ärztlich abklären.',
     },
     pastDateField: {
       errorFutureDate: 'Ein zukünftiges Datum ist nicht möglich',

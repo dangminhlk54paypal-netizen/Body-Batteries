@@ -3173,6 +3173,33 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
   2. Nếu .xlsx vài MB làm máy chậm/treo thì hạ `LIBRARY_XLSX_HARD_MAX_MB`. Nếu tìm kiếm chậm với CSV lớn thì xét FTS5.
   3. Cho "⌨️ Nạp bằng chữ" tìm cả món nguồn. Duyệt màn ghép cột → ghi vào skill `mobile-ui-density`.
 
+### Session 72 — ☕ Caffeine & hoạt chất: nước tăng lực, cà phê, TPCN tập luyện (2026-10-26)
+- **Làm gì:** chủ app muốn cảnh báo lượng caffeine/nước tăng lực (Monster, Monster Zero/Ultra, G7) và ghi TPCN (whey,
+  creatine, L-carnitine…) vào pin, có giới hạn/cảnh báo lâu dài và nhật ký. Báo cáo có trích nguồn:
+  `docs/nghien-cuu/2026-10-26-caffeine-nuoc-tang-luc-va-tpcn.md` (EFSA 2015/2009, FDA, Drake 2013, ISSN 2017/2021,
+  Hathcock 2006, nhãn Monster EU, USDA FDC).
+- **Kết quả:**
+  - Dữ liệu: 4 trường `caffeineMg/taurineMg/carnitineMg/creatineMg` qua CSV → parser → mapper/repository món tự tạo và
+    món đã sửa → schema + migration → sao lưu "Món của tôi" → form (creatine nhập g) → bảng chi tiết món.
+  - Danh mục: +7 món (Monster, Monster Ultra, G7 3in1, cà phê hoà tan đen, espresso, creatine, L-carnitine), thêm caffeine
+    cho 5 món cũ. 97 món.
+  - `lib/substanceLimits.ts`, `domain/nutrition/substanceEngine.ts`, `hooks/useSubstanceJournal.ts`,
+    `components/SubstancePanel.tsx`, `settingsStore.bedtimeHour` + `resolveBedtimeHour`, dòng ☕ trên Home với ⓘ 5 mục.
+    i18n vi/en/de (`substances`, `components.substancePanel`, `customFoodFields.substance*`).
+  - Test: +`substanceEngine.test.ts` (16), +`SubstancePanel.test.tsx`, thêm test form/mapper; `npm run verify` xanh:
+    142 suite / 1594 test.
+- **Vấn đề & cách giải quyết:** G7 không công bố caffeine → ước tính 13 % cà phê hoà tan × 3.142 mg/100 g (USDA), ghi rõ
+  là ước tính; nhãn Monster Việt Nam chưa tìm được → dùng nhãn EU, người dùng sửa bằng ✎. 4 lon Monster cũng vượt mốc
+  taurine 3 g — đúng ý đồ, chỉnh lại test. HomeScreen test cần mock `getFoodLogInRange` vì hook mới đọc 6 ngày trước.
+- **EAS:** `preview` group `f7564860-fb55-44ea-a8cb-79b7446e708f`, từ working tree (chỉ có file của phiên này).
+  **Chưa test máy thật. Chưa commit.**
+- **Session tiếp theo phải làm:**
+  1. Chủ app thử mục "Session 72" trong `docs/KIEM-TRA-TREN-MAY.md`, chụp nhãn lon Monster/gói G7 mua ở Việt Nam để thay
+     số ước tính.
+  2. Chốt 4 quyết định trong báo cáo (công tắc mang thai 200 mg, mốc 3 mg/kg, nhật ký > 7 ngày / lưu tổng caffeine vào
+     Kho "Thói quen ăn", nhãn VN). Duyệt giao diện ☕ → ghi mẫu vào `.ai/skills/mobile-ui-density.md`.
+  3. Commit theo tính năng khi chủ app đồng ý.
+
 ---
 
 ## 📌 Hướng dẫn viết session log

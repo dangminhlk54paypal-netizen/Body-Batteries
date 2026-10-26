@@ -53,6 +53,13 @@ function num(value: string | undefined): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+// Same as num, but blank → undefined: for the optional active-substance
+// columns, where an empty cell means "not declared" rather than 0 mg.
+function optionalNum(value: string | undefined): number | undefined {
+  const n = parseFloat((value ?? '').trim());
+  return Number.isNaN(n) ? undefined : n;
+}
+
 // Parse "chén=150|bát=250" → [{ label: 'chén', grams: 150 }, …]. Skips malformed
 // segments. Empty input → no presets.
 export function parseServingPresets(value: string | undefined): ServingPreset[] {
@@ -122,6 +129,10 @@ export function parseFoodCsv(raw: string): FoodItem[] {
       zincMg: num(at(c, 'zinc_mg')),
       epaMg: num(at(c, 'epa_mg')),
       dhaMg: num(at(c, 'dha_mg')),
+      caffeineMg: optionalNum(at(c, 'caffeine_mg')),
+      taurineMg: optionalNum(at(c, 'taurine_mg')),
+      carnitineMg: optionalNum(at(c, 'carnitine_mg')),
+      creatineMg: optionalNum(at(c, 'creatine_mg')),
     };
 
     items.push({

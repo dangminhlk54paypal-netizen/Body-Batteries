@@ -343,6 +343,12 @@ export const en: TranslationSchema = {
     romanian_deadlift_dumbbell: 'Dumbbell Romanian deadlift',
   },
 
+  substances: {
+    caffeine: { name: 'Caffeine', short: 'Caffeine' },
+    taurine: { name: 'Taurine', short: 'Taurine' },
+    carnitine: { name: 'L-carnitine', short: 'Carnitine' },
+    creatine: { name: 'Creatine', short: 'Creatine' },
+  },
   nutrients: {
     fiber: {
       name: 'Fiber',
@@ -771,6 +777,8 @@ export const en: TranslationSchema = {
         microSummary: '{{count}} nutrients',
         microWarnSuffix: ' · ⚠️ {{count}}',
         supplementsSummary: '{{count}} doses',
+        substances: 'Caffeine',
+        substancesSummary: '{{mg}}/{{limit}} mg',
         intakesSummary: '{{count}}×',
         balanceInfo: 'Burned (Apple Health, or a BMR estimate) versus eaten today.',
         modeSingleA11y: 'Showing one section at a time. Tap to see up to 3 at once',
@@ -1114,6 +1122,45 @@ export const en: TranslationSchema = {
       electrolytePotassium: 'Potassium (mg)',
       electrolyteMagnesium: 'Magnesium (mg)',
       saltDerivedLabel: '≈ {{grams}} g salt (NaCl) — converted from sodium',
+      substanceSectionLabel: 'Active substances (energy drinks, supplements)',
+      substanceCaffeine: 'Caffeine (mg)',
+      substanceTaurine: 'Taurine (mg)',
+      substanceCarnitine: 'L-carnitine (mg)',
+      substanceCreatine: 'Creatine (g)',
+    },
+    substancePanel: {
+      flagDaily: '⚠ {{value}}/{{mark}} mg/day',
+      flagDose: '⚠ {{value}} mg within 1 h (> {{mark}})',
+      flagLate: '🌙 {{value}} mg after {{from}}',
+      flagTaurine: 'Taurine {{value}} g (> {{mark}} g)',
+      flagCarnitine: 'L-carnitine {{value}} mg (> {{mark}})',
+      flagCreatine: 'Creatine {{value}} g (> {{mark}} g)',
+      stripA11y: '{{day}}: {{mg}} mg caffeine',
+      diaryEmpty: 'No caffeine logged this day.',
+      weekAverage: '7 days: avg {{mg}} mg · {{days}} days with caffeine',
+      habitDaily: '⚠ {{days}}/7 days over 400 mg — becoming a habit',
+      habitLate: '🌙 {{days}}/7 days with caffeine close to bedtime',
+      quickA11y: 'Log one serving of {{name}}, about {{mg}} mg caffeine',
+      bedtimeLabel: '🌙 Bedtime',
+      bedtimeEarlier: 'Bedtime one hour earlier',
+      bedtimeLater: 'Bedtime one hour later',
+      infoLimitsTitle: 'Reference marks (healthy adults)',
+      infoLimits:
+        'EFSA (2015): up to 400 mg caffeine a day and up to 200 mg at a time (≈3 mg/kg) raise no safety concerns for healthy adults, except during pregnancy. Pregnant/breastfeeding: up to 200 mg a day. The app counts everything logged within 60 minutes as "one dose". Examples: one 355 ml Monster ≈ 114 mg, Monster Ultra ≈ 107 mg, one G7 3-in-1 sachet ≈ 65 mg (estimate), a 240 ml cup of black coffee ≈ 96 mg.',
+      infoSleepTitle: 'Caffeine & sleep',
+      infoSleep:
+        'EFSA: as little as 100 mg close to bedtime may affect sleep in some people. Drake et al. 2013: caffeine taken 6 hours before bed still shortened sleep. The app marks 🌙 when 100 mg or more falls in the 6 hours before the bedtime you set. The body clears half of the caffeine in about 4 hours (2–8 h depending on the person).',
+      infoTrainingTitle: 'Caffeine before training',
+      infoTraining:
+        'ISSN (2021): 3–6 mg/kg improves performance, usually taken about {{minutes}} minutes before training — {{min}}–{{max}} mg at {{weight}} kg. Very high doses (~9 mg/kg) bring many side effects. EFSA’s single-dose mark is still {{single}} mg, so a training dose above it deserves a second thought.',
+      infoOthersTitle: 'Taurine · L-carnitine · Creatine',
+      infoOthers:
+        'Taurine: EFSA (2009) found high intakes of up to ~3 g a day from energy drinks to be of no safety concern (one 355 ml Monster ≈ 1.4 g). L-carnitine: the observed safe level for long-term use is 2 g a day (Hathcock & Shao 2006). Creatine: 3–5 g a day to maintain, ~20 g a day for 5–7 days when loading (ISSN 2017); the most common side effect is weight gain from water retention. Sugar in energy drinks counts toward the Sugar battery.',
+      infoLongTermTitle: 'In the long run',
+      infoLongTerm:
+        'EFSA: excessive caffeine over a long time has been linked to cardiovascular problems; short-term it can disturb sleep and cause anxiety and behavioural changes. The FDA lists the signs: fast heart rate, palpitations, high blood pressure, insomnia, jitters, upset stomach, nausea, headache. The 7-day diary shows you when one heavy day is turning into a habit.',
+      disclaimer:
+        'For reference only, not medical advice. If you have a heart or blood-pressure condition, take medication, are pregnant or under 18, ask a doctor.',
     },
     pastDateField: {
       errorFutureDate: "You can't pick a future date",

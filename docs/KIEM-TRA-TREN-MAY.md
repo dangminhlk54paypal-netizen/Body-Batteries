@@ -9,10 +9,36 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 | Bản `preview` mới nhất | Gồm | Ngày |
 |---|---|---|
-| [`66d377c7…`](https://u.expo.dev/update/66d377c7-2eec-40f4-9511-fc0c25f02c75) | Đã commit `01f75c1` (Session 61–71 + SDK 58) — **dùng bản này** | 2026-10-23 |
+| [`f7564860…`](https://u.expo.dev/update/f7564860-fb55-44ea-a8cb-79b7446e708f) | Session 72 ☕ Caffeine & hoạt chất (chưa commit) + mọi thứ đã commit — **dùng bản này** | 2026-10-26 |
+| [`66d377c7…`](https://u.expo.dev/update/66d377c7-2eec-40f4-9511-fc0c25f02c75) | Đã commit `01f75c1` (Session 61–71 + SDK 58) | 2026-10-23 |
 | [`698588e2…`](https://u.expo.dev/update/698588e2-6079-4a88-9f7e-7934daad9a17) | Session 61–71 + SDK 58, Nạp bằng chữ Đợt 1–3a (cũ hơn, chưa commit) | 2026-10-23 |
 | [`48281746…`](https://u.expo.dev/update/48281746-b08e-4a68-845b-dc852116e055) | Session 61–71, Nguồn của tôi Đợt 2–3 (cũ hơn) | 2026-10-23 |
 | [`a4429e44…`](https://u.expo.dev/update/a4429e44-e8bd-48f1-9ae7-46c25cdca2ae) | Session 61–70 (cũ hơn) | 2026-10-23 |
+
+---
+
+## Session 72 — ☕ Caffeine & hoạt chất (nước tăng lực, cà phê, TPCN)
+
+Mở: Trang chủ → kéo xuống "Chi tiết hôm nay" → dòng **☕ Caffeine** (dưới 💊 TPCN).
+
+- [ ] **Ghi nhanh.** Mở dòng ☕ → chạm chip **＋ Monster Energy (bản gốc…)** ở hàng cuộn ngang. Kỳ vọng: thanh
+      caffeine lên **114 / 400 mg**, dòng gập hiện `114/400 mg`, nhật ký bên dưới có giờ hiện tại · Monster · 114 mg.
+      Pin Đường tăng ~39 g.
+- [ ] **Một lần quá 200 mg.** Chạm thêm một chip Monster ngay sau đó. Kỳ vọng: chip cam "⚠ 227 mg trong 1 giờ (> 200)",
+      dòng gập có thêm ` · ⚠️ 1`.
+- [ ] **Sát giờ ngủ.** Đặt 🌙 Giờ đi ngủ bằng −/＋ sao cho giờ hiện tại nằm trong 6 tiếng trước đó (vd. bây giờ 15:00 →
+      đặt 20:00). Kỳ vọng: chip "🌙 … mg sau 14:00", cột hôm nay trên dải 7 ngày có 🌙, các dòng nhật ký có 🌙.
+- [ ] **Dải 7 ngày.** Chạm một ngày khác (T2…CN). Kỳ vọng: thanh, chip và nhật ký đổi sang ngày đó; ngày không có
+      caffeine ghi "Ngày này chưa ghi caffeine."
+- [ ] **G7.** Ghi "Cà phê G7 3in1" (gói 16 g) qua ⚡ Nạp → tìm "g7". Kỳ vọng: ≈ 65 mg caffeine, ≈ 71 kcal.
+- [ ] **Creatine / L-carnitine.** Ở dòng 💊 TPCN có chip Creatine monohydrate và L-Carnitine. Chạm Creatine → ô
+      "Creatine" trong dòng ☕ thành `5 / 5 g`.
+- [ ] **Món tự nhập.** ⚡ Nạp → ＋ món mới → "▸ Thêm vi chất" → cuối form có mục **Hoạt chất (nước tăng lực, TPCN)**:
+      nhập Caffeine 80 cho 1 lon 250 ml → lưu → món này hiện trong hàng ghi nhanh của ☕ (mở lại app nếu chưa thấy).
+- [ ] **ⓘ.** Chạm ⓘ của dòng ☕: 5 mục (mốc tham khảo, giấc ngủ, trước buổi tập với số mg theo cân nặng của bạn,
+      taurine/carnitine/creatine, về lâu dài) + câu miễn trừ. Đổi sang English/Deutsch: chữ không tràn.
+- [ ] **Chi tiết món.** Chạm một Monster đã ghi trong "Hôm nay đã ăn" → bảng dinh dưỡng có Caffeine 114 mg, Taurine
+      1420 mg, L-carnitine 96 mg.
 
 ---
 

@@ -108,6 +108,10 @@ function toFoodItem(raw: unknown): FoodItem | null {
     zincMg: Math.max(0, num(p.zincMg)),
     epaMg: optionalNumber(p.epaMg),
     dhaMg: optionalNumber(p.dhaMg),
+    caffeineMg: optionalNumber(p.caffeineMg),
+    taurineMg: optionalNumber(p.taurineMg),
+    carnitineMg: optionalNumber(p.carnitineMg),
+    creatineMg: optionalNumber(p.creatineMg),
   };
   // Same invariant every other entry point enforces (types/food.ts): total
   // carbs contain sugar + fiber, so they can never sit below their own parts.

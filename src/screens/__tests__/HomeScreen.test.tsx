@@ -32,6 +32,10 @@ jest.mock('../../components/TodayIntakes', () => ({ TodayIntakes: () => 'INTAKES
 jest.mock('../../components/EnergyBalanceCard', () => ({ EnergyBalanceCard: () => 'BALANCE_BLOCK' }));
 jest.mock('../../components/MicroBatteryStack', () => ({ MicroBatteryStack: () => 'MICRO_BLOCK' }));
 jest.mock('../../components/SupplementQuickLog', () => ({ SupplementQuickLog: () => 'SUPPS_BLOCK' }));
+jest.mock('../../components/SubstancePanel', () => ({ SubstancePanel: () => 'SUBSTANCES_BLOCK' }));
+jest.mock('../../data/repositories/foodLogRepository', () => ({
+  getFoodLogInRange: jest.fn(() => Promise.resolve([])),
+}));
 
 function textOf(n: TestRenderer.ReactTestInstance | string): string {
   return typeof n === 'string' ? n : n.children.map(textOf).join('');

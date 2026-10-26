@@ -25,6 +25,10 @@ describe('rowToCustomFoodItem', () => {
       zinc_mg: 0.8,
       epa_mg: 10,
       dha_mg: 20,
+      caffeine_mg: null,
+      taurine_mg: null,
+      carnitine_mg: null,
+      creatine_mg: null,
       portion_unit: null,
       serving_weight_g: null,
       serving_label: null,
@@ -62,6 +66,45 @@ describe('rowToCustomFoodItem', () => {
     });
   });
 
+  it('maps the active-substance columns (NULL stays undefined = not declared)', () => {
+    const base = {
+      id: 'custom_drink',
+      name_vi: 'Nước tăng lực tự nhập',
+      name_en: '',
+      category: 'drink',
+      default_serving_g: 250,
+      energy_kcal: 45,
+      water_g: 89,
+      protein_g: 0,
+      fat_g: 0,
+      carb_g: 11,
+      fiber_g: 0,
+      sugar_g: 11,
+      calcium_mg: 0,
+      iron_mg: 0,
+      sodium_mg: 40,
+      potassium_mg: 0,
+      magnesium_mg: 0,
+      zinc_mg: 0,
+      epa_mg: null,
+      dha_mg: null,
+      caffeine_mg: 32,
+      taurine_mg: 400,
+      carnitine_mg: null,
+      creatine_mg: null,
+      portion_unit: null,
+      serving_weight_g: null,
+      serving_label: null,
+      measure_unit: null,
+      created_at: 1700000000000,
+    };
+    const item = rowToCustomFoodItem(base);
+    expect(item.per100g.caffeineMg).toBe(32);
+    expect(item.per100g.taurineMg).toBe(400);
+    expect(item.per100g.carnitineMg).toBeUndefined();
+    expect(item.per100g.creatineMg).toBeUndefined();
+  });
+
   it('maps NULL epa_mg/dha_mg to undefined (not tracked, matching the built-in catalog convention)', () => {
     const row = {
       id: 'custom_2',
@@ -84,6 +127,10 @@ describe('rowToCustomFoodItem', () => {
       zinc_mg: 0.3,
       epa_mg: null,
       dha_mg: null,
+      caffeine_mg: null,
+      taurine_mg: null,
+      carnitine_mg: null,
+      creatine_mg: null,
       portion_unit: null,
       serving_weight_g: null,
       serving_label: null,
@@ -119,6 +166,10 @@ describe('rowToCustomFoodItem', () => {
       zinc_mg: 0,
       epa_mg: 24590.16,
       dha_mg: 24590.16,
+      caffeine_mg: null,
+      taurine_mg: null,
+      carnitine_mg: null,
+      creatine_mg: null,
       portion_unit: 'capsule',
       serving_weight_g: 1.22,
       serving_label: null,
