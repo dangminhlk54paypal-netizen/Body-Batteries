@@ -14,7 +14,7 @@ interface Props {
   burnedKcal: number; // appleHealthBurnedKcal from energyStore (real sync or BMR estimate)
   status: AppleHealthStatus;
   lastSyncAt: number | null;
-  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // Inside a Home detail tile (BrickFoldGrid): the row already shows the title + total, so the
   // block drops its own heading.
   embedded?: boolean;
 }

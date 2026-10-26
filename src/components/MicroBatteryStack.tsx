@@ -22,7 +22,7 @@ interface Props {
   foodLog: FoodLogEntry[];
   // e.g. "Khuyến nghị chung cho nam ~30 tuổi" — derived from the user profile.
   recommendNote?: string;
-  // Inside a Home FoldRow: no own heading / fold (the row is the fold), and
+  // Inside a Home detail tile (BrickFoldGrid): no own heading / fold (the row is the fold), and
   // the recommendation note + disclaimer move to the row's ⓘ.
   embedded?: boolean;
 }

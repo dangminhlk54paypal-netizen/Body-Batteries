@@ -26,7 +26,7 @@ import { useT } from '../i18n/useT';
 
 interface Props {
   todayLog: FoodLogEntry[];
-  // Inside a Home FoldRow: title + long hint move to the row (title, ⓘ).
+  // Inside a Home detail tile (BrickFoldGrid): title + long hint move to the row (title, ⓘ).
   embedded?: boolean;
 }
 

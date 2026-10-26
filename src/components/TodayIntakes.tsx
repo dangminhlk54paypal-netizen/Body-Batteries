@@ -10,7 +10,7 @@ import type { Language } from '../i18n/types';
 interface Props {
   entries: IntakeEvent[];
   onDelete: (id: string) => void;
-  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // Inside a Home detail tile (BrickFoldGrid): the row already shows the title + total, so the
   // block drops its own heading.
   embedded?: boolean;
 }

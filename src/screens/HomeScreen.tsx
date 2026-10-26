@@ -43,7 +43,7 @@ import {
   CAFFEINE_PRE_WORKOUT_MIN,
   CAFFEINE_SINGLE_DOSE_MG,
 } from '../lib/substanceLimits';
-import { FoldRow } from '../components/ui/FoldRow';
+import { BrickFoldGrid } from '../components/ui/BrickFoldGrid';
 import { DetailsViewSuggestion } from '../components/DetailsViewSuggestion';
 import { useHomeDetailsStore } from '../store/homeDetailsStore';
 import { openLimit, toggleOpen } from '../domain/habits/detailViewHabit';
@@ -109,7 +109,7 @@ function buildRecommendation(
   return undefined;
 }
 
-// The folded rows under "Chi tiết hôm nay" — one open at a time.
+// The tiles under "Chi tiết hôm nay" — one open at a time.
 type DetailId = 'meals' | 'activities' | 'balance' | 'micro' | 'supplements' | 'substances' | 'intakes';
 
 // With 2–3 rows open, each scroll box shrinks to this so they share one screen.
@@ -341,7 +341,6 @@ export function HomeScreen() {
   const empty = t('screens.home.details.empty');
   const openLimitNow = openLimit(viewMode);
   const openNow = openDetails.slice(-openLimitNow); // switching back to one row keeps the latest
-  const isOpen = (id: DetailId) => openNow.includes(id);
   const bodyH = (full?: number) => (openNow.length > 1 ? COMPACT_BODY_H : full);
   function toggleDetail(id: DetailId) {
     const next = toggleOpen(openNow, id, openLimitNow) as DetailId[];
@@ -421,9 +420,9 @@ export function HomeScreen() {
           intakeLog={intakeLog}
         />
 
-        {/* Details: one folded row per block — keyword + key number, the
-            block opens on tap (one at a time, or up to three with ⧉), long
-            lists scroll inside. */}
+        {/* Details: a brick wall of tiles — keyword + key number; a tile's
+            block opens below on tap (one at a time, or up to three with ⧉),
+            long lists scroll inside. */}
         <View>
           <View style={styles.detailsHead}>
             <Text style={[styles.sectionLabel, styles.detailsTitle]}>{t('screens.home.detailsSectionTitle')}</Text>
@@ -461,172 +460,157 @@ export function HomeScreen() {
             />
           )}
 
-          <FoldRow
-            icon="🍽"
-            title={t('screens.home.details.meals')}
-            value={
-              details.mealCount > 0
-                ? t('screens.home.details.mealsSummary', { kcal: num(details.mealsKcal), count: details.mealCount })
-                : empty
-            }
-            open={isOpen('meals')}
-            onToggle={() => toggleDetail('meals')}
-            maxBodyHeight={bodyH(360)}
-          >
-            {/* Today's logged meals (grouped by meal + macro line) */}
-            <TodayMeals entries={foodLog} onDelete={handleDeleteFood} onEdit={handleEditFood} embedded />
-          </FoldRow>
-
-          <FoldRow
-            icon="🔥"
-            title={t('screens.home.details.activities')}
-            value={
-              details.activityCount > 0
-                ? t('screens.home.details.activitiesSummary', {
-                    kcal: num(details.activityKcal),
-                    count: details.activityCount,
-                  })
-                : empty
-            }
-            open={isOpen('activities')}
-            onToggle={() => toggleDetail('activities')}
-            maxBodyHeight={bodyH(300)}
-          >
-            <TodayActivities
-              entries={activityLog}
-              onDelete={handleDeleteActivity}
-              onEdit={(id, patch) => updateActivity(id, patch)}
-              embedded
-            />
-          </FoldRow>
-
-          <FoldRow
-            icon="⚖️"
-            title={t('screens.home.details.balance')}
-            value={
-              details.balanceKcal >= 0
-                ? t('components.energyBalanceCard.balanceSurplusLine', { amount: num(details.balanceKcal) })
-                : t('components.energyBalanceCard.balanceDeficitLine', { amount: num(details.balanceKcal) })
-            }
-            info={[{ body: t('screens.home.details.balanceInfo') }]}
-            open={isOpen('balance')}
-            onToggle={() => toggleDetail('balance')}
-            maxBodyHeight={bodyH()}
-          >
-            {/* Apple Health burned vs. eaten */}
-            <EnergyBalanceCard
-              foodLog={foodLog}
-              burnedKcal={appleHealthBurnedKcal}
-              status={appleHealthStatus}
-              lastSyncAt={lastAppleHealthSync}
-              embedded
-            />
-          </FoldRow>
-
-          <FoldRow
-            icon="🧪"
-            title={t('screens.home.details.micro')}
-            value={
-              t('screens.home.details.microSummary', { count: details.microCount }) +
-              (details.microWarnCount > 0
-                ? t('screens.home.details.microWarnSuffix', { count: details.microWarnCount })
-                : '')
-            }
-            info={[
+          <BrickFoldGrid
+            openIds={openNow}
+            onToggle={(id) => toggleDetail(id as DetailId)}
+            items={[
               {
-                body: t(
-                  userProfile.sex === 'male'
-                    ? 'screens.home.recommendNoteMale'
-                    : 'screens.home.recommendNoteFemale',
-                  { age: userProfile.age }
+                id: 'meals',
+                icon: '🍽',
+                title: t('screens.home.details.meals'),
+                value:
+                  details.mealCount > 0
+                    ? t('screens.home.details.mealsSummary', { kcal: num(details.mealsKcal), count: details.mealCount })
+                    : empty,
+                maxBodyHeight: bodyH(360),
+                // Today's logged meals (grouped by meal + macro line)
+                body: <TodayMeals entries={foodLog} onDelete={handleDeleteFood} onEdit={handleEditFood} embedded />,
+              },
+              {
+                id: 'activities',
+                icon: '🔥',
+                title: t('screens.home.details.activities'),
+                value:
+                  details.activityCount > 0
+                    ? t('screens.home.details.activitiesSummary', {
+                        kcal: num(details.activityKcal),
+                        count: details.activityCount,
+                      })
+                    : empty,
+                maxBodyHeight: bodyH(300),
+                body: (
+                  <TodayActivities
+                    entries={activityLog}
+                    onDelete={handleDeleteActivity}
+                    onEdit={(id, patch) => updateActivity(id, patch)}
+                    embedded
+                  />
                 ),
               },
-              { body: t('components.microBatteryStack.disclaimer') },
-            ]}
-            open={isOpen('micro')}
-            onToggle={() => toggleDetail('micro')}
-            maxBodyHeight={bodyH()}
-          >
-            {/* Micronutrient batteries derived from today's (or a past 7-day) food log */}
-            <MicroBatteryStack
-              states={microBattery.states}
-              dates={microBattery.dates}
-              selectedDate={microBattery.selectedDate}
-              onSelectDate={microBattery.setSelectedDate}
-              foodLog={microBattery.entries}
-              embedded
-            />
-          </FoldRow>
-
-          <FoldRow
-            icon="💊"
-            title={t('screens.home.details.supplements')}
-            value={
-              details.supplementDoses > 0
-                ? t('screens.home.details.supplementsSummary', { count: details.supplementDoses })
-                : empty
-            }
-            info={[{ body: t('components.supplementQuickLog.hintText') }]}
-            open={isOpen('supplements')}
-            onToggle={() => toggleDetail('supplements')}
-            maxBodyHeight={bodyH()}
-          >
-            {/* One-tap supplement dosing (fish oil, whey, vitamins…) */}
-            <SupplementQuickLog todayLog={foodLog} embedded />
-          </FoldRow>
-
-          <FoldRow
-            icon="☕"
-            title={t('screens.home.details.substances')}
-            value={
-              substances.today.totals.caffeine > 0
-                ? t('screens.home.details.substancesSummary', {
-                    mg: num(Math.round(substances.today.totals.caffeine)),
-                    limit: num(CAFFEINE_DAILY_LIMIT_MG),
-                  }) +
-                  (substances.today.flags.length > 0
-                    ? t('screens.home.details.microWarnSuffix', { count: substances.today.flags.length })
-                    : '')
-                : empty
-            }
-            info={[
-              { heading: t('components.substancePanel.infoLimitsTitle'), body: t('components.substancePanel.infoLimits') },
-              { heading: t('components.substancePanel.infoSleepTitle'), body: t('components.substancePanel.infoSleep') },
               {
-                heading: t('components.substancePanel.infoTrainingTitle'),
-                body: t('components.substancePanel.infoTraining', {
-                  ...caffeinePerformanceRangeMg(userProfile.weightKg, CAFFEINE_PERFORMANCE_MG_PER_KG),
-                  weight: num(userProfile.weightKg),
-                  minutes: CAFFEINE_PRE_WORKOUT_MIN,
-                  single: CAFFEINE_SINGLE_DOSE_MG,
-                }),
+                id: 'balance',
+                icon: '⚖️',
+                title: t('screens.home.details.balance'),
+                value:
+                  details.balanceKcal >= 0
+                    ? t('components.energyBalanceCard.balanceSurplusLine', { amount: num(details.balanceKcal) })
+                    : t('components.energyBalanceCard.balanceDeficitLine', { amount: num(details.balanceKcal) }),
+                info: [{ body: t('screens.home.details.balanceInfo') }],
+                maxBodyHeight: bodyH(),
+                // Apple Health burned vs. eaten
+                body: (
+                  <EnergyBalanceCard
+                    foodLog={foodLog}
+                    burnedKcal={appleHealthBurnedKcal}
+                    status={appleHealthStatus}
+                    lastSyncAt={lastAppleHealthSync}
+                    embedded
+                  />
+                ),
               },
-              { heading: t('components.substancePanel.infoOthersTitle'), body: t('components.substancePanel.infoOthers') },
-              { heading: t('components.substancePanel.infoLongTermTitle'), body: t('components.substancePanel.infoLongTerm') },
-              { body: t('components.substancePanel.disclaimer') },
+              {
+                id: 'micro',
+                icon: '🧪',
+                title: t('screens.home.details.micro'),
+                value:
+                  t('screens.home.details.microSummary', { count: details.microCount }) +
+                  (details.microWarnCount > 0
+                    ? t('screens.home.details.microWarnSuffix', { count: details.microWarnCount })
+                    : ''),
+                info: [
+                  {
+                    body: t(
+                      userProfile.sex === 'male'
+                        ? 'screens.home.recommendNoteMale'
+                        : 'screens.home.recommendNoteFemale',
+                      { age: userProfile.age }
+                    ),
+                  },
+                  { body: t('components.microBatteryStack.disclaimer') },
+                ],
+                maxBodyHeight: bodyH(),
+                // Micronutrient batteries derived from today's (or a past 7-day) food log
+                body: (
+                  <MicroBatteryStack
+                    states={microBattery.states}
+                    dates={microBattery.dates}
+                    selectedDate={microBattery.selectedDate}
+                    onSelectDate={microBattery.setSelectedDate}
+                    foodLog={microBattery.entries}
+                    embedded
+                  />
+                ),
+              },
+              {
+                id: 'supplements',
+                icon: '💊',
+                title: t('screens.home.details.supplements'),
+                value:
+                  details.supplementDoses > 0
+                    ? t('screens.home.details.supplementsSummary', { count: details.supplementDoses })
+                    : empty,
+                info: [{ body: t('components.supplementQuickLog.hintText') }],
+                maxBodyHeight: bodyH(),
+                // One-tap supplement dosing (fish oil, whey, vitamins…)
+                body: <SupplementQuickLog todayLog={foodLog} embedded />,
+              },
+              {
+                id: 'substances',
+                icon: '☕',
+                title: t('screens.home.details.substances'),
+                value:
+                  substances.today.totals.caffeine > 0
+                    ? t('screens.home.details.substancesSummary', {
+                        mg: num(Math.round(substances.today.totals.caffeine)),
+                        limit: num(CAFFEINE_DAILY_LIMIT_MG),
+                      }) +
+                      (substances.today.flags.length > 0
+                        ? t('screens.home.details.microWarnSuffix', { count: substances.today.flags.length })
+                        : '')
+                    : empty,
+                info: [
+                  { heading: t('components.substancePanel.infoLimitsTitle'), body: t('components.substancePanel.infoLimits') },
+                  { heading: t('components.substancePanel.infoSleepTitle'), body: t('components.substancePanel.infoSleep') },
+                  {
+                    heading: t('components.substancePanel.infoTrainingTitle'),
+                    body: t('components.substancePanel.infoTraining', {
+                      ...caffeinePerformanceRangeMg(userProfile.weightKg, CAFFEINE_PERFORMANCE_MG_PER_KG),
+                      weight: num(userProfile.weightKg),
+                      minutes: CAFFEINE_PRE_WORKOUT_MIN,
+                      single: CAFFEINE_SINGLE_DOSE_MG,
+                    }),
+                  },
+                  { heading: t('components.substancePanel.infoOthersTitle'), body: t('components.substancePanel.infoOthers') },
+                  { heading: t('components.substancePanel.infoLongTermTitle'), body: t('components.substancePanel.infoLongTerm') },
+                  { body: t('components.substancePanel.disclaimer') },
+                ],
+                maxBodyHeight: bodyH(),
+                body: <SubstancePanel journal={substances} />,
+              },
+              {
+                id: 'intakes',
+                icon: '💧',
+                title: t('screens.home.details.intakes'),
+                value:
+                  details.intakeCount > 0
+                    ? t('screens.home.details.intakesSummary', { count: details.intakeCount })
+                    : empty,
+                maxBodyHeight: bodyH(300),
+                // Quick-tap intake history with one-tap undo
+                body: <TodayIntakes entries={intakeLog} onDelete={handleDeleteIntake} embedded />,
+              },
             ]}
-            open={isOpen('substances')}
-            onToggle={() => toggleDetail('substances')}
-            maxBodyHeight={bodyH()}
-          >
-            <SubstancePanel journal={substances} />
-          </FoldRow>
-
-          <FoldRow
-            icon="💧"
-            title={t('screens.home.details.intakes')}
-            value={
-              details.intakeCount > 0
-                ? t('screens.home.details.intakesSummary', { count: details.intakeCount })
-                : empty
-            }
-            open={isOpen('intakes')}
-            onToggle={() => toggleDetail('intakes')}
-            maxBodyHeight={bodyH(300)}
-          >
-            {/* Quick-tap intake history with one-tap undo */}
-            <TodayIntakes entries={intakeLog} onDelete={handleDeleteIntake} embedded />
-          </FoldRow>
+          />
         </View>
       </ScrollView>
 

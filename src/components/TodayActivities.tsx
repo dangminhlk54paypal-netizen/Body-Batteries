@@ -25,7 +25,7 @@ interface Props {
     startAt?: number | null;
     endAt?: number | null;
   }) => void;
-  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // Inside a Home detail tile (BrickFoldGrid): the row already shows the title + total, so the
   // block drops its own heading.
   embedded?: boolean;
 }

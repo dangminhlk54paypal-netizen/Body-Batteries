@@ -37,7 +37,7 @@ interface Props {
   entries: FoodLogEntry[];
   onDelete: (id: string) => void;
   onEdit: (id: string, patch: { grams?: number; count?: number }) => void;
-  // Inside a Home FoldRow: the row already shows the title + total, so the
+  // Inside a Home detail tile (BrickFoldGrid): the row already shows the title + total, so the
   // block drops its own heading.
   embedded?: boolean;
 }
