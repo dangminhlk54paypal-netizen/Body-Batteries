@@ -8,19 +8,27 @@ import { useMealTextDraftStore } from '../../store/mealTextDraftStore';
 import { loadLibraryCandidates, searchForMealText } from '../../data/food/mealTextSearch';
 import { useLibrarySearch } from '../../hooks/useLibrarySearch';
 import { getAnyFoodById, foodDisplayName, foodLogEntryDisplayName } from '../../data/food/foodLookup';
+import { addCustomFoodAndRegister } from '../../data/food/customFoodRegistry';
+import { upsertOverrideAndRegister } from '../../data/food/foodOverrideRegistry';
 import { parseMealText } from '../../domain/food/mealText/parseMealText';
 import {
+  aiSavePlan,
   atLocalTime,
   buildMealDraft,
   draftTotals,
+  INFO_ISSUES,
   isBlocked,
   manualRow,
   rowKcal,
   stepAmount,
   toggleRow,
+  withAiChoice,
+  withAiName,
   withAmount,
   withFood,
+  withSavedFood,
   withTimestamp,
+  type AiChoice,
   type MealDraftIssue,
   type MealDraftRow,
   type MealTextContext,
@@ -38,7 +46,7 @@ import { BACKFILL_MAX_DAYS_BACK, mealLabel } from '../../lib/constants';
 import { addDaysToDateString, dateString, todayString } from '../../lib/dateUtils';
 import { parseDecimal } from '../../lib/units';
 import * as haptics from '../../lib/haptics';
-import type { FoodItem, FoodLogEntry } from '../../types/food';
+import type { FoodItem, FoodLogEntry, Nutrition } from '../../types/food';
 import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
@@ -52,6 +60,11 @@ import { LOCALE_TAGS } from '../../i18n';
 // Lives INSIDE FoodLogModal's sheet: the row editor, the food picker and the
 // whole-list time editor replace the list in place — a second Modal on top of
 // a BottomSheet does not show on iOS (mobile-ui-density §3).
+//
+// A pasted AI nutrition analysis gives rows with numbers (mapMealText AiRow):
+// the row editor compares them with the app's food and lets the user keep the
+// app's numbers, update the food with the AI's, or save it as a new "Món của
+// tôi". The foods are written on "Nạp" (or "💾 Lưu" without logging).
 
 interface Props {
   // The day the sheet is logging for (today, or a past day from History).
@@ -69,6 +82,18 @@ type Screen =
   | { kind: 'batchTime' };
 
 const LIST_HEIGHT = 300;
+const AI_CHOICES: AiChoice[] = ['app', 'ai', 'new'];
+// The rows of the app/AI comparison: the macros always, the rest when stated.
+type AiLabel = 'kcal' | 'protein' | 'carbs' | 'fat' | 'fiber' | 'sugar' | 'sodium';
+const AI_TABLE: { key: keyof Nutrition; label: AiLabel; always: boolean }[] = [
+  { key: 'energyKcal', label: 'kcal', always: true },
+  { key: 'proteinG', label: 'protein', always: true },
+  { key: 'carbG', label: 'carbs', always: true },
+  { key: 'fatG', label: 'fat', always: true },
+  { key: 'fiberG', label: 'fiber', always: false },
+  { key: 'sugarG', label: 'sugar', always: false },
+  { key: 'sodiumMg', label: 'sodium', always: false },
+];
 const PICK_LIMIT = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -76,6 +101,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // analysis never sees them (same pattern as FoodLogModal).
 function nowTimestamp(): number {
   return Date.now();
+}
+
+// Same id shape as buildCustomFoodItem (customFoodInput.ts).
+function newCustomFoodId(): string {
+  return `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function restoreDraftText(): string {
@@ -112,6 +142,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
   const [editHour, setEditHour] = useState('');
   const [editMinute, setEditMinute] = useState('');
   const [editDay, setEditDay] = useState(0);
+  const [editName, setEditName] = useState('');
+  const [editChoice, setEditChoice] = useState<AiChoice | null>(null);
   const [pickQuery, setPickQuery] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   // "📋 Dán" found nothing to paste — say so instead of doing nothing.
@@ -199,6 +231,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     setEditHour(pad2(at.getHours()));
     setEditMinute(pad2(at.getMinutes()));
     setEditDay(dayOffsetOf(row.timestamp, today));
+    setEditName(row.ai?.name ?? '');
+    setEditChoice(row.ai?.choice ?? null);
     setView({ kind: 'edit', id: row.id });
   }
 
@@ -228,7 +262,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
         next = withAmount(next, amount, ctx);
       }
       if (timestamp != null && timestamp !== row.timestamp) next = withTimestamp(next, timestamp, ctx);
-      return next;
+      if (editChoice) next = withAiChoice(next, editChoice, ctx);
+      return withAiName(next, editName, ctx);
     });
     setView({ kind: 'list' });
   }
@@ -256,6 +291,38 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     setView({ kind: 'list' });
   }
 
+  // Writes the AI numbers of these rows (new "Món của tôi" / updated foods)
+  // and returns the rows now pointing at the saved foods.
+  async function saveAiFoods(target: MealDraftRow[]): Promise<Map<string, MealDraftRow>> {
+    const ctx = context();
+    const saved = new Map<string, MealDraftRow>();
+    for (const step of aiSavePlan(target, newCustomFoodId)) {
+      const food = step.food.nameVi.trim()
+        ? step.food
+        : { ...step.food, nameVi: t('components.textMealEntry.ai.unnamed') };
+      if (step.kind === 'add') await addCustomFoodAndRegister(food);
+      else await upsertOverrideAndRegister(food);
+      const live = getAnyFoodById(food.id) ?? food;
+      for (const row of target) {
+        if (step.rowIds.includes(row.id)) saved.set(row.id, withSavedFood(row, live, ctx));
+      }
+    }
+    return saved;
+  }
+
+  // "💾 Lưu n món": save the foods without logging anything.
+  async function saveOnly() {
+    if (!rows || saving) return;
+    setSaving(true);
+    try {
+      const saved = await saveAiFoods(rows);
+      setRows((prev) => prev && prev.map((row) => saved.get(row.id) ?? row));
+      haptics.success();
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function commit() {
     if (!rows || saving) return;
     const chosen = rows.filter((row) => row.selected && !isBlocked(row));
@@ -263,7 +330,9 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     setSaving(true);
     const todayNow = todayString();
     try {
-      for (const row of chosen) {
+      const saved = await saveAiFoods(chosen);
+      for (const picked of chosen) {
+        const row = saved.get(picked.id) ?? picked;
         if (!row.food) continue;
         const item = getAnyFoodById(row.food.id) ?? row.food;
         // USDA rows have no Vietnamese name — logFood snapshots nameVi.
@@ -312,9 +381,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
   }
 
   function rowName(row: MealDraftRow): string {
-    return row.food
-      ? foodDisplayName(row.food, language)
-      : t('components.textMealEntry.unknownFood', { text: row.decoded.raw });
+    if (!row.food) return t('components.textMealEntry.unknownFood', { text: row.decoded.raw });
+    return foodDisplayName(row.food, language) || t('components.textMealEntry.ai.unnamed');
   }
 
   function amountLabel(row: MealDraftRow, food: FoodItem): string {
@@ -345,6 +413,16 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
         return t(key, { unit: row.decoded.unit?.word ?? '' });
       case 'tooOld':
         return t(key, { days: BACKFILL_MAX_DAYS_BACK });
+      case 'aiCompare': {
+        const ai = Math.round(row.ai?.stated.energyKcal ?? 0);
+        if (row.ai?.choice === 'ai') return t('components.textMealEntry.notes.aiCompareAi', { ai });
+        return t('components.textMealEntry.notes.aiCompare', {
+          ai,
+          app: Math.round(row.ai?.base?.per100g.energyKcal ?? 0),
+        });
+      }
+      case 'aiNew':
+        return t('components.textMealEntry.notes.aiNew', { kcal: Math.round(row.food?.per100g.energyKcal ?? 0) });
       default:
         return t(key);
     }
@@ -362,11 +440,12 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
 
   function status(row: MealDraftRow): { glyph: string; color: string } {
     if (isBlocked(row)) return { glyph: '✗', color: c.statusLow };
-    if (row.issues.some((issue) => issue !== 'usualAmount')) return { glyph: '⚠', color: c.statusMid };
+    if (row.issues.some((issue) => !INFO_ISSUES.has(issue))) return { glyph: '⚠', color: c.statusMid };
     return { glyph: '✓', color: c.statusGood };
   }
 
   const totals = rows ? draftTotals(rows) : { count: 0, kcal: 0 };
+  const pendingSaves = rows ? aiSavePlan(rows, () => '').length : 0;
   const sameTime = rows && rows.length > 0 && rows.every((row) => row.timestamp === rows[0].timestamp);
   const batchWhen = rows && rows.length > 0
     ? sameTime
@@ -496,10 +575,37 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     );
   }
 
+  const aiLabels: Record<AiLabel, string> = {
+    kcal: t('components.textMealEntry.ai.kcal'),
+    protein: t('components.textMealEntry.ai.protein'),
+    carbs: t('components.textMealEntry.ai.carbs'),
+    fat: t('components.textMealEntry.ai.fat'),
+    fiber: t('components.textMealEntry.ai.fiber'),
+    sugar: t('components.textMealEntry.ai.sugar'),
+    sodium: t('components.textMealEntry.ai.sodium'),
+  };
+  const choiceLabels: Record<AiChoice, string> = {
+    app: t('components.textMealEntry.ai.choiceApp'),
+    ai: t('components.textMealEntry.ai.choiceAi'),
+    new: t('components.textMealEntry.ai.choiceNew'),
+  };
+  const nutrientValue = (value: number | undefined) =>
+    value == null ? '–' : value.toLocaleString(LOCALE_TAGS[language], { maximumFractionDigits: 1 });
+
   const editing = view.kind === 'edit' ? rows?.find((row) => row.id === view.id) : undefined;
   if (view.kind === 'edit' && editing?.food) {
     const food = editing.food;
     const counted = editing.count != null;
+    const ai = editing.ai;
+    const base = ai?.base ?? null;
+    const choice = editChoice ?? ai?.choice ?? 'app';
+    const choices = AI_CHOICES.filter((option) => option === 'new' || base != null);
+    const aiHint =
+      choice === 'app'
+        ? t('components.textMealEntry.ai.hintApp')
+        : choice === 'ai'
+          ? t('components.textMealEntry.ai.hintAi', { name: base ? foodDisplayName(base, language) : '' })
+          : t('components.textMealEntry.ai.hintNew');
     return (
       <>
         <Text style={styles.title} numberOfLines={2}>
@@ -533,6 +639,62 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
                 </Pressable>
               ))}
             </View>
+          )}
+          {ai && (
+            <>
+              {choice === 'new' && (
+                <>
+                  <Text style={styles.fieldLabel}>{t('components.textMealEntry.ai.nameLabel')}</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder={t('components.textMealEntry.ai.unnamed')}
+                    placeholderTextColor={c.textMuted}
+                  />
+                </>
+              )}
+              <View style={styles.aiTable}>
+                <View style={styles.aiRow}>
+                  <Text style={[styles.aiLabel, styles.aiHead]} numberOfLines={1}>
+                    {t('components.textMealEntry.ai.title', { measure: measureUnitOf(food) })}
+                  </Text>
+                  {base && <Text style={[styles.aiValue, styles.aiHead]}>{t('components.textMealEntry.ai.colApp')}</Text>}
+                  <Text style={[styles.aiValue, styles.aiHead]}>{t('components.textMealEntry.ai.colAi')}</Text>
+                </View>
+                {AI_TABLE.filter((r) => r.always || ai.stated[r.key] != null).map((r) => (
+                  <View key={r.key} style={styles.aiRow}>
+                    <Text style={styles.aiLabel} numberOfLines={1}>
+                      {aiLabels[r.label]}
+                    </Text>
+                    {base && <Text style={styles.aiValue}>{nutrientValue(base.per100g[r.key])}</Text>}
+                    <Text style={[styles.aiValue, styles.aiValueAi]}>{nutrientValue(ai.stated[r.key])}</Text>
+                  </View>
+                ))}
+              </View>
+              {choices.length > 1 && (
+                <View style={styles.aiChoices}>
+                  {choices.map((option) => (
+                    <Pressable
+                      key={option}
+                      onPress={() => setEditChoice(option)}
+                      style={({ pressed }) => [styles.aiChoice, choice === option && styles.aiChoiceOn, pressed && styles.pressed]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: choice === option }}
+                    >
+                      <Text
+                        style={[styles.aiChoiceText, choice === option && styles.aiChoiceTextOn]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {choiceLabels[option]}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              <Text style={styles.aiHint}>{aiHint}</Text>
+            </>
           )}
           {timeInputs(t('components.foodLogModal.mealTimeFieldLabel', { meal: mealLabelFor(editedTimestamp()) }))}
           <View style={styles.editActions}>
@@ -716,15 +878,30 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
                 </View>
               );
             })}
-            <Pressable
-              style={({ pressed }) => [styles.addRow, pressed && styles.pressed]}
-              onPress={() => {
-                setPickQuery('');
-                setView({ kind: 'pick', id: null });
-              }}
-            >
-              <Text style={styles.addRowText}>{t('components.textMealEntry.addRow')}</Text>
-            </Pressable>
+            <View style={styles.listActions}>
+              <Pressable
+                style={({ pressed }) => [styles.addRow, pressed && styles.pressed]}
+                onPress={() => {
+                  setPickQuery('');
+                  setView({ kind: 'pick', id: null });
+                }}
+              >
+                <Text style={styles.addRowText} numberOfLines={1} adjustsFontSizeToFit>
+                  {t('components.textMealEntry.addRow')}
+                </Text>
+              </Pressable>
+              {pendingSaves > 0 && (
+                <Pressable
+                  style={({ pressed }) => [styles.addRow, (saving && styles.disabled) || null, pressed && styles.pressed]}
+                  onPress={saveOnly}
+                  disabled={saving}
+                >
+                  <Text style={styles.addRowText} numberOfLines={1} adjustsFontSizeToFit>
+                    {t('components.textMealEntry.ai.saveButton', { count: pendingSaves })}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </ScrollView>
         </>
       )}
@@ -835,7 +1012,8 @@ const createStyles = (c: ThemeColors) =>
     },
     kcal: { width: 40, textAlign: 'right', color: c.textTertiary, fontSize: 12, fontVariant: ['tabular-nums'] },
     note: { fontSize: 11, lineHeight: 15, paddingLeft: 52 },
-    addRow: { paddingVertical: 12, alignItems: 'center' },
+    listActions: { flexDirection: 'row', gap: 8 },
+    addRow: { flex: 1, paddingVertical: 12, alignItems: 'center' },
     addRowText: { color: c.mint, fontSize: 14, fontWeight: '700' },
     footer: { flexDirection: 'row', gap: 12, marginTop: 4 },
     btn: { flex: 1, padding: 14, borderRadius: 12, alignItems: 'center' },
@@ -879,6 +1057,27 @@ const createStyles = (c: ThemeColors) =>
     editActionDanger: { borderColor: c.dangerStrong },
     editActionDangerText: { color: c.dangerStrong, fontSize: 14, fontWeight: '600' },
     pickList: { maxHeight: LIST_HEIGHT, flexShrink: 1 },
+    aiTable: { borderRadius: 10, borderWidth: 1, borderColor: c.border, paddingHorizontal: 12, paddingVertical: 6 },
+    aiRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 3, gap: 8 },
+    aiLabel: { flex: 1, color: c.textSecondary, fontSize: 13 },
+    aiHead: { color: c.textTertiary, fontSize: 12, fontWeight: '700' },
+    aiValue: { width: 56, textAlign: 'right', color: c.textPrimary, fontSize: 13, fontVariant: ['tabular-nums'] },
+    aiValueAi: { color: c.accent, fontWeight: '700' },
+    aiChoices: { flexDirection: 'row', gap: 8 },
+    aiChoice: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 6,
+      borderRadius: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.bgElevated,
+    },
+    aiChoiceOn: { borderColor: c.accent },
+    aiChoiceText: { color: c.textSecondary, fontSize: 14, fontWeight: '600' },
+    aiChoiceTextOn: { color: c.accent, fontWeight: '700' },
+    aiHint: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
     pickRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.divider },
     pickName: { color: c.textPrimary, fontSize: 15, fontWeight: '600' },
     pickMeta: { color: c.textTertiary, fontSize: 12, marginTop: 2 },

@@ -2,6 +2,8 @@ import type { FoodItem, FoodLogEntry } from '../../../../types/food';
 import { DEFAULT_MEAL_WINDOWS } from '../../../../lib/constants';
 import { parseMealText } from '../parseMealText';
 import {
+  AI_DRAFT_PREFIX,
+  aiSavePlan,
   atLocalTime,
   buildMealDraft,
   draftTotals,
@@ -11,6 +13,9 @@ import {
   toggleRow,
   withAmount,
   withFood,
+  withAiChoice,
+  withAiName,
+  withSavedFood,
   withTimestamp,
   type MealTextContext,
 } from '../mapMealText';
@@ -256,5 +261,88 @@ describe('mapping — JSON from an AI', () => {
     // The fake catalog's English names are the ids ("rice", "egg"…).
     const [row] = buildMealDraft(parseMealText('[{"name":"Gạo nấu","name_en":"rice","grams":180}]'), ctx());
     expect(row).toMatchObject({ food: RICE, match: 'exact', grams: 180, amountSource: 'explicit' });
+  });
+});
+
+describe('mapping — nutrition from an AI', () => {
+  const PHO_AI = '{"items":[{"name":"phở bò","grams":500,"per_100g":{"kcal":130,"protein_g":8,"carbs_g":15,"fat_g":4}}]}';
+
+  it('keeps the app\'s food for an exact match and notes that the AI differs', () => {
+    const [row] = draft(PHO_AI);
+    expect(row).toMatchObject({ food: PHO, grams: 500, selected: true, issues: ['aiCompare'] });
+    expect(row.ai).toMatchObject({ choice: 'app', base: PHO, stated: { energyKcal: 130, fatG: 4 } });
+  });
+
+  it('"Dùng số AI" logs the app\'s food with only the stated numbers replaced', () => {
+    const row = withAiChoice(draft(PHO_AI)[0], 'ai', ctx());
+    expect(row.food).toMatchObject({ id: 'pho', per100g: { ...PER100, energyKcal: 130, proteinG: 8, carbG: 15, fatG: 4 } });
+    expect(row.grams).toBe(500);
+    expect(row.issues).toEqual(['aiCompare']);
+  });
+
+  it('turns an unknown dish into a new food with the AI numbers, grams as the serving', () => {
+    const [row] = draft(
+      '{"items":[{"name":"Bún đậu mắm tôm","name_en":"Tofu vermicelli","grams":350,"per_100g":{"kcal":160,"protein_g":8,"carbs_g":18,"fat_g":6}}]}'
+    );
+    expect(row.issues).toEqual(['aiNew']);
+    expect(row.selected).toBe(true);
+    expect(row.food).toMatchObject({
+      id: `${AI_DRAFT_PREFIX}t0`,
+      nameVi: 'Bún đậu mắm tôm',
+      nameEn: 'Tofu vermicelli',
+      defaultServingG: 350,
+      source: 'custom',
+      per100g: { energyKcal: 160, proteinG: 8, sodiumMg: 0 },
+    });
+    expect(row.grams).toBe(350);
+  });
+
+  it('a near match becomes a new food, the near match kept to switch back to', () => {
+    const [row] = draft('{"items":[{"name":"phở bò tái lăn","grams":450,"per_100g":{"kcal":140,"protein_g":9,"carbs_g":14,"fat_g":5}}]}');
+    expect(row.ai).toMatchObject({ choice: 'new', base: PHO });
+    expect(row.issues).not.toContain('fuzzyMatch');
+    const back = withAiChoice(row, 'app', ctx());
+    expect(back).toMatchObject({ food: PHO, grams: 450, issues: ['fuzzyMatch', 'aiCompare'] });
+  });
+
+  it('reads a plain-text analysis as one food, numbers scaled from the portion', () => {
+    const [row] = draft('Bánh mì trứng\nKhẩu phần: 200 g\nCalories: 500 kcal\nProtein: 20 g\nCarbs: 60 g\nFat: 20 g');
+    expect(row.food).toMatchObject({ nameVi: 'Bánh mì trứng', per100g: { energyKcal: 250, proteinG: 10, carbG: 30, fatG: 10 } });
+    expect(row.grams).toBe(200);
+  });
+
+  it('flags numbers that do not add up, and a missing basis', () => {
+    const [off] = draft('{"items":[{"name":"món lạ","grams":100,"per_100g":{"kcal":500,"protein_g":5,"carbs_g":5,"fat_g":5}}]}');
+    expect(off.issues).toContain('aiCheck');
+    const [guessed] = draft('Món lạ\nCalories: 300 kcal\nProtein: 20 g');
+    expect(guessed.issues).toEqual(['aiBasis', 'defaultAmount', 'aiNew']);
+    expect(guessed.grams).toBe(100);
+  });
+
+  it('renames a new food, and picking an app food compares with it instead', () => {
+    const [row] = draft('{"items":[{"name":"món lạ","grams":100,"per_100g":{"kcal":100,"protein_g":5,"carbs_g":10,"fat_g":4}}]}');
+    expect(withAiName(row, '  Chè bưởi ', ctx()).food?.nameVi).toBe('Chè bưởi');
+    const picked = withFood(row, RICE, ctx());
+    expect(picked.ai).toMatchObject({ choice: 'app', base: RICE });
+    expect(picked.food).toBe(RICE);
+  });
+
+  it('plans one new food per name and one update per app food; app rows write nothing', () => {
+    const rows = draft(
+      '{"items":[' +
+        '{"name":"chè bưởi","grams":200,"per_100g":{"kcal":120,"carbs_g":25,"protein_g":1,"fat_g":2}},' +
+        '{"name":"Chè Bưởi","grams":100,"per_100g":{"kcal":120,"carbs_g":25,"protein_g":1,"fat_g":2}},' +
+        '{"name":"phở bò","grams":500,"per_100g":{"kcal":130,"protein_g":8,"carbs_g":15,"fat_g":4}},' +
+        '{"name":"cơm trắng","grams":150,"per_100g":{"kcal":130,"protein_g":3,"carbs_g":28,"fat_g":0.3}}]}'
+    );
+    rows[2] = withAiChoice(rows[2], 'ai', ctx());
+    let n = 0;
+    const plan = aiSavePlan(rows, () => `custom_${++n}`);
+    expect(plan).toEqual([
+      expect.objectContaining({ kind: 'add', food: expect.objectContaining({ id: 'custom_1', nameVi: 'chè bưởi' }), rowIds: ['t0', 't1'] }),
+      expect.objectContaining({ kind: 'update', food: expect.objectContaining({ id: 'pho' }), rowIds: ['t2'] }),
+    ]);
+    const saved = withSavedFood(rows[0], plan[0].food, ctx());
+    expect(saved).toMatchObject({ ai: null, food: { id: 'custom_1' }, grams: 200, issues: [] });
   });
 });

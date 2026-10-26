@@ -179,6 +179,8 @@ describe('parseMealText — JSON answers from an AI', () => {
         quantity: 180,
         unit: { word: 'g', unit: { kind: 'mass', gramsPer: 1 } },
         time: { dayOffset: null, hour: 12, minute: 30, meal: null },
+        ai: null,
+        nameEn: 'White rice',
       },
       expect.objectContaining({ foodQuery: 'thịt kho', altQuery: 'braised pork', quantity: 120, time: null }),
     ]);

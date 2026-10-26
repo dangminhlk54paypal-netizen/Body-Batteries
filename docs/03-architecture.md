@@ -462,8 +462,22 @@ energyStore.logFood / logFoodForPastDate   4. Insert — từng dòng đang tick
   nhật), khác `timestamp` (lúc ăn). Cột `food_log.logged_at INTEGER` (migration ALTER-if-missing trong
   `FOOD_LOG_MIGRATION_COLUMNS`; dòng cũ NULL). Excel sheet Món ăn: 2 cột cuối "Ngày ghi" / "Giờ ghi" (trống với dòng cũ).
   UI: dòng "Ăn 19:00 · ghi 08:02 (24/10)" trong ô sửa món của `TodayMeals`.
-- Test: `domain/food/mealText/__tests__/` (48), `data/food/__tests__/mealTextSearch.test.ts` (6, kho món thật),
-  `components/food/__tests__/TextMealEntry.test.tsx` (10), `dataWorkbook.test.ts` + `energyStore.backfill.test.ts`
+- **Session 73 — 🤖 dinh dưỡng từ AI:** `domain/food/mealText/aiNutrition.ts` đọc số dinh dưỡng trong câu trả lời AI:
+  JSON (`per_100g` giữ nguyên; `nutrition`/`total`/khoá phẳng = tổng của `grams` → chia về /100 g) hoặc **chữ thường**
+  vi/en/de ("Calories: 520 kcal, Protein: 30 g", bảng markdown, khoảng "500–600", dấu phẩy thập phân, kJ, muối →
+  natri ×400; bỏ "saturates/bão hoà"), mỗi lần dán một món. Chỉ coi là phân tích khi có **kcal + ít nhất một macro**,
+  nên câu thường ("đường 10g, cà phê 200ml") vẫn đi đường cũ. Số không nêu = `undefined`, không bao giờ ghi đè số của
+  app. `DecodedMealItem.ai` → `MealDraftRow.ai` (`AiRow`) với 3 lựa chọn: `app` (mặc định khi khớp đúng tên — giữ số
+  app), `ai` (cập nhật món đó bằng **override** như ✎ sửa tay, chỉ các trường AI nêu, khôi phục được), `new` (mặc định
+  khi khớp gần đúng/không khớp — món tạm `ai_draft_…`, lưu thành Món của tôi). Nhãn: `aiCheck` (kcal ≠ 4P+4C+9F quá
+  max(40, 25 %), > 900 kcal hoặc > 100 g macro / 100 g), `aiBasis` (không rõ cho bao nhiêu g → hiểu là /100 g),
+  `aiCompare`, `aiNew` (hai cái sau chỉ thông tin, vẫn ✓). `aiSavePlan` (thuần, `newId` tiêm vào) gộp một món mới cho mỗi
+  tên, một override cho mỗi món app; UI ghi qua `addCustomFoodAndRegister` / `upsertOverrideAndRegister` khi **Nạp**,
+  hoặc khi bấm **💾 Lưu n món** (lưu mà không nạp). Món đã lưu thì lần sau gõ `300g <tên>` là khớp, kcal tính theo lượng.
+  Câu lệnh 📤 Hỏi AI (3 ngôn ngữ) xin thêm `per_100g`. i18n `components.textMealEntry.ai.*`, `notes.ai*` đủ vi/en/de;
+  `i18n/__tests__/textMealEntryKeys.test.ts` kiểm mọi nhãn `notes.${issue}`.
+- Test: `domain/food/mealText/__tests__/` (70, gồm `aiNutrition.test.ts`), `data/food/__tests__/mealTextSearch.test.ts` (6, kho món thật),
+  `components/food/__tests__/TextMealEntry.test.tsx` (13), `dataWorkbook.test.ts` + `energyStore.backfill.test.ts`
   (loggedAt).
 - Chưa có: 🎤 trong app (`expo-speech-recognition`, cần development build), đọc ảnh bằng model trên máy (Đợt 3b).
   Báo cáo: `docs/nghien-cuu/2026-10-23-ai-nhan-dien-mon-an-tu-anh.md`.

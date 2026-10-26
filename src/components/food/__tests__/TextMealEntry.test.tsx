@@ -2,6 +2,8 @@ import React from 'react';
 import { Share, TextInput } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { searchLibraryCandidates } from '../../../data/food/libraryFoodRegistry';
+import { addCustomFoodAndRegister, setCustomFoods } from '../../../data/food/customFoodRegistry';
+import { setOverrides, upsertOverrideAndRegister } from '../../../data/food/foodOverrideRegistry';
 import TestRenderer, { act } from 'react-test-renderer';
 import { TextMealEntry } from '../TextMealEntry';
 import { useSettingsStore } from '../../../store/settingsStore';
@@ -27,6 +29,23 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 );
 jest.mock('../../../data/db/database', () => ({ getDb: jest.fn() }));
 jest.mock('expo-clipboard', () => ({ getStringAsync: jest.fn() }));
+// Saving AI numbers writes through the registries — kept in memory here.
+jest.mock('../../../data/food/customFoodRegistry', () => {
+  const actual = jest.requireActual('../../../data/food/customFoodRegistry');
+  return {
+    ...actual,
+    addCustomFoodAndRegister: jest.fn(async (item) => actual.setCustomFoods([...actual.getCustomFoods(), item])),
+  };
+});
+jest.mock('../../../data/food/foodOverrideRegistry', () => {
+  const actual = jest.requireActual('../../../data/food/foodOverrideRegistry');
+  return {
+    ...actual,
+    upsertOverrideAndRegister: jest.fn(async (item) =>
+      actual.setOverrides([...actual.getAllOverridesSync().filter((o: { id: string }) => o.id !== item.id), item])
+    ),
+  };
+});
 jest.mock('../../../data/food/libraryFoodRegistry', () => ({
   ...jest.requireActual('../../../data/food/libraryFoodRegistry'),
   searchLibraryCandidates: jest.fn(async () => []),
@@ -81,6 +100,10 @@ beforeEach(async () => {
   logFoodForPastDate.mockClear();
   useEnergyStore.setState({ logFood, logFoodForPastDate });
   jest.mocked(searchLibraryCandidates).mockResolvedValue([]);
+  setCustomFoods([]);
+  setOverrides([]);
+  jest.mocked(addCustomFoodAndRegister).mockClear();
+  jest.mocked(upsertOverrideAndRegister).mockClear();
 });
 
 afterEach(async () => {
@@ -240,5 +263,73 @@ describe('TextMealEntry', () => {
     await press(tree, 'Phân tích');
     await press(tree, 'Nạp 1 món');
     expect(logFood).toHaveBeenCalledWith(expect.objectContaining({ id: 'lib_s1_magerquark' }), 250, NOW, undefined);
+  });
+
+  describe('nutrition from an AI', () => {
+    it('saves an unknown dish as a new food with the AI numbers and logs it', async () => {
+      jest
+        .mocked(Clipboard.getStringAsync)
+        .mockResolvedValue(
+          '{"items":[{"name":"Bún đậu mắm tôm","name_en":"Tofu vermicelli","grams":350,"per_100g":{"kcal":160,"protein_g":8,"carbs_g":18,"fat_g":6}}]}'
+        );
+      const tree = await render();
+      await press(tree, '📋 Dán');
+      expect(textOf(tree.root)).toContain('Món mới 160 kcal/100g');
+      await press(tree, 'Nạp 1 món');
+      expect(addCustomFoodAndRegister).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: expect.stringMatching(/^custom_/),
+          nameVi: 'Bún đậu mắm tôm',
+          nameEn: 'Tofu vermicelli',
+          per100g: expect.objectContaining({ energyKcal: 160, proteinG: 8, carbG: 18, fatG: 6 }),
+        })
+      );
+      const saved = jest.mocked(addCustomFoodAndRegister).mock.calls[0][0];
+      expect(logFood).toHaveBeenCalledWith(expect.objectContaining({ id: saved.id }), 350, NOW, undefined);
+    });
+
+    it('keeps the app\'s numbers by default; "Số AI" updates the food, then logs it', async () => {
+      jest
+        .mocked(Clipboard.getStringAsync)
+        .mockResolvedValue('{"items":[{"name":"Cơm trắng","grams":200,"per_100g":{"kcal":200,"protein_g":4,"carbs_g":44,"fat_g":1}}]}');
+      const tree = await render();
+      await press(tree, '📋 Dán');
+      expect(textOf(tree.root)).toContain('đang dùng số app');
+      await press(tree, '✎');
+      expect(textOf(tree.root)).toContain('Dinh dưỡng /100g');
+      await press(tree, 'Số AI');
+      expect(textOf(tree.root)).toContain('Cập nhật');
+      await press(tree, 'Xong');
+      expect(textOf(tree.root)).toContain('Dùng số AI 200 kcal/100g');
+      await press(tree, 'Nạp 1 món');
+      expect(addCustomFoodAndRegister).not.toHaveBeenCalled();
+      expect(upsertOverrideAndRegister).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'rice_white_cooked', per100g: expect.objectContaining({ energyKcal: 200, carbG: 44 }) })
+      );
+      expect(logFood).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'rice_white_cooked', per100g: expect.objectContaining({ energyKcal: 200 }) }),
+        200,
+        NOW,
+        undefined
+      );
+    });
+
+    it('💾 saves a pasted text analysis without logging it', async () => {
+      jest
+        .mocked(Clipboard.getStringAsync)
+        .mockResolvedValue('Tên món: Chè bưởi\nKhẩu phần: 250 g\nCalories: 300 kcal\nProtein: 3 g\nCarbs: 62 g\nFat: 4 g');
+      const tree = await render();
+      await press(tree, '📋 Dán');
+      await press(tree, '💾 Lưu 1 món');
+      expect(addCustomFoodAndRegister).toHaveBeenCalledWith(
+        expect.objectContaining({ nameVi: 'Chè bưởi', per100g: expect.objectContaining({ energyKcal: 120, carbG: 24.8 }) })
+      );
+      expect(logFood).not.toHaveBeenCalled();
+      expect(textOf(tree.root)).not.toContain('💾');
+      // The row now logs the saved food — nothing is saved twice.
+      await press(tree, 'Nạp 1 món');
+      expect(addCustomFoodAndRegister).toHaveBeenCalledTimes(1);
+      expect(logFood).toHaveBeenCalledWith(expect.objectContaining({ nameVi: 'Chè bưởi' }), 250, NOW, undefined);
+    });
   });
 });

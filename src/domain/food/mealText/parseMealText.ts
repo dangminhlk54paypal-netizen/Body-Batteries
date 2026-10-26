@@ -1,4 +1,5 @@
-import type { MealType } from '../../../types/food';
+import type { MeasureUnit, MealType } from '../../../types/food';
+import { jsonNutrition, parseNutritionText, type AiNutrition, type AiNutritionText } from './aiNutrition';
 import {
   FILLER_WORDS_ACCENTED,
   FILLER_WORDS_FOLDED,
@@ -52,6 +53,12 @@ export interface DecodedMealItem {
   quantity: number | null;
   unit: DecodedUnit | null;
   time: MealTimeHint | null;
+  // Nutrition per 100 g an AI answer gave for this food (aiNutrition.ts) —
+  // the mapper then offers to save it as a food or to update the app's own.
+  ai?: AiNutrition | null;
+  // The English name exactly as the AI wrote it (altQuery is lower-cased) —
+  // the second name of a food saved from AI numbers.
+  nameEn?: string | null;
 }
 
 interface PieceTime {
@@ -78,6 +85,10 @@ export function parseMealText(text: string): DecodedMealItem[] {
   // that doesn't parse) is read as a sentence.
   const fromJson = parseMealJson(text);
   if (fromJson) return fromJson;
+  // A plain-text nutrition analysis ("Calories: 520 kcal, Protein: 30 g…")
+  // is one food with its numbers, not a list of foods to look up.
+  const analysis = parseNutritionText(text);
+  if (analysis) return [nutritionTextItem(analysis)];
   const pieces = splitPieces(text).map(decodePiece);
   const hinted = pieces.filter((p) => p.time != null);
 
@@ -306,11 +317,12 @@ function takeAmount(
 
 // ── JSON from an AI answer ───────────────────────────────────────────────
 // The prompt (i18n components.textMealEntry.aiPrompt) asks for
-//   {"items":[{"name":"…","name_en":"…","grams":150,"time":"12:30"}]}
+//   {"items":[{"name":"…","name_en":"…","grams":150,"time":"12:30",
+//              "per_100g":{"kcal":…,"protein_g":…,"carbs_g":…,"fat_g":…}}]}
 // but answers drift: a bare array, ```json fences, "quantity"+"unit" instead
-// of grams, "meal" instead of a clock time. Everything optional except a name;
-// an item without one is skipped, a reply with no usable item falls back to
-// sentence parsing.
+// of grams, "meal" instead of a clock time, totals instead of per 100 g.
+// Everything optional except a name; an item without one is skipped, a reply
+// with no usable item falls back to sentence parsing.
 
 type JsonObject = Record<string, unknown>;
 
@@ -383,6 +395,7 @@ function jsonItem(entry: JsonObject, shared: MealTimeHint | null): DecodedMealIt
   let quantity: number | null = null;
   let unit: DecodedUnit | null = null;
   const grams = firstNumber(entry, JSON_GRAM_KEYS);
+  const measure: MeasureUnit = firstNumber(entry, ['ml']) != null && entry.grams == null ? 'ml' : 'g';
   if (grams != null) {
     quantity = grams;
     unit = { word: 'g', unit: { kind: 'mass', gramsPer: 1 } };
@@ -402,6 +415,22 @@ function jsonItem(entry: JsonObject, shared: MealTimeHint | null): DecodedMealIt
     quantity,
     unit,
     time: own ?? shared,
+    ai: jsonNutrition(entry, grams, measure),
+    nameEn: english,
+  };
+}
+
+function nutritionTextItem({ name, grams, nutrition }: AiNutritionText): DecodedMealItem {
+  return {
+    raw: name,
+    foodQuery: name.toLowerCase(),
+    fallbackQuery: null,
+    altQuery: null,
+    quantity: grams,
+    unit: grams != null ? { word: nutrition.measure, unit: { kind: 'mass', gramsPer: 1 } } : null,
+    time: null,
+    ai: nutrition,
+    nameEn: null,
   };
 }
 

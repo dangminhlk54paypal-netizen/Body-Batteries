@@ -232,6 +232,17 @@ Người dùng phải kiểm tra được mọi con số, không phải tin suô
 - Mốc ngày cũng được nói rõ: pin vi chất theo **ngày lịch**, pin Năng lượng **reset
   6h sáng**.
 
+## 4c-2. 🤖 Dán dinh dưỡng từ AI (Session 73)
+- Ở **⌨️ Nạp bằng chữ**, dán câu trả lời AI có số dinh dưỡng: JSON từ nút 📤 Hỏi AI (giờ xin thêm `per_100g`) hoặc chữ
+  thường kiểu "Calories: 520 kcal, Protein: 30 g…" (vi/en/de). App quy mọi số về /100 g theo khẩu phần AI nêu.
+- Món app **chưa có** → lưu thành món mới trong 🍽️ Món của tôi (đổi tên ở ✎). Món app **đã có** → mặc định giữ số
+  app; ✎ hiện bảng **App | AI** và 3 nút **Số app | Số AI | ＋ Món mới**. "Số AI" cập nhật món đó như ✎ sửa tay
+  (chỉ các số AI nêu, khôi phục được).
+- Lượng ăn: gram AI đoán, sửa bằng −/＋ hoặc ✎; lần sau gõ `300g <tên món>` → app tính theo số đã lưu.
+  **💾 Lưu n món** lưu món mà không nạp.
+- Số không khớp (kcal ≠ đạm·carbs·béo) → ⚠, vẫn nạp được. Không rõ số cho bao nhiêu g → hiểu là /100 g, có ghi chú.
+- Chi tiết kỹ thuật: `docs/03-architecture.md` § "⌨️ Nạp bằng chữ" (Session 73). Đủ vi/en/de.
+
 ## 4d. ☕ Caffeine & hoạt chất (Session 72)
 - 4 trường tuỳ chọn trên `Nutrition` (mg/100 g): `caffeineMg`, `taurineMg`, `carnitineMg`, `creatineMg` — CSV
   `caffeine_mg/taurine_mg/carnitine_mg/creatine_mg`, cột cùng tên trong `custom_foods`/`food_overrides` (migration
