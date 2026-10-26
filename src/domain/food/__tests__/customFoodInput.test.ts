@@ -464,8 +464,23 @@ describe('changeNutritionBasis', () => {
     expect(r.proteinG).toBe('17.5');
     expect(r.fatG).toBe('');
     expect(r.waterG).toBe('');
-    // "12,5" (comma keyboard) is parsed, not truncated to 12.
-    expect(r.carbG).toBe('43.75');
+    // "12,5" (comma keyboard) is parsed, not truncated to 12; 43.75 shows
+    // to 1 decimal like any per-serving number.
+    expect(r.carbG).toBe('43.8');
+  });
+
+  it('per-serving numbers show 1 decimal, a trace keeps its first digit (G7 sachet, 16 g)', () => {
+    const g7: CustomFoodInput = {
+      ...per100,
+      defaultServingG: '16',
+      carbG: '75.97',
+      sugarG: '75.08',
+      zincMg: '0.05',
+    };
+    const r = changeNutritionBasis(g7, 'perServing');
+    expect(r.carbG).toBe('12.2'); // 12.1552
+    expect(r.sugarG).toBe('12'); // 12.0128
+    expect(r.zincMg).toBe('0.008'); // never a false "0"
   });
 
   it('perServing -> per100 divides by size/100 and strips floating-point noise', () => {
@@ -482,13 +497,14 @@ describe('changeNutritionBasis', () => {
     expect(r.energyKcal).toBe('128.571');
   });
 
-  it('round-trips per100 -> perServing -> per100 back to the typed numbers', () => {
+  it('round-trips per100 -> perServing -> per100 back to the typed numbers (within the 1-decimal serving rounding)', () => {
     const back = changeNutritionBasis(changeNutritionBasis(per100, 'perServing'), 'per100');
     expect(back.nutritionBasis).toBe('per100');
     expect(Number(back.energyKcal)).toBeCloseTo(100, 3);
     expect(Number(back.proteinG)).toBeCloseTo(5, 3);
     expect(back.fatG).toBe('');
-    expect(Number(back.carbG)).toBeCloseTo(12.5, 3);
+    // 43.8 / 350 × 100 = 12.514 — the serving rounding, not a bug.
+    expect(Number(back.carbG)).toBeCloseTo(12.5, 1);
   });
 
   it('uses servingWeightG (not defaultServingG) for a counted food', () => {

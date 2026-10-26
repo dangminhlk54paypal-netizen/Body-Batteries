@@ -157,6 +157,16 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+// A number shown PER SERVING (prefilled or converted from per 100 g): one
+// decimal, like a label — 16 g of G7 is "12.2" g carbs, not "12.1552". A
+// trace that would round to 0 (zinc 0.015 mg in an espresso) keeps its first
+// significant digit instead, so saving the form unchanged never erases it.
+function formatServingNumber(n: number): string {
+  if (!Number.isFinite(n)) return '0';
+  const r = round1(n);
+  return String(r === 0 && n > 0 ? Number(n.toPrecision(1)) : r);
+}
+
 // Optional active-substance field: blank (or garbage) stays undefined so an
 // undeclared substance never turns into a fake "0 mg".
 function parseOptionalNonNegative(s: string): number | undefined {
@@ -184,9 +194,9 @@ export function servingSizeOf(input: CustomFoodInput): number {
 
 // Re-expresses one typed number on the other scale. Blank or unparseable text
 // is left exactly as typed (never turned into "NaN" or a fake 0).
-function convertField(text: string, factor: number): string {
+function convertField(text: string, factor: number, format: (n: number) => string): string {
   const n = parseDecimal(text);
-  return isNaN(n) ? text : formatInputNumber(n * factor);
+  return isNaN(n) ? text : format(n * factor);
 }
 
 // Switches the scale the nutrition numbers are typed on, CONVERTING what is
@@ -201,9 +211,10 @@ export function changeNutritionBasis(
   if (next === input.nutritionBasis) return input;
   const size = servingSizeOf(input);
   const factor = next === 'perServing' ? size / 100 : 100 / size;
+  const format = next === 'perServing' ? formatServingNumber : formatInputNumber;
   const out: CustomFoodInput = { ...input, nutritionBasis: next };
   for (const key of NUTRITION_KEYS) {
-    out[key] = size > 0 ? convertField(input[key], factor) : '';
+    out[key] = size > 0 ? convertField(input[key], factor, format) : '';
   }
   return out;
 }
@@ -430,7 +441,8 @@ export function isValidCustomFoodInput(input: CustomFoodInput): boolean {
 // "per serving" (the numbers the user originally typed for a capsule/carton),
 // a weighed food on "per 100 g" — and either is one tap away from the other
 // since a basis change converts rather than wipes. Numbers go through
-// formatInputNumber so a converted value doesn't show a floating-point tail
+// formatInputNumber (per-serving ones through formatServingNumber, 1 decimal)
+// so a converted value doesn't show a floating-point tail
 // (a real 0 still shows "0" — honest for an edit form); optional micros
 // (epaMg/dhaMg) fall back to 0. The id is NOT carried here — edit-mode
 // restores the original id after buildCustomFoodItem so the save becomes an
@@ -445,7 +457,7 @@ export function inputFromFoodItem(item: FoodItem): CustomFoodInput {
     ? scalePer100gToPerServing(item.per100g, item.servingWeightG as number)
     : item.per100g;
   const s = (n: number): string => String(n);
-  const f = formatInputNumber;
+  const f = isServingBased ? formatServingNumber : formatInputNumber;
   // Undeclared substances reopen blank, not as a "0" the user never typed.
   const o = (n: number | undefined): string => (n == null ? '' : f(n));
   return {
