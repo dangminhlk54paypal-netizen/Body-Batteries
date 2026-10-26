@@ -3200,6 +3200,45 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
      Kho "Thói quen ăn", nhãn VN). Duyệt giao diện ☕ → ghi mẫu vào `.ai/skills/mobile-ui-density.md`.
   3. Commit theo tính năng khi chủ app đồng ý.
 
+### Session 72b — Số theo khẩu phần làm tròn 1 chữ số thập phân (2026-10-26)
+- **Làm gì:** chủ app: "các chữ số được tính theo khẩu phần nên làm tròn tới 1 chữ số sau dấu phẩy". Form ✎ sửa món /
+  Món của tôi đổi per-100 g sang 1 khẩu phần với 6 chữ số có nghĩa (G7 gói 16 g: carb `12.1552`, caffeine `65.28`).
+- **Kết quả:** `customFoodInput.ts` thêm `formatServingNumber` — dùng khi mở form ở "theo khẩu phần" (`inputFromFoodItem`)
+  và khi đổi sang "theo khẩu phần" (`changeNutritionBasis`). Chiều về per 100 g vẫn giữ 6 chữ số. Vi chất quá nhỏ (làm
+  tròn ra 0) giữ 1 chữ số có nghĩa (kẽm 0.008 mg) để lưu lại không xoá mất. Không có chữ mới trên UI (i18n không đổi).
+  Test: sửa 2 test cũ, +1 test G7. `npm run verify` xanh.
+- **EAS:** `preview` group `52d2710f-fa2e-4866-9863-5b931a1efca8`, **bản cô lập** (HEAD `097168b` + 2 file này) vì phiên
+  mealText chưa xong. Đã được thay bằng bản gộp `61ec7443-23c5-4939-af7a-450b7500e303` (Session 73 + 72b, từ working
+  tree). **Chưa test máy thật. Chưa commit.**
+
+### Session 73 — 🤖 Dán dinh dưỡng từ AI → lưu / cập nhật món → nạp theo lượng (2026-10-26)
+- **Làm gì:** chủ app muốn copy thành phần dinh dưỡng AI phân tích vào app; app cập nhật món đó rồi tính theo lượng ăn
+  khi nạp. Chủ app chốt: món trùng → **hỏi từng dòng** (mặc định giữ số app, chọn "Số AI" thì cập nhật); đọc **cả JSON
+  lẫn chữ thường**; commit Session 72 trước (đã làm: `097168b`).
+- **Kết quả:**
+  - `domain/food/mealText/aiNutrition.ts` (mới): đọc JSON `per_100g`/tổng + chữ thường vi/en/de → số /100 g, kiểm tra
+    kcal ≈ 4P+4C+9F, so sánh với món app.
+  - `parseMealText.ts`: `DecodedMealItem.ai`/`nameEn`; thứ tự JSON → phân tích chữ → câu thường.
+  - `mapMealText.ts`: `AiRow` + `withAiChoice`/`withAiName`/`withSavedFood`/`aiSavePlan`, nhãn `aiCheck/aiBasis/
+    aiCompare/aiNew`, `INFO_ISSUES`.
+  - `TextMealEntry.tsx`: ✎ có bảng App | AI, 3 nút bằng nhau, ô tên món mới; nút **💾 Lưu n món** cạnh ＋ Thêm món;
+    Nạp lưu món trước rồi ghi. Câu lệnh 📤 Hỏi AI xin `per_100g`. i18n vi/en/de.
+  - Test: +`aiNutrition.test.ts` (14), +8 test mapper, +3 test màn hình, +`textMealEntryKeys.test.ts`.
+    `npm run verify` xanh: 144 suite / 1623 test (gồm Session 72b).
+  - Tài liệu: `03-architecture.md` § Nạp bằng chữ, `07-food-log.md` § 4c-2, checklist `KIEM-TRA-TREN-MAY.md`.
+- **Vấn đề & cách giải quyết:** "500–600 kcal" bị đọc thành 600 (regex kcal bắt số gần chữ "kcal") → đọc cả khoảng.
+  "Magerquark je 100 g: Brennwert 67 kcal" bị bỏ cả dòng vì chặn dòng tiêu đề "/100 g" → tách phần trước (tên) và sau
+  (số). "Tên món: …" chưa tách nhãn theo dấu ":" → nhãn dừng ở ":" hoặc số đầu tiên. Phiên song song bodybatteries-68
+  (Session 72b) sửa `customFoodInput.ts` cùng lúc — hai phiên nhắn nhau, gộp vào **một** bản preview.
+- **EAS:** `preview` group `61ec7443-23c5-4939-af7a-450b7500e303`, từ working tree (Session 73 + 72b). **Chưa test máy
+  thật. Chưa commit.**
+- **Session tiếp theo phải làm:**
+  1. Chủ app thử mục "Session 73" trong `docs/KIEM-TRA-TREN-MAY.md`. Gửi lại câu trả lời AI nào app đọc sai → thêm vào
+     `aiNutrition.test.ts` trước khi sửa.
+  2. Duyệt giao diện bảng App | AI + 3 nút → ghi mẫu vào `.ai/skills/mobile-ui-density.md` (§7b).
+  3. Commit theo tính năng khi chủ app đồng ý (tách khỏi file của Session 72b).
+  4. Có thể làm sau: dán chữ thường nhiều món một lần (hiện một món mỗi lần dán; JSON thì đã nhiều món).
+
 ---
 
 ## 📌 Hướng dẫn viết session log

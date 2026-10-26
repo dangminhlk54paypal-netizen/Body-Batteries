@@ -9,13 +9,46 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 | Bản `preview` mới nhất | Gồm | Ngày |
 |---|---|---|
-| [`f7564860…`](https://u.expo.dev/update/f7564860-fb55-44ea-a8cb-79b7446e708f) | Session 72 ☕ Caffeine & hoạt chất (chưa commit) + mọi thứ đã commit — **dùng bản này** | 2026-10-26 |
+| [`61ec7443…`](https://u.expo.dev/update/61ec7443-23c5-4939-af7a-450b7500e303) | Session 73 🤖 Dán dinh dưỡng từ AI + Session 72b (cả hai chưa commit) + `097168b` — **dùng bản này** | 2026-10-26 |
+| [`52d2710f…`](https://u.expo.dev/update/52d2710f-fa2e-4866-9863-5b931a1efca8) | Đã commit `097168b` (Session 72) + Session 72b số theo khẩu phần 1 chữ số thập phân (bản cô lập, chưa có mealText AI) | 2026-10-26 |
+| [`f7564860…`](https://u.expo.dev/update/f7564860-fb55-44ea-a8cb-79b7446e708f) | Session 72 ☕ Caffeine & hoạt chất (chưa commit) + mọi thứ đã commit | 2026-10-26 |
 | [`66d377c7…`](https://u.expo.dev/update/66d377c7-2eec-40f4-9511-fc0c25f02c75) | Đã commit `01f75c1` (Session 61–71 + SDK 58) | 2026-10-23 |
 | [`698588e2…`](https://u.expo.dev/update/698588e2-6079-4a88-9f7e-7934daad9a17) | Session 61–71 + SDK 58, Nạp bằng chữ Đợt 1–3a (cũ hơn, chưa commit) | 2026-10-23 |
 | [`48281746…`](https://u.expo.dev/update/48281746-b08e-4a68-845b-dc852116e055) | Session 61–71, Nguồn của tôi Đợt 2–3 (cũ hơn) | 2026-10-23 |
 | [`a4429e44…`](https://u.expo.dev/update/a4429e44-e8bd-48f1-9ae7-46c25cdca2ae) | Session 61–70 (cũ hơn) | 2026-10-23 |
 
 ---
+
+## Session 73 — 🤖 Dán dinh dưỡng từ AI → lưu / cập nhật món → nạp theo lượng
+
+Mở: ⚡ Nạp → **⌨️ Nạp bằng chữ**.
+
+- [ ] **Hỏi AI có số dinh dưỡng.** **📤 Hỏi AI** → ChatGPT/Gemini/Claude → gửi ảnh bữa ăn → copy câu trả lời →
+      **📋 Dán**. Kỳ vọng: câu lệnh giờ xin thêm `per_100g` (kcal, đạm, carbs, béo…). Món app chưa có: ghi chú
+      "🤖 Món mới … kcal/100g". Món app đã có: ghi chú "🤖 AI … · app … kcal/100g · đang dùng số app".
+- [ ] **So sánh & chọn.** Chạm ✎ ở một món app đã có. Kỳ vọng: bảng "🤖 Dinh dưỡng /100g" với 2 cột **App | AI**, 3 nút
+      bằng nhau **Số app | Số AI | ＋ Món mới**. Chọn **Số AI** → Xong → Nạp. Sau đó mở món đó trong ⚡ Nạp → ✎: số
+      đã đổi theo AI; khôi phục số cũ ở đó được.
+- [ ] **Món mới + đổi tên.** Ở dòng "Món mới" → ✎ → sửa **Tên món mới** → Xong → Nạp. Kỳ vọng: món nằm trong
+      🍽️ Món của tôi; lần sau gõ `300g <tên>` ở Nạp bằng chữ → khớp đúng món, kcal tính theo 300 g.
+- [ ] **Dán chữ thường.** Hỏi AI theo cách của bạn (không dùng nút 📤), copy câu trả lời dạng "Calories: 520 kcal,
+      Protein: 30 g, Carbs…, Fat…" có khẩu phần (vd. "Khẩu phần: 400 g") → 📋 Dán. Kỳ vọng: 1 dòng món, lượng 400 g, số
+      /100 g đã chia ra. Không có khẩu phần → ghi chú "app hiểu là /100 g", lượng 100 g.
+- [ ] **Chỉ lưu, chưa ăn.** Dán phân tích nhãn một sản phẩm → **💾 Lưu 1 món** (cạnh ＋ Thêm món). Kỳ vọng: không nạp
+      gì, nút 💾 biến mất. Lần sau gõ `200g <tên món>` → app tính theo số đã lưu.
+- [ ] **Số AI lệch.** Nếu kcal không khớp đạm/carbs/béo: dòng có ⚠ "Số AI chưa khớp". Vẫn nạp được.
+- [ ] **Ngôn ngữ.** Đổi English / Deutsch: 3 nút "App numbers | AI numbers | ＋ New food" / "App-Werte | KI-Werte |
+      ＋ Neu" không bị cắt chữ; nút 💾 vừa một dòng.
+
+## Session 72b — Số theo khẩu phần làm tròn 1 chữ số thập phân
+
+Mở: ⚡ Nạp → tìm "g7" → ✎ sửa dinh dưỡng của "Cà phê G7 3in1".
+
+- [ ] **Đổi sang theo khẩu phần.** Trong form, chuyển "100 g" → "1 khẩu phần" (gói 16 g). Kỳ vọng: Carb `12.2`, Đường
+      `12`, Béo `2.4`, Caffeine `65.3` — không còn số kiểu `12.1552`.
+- [ ] **Món đếm theo viên/gói.** ✎ sửa "Dầu cá Omega-3" (mở sẵn theo viên). Kỳ vọng: EPA `600`, DHA `400`, kcal `11`,
+      mọi ô tối đa 1 chữ số sau dấu phẩy.
+- [ ] **Không mất vi chất.** ✎ "Espresso" → chuyển sang 1 shot (30 ml). Kỳ vọng: Kẽm hiện `0.01`, không phải `0`.
 
 ## Session 72 — ☕ Caffeine & hoạt chất (nước tăng lực, cà phê, TPCN)
 
