@@ -10,12 +10,40 @@ import { useLibrarySearch } from '../../hooks/useLibrarySearch';
 import { getAnyFoodById, foodDisplayName, foodLogEntryDisplayName } from '../../data/food/foodLookup';
 import { addCustomFoodAndRegister } from '../../data/food/customFoodRegistry';
 import { upsertOverrideAndRegister } from '../../data/food/foodOverrideRegistry';
-import { parseMealText } from '../../domain/food/mealText/parseMealText';
+import { parseDayText, splitDayItems } from '../../domain/dayText/parseDayText';
+import { buildActivityNames, type ActivityMatch } from '../../domain/energy/activityText/parseActivityText';
+import {
+  ACTIVITY_INFO_ISSUES,
+  activityDraftTotals,
+  activityLogPlan,
+  buildActivityDraft,
+  isActivityBlocked,
+  isSetBased,
+  rowActivityKcal,
+  rowSteps,
+  toggleActivityRow,
+  withActivityMatch,
+  withActivityMinutes,
+  withActivitySets,
+  withActivitySteps,
+  withActivityTime,
+  type ActivityDraftIssue,
+  type ActivityDraftRow,
+  type ActivityTextContext,
+} from '../../domain/energy/activityText/mapActivityText';
+import { parseSetNotation } from '../../domain/training/setNotation';
+import { formatSetSequence } from '../../domain/training/trainingLogFormatter';
+import { getActivityLogInRange } from '../../data/repositories/activityLogRepository';
+import { ACTIVITY_CATEGORIES } from '../../lib/activityCategories';
+import { activityLabel, workoutLabel } from '../../lib/activityLabels';
+import { resolveTrainingLogFormat } from '../../types/trainingLog';
+import { LIFTING_EXERCISES, type ActivityLogEntry } from '../../types/energy';
 import {
   aiSavePlan,
   atLocalTime,
   buildMealDraft,
   draftTotals,
+  hasExactFood,
   INFO_ISSUES,
   isBlocked,
   manualRow,
@@ -57,6 +85,12 @@ import { LOCALE_TAGS } from '../../i18n';
 // Validation) into rows the user ticks, fixes and only then logs (Insert,
 // through the same logFood / logFoodForPastDate as the ⚡ Nạp list).
 //
+// "Kể cả ngày" (the ⌨️ 🎤 button under Nạp | Xả opens this same box): the
+// text may also tell workouts — domain/dayText cuts it into foods and
+// workouts, and the workouts become a second list (🔥 Xả,
+// energy/activityText) logged through logActivity / logActivityForPastDate
+// like the 🔥 Xả sheet.
+//
 // Lives INSIDE FoodLogModal's sheet: the row editor, the food picker and the
 // whole-list time editor replace the list in place — a second Modal on top of
 // a BottomSheet does not show on iOS (mobile-ui-density §3).
@@ -73,11 +107,15 @@ interface Props {
   onBack: () => void;
   onClose: () => void;
   onLogged: () => void;
+  // 'day' when opened from "⌨️ 🎤 Kể cả ngày" — only the title and the
+  // example differ; foods and workouts are read either way.
+  variant?: 'meal' | 'day';
 }
 
 type Screen =
   | { kind: 'list' }
   | { kind: 'edit'; id: string }
+  | { kind: 'activityEdit'; id: string }
   | { kind: 'pick'; id: string | null } // null = add a new row
   | { kind: 'batchTime' };
 
@@ -96,6 +134,10 @@ const AI_TABLE: { key: keyof Nutrition; label: AiLabel; always: boolean }[] = [
 ];
 const PICK_LIMIT = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// How far back "as usual" lengths and Xả duplicates are looked up.
+const RECENT_ACTIVITY_DAYS = 30;
+const MINUTE_STEP = 5;
+const STEP_STEP = 500;
 
 // Impure reads live in module-level helpers so the components' purity
 // analysis never sees them (same pattern as FoodLogModal).
@@ -106,6 +148,20 @@ function nowTimestamp(): number {
 // Same id shape as buildCustomFoodItem (customFoodInput.ts).
 function newCustomFoodId(): string {
   return `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// The Xả entries "as usual" lengths and duplicates are read from; none when
+// the database can't be read (the rows then just have no "usual").
+async function loadRecentActivities(today: string): Promise<ActivityLogEntry[]> {
+  try {
+    return await getActivityLogInRange(addDaysToDateString(today, -RECENT_ACTIVITY_DAYS), today);
+  } catch {
+    return [];
+  }
+}
+
+function sameMatch(a: ActivityMatch | null, b: ActivityMatch | null): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function restoreDraftText(): string {
@@ -122,17 +178,25 @@ function dayOffsetOf(timestamp: number, today: string): number {
   return Math.round((atLocalTime(dateString(new Date(timestamp)), 0, 0) - atLocalTime(today, 0, 0)) / DAY_MS);
 }
 
-export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }: Props) {
+export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, variant = 'meal' }: Props) {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
   const logFood = useEnergyStore((s) => s.logFood);
   const logFoodForPastDate = useEnergyStore((s) => s.logFoodForPastDate);
+  const logActivity = useEnergyStore((s) => s.logActivity);
+  const logActivityForPastDate = useEnergyStore((s) => s.logActivityForPastDate);
   const mealWindows = useSettingsStore((s) => s.mealWindows);
+  const profile = useSettingsStore((s) => s.userProfile);
+  const customActivities = useSettingsStore((s) => s.customActivities);
+  const customExercises = useSettingsStore((s) => s.customExercises);
+  const trainingLogFormat = useSettingsStore((s) => s.trainingLogFormat);
 
   const [text, setText] = useState(restoreDraftText);
   const [showHint, setShowHint] = useState(false);
   const [rows, setRows] = useState<MealDraftRow[] | null>(null);
+  const [activityRows, setActivityRows] = useState<ActivityDraftRow[]>([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityLogEntry[]>([]);
   // "Today" as of the last analysis — labels in render read this, never the clock.
   const [today, setToday] = useState('');
   const [view, setView] = useState<Screen>({ kind: 'list' });
@@ -145,6 +209,11 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
   const [editName, setEditName] = useState('');
   const [editChoice, setEditChoice] = useState<AiChoice | null>(null);
   const [pickQuery, setPickQuery] = useState('');
+  // Workout row editor.
+  const [editMatch, setEditMatch] = useState<ActivityMatch | null>(null);
+  const [editMinutes, setEditMinutes] = useState('');
+  const [editSteps, setEditSteps] = useState('');
+  const [editSets, setEditSets] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   // "📋 Dán" found nothing to paste — say so instead of doing nothing.
   const [pasteEmpty, setPasteEmpty] = useState(false);
@@ -167,6 +236,20 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     };
   }
 
+  const kcalContext = { weightKg: profile.weightKg, heightCm: profile.heightCm, customActivities, customExercises };
+
+  function activityContext(recent: ActivityLogEntry[] = recentActivities): ActivityTextContext {
+    return {
+      ...kcalContext,
+      now: nowTimestamp(),
+      today: todayString(),
+      baseDate,
+      maxDaysBack: BACKFILL_MAX_DAYS_BACK,
+      mealWindows,
+      recentActivities: recent,
+    };
+  }
+
   function updateText(next: string) {
     setText(next);
     setPasteEmpty(false);
@@ -177,13 +260,17 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     if (!source.trim() || analyzing) return;
     Keyboard.dismiss();
     setAnalyzing(true);
-    const decoded = parseMealText(source);
+    const items = parseDayText(source, buildActivityNames(customActivities, customExercises));
+    const foodsSaid = items.flatMap((item) => (item.kind === 'food' ? [item.food] : item.food ? [item.food] : []));
     // The user's imported tables are searched in SQLite first, then the
     // mapping itself runs synchronously over catalog + those candidates.
-    const library = await loadLibraryCandidates(decoded);
+    const [library, recent] = await Promise.all([loadLibraryCandidates(foodsSaid), loadRecentActivities(todayString())]);
     const ctx = context(library);
+    const { foods, activities } = splitDayItems(items, (food) => hasExactFood(food, ctx));
     setToday(ctx.today);
-    setRows(buildMealDraft(decoded, ctx));
+    setRows(buildMealDraft(foods, ctx));
+    setRecentActivities(recent);
+    setActivityRows(buildActivityDraft(activities, activityContext(recent)));
     setView({ kind: 'list' });
     setAnalyzing(false);
   }
@@ -277,6 +364,77 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     setView({ kind: 'list' });
   }
 
+  // ── Workout rows ───────────────────────────────────────────────────────
+
+  function replaceActivityRow(id: string, update: (row: ActivityDraftRow) => ActivityDraftRow | null) {
+    setActivityRows((prev) => {
+      const next: ActivityDraftRow[] = [];
+      for (const row of prev) {
+        if (row.id !== id) next.push(row);
+        else {
+          const changed = update(row);
+          if (changed) next.push(changed);
+        }
+      }
+      return next;
+    });
+  }
+
+  function openActivityEdit(row: ActivityDraftRow) {
+    const at = row.startAt != null ? new Date(row.startAt) : null;
+    setEditMatch(row.match);
+    setEditMinutes(row.minutes != null && !isSetBased(row.match) ? String(row.minutes) : '');
+    setEditSteps(row.steps > 0 ? String(row.steps) : '');
+    setEditSets(row.sets ? formatSetSequence(row.sets, resolveTrainingLogFormat(trainingLogFormat), language) : '');
+    setEditHour(at ? pad2(at.getHours()) : '');
+    setEditMinute(at ? pad2(at.getMinutes()) : '');
+    setEditDay(dayOffsetOf(atLocalTime(row.day, 12, 0), today));
+    setView({ kind: 'activityEdit', id: row.id });
+  }
+
+  // A workout's start may be left empty — then it has no time (logged now
+  // for today, at noon for a past day), like the 🔥 Xả sheet.
+  function editedStart(): { day: string; startAt: number | null } | null {
+    const day = addDaysToDateString(today, editDay);
+    if (editHour === '' && editMinute === '') return { day, startAt: null };
+    const startAt = editedTimestamp();
+    return startAt == null ? null : { day, startAt };
+  }
+
+  function saveActivityEdit(id: string) {
+    const ctx = activityContext();
+    const minutes = parseDecimal(editMinutes);
+    const steps = editSteps.trim() === '' ? 0 : parseDecimal(editSteps);
+    const sets = parseSetNotation(editSets);
+    const start = editedStart();
+    replaceActivityRow(id, (row) => {
+      let next = row;
+      if (editMatch && !sameMatch(editMatch, row.match)) next = withActivityMatch(next, editMatch, ctx);
+      if (isSetBased(next.match)) {
+        if (sets.ok) next = withActivitySets(next, sets.sets, ctx);
+      } else if (!isNaN(minutes) && minutes > 0 && minutes !== next.minutes) {
+        next = withActivityMinutes(next, minutes, ctx);
+      }
+      if (!isNaN(steps) && steps !== next.steps) next = withActivitySteps(next, steps, ctx);
+      if (start && (start.day !== next.day || start.startAt !== next.startAt)) {
+        next = withActivityTime(next, start.day, start.startAt, ctx);
+      }
+      return next;
+    });
+    setView({ kind: 'list' });
+  }
+
+  function stepActivity(row: ActivityDraftRow, direction: 1 | -1) {
+    const ctx = activityContext();
+    replaceActivityRow(row.id, (r) => {
+      if (rowSteps(r) > 0) {
+        return withActivitySteps(r, Math.max(STEP_STEP, r.steps + direction * STEP_STEP), ctx);
+      }
+      const current = r.minutes ?? 0;
+      return withActivityMinutes(r, Math.max(MINUTE_STEP, current + direction * MINUTE_STEP), ctx);
+    });
+  }
+
   function pick(food: FoodItem, id: string | null) {
     const ctx = context();
     const resolved = getAnyFoodById(food.id) ?? food;
@@ -326,7 +484,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
   async function commit() {
     if (!rows || saving) return;
     const chosen = rows.filter((row) => row.selected && !isBlocked(row));
-    if (chosen.length === 0) return;
+    const workouts = activityLogPlan(activityRows, activityContext());
+    if (chosen.length === 0 && workouts.length === 0) return;
     setSaving(true);
     const todayNow = todayString();
     try {
@@ -343,6 +502,11 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
         } else {
           await logFoodForPastDate(food, row.grams, row.timestamp, portion);
         }
+      }
+      for (const step of workouts) {
+        const activity = { steps: step.steps, workouts: step.workouts, startAt: step.startAt, endAt: step.endAt };
+        if (step.today) await logActivity(activity);
+        else await logActivityForPastDate(activity, step.timestamp);
       }
     } catch {
       // Whatever was logged stays; unlock so the sheet isn't stuck.
@@ -444,7 +608,92 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
     return { glyph: '✓', color: c.statusGood };
   }
 
+  // ── Workout labels ─────────────────────────────────────────────────────
+
+  function matchName(match: ActivityMatch): string {
+    switch (match.kind) {
+      case 'type':
+        return activityLabel(match.type, language);
+      case 'lift':
+        return activityLabel(match.exercise, language);
+      case 'bodybuilding': {
+        const custom = customExercises.find((e) => e.id === match.exerciseId);
+        return custom ? custom.nameVi : t(`bbExercises.${match.exerciseId}`);
+      }
+      case 'custom':
+        return customActivities.find((a) => a.id === match.id)?.nameVi ?? t('activities.custom');
+    }
+  }
+
+  function activityName(row: ActivityDraftRow): string {
+    if (row.match) return matchName(row.match);
+    if (rowSteps(row) > 0) return t('components.textMealEntry.activity.steps');
+    return t('components.textMealEntry.activity.unknown', { text: row.decoded.name || row.decoded.raw });
+  }
+
+  function activityAmount(row: ActivityDraftRow): string {
+    const steps = rowSteps(row);
+    if (steps > 0) {
+      return t('components.textMealEntry.activity.stepsAmount', { steps: steps.toLocaleString(LOCALE_TAGS[language]) });
+    }
+    if (isSetBased(row.match)) {
+      return row.sets ? formatSetSequence(row.sets, resolveTrainingLogFormat(trainingLogFormat), language) : '–';
+    }
+    return row.minutes != null ? t('components.textMealEntry.activity.minutesAmount', { minutes: row.minutes }) : '–';
+  }
+
+  function activityWhen(row: ActivityDraftRow): string {
+    if (row.startAt != null) return whenLabel(row.startAt);
+    return dayLabel(dayOffsetOf(atLocalTime(row.day, 12, 0), today));
+  }
+
+  function activityNote(row: ActivityDraftRow, issue: ActivityDraftIssue): string {
+    const key = `components.textMealEntry.activity.notes.${issue}`;
+    if (issue === 'duplicate') {
+      const dup = row.duplicate;
+      if (!dup) return '';
+      const name = dup.workouts[0] ? workoutLabel(dup.workouts[0], language) : t('components.textMealEntry.activity.steps');
+      return t(key, { name, when: whenLabel(dup.startAt ?? dup.timestamp) });
+    }
+    if (issue === 'tooOld') return t(key, { days: BACKFILL_MAX_DAYS_BACK });
+    return t(key);
+  }
+
+  function activityNotes(row: ActivityDraftRow): string[] {
+    const notes: string[] = [];
+    if (row.duplicate) notes.push(activityNote(row, 'duplicate'));
+    const other = row.issues.find((issue) => issue !== 'duplicate');
+    if (other) notes.push(activityNote(row, other));
+    return notes;
+  }
+
+  function activityStatus(row: ActivityDraftRow): { glyph: string; color: string } {
+    if (isActivityBlocked(row)) return { glyph: '✗', color: c.statusLow };
+    if (row.issues.some((issue) => !ACTIVITY_INFO_ISSUES.has(issue))) return { glyph: '⚠', color: c.statusMid };
+    return { glyph: '✓', color: c.statusGood };
+  }
+
+  // Every activity the editor offers: the 🔥 Xả groups, the user's own, the
+  // three lifts, and the row's own exercise when it is one.
+  function activityChoices(row: ActivityDraftRow): { key: string; match: ActivityMatch }[] {
+    const out: { key: string; match: ActivityMatch }[] = [];
+    if (row.match?.kind === 'bodybuilding') out.push({ key: `bb:${row.match.exerciseId}`, match: row.match });
+    for (const cat of ACTIVITY_CATEGORIES) {
+      for (const type of cat.types) out.push({ key: type, match: { kind: 'type', type } });
+    }
+    for (const a of customActivities) out.push({ key: `custom:${a.id}`, match: { kind: 'custom', id: a.id } });
+    for (const exercise of LIFTING_EXERCISES) out.push({ key: `lift:${exercise}`, match: { kind: 'lift', exercise } });
+    return out;
+  }
+
   const totals = rows ? draftTotals(rows) : { count: 0, kcal: 0 };
+  const activityTotals = activityDraftTotals(activityRows, kcalContext);
+  const commitLabel =
+    totals.count > 0 && activityTotals.count > 0
+      ? t('components.textMealEntry.commitBoth', { food: totals.count, activity: activityTotals.count })
+      : activityTotals.count > 0
+        ? t('components.textMealEntry.commitActivities', { count: activityTotals.count })
+        : t('components.textMealEntry.commitButton', { count: totals.count });
   const pendingSaves = rows ? aiSavePlan(rows, () => '').length : 0;
   const sameTime = rows && rows.length > 0 && rows.every((row) => row.timestamp === rows[0].timestamp);
   const batchWhen = rows && rows.length > 0
@@ -512,7 +761,7 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
         onPress={right}
         disabled={disabled}
       >
-        <Text style={styles.btnMainText} numberOfLines={1}>
+        <Text style={styles.btnMainText} numberOfLines={1} adjustsFontSizeToFit>
           {rightLabel}
         </Text>
       </Pressable>
@@ -571,6 +820,87 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
         <Text style={styles.title}>{t('components.textMealEntry.batchTimeTitle')}</Text>
         {timeInputs(t('components.foodLogModal.mealTimeFieldLabel', { meal: mealLabelFor(editedTimestamp()) }))}
         {footer(backToList, applyBatchTime, t('components.textMealEntry.applyAll'), editedTimestamp() == null)}
+      </>
+    );
+  }
+
+  const editingActivity =
+    view.kind === 'activityEdit' ? activityRows.find((row) => row.id === view.id) : undefined;
+  if (view.kind === 'activityEdit' && editingActivity) {
+    const setBased = isSetBased(editMatch);
+    const setsBad = setBased && editSets.trim() !== '' && !parseSetNotation(editSets).ok;
+    return (
+      <>
+        <Text style={styles.title} numberOfLines={2}>
+          {editMatch ? matchName(editMatch) : activityName(editingActivity)}
+        </Text>
+        <ScrollView style={styles.editScroll} contentContainerStyle={styles.editContent} keyboardShouldPersistTaps="handled">
+          <Text style={styles.fieldLabel}>{t('components.textMealEntry.activity.activityLabel')}</Text>
+          <ScrollView style={styles.choiceWindow} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            <View style={styles.dayChips}>
+              {activityChoices(editingActivity).map(({ key, match }) => {
+                const on = sameMatch(match, editMatch);
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setEditMatch(match)}
+                    style={({ pressed }) => [styles.dayChip, on && styles.dayChipOn, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={[styles.dayChipText, on && styles.dayChipTextOn]} numberOfLines={1}>
+                      {matchName(match)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+          {setBased ? (
+            <>
+              <Text style={styles.fieldLabel}>{t('components.textMealEntry.activity.setsLabel')}</Text>
+              <TextInput
+                style={styles.input}
+                value={editSets}
+                onChangeText={setEditSets}
+                placeholder="5x5x100"
+                placeholderTextColor={c.textMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {setsBad && <Text style={styles.pasteNote}>{t('components.textMealEntry.activity.setsInvalid')}</Text>}
+            </>
+          ) : (
+            <View style={styles.pairRow}>
+              <View style={styles.pairCol}>
+                <Text style={styles.fieldLabel}>{t('components.textMealEntry.activity.minutesLabel')}</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="decimal-pad"
+                  value={editMinutes}
+                  onChangeText={setEditMinutes}
+                />
+              </View>
+              <View style={styles.pairCol}>
+                <Text style={styles.fieldLabel}>{t('components.textMealEntry.activity.stepsLabel')}</Text>
+                <TextInput style={styles.input} keyboardType="number-pad" value={editSteps} onChangeText={setEditSteps} />
+              </View>
+            </View>
+          )}
+          {timeInputs(t('components.textMealEntry.activity.startLabel'))}
+          <View style={styles.editActions}>
+            <Pressable
+              style={({ pressed }) => [styles.editAction, styles.editActionDanger, pressed && styles.pressed]}
+              onPress={() => {
+                replaceActivityRow(editingActivity.id, () => null);
+                backToList();
+              }}
+            >
+              <Text style={styles.editActionDangerText}>{t('components.textMealEntry.removeRow')}</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+        {footer(backToList, () => saveActivityEdit(editingActivity.id), t('components.textMealEntry.done'))}
       </>
     );
   }
@@ -736,7 +1066,9 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
         </Pressable>
       </View>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>{t('components.textMealEntry.title')}</Text>
+        <Text style={styles.title}>
+          {t(variant === 'day' ? 'components.textMealEntry.titleDay' : 'components.textMealEntry.title')}
+        </Text>
         <Pressable
           onPress={() => setShowHint((v) => !v)}
           hitSlop={10}
@@ -750,7 +1082,7 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
       {showHint && <Text style={styles.hint}>{t('components.textMealEntry.hint')}</Text>}
       <TextInput
         style={[styles.input, styles.textBox]}
-        placeholder={t('components.textMealEntry.placeholder')}
+        placeholder={t(variant === 'day' ? 'components.textMealEntry.placeholderDay' : 'components.textMealEntry.placeholder')}
         placeholderTextColor={c.textMuted}
         value={text}
         onChangeText={updateText}
@@ -785,23 +1117,27 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
       </View>
       {pasteEmpty && <Text style={styles.pasteNote}>{t('components.textMealEntry.pasteEmpty')}</Text>}
 
-      {rows && rows.length === 0 && <Text style={styles.empty}>{t('components.textMealEntry.nothingFound')}</Text>}
+      {rows && rows.length === 0 && activityRows.length === 0 && (
+        <Text style={styles.empty}>{t('components.textMealEntry.nothingFound')}</Text>
+      )}
 
-      {rows && rows.length > 0 && (
+      {rows && (rows.length > 0 || activityRows.length > 0) && (
         <>
-          <View style={styles.summaryRow}>
-            <Pressable onPress={openBatchTime} style={({ pressed }) => pressed && styles.pressed} accessibilityRole="button">
-              <Text style={styles.timeChip} numberOfLines={1}>
-                {t('components.textMealEntry.timeChip', { when: batchWhen })}
+          {rows.length > 0 && (
+            <View style={styles.summaryRow}>
+              <Pressable onPress={openBatchTime} style={({ pressed }) => pressed && styles.pressed} accessibilityRole="button">
+                <Text style={styles.timeChip} numberOfLines={1}>
+                  {t('components.textMealEntry.timeChip', { when: batchWhen })}
+                </Text>
+              </Pressable>
+              <Text style={styles.summary} numberOfLines={1}>
+                {t('components.textMealEntry.summary', {
+                  count: totals.count,
+                  kcal: totals.kcal.toLocaleString(LOCALE_TAGS[language]),
+                })}
               </Text>
-            </Pressable>
-            <Text style={styles.summary} numberOfLines={1}>
-              {t('components.textMealEntry.summary', {
-                count: totals.count,
-                kcal: totals.kcal.toLocaleString(LOCALE_TAGS[language]),
-              })}
-            </Text>
-          </View>
+            </View>
+          )}
           <ScrollView style={styles.list} nestedScrollEnabled keyboardShouldPersistTaps="handled">
             {rows.map((row) => {
               const blocked = isBlocked(row);
@@ -902,16 +1238,100 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged }
                 </Pressable>
               )}
             </View>
+            {activityRows.length > 0 && (
+              <Text style={styles.sectionHead} numberOfLines={1}>
+                {t('components.textMealEntry.activity.section', {
+                  count: activityTotals.count,
+                  kcal: activityTotals.kcal.toLocaleString(LOCALE_TAGS[language]),
+                })}
+              </Text>
+            )}
+            {activityRows.map((row) => {
+              const blocked = isActivityBlocked(row);
+              const { glyph, color } = activityStatus(row);
+              const name = activityName(row);
+              const steppable = !isSetBased(row.match) && (row.match != null || rowSteps(row) > 0);
+              return (
+                <View key={row.id} style={styles.row}>
+                  <View style={styles.rowTop}>
+                    <Pressable
+                      onPress={() => replaceActivityRow(row.id, toggleActivityRow)}
+                      disabled={blocked}
+                      hitSlop={8}
+                      accessibilityRole="checkbox"
+                      accessibilityLabel={t('components.textMealEntry.activity.rowCheckboxA11y', { name })}
+                      accessibilityState={{ checked: row.selected, disabled: blocked }}
+                    >
+                      <Text style={[styles.check, row.selected && styles.checkOn, blocked && styles.checkBlocked]}>
+                        {row.selected ? '☑' : '☐'}
+                      </Text>
+                    </Pressable>
+                    <Text style={[styles.statusGlyph, { color }]}>{glyph}</Text>
+                    <Text style={[styles.rowName, !row.match && rowSteps(row) === 0 && styles.rowNameUnknown]} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    <Pressable
+                      onPress={() => openActivityEdit(row)}
+                      hitSlop={8}
+                      style={({ pressed }) => [styles.editBtn, pressed && styles.pressed]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('components.textMealEntry.editRowA11y', { name })}
+                    >
+                      <Text style={styles.editGlyph}>✎</Text>
+                    </Pressable>
+                  </View>
+                  {(row.match || rowSteps(row) > 0) && (
+                    <View style={styles.rowBottom}>
+                      <Text style={styles.rowTime} numberOfLines={1}>
+                        {activityWhen(row)}
+                      </Text>
+                      {steppable ? (
+                        <View style={styles.stepper}>
+                          <Pressable
+                            onPress={() => stepActivity(row, -1)}
+                            style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('components.textMealEntry.activity.stepDownA11y')}
+                          >
+                            <Text style={styles.stepText}>−</Text>
+                          </Pressable>
+                          <Text style={styles.amount} numberOfLines={1} adjustsFontSizeToFit>
+                            {activityAmount(row)}
+                          </Text>
+                          <Pressable
+                            onPress={() => stepActivity(row, 1)}
+                            style={({ pressed }) => [styles.stepBtn, pressed && styles.pressed]}
+                            accessibilityRole="button"
+                            accessibilityLabel={t('components.textMealEntry.activity.stepUpA11y')}
+                          >
+                            <Text style={styles.stepText}>+</Text>
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <Text style={styles.setsText} numberOfLines={1} adjustsFontSizeToFit>
+                          {activityAmount(row)}
+                        </Text>
+                      )}
+                      <Text style={styles.kcal}>{rowActivityKcal(row, kcalContext)}</Text>
+                    </View>
+                  )}
+                  {activityNotes(row).map((note, i) => (
+                    <Text
+                      key={i}
+                      style={[styles.note, { color: i === 0 && (row.duplicate || blocked) ? color : c.textTertiary }]}
+                      numberOfLines={2}
+                    >
+                      {note}
+                    </Text>
+                  ))}
+                </View>
+              );
+            })}
           </ScrollView>
         </>
       )}
 
-      {footer(
-        cancel,
-        commit,
-        t('components.textMealEntry.commitButton', { count: totals.count }),
-        totals.count === 0 || saving
-      )}
+      {footer(cancel, commit, commitLabel, (totals.count === 0 && activityTotals.count === 0) || saving)}
     </>
   );
 }
@@ -1079,6 +1499,25 @@ const createStyles = (c: ThemeColors) =>
     aiChoiceTextOn: { color: c.accent, fontWeight: '700' },
     aiHint: { color: c.textTertiary, fontSize: 12, lineHeight: 17 },
     pickRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.divider },
+    sectionHead: {
+      color: c.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+      paddingTop: 12,
+      paddingBottom: 2,
+    },
+    setsText: {
+      width: 120,
+      textAlign: 'center',
+      color: c.textPrimary,
+      fontSize: 13,
+      fontWeight: '700',
+      fontVariant: ['tabular-nums'],
+    },
+    choiceWindow: { maxHeight: 132, flexGrow: 0 },
+    pairRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-end' },
+    pairCol: { flex: 1, gap: 4 },
     pickName: { color: c.textPrimary, fontSize: 15, fontWeight: '600' },
     pickMeta: { color: c.textTertiary, fontSize: 12, marginTop: 2 },
   });

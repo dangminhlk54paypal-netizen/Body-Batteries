@@ -16,7 +16,9 @@ export function EnergyActionsBar() {
   const { t } = useT();
   const styles = useThemedStyles(createStyles);
 
-  const [foodOpen, setFoodOpen] = useState(false);
+  // One food sheet for ⚡ Nạp and "⌨️ 🎤 Kể cả ngày" (which opens it on the
+  // text box) — never two RN Modals side by side.
+  const [foodSheet, setFoodSheet] = useState<'closed' | 'search' | 'text'>('closed');
   const [activityOpen, setActivityOpen] = useState(false);
   // Bumped on every open so ActivityLogSheet remounts and re-reads the saved
   // draft (restore within 5 minutes, else a fresh "as usual" form).
@@ -78,7 +80,7 @@ export function EnergyActionsBar() {
         <Animated.View style={[styles.btnWrap, foodBtnAnimatedStyle]}>
           <Pressable
             style={({ pressed }) => [styles.btn, styles.food, pressed && styles.pressed]}
-            onPress={() => setFoodOpen(true)}
+            onPress={() => setFoodSheet('search')}
             onPressIn={() => setFoodBtnPressed(true)}
             onPressOut={() => setFoodBtnPressed(false)}
             accessibilityRole="button"
@@ -104,8 +106,24 @@ export function EnergyActionsBar() {
           </Pressable>
         </Animated.View>
       </View>
+      {/* One box for the whole day, typed or dictated with the keyboard 🎤:
+          foods go to Nạp, workouts to Xả — reviewed row by row first. */}
+      <Pressable
+        style={({ pressed }) => [styles.dayBtn, pressed && styles.pressed]}
+        onPress={() => setFoodSheet('text')}
+        accessibilityRole="button"
+        accessibilityLabel={t('components.energyActionsBar.dayTextA11y')}
+      >
+        <Text style={styles.dayBtnText} numberOfLines={1} adjustsFontSizeToFit>
+          {t('components.energyActionsBar.dayTextButton')}
+        </Text>
+      </Pressable>
 
-      <FoodLogModal visible={foodOpen} onClose={() => setFoodOpen(false)} />
+      <FoodLogModal
+        visible={foodSheet !== 'closed'}
+        onClose={() => setFoodSheet('closed')}
+        startInText={foodSheet === 'text'}
+      />
 
       {/* Activity / workout */}
       <ActivityLogSheet
@@ -133,5 +151,15 @@ const createStyles = (c: ThemeColors) => StyleSheet.create({
   food: { backgroundColor: c.infoAlt },
   move: { backgroundColor: c.danger },
   btnText: { color: c.textPrimary, fontSize: 14, fontWeight: '700' },
+  dayBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: c.border,
+    backgroundColor: c.bgElevated,
+  },
+  dayBtnText: { color: c.textPrimary, fontSize: 14, fontWeight: '600' },
   pressed: { opacity: 0.6 },
 });

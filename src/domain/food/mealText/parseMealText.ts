@@ -71,7 +71,7 @@ interface PieceTime {
   ampm: 'am' | 'pm' | null;
 }
 
-interface DecodedPiece {
+export interface DecodedPiece {
   item: Omit<DecodedMealItem, 'time'> | null;
   time: MealTimeHint | null;
 }
@@ -81,24 +81,34 @@ const PHRASES_LONGEST_FIRST: TimePhrase[] = [...TIME_PHRASES].sort(
 );
 
 export function parseMealText(text: string): DecodedMealItem[] {
-  // An AI answer to the "📤 Hỏi AI" prompt is JSON; anything else (or JSON
-  // that doesn't parse) is read as a sentence.
+  return parseMealAnswer(text) ?? carryTimes(splitPieces(text).map(decodePiece)).map(({ item, time }) => ({ ...item, time }));
+}
+
+// An AI answer to the "📤 Hỏi AI" prompt is JSON; a plain-text nutrition
+// analysis ("Calories: 520 kcal, Protein: 30 g…") is one food with its
+// numbers, not a list of foods to look up. Anything else (or JSON that
+// doesn't parse) is null — read as a sentence.
+export function parseMealAnswer(text: string): DecodedMealItem[] | null {
   const fromJson = parseMealJson(text);
   if (fromJson) return fromJson;
-  // A plain-text nutrition analysis ("Calories: 520 kcal, Protein: 30 g…")
-  // is one food with its numbers, not a list of foods to look up.
   const analysis = parseNutritionText(text);
-  if (analysis) return [nutritionTextItem(analysis)];
-  const pieces = splitPieces(text).map(decodePiece);
-  const hinted = pieces.filter((p) => p.time != null);
+  return analysis ? [nutritionTextItem(analysis)] : null;
+}
 
+// The time each piece's item happened at: a time word carries over to the
+// pieces after it, and a text that names a time only once applies it to every
+// item. Shared with the whole-day parser (dayText/parseDayText.ts), whose
+// pieces are foods and workouts.
+export function carryTimes<T>(
+  pieces: { item: T | null; time: MealTimeHint | null }[]
+): { item: T; time: MealTimeHint | null }[] {
+  const hinted = pieces.filter((p) => p.time != null);
   let carried: MealTimeHint | null = hinted.length > 0 ? hinted[0].time : null;
-  const items: DecodedMealItem[] = [];
+  const items: { item: T; time: MealTimeHint | null }[] = [];
   for (const piece of pieces) {
     if (hinted.length > 1 && piece.time) carried = mergeHint(carried, piece.time);
     if (!piece.item) continue;
-    const time = hinted.length === 1 ? hinted[0].time : carried;
-    items.push({ ...piece.item, time });
+    items.push({ item: piece.item, time: hinted.length === 1 ? hinted[0].time : carried });
   }
   return items;
 }
@@ -121,7 +131,7 @@ function mergeHint(base: MealTimeHint | null, next: MealTimeHint): MealTimeHint 
 
 const CONNECTOR_SPLIT = new RegExp(`\\s(?:${ITEM_CONNECTORS.join('|')})\\s`, 'i');
 
-function splitPieces(text: string): string[] {
+export function splitPieces(text: string): string[] {
   const prepared = text
     .normalize('NFC')
     .replace(/½/g, ' 0.5 ')
@@ -146,7 +156,20 @@ const FRACTION = /(\d+)\s*\/\s*(\d+)/g;
 const TOKEN_SPLIT = /[\s()[\]{}"'“”‘’!?:…*_\-–—/~]+/;
 const NUMBER = /^\d+(?:\.\d+)?$/;
 
-function decodePiece(raw: string): DecodedPiece {
+export function decodePiece(raw: string): DecodedPiece {
+  const { tokens: all, time } = readPieceTime(raw);
+  const tokens = all.filter((tok) => !isFiller(tok));
+  const item = takeAmount(tokens);
+  return {
+    item: item && item.foodQuery ? { raw: raw.trim(), ...item } : null,
+    time,
+  };
+}
+
+// The time words of a piece ("lúc 12h", "hôm qua", "tối") and the lower-case
+// tokens left once they are taken out. Also used for workouts, whose
+// durations are taken out first so "chạy 1 giờ" is not read as 1 o'clock.
+export function readPieceTime(raw: string): { tokens: string[]; time: MealTimeHint | null } {
   const time: PieceTime = {
     dayOffset: null,
     meal: null,
@@ -173,13 +196,7 @@ function decodePiece(raw: string): DecodedPiece {
     .filter(Boolean);
 
   tokens = takeTimePhrases(tokens, time);
-  tokens = tokens.filter((tok) => !isFiller(tok));
-
-  const item = takeAmount(tokens);
-  return {
-    item: item && item.foodQuery ? { raw: raw.trim(), ...item } : null,
-    time: toHint(time),
-  };
+  return { tokens, time: toHint(time) };
 }
 
 function takeClock(s: string, time: PieceTime): string {
@@ -242,7 +259,7 @@ function hasVietnameseMarks(tok: string): boolean {
   return /[^ -~äöüß]/.test(tok);
 }
 
-function isFiller(tok: string): boolean {
+export function isFiller(tok: string): boolean {
   if (FILLER_WORDS_ACCENTED.has(tok)) return true;
   // Folded fillers only for tokens typed WITHOUT accents: "cá" (fish) must not
   // become the German filler "ca", nor "tỏi" (garlic) the pronoun "toi".

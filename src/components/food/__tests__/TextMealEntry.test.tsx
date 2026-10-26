@@ -78,6 +78,8 @@ function typeText(tree: TestRenderer.ReactTestRenderer, text: string) {
 
 const logFood = jest.fn(async () => {});
 const logFoodForPastDate = jest.fn(async () => {});
+const logActivity = jest.fn(async () => {});
+const logActivityForPastDate = jest.fn(async () => {});
 const mounted: TestRenderer.ReactTestRenderer[] = [];
 
 async function render(recentLog: FoodLogEntry[] = [], onLogged = jest.fn(), onClose = jest.fn()) {
@@ -98,7 +100,9 @@ beforeEach(async () => {
   useMealTextDraftStore.setState({ text: '', savedAt: 0 });
   logFood.mockClear();
   logFoodForPastDate.mockClear();
-  useEnergyStore.setState({ logFood, logFoodForPastDate });
+  logActivity.mockClear();
+  logActivityForPastDate.mockClear();
+  useEnergyStore.setState({ logFood, logFoodForPastDate, logActivity, logActivityForPastDate });
   jest.mocked(searchLibraryCandidates).mockResolvedValue([]);
   setCustomFoods([]);
   setOverrides([]);
@@ -114,6 +118,56 @@ afterEach(async () => {
 });
 
 describe('TextMealEntry', () => {
+  describe('"Kể cả ngày": workouts in the same text go to Xả', () => {
+    it('logs the foods to Nạp and the workout to Xả in one go', async () => {
+      const tree = await render();
+      await typeText(tree, 'sáng 7h chạy bộ 30 phút, 2 chén cơm lúc 12h');
+      await press(tree, 'Phân tích');
+
+      const screen = textOf(tree.root);
+      expect(screen).toContain('Cơm trắng');
+      expect(screen).toContain('🔥 Xả · 1');
+      expect(screen).toContain('Chạy bộ');
+      expect(screen).toContain('30 phút');
+      await press(tree, 'Ghi 1 món + 1 Xả');
+
+      expect(logFood).toHaveBeenCalledTimes(1);
+      expect(logActivity).toHaveBeenCalledWith({
+        steps: 0,
+        workouts: [{ type: 'running', minutes: 30 }],
+        startAt: new Date(2026, 9, 23, 7, 0).getTime(),
+        endAt: new Date(2026, 9, 23, 7, 30).getTime(),
+      });
+    });
+
+    it('a workout yesterday goes through the past-day path', async () => {
+      const tree = await render();
+      await typeText(tree, 'hôm qua đá bóng từ 19h đến 20h');
+      await press(tree, 'Phân tích');
+      await press(tree, 'Xả 1 🔥');
+      expect(logActivity).not.toHaveBeenCalled();
+      const start = new Date(2026, 9, 22, 19, 0).getTime();
+      expect(logActivityForPastDate).toHaveBeenCalledWith(
+        { steps: 0, workouts: [{ type: 'football', minutes: 60 }], startAt: start, endAt: start + 3_600_000 },
+        start
+      );
+    });
+
+    it('an unknown activity waits until the user picks one in ✎', async () => {
+      const tree = await render();
+      await typeText(tree, 'leo núi 2 tiếng');
+      await press(tree, 'Phân tích');
+      expect(textOf(tree.root)).toContain('Chưa biết môn này');
+      await press(tree, '✎');
+      await press(tree, 'Đi bộ');
+      await press(tree, 'Xong');
+      await press(tree, 'Xả 1 🔥');
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({ steps: 0, workouts: [{ type: 'walking', minutes: 120 }] })
+      );
+    });
+  });
+
   it('reads a meal, shows the rows and logs them', async () => {
     const onLogged = jest.fn();
     const tree = await render([], onLogged);

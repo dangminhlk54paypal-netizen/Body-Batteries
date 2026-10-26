@@ -53,6 +53,9 @@ interface Props {
   // e.g. when opened from HistoryScreen's "+ Thêm món cho ngày này". Defaults
   // to today when omitted (unchanged behaviour for every existing caller).
   initialDate?: string;
+  // "⌨️ 🎤 Kể cả ngày" (EnergyActionsBar): go to the text box (which then
+  // reads workouts too) as soon as the sheet has finished opening.
+  startInText?: boolean;
 }
 
 // One row of the search list: a food, or the small heading above the
@@ -134,7 +137,7 @@ export function buildTimestampForDate(dateStr: string, hourStr: string, minuteSt
   return d.getTime();
 }
 
-export function FoodLogModal({ visible, onClose, initialDate }: Props) {
+export function FoodLogModal({ visible, onClose, initialDate, startInText = false }: Props) {
   const { t, language } = useT();
   const c = useThemeColors();
   const styles = useThemedStyles(createStyles);
@@ -173,6 +176,9 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
   // "⌨️ Nạp bằng chữ": a fourth branch (TextMealEntry) — type / dictate /
   // paste a whole meal, review the rows, log them together.
   const [textMode, setTextMode] = useState(false);
+  // "Kể cả ngày": switch to the text box once this open's Modal is shown —
+  // once only, so coming back from "Sửa thành phần" doesn't switch again.
+  const [textOnShow, setTextOnShow] = useState(false);
   // Last 7 days of food log + the hour the modal was opened, fetched/read
   // once per open — feeds the "Gợi ý cho bữa này" suggestion chips (see
   // suggestFoods). Empty until the fetch resolves; the modal degrades
@@ -193,6 +199,7 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
     setWasVisible(visible);
     if (visible) {
       setLogDate(initialDate ?? getTodayString());
+      setTextOnShow(startInText);
     }
   }
 
@@ -498,12 +505,27 @@ export function FoodLogModal({ visible, onClose, initialDate }: Props) {
           (iOS in particular can fail to present/render the second one) — so
           this sheet must hide whenever FoodNutritionEditModal opens on top of
           it, otherwise "Sửa thành phần" silently shows nothing. */}
-      <BottomSheet visible={visible && !editingNutrition} onClose={handleClose} sheetOffset={500}>
+      {/* "Kể cả ngày" switches to the text box only once the Modal has been
+          presented — the same path as tapping "⌨️ Nạp bằng chữ" in an open
+          sheet. Presenting the Modal with the multi-line box (autoFocus)
+          already mounted froze the app in Expo Go: Home stayed visible,
+          every touch was swallowed, no dark overlay was ever drawn. */}
+      <BottomSheet
+        visible={visible && !editingNutrition}
+        onClose={handleClose}
+        sheetOffset={500}
+        onShow={() => {
+          if (!textOnShow) return;
+          setTextOnShow(false);
+          setTextMode(true);
+        }}
+      >
         <View style={styles.sheet}>
           {textMode ? (
             <TextMealEntry
               baseDate={logDate}
               recentLog={recentLog}
+              variant={startInText ? 'day' : 'meal'}
               onBack={() => setTextMode(false)}
               onClose={handleClose}
               onLogged={handleClose}

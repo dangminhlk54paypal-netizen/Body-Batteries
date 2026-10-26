@@ -137,7 +137,7 @@ export const LARGE_AMOUNT_G = 2000;
 export const DUPLICATE_WINDOW_MS = 3 * 60 * 60 * 1000;
 // A clock time a minute ahead still counts as "now" (the minute rolls over
 // while the user reviews the list).
-const FUTURE_GRACE_MS = 60 * 1000;
+export const FUTURE_GRACE_MS = 60 * 1000;
 const SNACK_TIME = { hour: 15, minute: 30 };
 
 const BLANK_DECODED: DecodedMealItem = {
@@ -194,6 +194,12 @@ export function manualRow(id: string, food: FoodItem, timestamp: number, ctx: Me
     ctx,
     true
   );
+}
+
+// A food with this exact name (all its words) is in the catalog — how the
+// whole-day parser tells "gà chạy bộ" (a dish) from "chạy bộ" (a run).
+export function hasExactFood(decoded: DecodedMealItem, ctx: MealTextContext): boolean {
+  return findFood(decoded, ctx).match === 'exact';
 }
 
 // ── Edits from the review list ───────────────────────────────────────────
@@ -468,13 +474,20 @@ function latestEntry(log: FoodLogEntry[], foodId: string): FoodLogEntry | null {
 
 function timestampFor(hint: MealTimeHint | null, ctx: MealTextContext): number {
   const day = hint?.dayOffset != null ? addDaysToDateString(ctx.today, hint.dayOffset) : ctx.baseDate;
-  if (hint?.hour != null) return atLocalTime(day, hint.hour, hint.minute ?? 0);
-  if (hint?.meal) {
-    const { hour, minute } = mealTime(hint.meal, ctx.mealWindows);
-    return atLocalTime(day, hour, minute);
-  }
+  const clock = hintClock(hint, ctx.mealWindows);
+  if (clock) return atLocalTime(day, clock.hour, clock.minute);
   // Nothing said: now for today, noon for a past day (FoodLogModal's rule).
   return day === ctx.today ? ctx.now : atLocalTime(day, 12, 0);
+}
+
+// The time of day a hint names: its clock, else the middle of its meal
+// window. Shared with workouts said in the same text (activityText).
+export function hintClock(
+  hint: MealTimeHint | null,
+  windows: Record<'breakfast' | 'lunch' | 'dinner', MealWindow>
+): { hour: number; minute: number } | null {
+  if (hint?.hour != null) return { hour: hint.hour, minute: hint.minute ?? 0 };
+  return hint?.meal ? mealTime(hint.meal, windows) : null;
 }
 
 // The middle of the user's own meal window ("sáng" with 5–10h → 7:30).

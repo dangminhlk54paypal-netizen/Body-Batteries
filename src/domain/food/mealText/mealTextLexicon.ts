@@ -110,6 +110,8 @@ export const TIME_PHRASES: TimePhrase[] = [
   { tokens: ['night'], ...NIGHT },
   // German (folded, so "Frühstück" / "Fruehstueck" / "Fruhstuck" all match)
   { tokens: ['heute', 'morgen'], folded: true, dayOffset: 0, meal: 'breakfast' },
+  { tokens: ['heute', 'fruh'], folded: true, dayOffset: 0, meal: 'breakfast' },
+  { tokens: ['fruh'], folded: true, meal: 'breakfast' },
   { tokens: ['gestern', 'abend'], folded: true, dayOffset: -1, meal: 'dinner' },
   { tokens: ['vorgestern'], folded: true, dayOffset: -2 },
   { tokens: ['gestern'], folded: true, dayOffset: -1 },

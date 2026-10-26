@@ -17,6 +17,8 @@ interface BottomSheetProps {
   // How far below its resting position the sheet starts before sliding up
   // (and how far it slides down to dismiss).
   sheetOffset?: number;
+  // Called once the native Modal has finished presenting (RN Modal onShow).
+  onShow?: () => void;
 }
 
 // Drag distance past which a release dismisses the sheet, even at low
@@ -26,7 +28,7 @@ const DISMISS_DISTANCE = 100;
 // Fast flicks dismiss even if the drag distance itself is short.
 const DISMISS_VELOCITY = 800;
 
-export function BottomSheet({ visible, onClose, children, sheetOffset = 500 }: BottomSheetProps) {
+export function BottomSheet({ visible, onClose, children, sheetOffset = 500, onShow }: BottomSheetProps) {
   const styles = useThemedStyles(createStyles);
   const translateY = useSharedValue(sheetOffset);
 
@@ -63,7 +65,7 @@ export function BottomSheet({ visible, onClose, children, sheetOffset = 500 }: B
   }));
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} onShow={onShow}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
