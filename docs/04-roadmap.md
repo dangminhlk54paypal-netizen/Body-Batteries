@@ -172,6 +172,25 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > Apple Health thật, fallback `capacity` khi ngày đó chưa sync. Verify: **tsc/eslint sạch, 606/606
 > test PASS**. Chi tiết: `.ai/SESSION_LOG.md` Session 28.
 >
+> **Session 75–76 (2026-10-26), CODE XONG chưa test máy — kế hoạch "AI import · Kể lại · Món ghép"
+> (`.ai/plans/2026-10-26-ai-import-ke-lai-mon-ghep.md`), Đợt 0 🌐 đa ngôn ngữ:** món AI mới mang tên theo ngôn ngữ app
+> (cột `custom_foods.name_de`), đọc số hàng nghìn "1.046 kJ" / "1,046 kJ", ⚠ vi chất nhập nhằng ("Eisen 1,500 mg"), mẫu JSON
+> câu lệnh AI ra khỏi file dịch, bảng từ khoá `Record<Language>`, chuẩn hoá Unicode; số /100 g làm tròn 1 chữ số thập phân.
+> Session 76 (phiên khác): sửa lỗi đơ khi bấm ⌨️ 🎤 (một FoodLogModal, chuyển sang ô chữ ở `onShow`). EAS preview
+> `e7ef0d76…`.
+> - [x] Đợt 0 — đa ngôn ngữ (code)
+> - [ ] Đợt 1 — hợp đồng `bb.food.v1` + 3 câu lệnh + nhóm "🤖 Từ AI" trong Món của tôi
+> - [ ] Đợt 2 — báo cáo nghiên cứu mẫu phở bò (có trích dẫn) · Đợt 3–5 món ghép (mẫu → bát → tên) · Đợt 6–9 Kể lại nhiều
+>   ngày, bộ giải, cảm nhận, chia sẻ mẫu
+>
+> **Session 74 (2026-10-26), CODE XONG chưa test máy, chưa commit — ⌨️ 🎤 Kể cả ngày:** nút dưới Nạp | Xả; nói/gõ cả
+> ngày một lần → món vào ⚡ Nạp, bài tập vào 🔥 Xả (môn theo phút, bước chân, squat/bench/deadlift và bài nhóm cơ theo set,
+> khoảng giờ "17h–18h30", "hôm qua"), duyệt từng dòng rồi ghi. EAS preview `0d4ef999…`.
+> - [ ] Sau: 📤 Hỏi AI xin cả bài tập · km → phút (cần nguồn) · viết tắt Sổ tập trong câu
+>
+> **Session 72–73 (2026-10-26), CODE XONG chưa test máy, đã commit:** ☕ Caffeine & hoạt chất (`097168b`), 🤖 Dán dinh
+> dưỡng từ AI (`37987dd`), số theo khẩu phần 1 chữ số thập phân (`c0c20ee`).
+>
 > **Session 70 (2026-10-23), CODE XONG chưa test máy — ⌨️ Nạp bằng chữ (Đợt 1, 2, 3a / 3):** ghi cả bữa bằng một
 > câu (gõ, Dictation 🎤), hoặc 📤 Hỏi AI (gửi câu lệnh + ảnh qua app AI của người dùng) → 📋 Dán JSON; đọc ngay trên
 > máy, duyệt từng dòng rồi Insert; tìm cả món "Nguồn của tôi"; lưu **thời gian cập nhật** (`food_log.logged_at`, Excel

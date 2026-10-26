@@ -31,8 +31,11 @@ Ví dụ **Tháng › Tuần › Ngày**: mở tháng mới thấy tuần, mở 
 - **Thao tác tay luôn thắng tự động:** người dùng tự mở hoặc gập thì **nhớ lại**, không để cuộn làm mở lại. Chỉ bỏ
   lựa chọn khi có mốc mới (tuần mới). Mẫu: `store/planFoldStore.ts`, lưu trên máy bằng `persist`.
 - **Mục "hiện tại" mở sẵn:** tuần này, tháng này. Mục quá khứ gập sẵn.
-- **Danh sách khối chi tiết trên một màn tổng quan** → mỗi khối một dòng gập phẳng `components/ui/FoldRow`:
-  icon · keyword · **số chính bên phải** · ⓘ · ⌄, mở một dòng một lúc, `maxBodyHeight` cho danh sách dài. Khối bên
+- **Danh sách khối chi tiết trên một màn tổng quan** → **tường gạch** `components/ui/BrickFoldGrid` (chủ app duyệt
+  2026-10-26, thay `FoldRow` dạng danh sách): mỗi khối một ô vuông icon · keyword · **số chính** bên dưới; hàng 1–3 ô,
+  số ô các hàng **so le** (2 · 3 · 2) để đường nối không thẳng hàng như xếp gạch, ô rộng theo độ dài tiêu đề
+  (`lib/brickLayout.ts` — `packBrickRows`, thuần, có test). Bấm ô → khối mở thành khung **ngay dưới tường** (đầu khung:
+  icon · tên · ⓘ · ⌃ để gập), `maxBodyHeight` cho danh sách dài; mở một ô một lúc hoặc tối đa 3 với ⧉. Khối bên
   trong nhận prop `embedded` để bỏ tiêu đề trùng. Số tóm tắt tính ở domain (mẫu: `HomeScreen` +
   `domain/battery/homeDetailsSummary.ts`).
 
@@ -111,6 +114,13 @@ Khi một thẻ so sánh vài đối tượng ngang hàng (S / B / D…), thay c
 ## 5. Bảng / dòng thay vì đoạn văn
 - Mỗi mục một dòng, theo cột: **tên | giá trị | ⓘ | ✎**. Mẫu: hàng bài tập trong `BlockPlanView` (`tableRow`).
 - Không lặp nhãn trên mỗi dòng (bỏ "Kế hoạch:", "Tổng buổi:"…). Số phụ như kcal để nhỏ, bên phải.
+- **Số dinh dưỡng app tự tính (theo khẩu phần lẫn /100 g): tối đa 1 chữ số thập phân** (chủ app, Session 72b cho khẩu
+  phần — G7 16 g: carb `12.2`, không phải `12.1552`; Session 75 cho /100 g — 103,1 kcal / 30 g → `343.7` kcal/100 g,
+  không phải `343.666666667`). Vi chất nhỏ tới mức làm tròn ra 0 thì giữ 1 chữ số có nghĩa (`0.01` mg) để lưu lại form
+  không xoá mất nó. Chỉ làm tròn **số hiện ra**: số người dùng gõ được lưu nguyên, phép quy đổi lúc lưu vẫn đủ chính
+  xác (ô đang hiện số đã làm tròn thì lưu đúng số đó). Mẫu: `formatNutritionNumber`
+  trong `domain/food/customFoodInput.ts`; dòng chữ thì `toLocaleString(LOCALE_TAGS[language], { maximumFractionDigits: 1 })`
+  (`FoodLogModal` "kcal / 100g", bảng xem trước của `LibrarySourcesPanel`).
 
 ## 6. Cân đối, đối xứng
 - Mọi hàng cài đặt cùng một khuôn: **nhãn trái, điều khiển phải, cao tối thiểu 52** (`SettingRow` trong
@@ -145,6 +155,11 @@ Khi app đoán ra nhiều mục từ một câu (Nạp bằng chữ), người d
 - Ô nhập có nhiều nguồn: **một hàng 3 nút rộng bằng nhau** ngay dưới ô (**📤 Hỏi AI | 📋 Dán | Phân tích**), nút
   chính viền `accent`, chữ một dòng tự co (kiểm tra bằng tiếng Đức). Dán mà clipboard trống → hiện một dòng chữ
   `statusMid` ("Chưa có gì để dán…"), không im lặng.
+- **Lối vào nhanh bằng chữ / giọng nói cho cả Nạp lẫn Xả:** một nút **⌨️ 🎤** riêng, rộng hết hàng, kiểu nút phụ (viền
+  `border`, nền `bgElevated`), đặt **ngay dưới** cặp nút chính ⚡ Nạp | 🔥 Xả — không giấu trong một nhánh (chủ app chọn,
+  Session 74). Mẫu: `EnergyActionsBar` → `FoodLogModal startInText`.
+- **Mục app không nhận ra** (món lạ, môn tập lạ): dòng ✗ khoá tick, ghi chú "Bấm ✎ để chọn", người dùng chọn — **không
+  tự đoán, không tự tạo mục mới** (chủ app chọn, Session 74).
 
 ## 8. Màu & chủ đề
 - Chỉ dùng token trong `lib/theme.ts` (`c.accent`, `c.textMuted`…). Màu mới thì thêm cho **cả dark lẫn light** và

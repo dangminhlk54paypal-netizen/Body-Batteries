@@ -112,6 +112,15 @@ bash .ai/scripts/install-hooks.sh
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
 
+**Cập nhật lần cuối: 2026-10-26 (Session 72–76, nhánh `ui-upgrade`).** Đã commit trên `ui-upgrade` (chưa push): ☕
+Caffeine & hoạt chất (72), số theo khẩu phần 1 chữ số thập phân (72b), 🤖 Dán dinh dưỡng từ AI (73), **⌨️ 🎤 Kể cả ngày**
+(74: một đoạn chữ / giọng nói cho cả ngày → món vào Nạp, tập luyện vào Xả), **Đợt 0 🌐 đa ngôn ngữ** của kế hoạch
+`.ai/plans/2026-10-26-ai-import-ke-lai-mon-ghep.md` (75: tên món AI theo ngôn ngữ app + cột `custom_foods.name_de`, số hàng
+nghìn, ⚠ vi chất nhập nhằng, mẫu JSON câu lệnh ra khỏi file dịch, số /100 g 1 chữ số thập phân), sửa lỗi đơ khi bấm ⌨️ 🎤
+(76), gạch "Chi tiết hôm nay" (phiên song song). Chủ app đã chốt 6 điểm §8 của kế hoạch (§8b). EAS preview mới nhất: dòng
+đầu bảng trong `docs/KIEM-TRA-TREN-MAY.md`. **Chưa test máy thật** 72–76. Việc kế tiếp: chủ app thử checklist; rồi **Đợt 1**
+(`bb.food.v1` + 3 câu lệnh + nhóm "🤖 Từ AI") — `.ai/SESSION_LOG.md` Session 75.
+
 **Cập nhật lần cuối: 2026-10-23 (Session 61–68, nhiều phiên song song trên `ui-upgrade`, CHƯA COMMIT từ sau `4ef9d89`).**
 Hôm nay: nền đổi màu theo pin no (kiểu Gemini) + chọn tab mở đầu; tab Tập luyện đồ thị lên trên, cỡ chữ sổ tập tuỳ chỉnh;
 sửa lỗi lịch tuần (bấm T4/T6 nhảy ngày); kế hoạch block linh hoạt (tạo từ lịch sử, nghỉ tuần/buổi, bài phụ tự viết, lưới

@@ -25,6 +25,7 @@ Thư mục này chứa các "bài học" mà AI ghi lại khi gặp **lỗi/khó
 - [undo-reversal-must-be-delta-not-absolute-recompute](undo-reversal-must-be-delta-not-absolute-recompute.md)
 - [i18n-key-in-wrong-section-shows-raw-key](i18n-key-in-wrong-section-shows-raw-key.md)
 - [modal-inside-bottomsheet-and-inline-expansion](modal-inside-bottomsheet-and-inline-expansion.md)
+- [modal-present-with-content-swap-on-show](modal-present-with-content-swap-on-show.md)
 - [automation-must-not-override-user-choice](automation-must-not-override-user-choice.md)
 - [gesture-rebuilt-each-render-drops-release](gesture-rebuilt-each-render-drops-release.md)
 - [animated-style-must-read-shared-values-directly](animated-style-must-read-shared-values-directly.md)

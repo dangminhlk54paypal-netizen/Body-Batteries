@@ -3239,6 +3239,101 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
   3. Commit theo tính năng khi chủ app đồng ý (tách khỏi file của Session 72b).
   4. Có thể làm sau: dán chữ thường nhiều món một lần (hiện một món mỗi lần dán; JSON thì đã nhiều món).
 
+### Session 74 — ⌨️ 🎤 Kể cả ngày: một đoạn chữ / giọng nói cho cả ngày → món vào Nạp, tập luyện vào Xả (2026-10-26)
+- **Làm gì:** chủ app muốn cuối ngày nói một tràng (ăn gì, lúc nào; tập gì, bài nào, bao lâu) và app tự chia vào Nạp và Xả.
+  Đã chốt: nút ⌨️/🎤 riêng dưới Nạp | Xả; môn không nhận ra → ⚠ để người dùng chọn, không tự đoán; commit Session 72b + 73
+  trước (`c0c20ee`, `37987dd`, `b13f608`).
+- **Kết quả:**
+  - `domain/energy/activityText/`: `activityTextLexicon.ts` (từ khoá môn vi/en/de, đơn vị phút/tiếng/bước/km/set/rep/kg),
+    `parseActivityText.ts` (lấy khoảng giờ, thời lượng, bước, km, set ra TRƯỚC rồi mới đọc giờ, nên "chạy 1 giờ" = 60 phút;
+    tên bài BB lấy từ i18n cả 3 ngôn ngữ + môn/bài tự tạo, tên dài nhất thắng; có set thì ưu tiên lift/BB),
+    `mapActivityText.ts` (dòng nháp: noMatch / noMinutes / noSets / noWeight / futureTime / tooOld chặn; duplicate bỏ tick;
+    longSession, usualMinutes = "như lần trước"; đi bộ có bước thì ghi bước; lift/BB cùng giờ gộp một buổi —
+    `activityLogPlan`).
+  - `domain/dayText/parseDayText.ts`: chia đoạn chữ thành món / bài tập, dùng chung `carryTimes` với parser món; thêm
+    "xong / sau đó / danach" làm dấu tách; đoạn chỉ có tên (không phút/bước/set) mà có chữ thừa khớp đúng món ("gà chạy bộ")
+    thì là món. `parseMealText` tách ra `readPieceTime`, `carryTimes`, `parseMealAnswer`; `mapMealText` thêm
+    `hintClock`, `hasExactFood`.
+  - UI: `EnergyActionsBar` thêm nút ⌨️ 🎤 (mở `FoodLogModal startInText`), `TextMealEntry` có danh sách 🔥 Xả dưới món,
+    ✎ riêng cho dòng tập (chip môn trong khung cuộn, Phút | Bước hoặc ô Set, giờ bắt đầu được để trống), nút đáy
+    "Ghi n món + m Xả". i18n vi/en/de: `textMealEntry.titleDay/placeholderDay/commitActivities/commitBoth/activity.*`,
+    `energyActionsBar.dayTextButton/dayTextA11y`, hint ⓘ thêm ví dụ tập luyện.
+  - Test: +`parseActivityText.test.ts` (23), +`mapActivityText.test.ts` (16), +`parseDayText.test.ts` (6), +3 test
+    `TextMealEntry`, i18n kiểm đủ ghi chú cho mọi lỗi dòng tập. `npm run verify` xanh: 147 suite / 1674 test.
+- **Vấn đề & cách giải quyết:** "chạy" bỏ dấu = "chay" khớp "cơm chay" khi tìm món → chỉ coi là món khi có chữ thừa ngoài
+  tên môn VÀ khớp đúng món. "N giờ/h" là giờ khi có "lúc/từ/sáng/tối…" đứng cạnh, khi câu đã có thời lượng khác, hoặc N > 4.
+  Hiệu ứng pin của bài tập vẫn tính lúc ghi (luật cũ của Xả, không có replay); giờ nói ra chỉ để hiển thị / Excel.
+- **Chưa làm:** km → phút (cần nguồn tốc độ, theo luật nghiên cứu), viết tắt Sổ tập (S/B/D) trong câu, 📤 Hỏi AI xin cả
+  bài tập (Đợt 3), 🎤 trong app (cần development build).
+- **EAS:** `preview` group `0d4ef999-1f2e-4511-bf5e-038c28c33122`, từ working tree (chỉ có file của phiên này + file nghiên cứu của phiên khác, không vào
+  bundle). **Chưa test máy thật. Chưa commit.**
+- **Session tiếp theo phải làm:**
+  1. Chủ app thử mục "Session 74" trong `docs/KIEM-TRA-TREN-MAY.md` (nút ⌨️ 🎤 Kể cả ngày, link
+     `https://u.expo.dev/update/0d4ef999-1f2e-4511-bf5e-038c28c33122`), gửi lại đúng câu đã nói nếu app đọc sai → thêm vào
+     `parseActivityText.test.ts` / `parseDayText.test.ts` trước khi sửa.
+  2. Khi chủ app duyệt màn hai danh sách (⚡ món / 🔥 Xả) → ghi mẫu vào `.ai/skills/mobile-ui-density.md` §7b, rồi commit
+     Session 74 theo tính năng (không gồm `docs/nghien-cuu/2026-10-26-van-hanh-doi-ngu-ai-hang-ngay.md` của phiên khác).
+  3. Hỏi chủ app có muốn tiếp: 📤 Hỏi AI xin cả bài tập trong JSON; km → phút (cần báo cáo nguồn tốc độ theo
+     `research-report`); đọc viết tắt Sổ tập (S/B/D) trong câu.
+
+### Session 75 — Kế hoạch AI import · Kể lại · Món ghép: Đợt 0 🌐 đa ngôn ngữ (2026-10-26)
+- **Làm gì:** bắt đầu thực thi `.ai/plans/2026-10-26-ai-import-ke-lai-mon-ghep.md`. Chủ app chốt cả 6 điểm §8 theo khuyến
+  nghị (ghi ở §8b của kế hoạch): cảm nhận lùi 7 ngày / số liệu 3 ngày; bữa không kể → hỏi bằng chip "Như thường lệ";
+  cảm nhận chỉ lưu + xu hướng; món "🤖 Từ AI" là nhóm riêng trong Món của tôi; ngưỡng tên ±30 %; giữ thứ tự đợt. Làm
+  chồng lên Session 74 chưa commit (phiên bodybatteries-68 giữ, đã nhắn và thống nhất hunk).
+- **Kết quả (Đợt 0):**
+  - Sửa 3 lỗi đa ngôn ngữ: (1) món AI mới ở app tiếng Đức hiện tên Đức — `withLocalName` + cột `custom_foods.name_de`
+    (schema, migration, mapper, repo, registry; `getAnyFoodById` giữ `nameDe` trừ khi món tự tạo bị đổi tên);
+    (2) số hàng nghìn "1.046 kJ" / "1,046 kJ" / "Natrium 1.200 mg" (`ungroupThousands`), nên cảnh báo `aiCheck` bật lại;
+    (3) mẫu JSON ra khỏi file dịch → `domain/food/aiImport/aiPrompt.ts`, khoá dịch `aiPrompt` thay bằng
+    `aiPromptIntro` + `aiPromptOutro` (placeholder `{{name}}` `{{nameEn}}` `{{time}}`).
+  - Bảng nhãn dinh dưỡng thành `Record<Language, string[]>`; thử thêm `'fr'` thì `tsc` báo đúng từng bảng (đã trả lại).
+  - `halfWidth` (NFKC) + `normaliseLabel` giữ `\p{L}` — nền cho tiếng Trung.
+  - Test mới: `aiNutrition.test.ts` (+7: hàng nghìn, khoảng, JSON chữ, aiCheck, full-width, Unicode),
+    `aiImport/__tests__/aiPrompt.test.ts` (7), `foodNameText.test.ts` (+1), `mapMealText.test.ts` (+1, tên Đức),
+    `data/food/__tests__/foodLookupNameDe.test.ts` (2). `npm run verify` xanh: 149 suite / 1692 test.
+  - Tài liệu: `03-architecture.md` § Nạp bằng chữ (Session 75), checklist `KIEM-TRA-TREN-MAY.md`. Đã i18n đủ vi/en/de.
+- **Vấn đề & cách giải quyết:** bảng `food_overrides` không có cột tên Đức → sửa số một món AI tiếng Đức sẽ giữ tên Đức
+  của món gốc, nhưng đổi tên thì dùng tên mới (theo `namesAfterRename`). Câu lệnh tiếng Anh trước đây có `"name"` và
+  `"name_en"` trùng nghĩa — giữ vậy, `name` là tên theo ngôn ngữ app.
+- **Bổ sung sau câu hỏi của chủ app ("người Anh/Đức dùng có ổn không?"):**
+  - ⚠ `aiDoubt`: đọc câu trả lời AI hai lần (luật hàng nghìn / thập phân cũ); khoáng chất nào hai cách ra khác nhau mà
+    cách hàng nghìn vượt `DOUBT_LIMITS` (3 × mức cao nhất trong kho món của app: sắt 47, kẽm 22, magie 1500, canxi 4500,
+    kali 10 620, natri 116 100 mg/100 g) thì ghi chú "Sắt 1500 mg/100g có vẻ quá cao. Có thể là 1,5 mg?". Chỉ khi dùng số
+    AI (không phải "Số app"). Test `i18n/__tests__/aiDoubtKeys.test.ts` kiểm khoá `nutrients.*.name`.
+  - Chủ app chỉnh luật Session 72b: số /100 g app tự tính cũng **1 chữ số thập phân** (103,1 kcal / 30 g → 343.7, không
+    phải 343.666666667). `formatNutritionNumber` thay cho `formatInputNumber` + `formatServingNumber`; dòng
+    "kcal / 100g" trong `FoodLogModal` và bảng xem trước của `LibrarySourcesPanel` cũng làm tròn. Đã ghi vào
+    `mobile-ui-density.md` §5.
+  - Checklist có thêm bước thử tiếng Anh. `npm run verify` xanh: 150 suite / 1701 test.
+- **EAS:** `preview` group `8ddee9ef-e229-414e-aa9f-ff336ec4214e` rồi `16ab4e90-ff27-4d80-9cef-e2cd02951951` (bản bổ sung),
+  từ working tree (Đợt 0 + Session 74 của phiên 68, đã báo). **Chưa test máy thật. Chưa commit.**
+- **Session tiếp theo phải làm:**
+  1. Chủ app thử mục "Session 75" trong `docs/KIEM-TRA-TREN-MAY.md`.
+  2. Đợt 1: hợp đồng `bb.food.v1` + 3 biến thể câu lệnh + tách `aiImport/*` (chuyển `aiNutrition.ts` sang) + nhóm
+     "🤖 Từ AI" (`origin`) trong Món của tôi, có lọc + xoá hàng loạt.
+  3. ~~Commit Đợt 0~~ — đã commit cuối phiên theo yêu cầu chủ app (tách theo tính năng cùng Session 74, 76 và "Chi tiết
+     hôm nay"; file kế hoạch đi cùng commit docs).
+- **Sự cố giữa phiên:** chủ app báo bấm ⌨️ 🎤 thì Trang chủ đứng hẳn (sáng, không chạm được, chờ không hết). Hỏi 3 câu để
+  khoanh vùng (đơ ngay khi bấm, không có lớp tối, đứng mãi) → loại bước Phân tích (đo trên Node 10–140 ms). Phiên 68
+  (chủ code Session 74) sửa ở Session 76: một FoodLogModal, chuyển sang ô chữ ở `onShow`; preview `e7ef0d76`. Bài học
+  ghi ở `.ai/skills/learned/modal-present-with-content-swap-on-show.md`.
+
+### Session 76 — Sửa lỗi đơ khi bấm ⌨️ 🎤 Kể cả ngày (2026-10-26)
+- **Làm gì:** chủ app báo bấm nút ⌨️ 🎤 (Session 74) thì đơ ngay, chưa bấm Phân tích; Trang chủ vẫn sáng, không có lớp tối
+  của BottomSheet, mọi chạm bị nuốt, chờ 20 s vẫn đứng, phải thoát Expo Go.
+- **Kết quả:** nút ⌨️ 🎤 giờ đi đúng đường đã chạy ổn trên máy: `EnergyActionsBar` chỉ còn **một** `FoodLogModal`
+  (`foodSheet: 'closed' | 'search' | 'text'`), sheet mở ở ô tìm món, rồi mới chuyển sang ô chữ khi RN Modal báo đã hiện
+  xong (`BottomSheet onShow` mới → `FoodLogModal textOnShow`, chỉ một lần mỗi lần mở để quay về từ "Sửa thành phần" không
+  nhảy lại). Test: +`EnergyActionsBar.dayText.test.tsx` (2). `npm run verify` xanh (152 suite / 1708 test, cây chung).
+- **Vấn đề & cách giải quyết:** dựng lại trong Jest thì React render bình thường, không có vòng lặp, nên lỗi ở tầng native:
+  Modal được present mà nội dung RN không vẽ ra. Hai điểm chỉ nút mới có: 2 RN `Modal` cùng cấp, và ô chữ nhiều dòng
+  `autoFocus` có sẵn ngay lúc Modal đang present (trong `KeyboardAvoidingView`). Đã bỏ cả hai. Ghi vào
+  `.ai/skills/learned/modal-present-with-content-swap-on-show.md`. **Chưa xác nhận trên máy.**
+- **EAS:** `preview` group `e7ef0d76-5354-4bb1-b3cb-a921013b9cb4`, từ cây chung (có Session 74, 75 chưa commit). Chưa commit.
+- **Session tiếp theo phải làm:** chủ app thử mục "Session 76" trong `docs/KIEM-TRA-TREN-MAY.md`. Nếu vẫn đơ: thử bỏ hẳn
+  `autoFocus` của ô chữ khi vào từ ⌨️ 🎤, rồi xem log Expo Go (`npx expo start` + mở log thiết bị) lúc bấm.
+
 ---
 
 ## 📌 Hướng dẫn viết session log

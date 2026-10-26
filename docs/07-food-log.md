@@ -243,6 +243,15 @@ Người dùng phải kiểm tra được mọi con số, không phải tin suô
 - Số không khớp (kcal ≠ đạm·carbs·béo) → ⚠, vẫn nạp được. Không rõ số cho bao nhiêu g → hiểu là /100 g, có ghi chú.
 - Chi tiết kỹ thuật: `docs/03-architecture.md` § "⌨️ Nạp bằng chữ" (Session 73). Đủ vi/en/de.
 
+## 4c-3. ⌨️ 🎤 Kể cả ngày — món và tập luyện trong một đoạn (Session 74)
+- Trang chủ → **⌨️ 🎤 Kể cả ngày** (dưới ⚡ Nạp | 🔥 Xả). Gõ hoặc đọc bằng 🎤 bàn phím cả ngày một lần, ví dụ
+  "sáng 6h chạy bộ 30 phút, ăn phở bò; tối squat 5x5 100kg rồi đi bộ 8000 bước".
+- App chia thành hai danh sách: món → ⚡ Nạp, bài tập → **🔥 Xả** (môn, giờ bắt đầu, phút / bước / set, kcal). Duyệt từng
+  dòng (✓ / ⚠ / ✗, ✎ sửa) rồi bấm "Ghi n món + m Xả". Squat / bench / deadlift và bài theo nhóm cơ ghi theo set như sheet
+  Powerlifting / Bodybuilding; nói "tập gym 1 tiếng" thì ghi theo phút.
+- Môn không nhận ra → ✗, bấm ✎ chọn môn. Không nói số phút → dùng như lần trước (nếu có). Trùng buổi đã có trong Xả →
+  bỏ tick sẵn. Ô ⌨️ Nạp bằng chữ trong ⚡ Nạp cũng hiểu bài tập. Đủ vi/en/de.
+
 ## 4d. ☕ Caffeine & hoạt chất (Session 72)
 - 4 trường tuỳ chọn trên `Nutrition` (mg/100 g): `caffeineMg`, `taurineMg`, `carnitineMg`, `creatineMg` — CSV
   `caffeine_mg/taurine_mg/carnitine_mg/creatine_mg`, cột cùng tên trong `custom_foods`/`food_overrides` (migration

@@ -479,6 +479,31 @@ energyStore.logFood / logFoodForPastDate   4. Insert — từng dòng đang tick
 - Test: `domain/food/mealText/__tests__/` (70, gồm `aiNutrition.test.ts`), `data/food/__tests__/mealTextSearch.test.ts` (6, kho món thật),
   `components/food/__tests__/TextMealEntry.test.tsx` (13), `dataWorkbook.test.ts` + `energyStore.backfill.test.ts`
   (loggedAt).
+- **Session 74 — ⌨️ 🎤 Kể cả ngày (món + tập luyện):** nút dưới Nạp | Xả mở `FoodLogModal startInText` →
+  `TextMealEntry variant="day"`. `domain/dayText/parseDayText.ts` chia đoạn chữ thành món (`food/mealText`) và bài tập
+  (`energy/activityText`), chung `carryTimes`. Bài tập: `parseActivityText` lấy khoảng giờ / thời lượng / bước / km / set
+  ra trước khi đọc giờ (`readPieceTime`), tìm tên dài nhất (từ khoá + `bbExercises.*` vi/en/de + môn/bài tự tạo);
+  `mapActivityText` → `ActivityDraftRow` (chặn: noMatch, noMinutes, noSets, noWeight, futureTime, tooOld; trùng Xả ±3 h bỏ
+  tick) → `activityLogPlan` → `logActivity` (hôm nay) / `logActivityForPastDate`. Session dựng giống
+  `ActivityLogSheet` / `PowerliftingSheet` / `BodybuildingSheet` (BB cường độ `moderate`). Đủ i18n vi/en/de.
+- **Session 75 — Đợt 0 🌐 đa ngôn ngữ** (kế hoạch `.ai/plans/2026-10-26-ai-import-ke-lai-mon-ghep.md`):
+  - **Mẫu JSON của câu lệnh nằm trong code**, không trong file dịch: `domain/food/aiImport/aiPrompt.ts`
+    (`AI_MEAL_JSON_SHAPE`, `PROMPT_KEYS`, `buildAiPrompt(intro, outro)`). File dịch chỉ còn lời dặn
+    `textMealEntry.aiPromptIntro` / `aiPromptOutro` (khoá JSON qua `{{name}}`, `{{nameEn}}`, `{{time}}`). Test
+    `aiImport/__tests__/aiPrompt.test.ts` chặn JSON lọt vào bản dịch và kiểm app đọc lại được mẫu.
+  - **Tên món AI theo ngôn ngữ app:** `withLocalName(food, language, name)` (`domain/food/foodNameText.ts`) ghi tên vào
+    trường của ngôn ngữ đó (`nameDe` khi app tiếng Đức), `nameVi` luôn có (dự phòng + snapshot nhật ký).
+    `MealTextContext.language` bắt buộc. Cột mới `custom_foods.name_de` (CREATE + `CUSTOM_FOODS_MIGRATION_COLUMNS`,
+    mapper, `addCustomFood`, `updateCustomFoodNames`); `getAnyFoodById` giữ `nameDe` của món gốc trừ khi món tự tạo bị
+    đổi tên (`namesAfterRename`), vì `food_overrides` không có cột tên Đức.
+  - **Số hàng nghìn:** `ungroupThousands` trong `aiNutrition.ts`: 1–3 chữ số (không bắt đầu bằng 0) + `.`/`,` + đúng 3
+    chữ số ngay trước kJ/kcal/mg/ml là hàng nghìn ("1.046 kJ", "1,046 kJ", "Natrium 1.200 mg"); "0,125 g", "12,4 g" vẫn
+    là thập phân. Giá trị JSON dạng chữ dùng đơn vị của khoá (`"sodium_mg": "1.200"`) hoặc đơn vị trong giá trị.
+  - **Từ khoá theo ngôn ngữ có kiểu:** mọi bảng nhãn trong `aiNutrition.ts` là `Record<Language, string[]>` (đọc gộp mọi
+    ngôn ngữ một lúc); thêm `'fr'` vào `Language` thì `tsc` chỉ ra từng bảng còn thiếu.
+  - **Chuẩn hoá Unicode:** `halfWidth` (NFKC: `：，；（）３０ｇ` → dạng thường, `、`/`。` tách như `,`/xuống dòng) và
+    `normaliseLabel` giữ chữ mọi bảng chữ cái (`\p{L}`), nền cho tiếng Trung sau này. ❓ Từ trên nhãn Pháp / Trung chưa
+    thêm — phải kiểm ở nguồn chính khi làm.
 - Chưa có: 🎤 trong app (`expo-speech-recognition`, cần development build), đọc ảnh bằng model trên máy (Đợt 3b).
   Báo cáo: `docs/nghien-cuu/2026-10-23-ai-nhan-dien-mon-an-tu-anh.md`.
 

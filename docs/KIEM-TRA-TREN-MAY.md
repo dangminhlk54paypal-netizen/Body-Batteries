@@ -9,7 +9,12 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 | Bản `preview` mới nhất | Gồm | Ngày |
 |---|---|---|
-| [`61ec7443…`](https://u.expo.dev/update/61ec7443-23c5-4939-af7a-450b7500e303) | Session 73 🤖 Dán dinh dưỡng từ AI + Session 72b (cả hai chưa commit) + `097168b` — **dùng bản này** | 2026-10-26 |
+| [`ae3f01e1…`](https://u.expo.dev/update/ae3f01e1-370a-4a42-9227-abc58b322801) | Session 77 🧱 Chi tiết hôm nay dạng tường gạch (chưa commit) + **có cả sửa lỗi đơ ⌨️ 🎤** (Session 76) + mọi thứ của `e7ef0d76…` — **dùng bản này** | 2026-10-26 |
+| [`e7ef0d76…`](https://u.expo.dev/update/e7ef0d76-5354-4bb1-b3cb-a921013b9cb4) | Sửa lỗi đơ khi bấm ⌨️ 🎤 Kể cả ngày (Session 76) + mọi thứ của `16ab4e90…` | 2026-10-26 |
+| [`16ab4e90…`](https://u.expo.dev/update/16ab4e90-ff27-4d80-9cef-e2cd02951951) | Session 75 Đợt 0 🌐 đa ngôn ngữ + ⚠ vi chất nhập nhằng + số /100 g 1 chữ số thập phân (chưa commit) + **có cả Session 74** ⌨️ 🎤 Kể cả ngày (chưa commit) + `b13f608` | 2026-10-26 |
+| [`8ddee9ef…`](https://u.expo.dev/update/8ddee9ef-e229-414e-aa9f-ff336ec4214e) | Session 75 Đợt 0 🌐 đa ngôn ngữ (chưa commit) + **có cả Session 74** ⌨️ 🎤 Kể cả ngày (chưa commit) + `b13f608` | 2026-10-26 |
+| [`0d4ef999…`](https://u.expo.dev/update/0d4ef999-1f2e-4511-bf5e-038c28c33122) | Session 74 ⌨️ 🎤 Kể cả ngày (chưa commit) + `b13f608` (Session 72b, 73 đã commit) | 2026-10-26 |
+| [`61ec7443…`](https://u.expo.dev/update/61ec7443-23c5-4939-af7a-450b7500e303) | Session 73 🤖 Dán dinh dưỡng từ AI + Session 72b (cả hai chưa commit) + `097168b` | 2026-10-26 |
 | [`52d2710f…`](https://u.expo.dev/update/52d2710f-fa2e-4866-9863-5b931a1efca8) | Đã commit `097168b` (Session 72) + Session 72b số theo khẩu phần 1 chữ số thập phân (bản cô lập, chưa có mealText AI) | 2026-10-26 |
 | [`f7564860…`](https://u.expo.dev/update/f7564860-fb55-44ea-a8cb-79b7446e708f) | Session 72 ☕ Caffeine & hoạt chất (chưa commit) + mọi thứ đã commit | 2026-10-26 |
 | [`66d377c7…`](https://u.expo.dev/update/66d377c7-2eec-40f4-9511-fc0c25f02c75) | Đã commit `01f75c1` (Session 61–71 + SDK 58) | 2026-10-23 |
@@ -18,6 +23,85 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 | [`a4429e44…`](https://u.expo.dev/update/a4429e44-e8bd-48f1-9ae7-46c25cdca2ae) | Session 61–70 (cũ hơn) | 2026-10-23 |
 
 ---
+
+## Session 77 — 🧱 Chi tiết hôm nay dạng tường gạch
+
+Bản `ae3f01e1…`. Mở tab **Pin Hôm nay**, kéo xuống mục **Chi tiết hôm nay**.
+
+- [ ] 7 mục hiện thành ô vuông xếp so le như gạch (tiếng Việt: hàng 2 ô · 3 ô · 2 ô), mỗi ô có icon, tên và số chính
+- [ ] Bấm một ô → ô viền cam, khối chi tiết mở ngay dưới tường; bấm lại ô (hoặc ⌃ ở đầu khối) → gập
+- [ ] ⓘ ở đầu khối (Cân bằng, Vi chất, TPCN, Caffeine) mở được giải thích
+- [ ] Bật ⧉ 3 → mở được tối đa 3 khối, xếp theo thứ tự đã mở; mở thêm khối thứ 4 → khối cũ nhất tự gập
+- [ ] Đổi ngôn ngữ EN / DE → ô vẫn vừa chữ, không có tên bị cắt khó đọc
+- [ ] Số dài (vd. "1.450 kcal · 5 món") xuống tối đa 2 dòng trong ô, không tràn ra ngoài
+
+## Session 76 — Sửa lỗi đơ khi bấm ⌨️ 🎤 Kể cả ngày
+
+Lỗi cũ: bấm ⌨️ 🎤 thì Trang chủ đứng hình (vẫn sáng, không chạm được gì), phải thoát Expo Go.
+
+- [ ] **Bấm nhiều lần.** Trang chủ → ⌨️ 🎤 Kể cả ngày → sheet hiện (lớp tối + khung), thoáng thấy ô tìm món rồi tự chuyển
+      sang ô **Kể cả ngày** (📤 Hỏi AI | 📋 Dán | Phân tích). Đóng (✕ hoặc chạm ra ngoài) rồi bấm lại ≥ 5 lần: không đơ.
+- [ ] **⚡ Nạp vẫn như cũ.** Bấm ⚡ Nạp → mở ô tìm món, không tự nhảy sang ô chữ. Bấm qua lại ⚡ Nạp và ⌨️ 🎤 vài lần.
+- [ ] **Quay lại.** Trong Kể cả ngày bấm "‹ Quay lại" → ô tìm món; chọn một món → "Sửa thành phần" → lưu/huỷ → vẫn ở món
+      đó, không nhảy về ô chữ.
+- [ ] Sau đó làm tiếp các mục "Session 74" bên dưới.
+
+## Session 75 — Đợt 0 🌐 Đa ngôn ngữ: tên món AI, số hàng nghìn, câu lệnh AI
+
+Bản `8ddee9ef`. Mở: Trang chủ → ⚡ Nạp → ⌨️ Nạp bằng chữ (hoặc nút ⌨️ 🎤 Kể cả ngày).
+
+- [ ] **Tên món AI bằng tiếng Đức.** Cài đặt → Ngôn ngữ → Deutsch. Bấm **📤 Hỏi AI**, gửi ảnh một món app chưa có (vd.
+      gulasch) cho ChatGPT/Gemini, chép câu trả lời JSON → **📋 Dán**. Kỳ vọng: dòng 🤖 món mới hiện **tên tiếng Đức**
+      (không phải tên tiếng Anh). Nạp → Món của tôi vẫn hiện tên tiếng Đức, **kể cả sau khi tắt hẳn app rồi mở lại**.
+- [ ] **Đổi ngôn ngữ sau khi lưu.** Món vừa lưu ở trên: đổi sang English → hiện tên tiếng Anh AI đưa (`name_en`); đổi sang
+      Tiếng Việt → hiện tên tiếng Đức (món chỉ có tên đó). Không có món nào bị trống tên.
+- [ ] **Câu lệnh AI.** Bấm 📤 Hỏi AI ở cả 3 ngôn ngữ → chọn Ghi chú (Notes) để xem. Kỳ vọng: lời dặn đúng ngôn ngữ, khối
+      JSON ở giữa giống hệt nhau ở cả 3 (`"items"`, `"name"`, `"name_en"`, `"per_100g"`…), câu cuối nói về `"name"`,
+      `"name_en"`, `"time":"HH:MM"`.
+- [ ] **Số hàng nghìn (chữ thường).** Chép vào clipboard rồi 📋 Dán:
+      `Magerquark je 100 g: Brennwert 1.046 kJ, Eiweiß 12,4 g, Kohlenhydrate 4 g, Fett 0,2 g, Natrium 1.200 mg`.
+      Kỳ vọng: khoảng **250 kcal/100 g** (không phải 0 kcal), natri **1200 mg**. Bản tiếng Anh `Energy 1,046 kJ` cũng ra
+      250 kcal.
+- [ ] **Cảnh báo số AI lệch.** Dán `Energie 1.046 kJ, Eiweiß 50 g, Kohlenhydrate 50 g, Fett 22 g pro 100 g`. Kỳ vọng:
+      dòng có ghi chú ⚠ "Số AI không khớp…" (250 kcal nhưng đạm/bột/béo ra ~600 kcal).
+- [ ] **Không hỏng đường cũ.** Dán lại một câu trả lời AI cũ (Session 73) và món tự tạo cũ: tên, số, nút Số app / Số AI /
+      ＋ Món mới vẫn như trước.
+
+**Bổ sung (bản `16ab4e90`):**
+
+- [ ] **Người dùng tiếng Anh.** Cài đặt → Ngôn ngữ → English. 📤 Hỏi AI → gửi ảnh một món app chưa có → 📋 Paste. Kỳ
+      vọng: dòng 🤖 tên tiếng Anh; Log → My foods hiện tên tiếng Anh, tắt app mở lại vẫn vậy. Dán
+      `per 100 g: Energy 1,046 kJ, Protein 10 g, Carbohydrate 30 g, Fat 2 g, Sodium 1,200 mg` → ~250 kcal, sodium 1200 mg.
+- [ ] **⚠ Vi chất nhập nhằng.** (tiếng Đức) Dán `pro 100 g: Brennwert 120 kcal, Eiweiß 10 g, Eisen 1,500 mg` cho một món
+      app chưa có. Kỳ vọng: dòng có ghi chú "Eisen 1500 mg/100g wirkt zu hoch. Vielleicht 1,5 mg? …". Dán
+      `per 100 g: Calories 330 kcal, Protein 18 g, Calcium 1,500 mg` → **không** có ghi chú này (phô mai có thật 1500 mg).
+- [ ] **Số /100 g gọn 1 chữ số thập phân.** Món của tôi → ＋ tạo món: khẩu phần 30 g, nhập theo khẩu phần 103,1 kcal → Lưu.
+      Kỳ vọng: khi chọn món để nạp, dòng dưới tên hiện **343,7 kcal / 100g** (không phải 343,666666667). Mở ✎ của món,
+      chuyển sang "/100 g" → ô kcal hiện **343.7**.
+
+---
+
+## Session 74 — ⌨️ 🎤 Kể cả ngày (món vào Nạp, tập luyện vào Xả)
+
+Mở: Trang chủ → nút **⌨️ 🎤 Kể cả ngày** (ngay dưới ⚡ Nạp | 🔥 Xả). Đọc bằng 🎤 trên bàn phím iPhone hoặc gõ.
+
+- [ ] **Cả ngày một lần.** Gõ/đọc: `sáng 6h chạy bộ 30 phút, ăn phở bò. Trưa 2 chén cơm với ức gà 200g. Chiều 5h squat
+      5x5 100kg, kéo xô 4x12 40kg. Tối ăn bún chả rồi đi bộ 8000 bước` → Phân tích. Kỳ vọng: danh sách món (phở, cơm, ức
+      gà, bún chả) ở trên; dưới có dòng **🔥 Xả · 4 · … kcal** với Chạy bộ (06:00 · 30 phút), Squat (17:00 · 5x5x100),
+      Kéo xô (17:00 · 4x12x40), Bước chân (8.000 bước). Dòng giờ tương lai hiện ✗ "Giờ ở tương lai" nếu bây giờ còn sớm.
+- [ ] **Ghi.** Nút đáy ghi "Ghi n món + m Xả" → bấm. Kỳ vọng: món vào "Hôm nay đã ăn", buổi tập vào Xả (squat + kéo xô
+      thành **một** buổi gym), Sổ tập có squat 5x5x100.
+- [ ] **Chữ thời lượng.** `chạy 1 giờ` = 60 phút (không phải lúc 1 giờ); `lúc 6 giờ chạy 45 phút` = bắt đầu 06:00, 45
+      phút; `từ 17h đến 18h30 đá bóng` = 90 phút từ 17:00; `tối tập gym 1 tiếng rưỡi` = 90 phút.
+- [ ] **Hôm qua.** `hôm qua đá bóng từ 19h đến 20h` → Xả 1 🔥. Kỳ vọng: buổi nằm ở ngày hôm qua (Lịch sử).
+- [ ] **Môn lạ.** `leo núi 2 tiếng` → dòng ✗ "Chưa biết môn này" → ✎ → chọn một môn (chip) → Xong → dòng thành ✓, ghi được.
+- [ ] **✎ dòng tập.** Đổi phút / bước (2 ô Phút | Bước), giờ bắt đầu (để trống = không có giờ), ngày; dòng squat có ô
+      **Set** (gõ `5x5x110`). Nút −/＋ trên dòng: ±5 phút, ±500 bước.
+- [ ] **Trùng.** Đã ghi chạy bộ lúc 18:00 trong 🔥 Xả, rồi kể `18h30 chạy bộ 30 phút` → dòng bỏ tick sẵn, ghi "Đã có Chạy
+      bộ lúc 18:00 trong Xả".
+- [ ] **Không nhầm món.** `gà chạy bộ 1 con` vẫn là món (nếu kho có), `cơm chay` là món, `chạy bộ` là bài tập.
+- [ ] **⌨️ Nạp bằng chữ** (trong ⚡ Nạp) cũng hiểu bài tập như trên. Đổi English/Deutsch: `ran 30 minutes, 2 eggs` /
+      `45 Minuten joggen, danach Müsli` → đúng 2 danh sách; chữ nút đáy và tiêu đề không tràn.
 
 ## Session 73 — 🤖 Dán dinh dưỡng từ AI → lưu / cập nhật món → nạp theo lượng
 
