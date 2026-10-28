@@ -1,6 +1,8 @@
+import 'react-native-gesture-handler/jestSetup';
 import React from 'react';
 import { Text } from 'react-native';
 import TestRenderer, { act } from 'react-test-renderer';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BatteryRing } from '../BatteryRing';
 import { DEFAULT_BATTERIES } from '../../lib/constants';
 import type { BatteryState } from '../../types/battery';
@@ -9,6 +11,15 @@ import type { RingMetricId } from '../../domain/battery/ringMetrics';
 
 // The Home ring: centre count over every chosen metric, and past 3
 // micronutrients a small corner ring that swaps with the big one on tap.
+jest.mock('react-native-worklets', () =>
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('react-native-worklets/src/mock')
+);
+jest.mock('react-native-reanimated', () => ({
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ...require('react-native-reanimated/mock'),
+  useReducedMotion: () => false,
+}));
 jest.mock('@react-native-async-storage/async-storage', () =>
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
@@ -34,7 +45,9 @@ function render(metricIds: RingMetricId[]) {
   let r!: TestRenderer.ReactTestRenderer;
   act(() => {
     r = TestRenderer.create(
-      <BatteryRing batteries={batteries} metricIds={metricIds} microStates={microStates} foodLog={[]} activityLog={[]} intakeLog={[]} />
+      <GestureHandlerRootView>
+        <BatteryRing batteries={batteries} metricIds={metricIds} microStates={microStates} foodLog={[]} activityLog={[]} intakeLog={[]} />
+      </GestureHandlerRootView>
     );
   });
   return r;
@@ -65,6 +78,16 @@ describe('BatteryRing', () => {
     act(() => mini.props.onPress());
     // Legend now lists the micronutrients; protein moved to the small ring.
     expect(r.root.findAllByType(Text).some((n) => n.props.children === 'Protein')).toBe(false);
+  });
+
+  it('every metric gets a wired label: name, % and amount', () => {
+    const r = render(['protein', 'carbs', 'water', 'sleep', 'movement', 'sugar']);
+    const labels = r.root.findAll(
+      (n) => typeof n.props.accessibilityLabel === 'string' && n.props.accessibilityRole === 'button' && typeof n.props.onPress === 'function'
+    );
+    expect(labels.length).toBeGreaterThanOrEqual(6);
+    expect(texts(r)).toContain('0/100g');
+    expect(texts(r)).toContain('Protein');
   });
 
   it('≤ 3 micronutrients: one ring only', () => {

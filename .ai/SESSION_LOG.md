@@ -3334,6 +3334,24 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
 - **Session tiếp theo phải làm:** chủ app thử mục "Session 76" trong `docs/KIEM-TRA-TREN-MAY.md`. Nếu vẫn đơ: thử bỏ hẳn
   `autoFocus` của ô chữ khi vào từ ⌨️ 🎤, rồi xem log Expo Go (`npx expo start` + mở log thiết bị) lúc bấm.
 
+### Session 78 — Vòng pin nhỏ: nhãn "cắm dây" quanh vòng, vuốt để xoay (2026-10-28)
+- **Làm gì:** chủ app muốn phần chữ dưới vòng pin (Protein, Carbs, Nước…) hiện kiểu "quả cầu cắm dây": mỗi chỉ số nối
+  vào cung của nó bằng một sợi dây mảnh, và vòng xoay được, nhìn sinh động, dễ đọc hơn.
+- **Kết quả:** `BatteryRing` bỏ lưới chú thích bên dưới; mỗi chỉ số (tên · % · lượng) treo ở đầu một sợi dây cắm vào
+  giữa cung (chấm nhỏ trên vòng, chấm to ở nhãn). Vuốt ngang trên khối để xoay vòng (trên tâm vuốt phải = xoay chiều kim
+  đồng hồ, dưới tâm ngược lại), thả tay vòng trôi chậm dần (`withDecay`), chạm để dừng. Nhãn luôn đứng thẳng, trượt
+  theo một elip quanh vòng. Hình học thuần ở `batteryRingModel.ts` (`calloutLayout`, `calloutWire`, `calloutBox`,
+  `slotMidDeg`; `slotAtPoint` nhận thêm góc xoay); test kiểm 2–11 nhãn ở mọi góc xoay: không nhãn nào chồng nhau, chạm
+  vòng hay tràn khung (máy rộng 375–430). Vòng giữ cỡ cũ trên máy rộng ≥ 390. Hơn 8 nhãn thì bỏ dòng lượng. Vòng nhỏ
+  vi chất (khi > 3 vi chất) chuyển lên trên khối, căn phải. Không thêm chữ mới (i18n giữ nguyên). `npm run verify` xanh
+  (153 suite / 1719 test). Đã xem trên web (Playwright).
+- **Vấn đề & cách giải quyết:** cử chỉ xoay bắt đầu sau 10 px ngang (sớm hơn vuốt đổi tab 25 px), hỏng khi kéo dọc, nên
+  không phá cuộn trang. Bấm vào vòng sau khi vừa xoay không tính là chạm. Trên web RN-web không có `locationX` →
+  `slotAtPoint` trả NaN làm sập; giờ trả `null`.
+- **EAS:** chưa publish — máy cloud này chưa đăng nhập `eas-cli`. Chạy `.ai/skills/eas-preview-publish.md` từ máy Mac.
+- **Session tiếp theo phải làm:** chủ app thử mục "Session 78" trong `docs/KIEM-TRA-TREN-MAY.md`; nếu chữ tiếng Đức bị
+  cắt hoặc dây ở hai bên quá ngắn trên máy nhỏ thì chỉnh `labelWidth` / `CALLOUT_MIN_SIDE_WIRE`.
+
 ---
 
 ## 📌 Hướng dẫn viết session log
