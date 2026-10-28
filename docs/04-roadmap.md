@@ -172,6 +172,9 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 > Apple Health thật, fallback `capacity` khi ngày đó chưa sync. Verify: **tsc/eslint sạch, 606/606
 > test PASS**. Chi tiết: `.ai/SESSION_LOG.md` Session 28.
 >
+> **Session 78 (2026-10-28), CODE XONG chưa test máy:** Pin nhỏ — nhãn "cắm dây" quanh vòng, vuốt ngang để xoay
+> (`BatteryRing.tsx`, `batteryRingModel.ts › calloutLayout`). Nhánh `claude/battery-ring-callouts`, chưa publish EAS.
+>
 > **Session 75–76 (2026-10-26), CODE XONG chưa test máy — kế hoạch "AI import · Kể lại · Món ghép"
 > (`.ai/plans/2026-10-26-ai-import-ke-lai-mon-ghep.md`), Đợt 0 🌐 đa ngôn ngữ:** món AI mới mang tên theo ngôn ngữ app
 > (cột `custom_foods.name_de`), đọc số hàng nghìn "1.046 kJ" / "1,046 kJ", ⚠ vi chất nhập nhằng ("Eisen 1,500 mg"), mẫu JSON

@@ -49,7 +49,9 @@ text, you MUST work WITH this system — never around it:
 5. **DOCUMENTATION (auto, no permission needed).** Once the feature works and
    `npm run verify` passes, update the relevant `docs/*.md` and the session
    log per `.ai/skills/session-wrapup.md`, noting that the feature is
-   i18n-covered.
+   i18n-covered. Keep every `.md` update SHORT — key points only (≤ 10
+   lines per session-log entry), pointing to files instead of retelling
+   them; see "✂️ Viết ngắn" in that skill.
 
 Adding a NEW language later: follow `.ai/skills/add-language.md` (≈4 small
 steps, no library needed).

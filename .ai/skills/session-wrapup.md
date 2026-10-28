@@ -11,6 +11,17 @@ Gọi skill này khi:
 
 ---
 
+## ✂️ Viết ngắn — áp dụng cho MỌI lần ghi vào file `.md` (log, CONTEXT, roadmap, checklist, skill)
+Người đọc chính là agent session sau: họ cần nắm vấn đề trong 30 giây, không cần đọc lại cả phiên.
+- **Chỉ ý chính:** làm gì · kết quả · vấn đề + cách giải · việc tiếp theo. Bỏ diễn giải quá trình, bỏ chép diff.
+- **Giới hạn:** mỗi entry SESSION_LOG **≤ 10 dòng**, mỗi trường **1–2 gạch đầu dòng**, mỗi dòng ≤ 120 ký tự.
+  CONTEXT mục 10: **≤ 4 dòng** cho session mới. Roadmap: **≤ 3 dòng**. Checklist test máy: **≤ 5 mục**, mỗi mục 1 dòng.
+- **Trỏ, đừng chép:** chi tiết kỹ thuật → ghi tên file/hàm (`batteryRingModel.ts › calloutLayout`), commit, nhánh.
+- **Phải có:** nhánh + commit, trạng thái (chưa test máy / chưa publish EAS), bước kế tiếp cụ thể.
+- Dài hơn giới hạn → viết lại cho gọn trước khi lưu. Thật cần chi tiết → để trong `docs/` chuyên đề hoặc `learned/`.
+
+---
+
 ## Đầu vào (không cần hỏi — AI tự thu thập)
 - Git log và diff kể từ lần commit cuối (hoặc từ đầu ngày)
 - Nội dung hiện tại của `SESSION_LOG.md`, `CONTEXT.md`, `docs/04-roadmap.md`
@@ -62,6 +73,7 @@ Thêm một mục mới theo mẫu ở cuối danh sách sessions. Điền đủ
 ```
 
 Quy tắc:
+- Tuân thủ mục **✂️ Viết ngắn** ở đầu file (≤ 10 dòng/entry)
 - N = số thứ tự session (đếm từ session đã có)
 - Ngày lấy từ hệ thống (today)
 - Không xóa các session cũ — chỉ thêm mới bên dưới

@@ -110,7 +110,12 @@ bash .ai/scripts/install-hooks.sh
 
 ## 10. Trạng thái hiện tại ← AI ĐỌC MỤC NÀY ĐẦU TIÊN
 
-> Mục này do skill `session-wrapup` tự cập nhật sau mỗi session.
+> Mục này do skill `session-wrapup` tự cập nhật sau mỗi session. Mỗi session mới ≤ 4 dòng (luật ✂️ Viết ngắn).
+
+**Cập nhật lần cuối: 2026-10-28 (Session 78).** Pin nhỏ: nhãn "cắm dây" quanh vòng + vuốt để xoay — nhánh
+`claude/battery-ring-callouts` (`6cf9a08`, đã push, chưa merge `ui-upgrade`). Verify xanh. **Chưa publish EAS, chưa test
+máy.** Kế tiếp: chủ app publish từ Mac + checklist "Session 78" (`docs/KIEM-TRA-TREN-MAY.md`). Thêm luật ✂️ Viết ngắn
+vào `session-wrapup.md`.
 
 **Cập nhật lần cuối: 2026-10-26 (Session 72–76, nhánh `ui-upgrade`).** Đã commit trên `ui-upgrade` (chưa push): ☕
 Caffeine & hoạt chất (72), số theo khẩu phần 1 chữ số thập phân (72b), 🤖 Dán dinh dưỡng từ AI (73), **⌨️ 🎤 Kể cả ngày**

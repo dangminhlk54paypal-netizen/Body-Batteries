@@ -178,6 +178,9 @@ Khi app đoán ra nhiều mục từ một câu (Nạp bằng chữ), người d
   phủ kín màn hình phải thêm `useScreenBackground()` sau style nền (`style={[styles.container, screenBg]}`), nếu không
   nó che mất quầng màu. Thẻ (`bgCard`) giữ nền đặc cho dễ đọc. View dùng giữ-để-lưu-ảnh cần nền đặc **chỉ lúc chụp**
   (mẫu `BatteryRing`: bật nền đặc, chờ 2 frame, rồi chụp).
+- **Vòng chỉ số có nhãn cắm dây (Session 78, chờ chủ app duyệt):** chú thích treo trên dây mảnh từ giữa cung ra, thay
+  lưới chữ bên dưới; vuốt ngang để xoay, nhãn đứng thẳng. Mẫu `BatteryRing` + `batteryRingModel.ts › calloutLayout`
+  (đã test không chồng nhãn). Pan xoay dùng `activeOffsetX ±10` + `failOffsetY ±14` để không phá cuộn và vuốt đổi tab.
 - **Cỡ chữ người dùng chỉnh được (Session 62):** khối chữ dày đặc (Sổ tập) có hàng chip **Nhỏ / Vừa / Lớn** trong sheet
   ⚙︎ của nó, mặc định **Nhỏ**; cỡ gốc giữ ở `createStyles`, áp hệ số inline bằng `notebookFontSize(base, size)`
   (sàn 11pt). Ô xem trước trong sheet đổi cỡ theo ngay.

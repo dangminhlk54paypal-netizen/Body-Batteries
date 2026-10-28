@@ -24,17 +24,13 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 ---
 
-## Session 78 — Vòng pin nhỏ: nhãn cắm dây, vuốt để xoay (chưa publish EAS — publish từ Mac)
+## Session 78 — Pin nhỏ: nhãn cắm dây, vuốt để xoay (nhánh `claude/battery-ring-callouts`, publish từ Mac)
 
-- [ ] **Nhìn.** Trang chủ → vòng Pin nhỏ: mỗi chỉ số (tên · % · lượng) nối vào cung màu của nó bằng một sợi dây mảnh,
-      không nhãn nào đè lên vòng hay đè nhau. Kỳ vọng: vòng to gần như cũ, chữ không bị cắt.
-- [ ] **Xoay.** Vuốt ngang phía trên tâm vòng sang phải → vòng quay chiều kim đồng hồ, thả tay vòng trôi chậm dần; nhãn
-      chạy theo và luôn đứng thẳng. Chạm vào vòng khi đang trôi → dừng.
-- [ ] **Không phá cuộn / đổi tab.** Vuốt dọc trên vòng → trang vẫn cuộn. Vuốt ngang ngoài khối vòng → vẫn đổi tab.
-- [ ] **Chạm.** Xoay một chút rồi chạm vào một cung → mở đúng chỉ số của cung đó. Chạm vào nhãn → mở đúng chỉ số; chạm số
-      lượng Nước / Vận động (gạch chân) → đổi đơn vị. Giữ vòng → lưu/chia sẻ ảnh.
-- [ ] **Nhiều chỉ số.** ✎ → bật thêm 4+ vi chất → vòng nhỏ vi chất hiện phía trên, bên phải; chạm ⇄ → vi chất lên vòng
-      to, nhãn vẫn không đè nhau. Thử thêm tiếng Đức xem chữ có bị cắt không.
+- [ ] Mỗi chỉ số nối vào cung màu của nó bằng dây; không nhãn nào đè vòng hay đè nhau, chữ không bị cắt.
+- [ ] Vuốt ngang trên tâm sang phải → vòng quay chiều kim đồng hồ, trôi chậm dần; nhãn đứng thẳng; chạm → dừng.
+- [ ] Vuốt dọc trên vòng vẫn cuộn trang; vuốt ngang ngoài khối vẫn đổi tab.
+- [ ] Xoay rồi chạm cung / nhãn → mở đúng chỉ số; chạm lượng Nước/Vận động → đổi đơn vị; giữ → lưu ảnh.
+- [ ] ✎ bật 4+ vi chất → vòng nhỏ hiện phía trên bên phải, ⇄ đổi vòng; thử tiếng Đức.
 
 ## Session 77 — 🧱 Chi tiết hôm nay dạng tường gạch
 

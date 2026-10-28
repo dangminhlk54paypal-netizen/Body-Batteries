@@ -24,7 +24,7 @@ AI mở file skill tương ứng và thực hiện đúng các bước trong đ�
 |-------|---------|-------------|
 | [`add-battery-type`](add-battery-type.md) | Thêm một loại pin mới (vd: Magnesium, Vitamin C) | Khi muốn theo dõi thêm chất dinh dưỡng |
 | [`create-screen`](create-screen.md) | Tạo một màn hình mới đúng cấu trúc dự án | Khi cần thêm màn hình mới vào app |
-| [`session-wrapup`](session-wrapup.md) | Tổng kết & ghi chép cuối session — tự đọc git, cập nhật SESSION_LOG + CONTEXT + roadmap + **skills** (bài học đã được duyệt) | Cuối ngày, sau git push/merge, hoặc xong tính năng lớn |
+| [`session-wrapup`](session-wrapup.md) | Tổng kết & ghi chép cuối session — tự đọc git, cập nhật SESSION_LOG + CONTEXT + roadmap + **skills** (bài học đã được duyệt); mọi ghi chép `.md` theo luật **✂️ Viết ngắn** | Cuối ngày, sau git push/merge, hoặc xong tính năng lớn |
 | [`learn-pattern`](learn-pattern.md) | Ghi bài học từ bug lặp lại vào [`learned/`](learned/) | Khi một lỗi mất >2 lần thử mới sửa được |
 | [`expo-react-native-dev`](expo-react-native-dev.md) | Mẹo & pattern Expo SDK 57 / React Native cho dự án này | Khi làm việc với API Expo/RN lạ |
 | [`sqlite-expo-patterns`](sqlite-expo-patterns.md) | Pattern dùng expo-sqlite đúng cách trong dự án | Khi viết/sửa tầng data (db, repositories) |
