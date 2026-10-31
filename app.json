@@ -31,7 +31,8 @@
         "POST_NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "ACTIVITY_RECOGNITION"
       ]
     },
     "plugins": [
@@ -58,6 +59,12 @@
           "backgroundColor": "#0d0d1a",
           "image": "./assets/splash-icon.png",
           "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "BodyBatteries reads your step count to add up the walks you take outside."
         }
       ]
     ],

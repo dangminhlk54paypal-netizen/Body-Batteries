@@ -400,6 +400,18 @@ export const CREATE_LIBRARY_FOODS = `
   CREATE INDEX IF NOT EXISTS idx_library_foods_source ON library_foods (source_id);
 `;
 
+// One row per "ra khỏi nhà" outing. ended_at is NULL while the user is still
+// outside; steps are filled from the phone pedometer when they come home.
+export const CREATE_WALK_SESSIONS = `
+  CREATE TABLE IF NOT EXISTS walk_sessions (
+    id TEXT PRIMARY KEY,
+    date TEXT NOT NULL,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    steps REAL NOT NULL DEFAULT 0
+  );
+`;
+
 export const ALL_SCHEMAS = [
   CREATE_BATTERY_TYPES,
   CREATE_DAILY_LOG,
@@ -419,4 +431,5 @@ export const ALL_SCHEMAS = [
   CREATE_EATING_DAILY_SUMMARY,
   CREATE_LIBRARY_SOURCES,
   CREATE_LIBRARY_FOODS,
+  CREATE_WALK_SESSIONS,
 ];

@@ -48,6 +48,11 @@ import { DetailsViewSuggestion } from '../components/DetailsViewSuggestion';
 import { useHomeDetailsStore } from '../store/homeDetailsStore';
 import { openLimit, toggleOpen } from '../domain/habits/detailViewHabit';
 import { InfoPopover } from '../components/ui/InfoPopover';
+import { WalkTrackerPanel } from '../components/WalkTrackerPanel';
+import { StopwatchPanel, stopwatchDecimalSep } from '../components/StopwatchPanel';
+import { useWalkTracker } from '../hooks/useWalkTracker';
+import { useStopwatchStore } from '../store/stopwatchStore';
+import { elapsedMs, formatStopwatch } from '../domain/stopwatch/stopwatch';
 import { DEFAULT_BATTERIES } from '../lib/constants';
 import { sendLowBatteryAlerts } from '../services/notifications/notificationService';
 import { useLowEnergyWatch } from '../hooks/useLowEnergyWatch';
@@ -110,7 +115,16 @@ function buildRecommendation(
 }
 
 // The tiles under "Chi tiết hôm nay" — one open at a time.
-type DetailId = 'meals' | 'activities' | 'balance' | 'micro' | 'supplements' | 'substances' | 'intakes';
+type DetailId =
+  | 'meals'
+  | 'activities'
+  | 'balance'
+  | 'micro'
+  | 'supplements'
+  | 'substances'
+  | 'intakes'
+  | 'walk'
+  | 'stopwatch';
 
 // With 2–3 rows open, each scroll box shrinks to this so they share one screen.
 const COMPACT_BODY_H = 220;
@@ -180,6 +194,8 @@ export function HomeScreen() {
   useLowEnergyWatch();
   const microBattery = useMicroBatteryHistory(foodLog, userProfile);
   const substances = useSubstanceJournal(foodLog);
+  const walk = useWalkTracker();
+  const stopwatch = useStopwatchStore();
   const ringMetricIds = resolveRingMetrics(ringMetrics);
   // The ring is always today — the micro section below may be showing a past day.
   const todayMicroStates = useMemo(
@@ -608,6 +624,37 @@ export function HomeScreen() {
                 maxBodyHeight: bodyH(300),
                 // Quick-tap intake history with one-tap undo
                 body: <TodayIntakes entries={intakeLog} onDelete={handleDeleteIntake} embedded />,
+              },
+              {
+                id: 'walk',
+                icon: '🚶',
+                title: t('screens.home.details.walk'),
+                value: walk.active
+                  ? t('screens.home.details.walkActive')
+                  : walk.todayOutings.length > 0
+                    ? t('screens.home.details.walkSummary', {
+                        steps: num(walk.todayTotal),
+                        count: walk.todayOutings.length,
+                      })
+                    : empty,
+                info: [{ heading: t('components.walkTracker.infoTitle'), body: t('components.walkTracker.info') }],
+                maxBodyHeight: bodyH(360),
+                // Outings: steps from the phone pedometer, accumulated per day
+                body: <WalkTrackerPanel walk={walk} />,
+              },
+              {
+                id: 'stopwatch',
+                icon: '⏱',
+                title: t('screens.home.details.stopwatch'),
+                value:
+                  stopwatch.startedAt !== null
+                    ? t('screens.home.details.stopwatchRunning')
+                    : stopwatch.accumulatedMs > 0
+                      ? formatStopwatch(elapsedMs(stopwatch, 0), stopwatchDecimalSep(language))
+                      : empty,
+                maxBodyHeight: bodyH(360),
+                // Apple Clock-style stopwatch
+                body: <StopwatchPanel />,
               },
             ]}
           />
