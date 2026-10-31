@@ -1,0 +1,64 @@
+# Push any branch except main → publish the JS bundle to EAS Update branch `preview`,
+# so a Claude cloud session (no Mac) can ship a build the owner opens in Expo Go.
+# The link is posted as a commit comment so the session can read it back with `gh api`.
+# See .ai/skills/eas-preview-publish.md § "Từ phiên cloud".
+name: EAS preview update
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: eas-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check EXPO_TOKEN
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Missing repo secret EXPO_TOKEN (Settings → Secrets → Actions)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: npm ci
+      - run: npm run verify
+      - run: npm run gen:food
+
+      - name: Publish to EAS Update (preview)
+        id: publish
+        run: |
+          MSG="${GITHUB_REF_NAME}: $(git log -1 --pretty=%s | cut -c1-90)"
+          eas update --branch preview --environment preview --non-interactive --json \
+            --message "$MSG" > update.json
+          cat update.json
+          GROUP=$(jq -r '.[0].group // empty' update.json)
+          echo "url=https://u.expo.dev/update/${GROUP}" >> "$GITHUB_OUTPUT"
+
+      - name: Post link on the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BODY="📱 EAS preview: ${{ steps.publish.outputs.url }}"
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" -f body="$BODY"
+          echo "$BODY" >> "$GITHUB_STEP_SUMMARY"

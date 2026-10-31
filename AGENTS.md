@@ -138,6 +138,9 @@ can try it on their iPhone via Expo Go — no Mac dev server needed:
    --non-interactive --message "…"`) and send the owner the
    `https://u.expo.dev/update/<group-id>` link plus a concrete test checklist.
    This is pre-approved for `preview` only — ask before any other branch.
+   In a **cloud session** (no Mac): don't run `eas-cli`; commit + push the
+   branch and `.github/workflows/eas-preview.yml` publishes `preview`, then
+   read the link from the commit comment (skill § "Từ phiên cloud").
 3. Skip it for docs/test-only changes; for new native modules say a dev-client
    build is needed instead. If the working tree mixes in another session's
    unfinished work, publish from an isolated copy (see the skill) — never
