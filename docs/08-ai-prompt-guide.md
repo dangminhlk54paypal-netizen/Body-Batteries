@@ -55,8 +55,10 @@ BB-LOG v1
 12:00 | Phở bò tái (tô lớn) | 600 | 550 | 30 | 70 | 15 | 450
 ```
 
-**Nhập vào app (hiện tại):** với mỗi dòng → nếu món có trong danh sách thì
-**🍱 Ghi món ăn** (nhập gram + giờ); nếu không có thì **🍽️ Ăn thêm kcal** (nhập kcal).
+**Nhập vào app:** Home → **🤖 Nhờ AI ghi món** → dán khối kết quả → xem trước →
+**Ghi N món ⚡**. Mỗi dòng được ghi như một món (vào "Hôm nay đã ăn", nạp pin
+Năng lượng + Protein/Carbs/Nước). Màn hình này cũng có sẵn nút copy prompt và
+link mở nhanh các nền tảng AI.
 
 ---
 
@@ -100,6 +102,8 @@ Sai định dạng. Chỉ trả về đúng 1 khối code theo QUY TẮC ở tr�
 ```
 
 ## Ghi chú cho phát triển
-- `BB-LOG v1` được thiết kế để sau này app có thể **dán thẳng** (parse theo `|`,
-  khớp tên món với `name_vi`; không khớp → ghi theo kcal).
+- Parser `BB-LOG v1`: `src/domain/food/aiMealLog.ts` (có test). Chịu được khối
+  ```` ``` ````, bảng markdown, đơn vị "g/kcal", dấu phẩy thập phân; thiếu cột macro → 0.
+  Mỗi dòng → `FoodItem` tạm (`ai_<slug>`, category `dish`) rồi đi qua `logFood`.
+- Prompt trong app: `src/lib/aiPrompts.ts` — sửa prompt thì sửa cả 2 nơi.
 - Mẫu B khớp 100% header của `food_items.csv` (parser `parseFoodCsv` đọc theo tên cột).
