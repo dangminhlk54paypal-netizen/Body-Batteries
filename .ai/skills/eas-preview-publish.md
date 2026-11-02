@@ -62,14 +62,9 @@ Ghi chú:
 - Lỗi đăng nhập → báo người dùng chạy `npx eas-cli login` (cần mật khẩu, AI không tự làm).
 
 ### Từ phiên cloud (claude.ai/code, app Claude) — thay cho Bước 1–2
-Máy ảo cloud không có `EXPO_TOKEN` và không vào được expo.dev → **không chạy `eas-cli`**. Thay vào đó:
-1. `npm run verify` xanh → commit → `git push` nhánh hiện tại (khác `main`).
-2. [`.github/workflows/eas-preview.yml`](../../.github/workflows/eas-preview.yml) tự chạy verify + `eas update --branch preview`
-   (token ở GitHub Secrets). Chờ bằng `gh api repos/{owner}/{repo}/actions/runs?head_sha=<sha>` (REST; `gh run`/`gh pr`
-   dùng GraphQL bị proxy chặn).
-3. Link nằm trong commit comment: `gh api repos/{owner}/{repo}/commits/<sha>/comments` → sang Bước 3.
-Push từ Mac cũng kích hoạt workflow này — đừng publish tay thêm lần nữa. Nghiên cứu:
-[docs/nghien-cuu/2026-10-31-vibe-code-tren-cloud-day-thang-eas.md](../../docs/nghien-cuu/2026-10-31-vibe-code-tren-cloud-day-thang-eas.md).
+Làm theo [`.claude/skills/cloud-session/SKILL.md`](../../.claude/skills/cloud-session/SKILL.md): không chạy `eas-cli`; push để
+[`eas-preview.yml`](../../.github/workflows/eas-preview.yml) tự publish, lấy link từ commit comment rồi sang Bước 3.
+Push từ Mac cũng kích hoạt workflow này (khi repo có `EXPO_TOKEN`) — không cần publish tay thêm lần nữa.
 
 ### Bước 3 — Gửi link cho người dùng
 Từ output của lệnh, lấy **update group ID** và gửi:

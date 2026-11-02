@@ -43,6 +43,7 @@ Mỗi lần dùng: nói với phiên cloud "xong thì commit + push". ~vài phú
 
 ## Đính chính
 
+- **2026-11-02:** "chỉ cần commit + push" ở trên là thiếu. GitHub lúc đó còn để `main` (tháng 6) làm mặc định nên phiên cloud làm trên code cũ; nhánh mặc định nay là `ui-upgrade` [Mã: `gh api`]. `npm ci` còn cần `cdn.sheetjs.com`, không nằm trong danh sách Trusted [2], nên `xlsx` đã chuyển vào `vendor/`. Cách dùng: [skill cloud-session](../../.claude/skills/cloud-session/SKILL.md).
 - Báo cáo [Vận hành đội ngũ AI](2026-10-26-van-hanh-doi-ngu-ai-hang-ngay.md) ghi phiên cloud "không nạp agent/hook của repo" — điều đó đúng với **Projects**; phiên cloud thường (một repo, ngoài Projects) có nạp `.claude/agents/` và đọc `.claude/settings.json` của repo [1].
 
 ## Tài liệu tham khảo
