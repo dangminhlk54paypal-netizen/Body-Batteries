@@ -9,6 +9,7 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 | Bản `preview` mới nhất | Gồm | Ngày |
 |---|---|---|
+| [`712b9b20…`](https://u.expo.dev/update/712b9b20-2b2a-4e69-af40-1c27793cd642) | Session 79 🔁 Tự điền · ✎ Sửa ngày cũ · 🤖 BB-LOG (`fc4212b`) | 2026-11-02 |
 | [`ae3f01e1…`](https://u.expo.dev/update/ae3f01e1-370a-4a42-9227-abc58b322801) | Session 77 🧱 Chi tiết hôm nay dạng tường gạch (chưa commit) + **có cả sửa lỗi đơ ⌨️ 🎤** (Session 76) + mọi thứ của `e7ef0d76…` — **dùng bản này** | 2026-10-26 |
 | [`e7ef0d76…`](https://u.expo.dev/update/e7ef0d76-5354-4bb1-b3cb-a921013b9cb4) | Sửa lỗi đơ khi bấm ⌨️ 🎤 Kể cả ngày (Session 76) + mọi thứ của `16ab4e90…` | 2026-10-26 |
 | [`16ab4e90…`](https://u.expo.dev/update/16ab4e90-ff27-4d80-9cef-e2cd02951951) | Session 75 Đợt 0 🌐 đa ngôn ngữ + ⚠ vi chất nhập nhằng + số /100 g 1 chữ số thập phân (chưa commit) + **có cả Session 74** ⌨️ 🎤 Kể cả ngày (chưa commit) + `b13f608` | 2026-10-26 |
