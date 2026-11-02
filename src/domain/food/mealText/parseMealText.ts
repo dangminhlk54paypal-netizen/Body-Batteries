@@ -1,3 +1,4 @@
+import { looksLikeBbLog, parseBbLog, type BbLogLine } from '../aiImport/bbLog';
 import type { MeasureUnit, MealType } from '../../../types/food';
 import { jsonNutrition, parseNutritionText, type AiNutrition, type AiNutritionText } from './aiNutrition';
 import {
@@ -89,6 +90,8 @@ export function parseMealText(text: string): DecodedMealItem[] {
 // numbers, not a list of foods to look up. Anything else (or JSON that
 // doesn't parse) is null — read as a sentence.
 export function parseMealAnswer(text: string): DecodedMealItem[] | null {
+  const fromBbLog = parseBbLogAnswer(text);
+  if (fromBbLog) return fromBbLog;
   const fromJson = parseMealJson(text);
   if (fromJson) return fromJson;
   const analysis = parseNutritionText(text);
@@ -434,6 +437,37 @@ function jsonItem(entry: JsonObject, shared: MealTimeHint | null): DecodedMealIt
     time: own ?? shared,
     ai: jsonNutrition(entry, grams, measure),
     nameEn: english,
+  };
+}
+
+function parseBbLogAnswer(text: string): DecodedMealItem[] | null {
+  if (!looksLikeBbLog(text)) return null;
+  const { items } = parseBbLog(text);
+  return items.length > 0 ? items.map(bbLogItem) : null;
+}
+
+function bbLogItem(line: BbLogLine): DecodedMealItem {
+  const per100 = (value: number) => (value * 100) / line.grams;
+  return {
+    raw: line.name,
+    foodQuery: line.name.toLowerCase(),
+    fallbackQuery: null,
+    altQuery: null,
+    quantity: line.grams,
+    unit: { word: 'g', unit: { kind: 'mass', gramsPer: 1 } },
+    time: { dayOffset: null, hour: line.hour, minute: line.minute, meal: null },
+    ai: {
+      per100g: {
+        energyKcal: per100(line.energyKcal),
+        proteinG: per100(line.proteinG),
+        carbG: per100(line.carbG),
+        fatG: per100(line.fatG),
+        waterG: per100(line.waterG),
+      },
+      basisGuessed: false,
+      measure: 'g',
+    },
+    nameEn: null,
   };
 }
 

@@ -3345,6 +3345,15 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
 - **Tiếp theo:** chủ app publish từ Mac, thử mục "Session 78" trong `docs/KIEM-TRA-TREN-MAY.md`; nếu ổn → merge vào
   `ui-upgrade`. Chữ Đức bị cắt / dây hai bên ngắn → chỉnh `labelWidth`, `CALLOUT_MIN_SIDE_WIRE`.
 
+### Session 79 — Đưa việc cloud về `ui-upgrade` + phiên cloud vào việc ngay (2026-11-02)
+- **Làm gì:** 2 nhánh cloud (`claude/routine-autofill`, `claude/ai-prompt-guide`) tách từ `main` tháng 6 nên không gộp được → viết lại
+  trên code hiện tại; đổi nhánh mặc định GitHub sang `ui-upgrade`; thêm skill `cloud-session`, hook cài đặt, `.ai/CLOUD_MEMORY.md`.
+- **Kết quả:** 🔁 tự điền (`domain/routine`, `routineStore`, Home + Cài đặt); ✎ sửa ngày cũ (`DayLogEditor`, `energyStore …IntakeForPastDate`,
+  `updateFoodForPastDate`); BB-LOG đọc trong `parseMealAnswer` + `AiMealGuide`. Đủ vi/en/de. `xlsx` chuyển vào `vendor/` vì cloud không vào được CDN.
+- **Khác bản cloud:** không tự cộng trừ pin; không có ô thêm đạm/tinh bột/khoáng và "ăn thêm kcal" (app đã bỏ nhập tay); BB-LOG không có modal riêng.
+- **Tiếp theo:** chủ app thêm `EXPO_TOKEN` (chưa có thì không tự publish), thử mục "Session 79" trong `docs/KIEM-TRA-TREN-MAY.md`. Khi `bb.food.v1`
+  xong: hợp nhất với BB-LOG, xoá phần dư. Chưa test máy.
+
 ---
 
 ## 📌 Hướng dẫn viết session log

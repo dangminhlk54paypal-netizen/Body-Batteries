@@ -98,11 +98,13 @@ describe('SettingsScreen', () => {
       'NGÔN NGỮ',
       'SỨC KHOẺ',
       'THÔNG BÁO',
+      'TỰ ĐIỀN THEO THÓI QUEN',
     ]);
     await act(async () => useSettingsStore.setState({ language: 'en' }));
     expect(headings(tree)).toEqual([
       'BODY PROFILE',
       'DATA',
+      'FILL IN FROM HABITS',
       'HEALTH',
       'INTERFACE',
       'LANGUAGE',

@@ -636,6 +636,15 @@ export const en: TranslationSchema = {
   },
 
   settings: {
+    routine: {
+      sectionTitle: 'FILL IN FROM HABITS',
+      mode: { off: 'Off', prompt: 'Ask at set times', auto: 'Fill in' },
+      desc: {
+        off: 'You log everything yourself. Water and sleep still offer a 💡 button with your usual amount.',
+        prompt: 'Open the app at 6–8 am: sleep times are filled in. At 8–10 pm: water, steps and walking minutes are filled in. Just tap Save.',
+        auto: 'Anything logged 3 days in a row with similar numbers is logged with your usual amount: sleep from 6 am, water and steps from 8 pm. You can always undo.',
+      },
+    },
     title: 'Settings',
     subtitle: 'Customize it to fit your routine',
     summary: {
@@ -850,6 +859,51 @@ export const en: TranslationSchema = {
     },
   },
   components: {
+    routine: {
+      metric: { sleep: 'Sleep', water: 'Water', steps: 'Steps', walkMinutes: 'Walking' },
+      unit: { sleep: 'h', water: 'ml', steps: 'steps', walkMinutes: 'min' },
+      suggest: '💡 Your usual: {{amount}}',
+      autoTitle: '✨ Filled in from your habits',
+      undo: '↩ Undo',
+      skip: 'Skip',
+      morningTitle: '☀️ How did you sleep last night?',
+      bedtime: 'Went to bed',
+      wakeTime: 'Woke up',
+      sleptAbout: '≈ {{amount}}',
+      badTime: 'Invalid time (e.g. 23:00)',
+      eveningTitle: '🌙 End of day',
+      loggedToday: '{{amount}} logged today',
+      optInTitle: '🔁 You logged {{days}} days in a row. Let the app fill this in?',
+      optInAsk: 'Ask at set times',
+      optInAuto: 'Fill in',
+      optInLater: 'Later',
+      optInNo: 'No',
+    },
+    dayLogEditor: {
+      open: '✎ Edit this day',
+      empty: 'Nothing to edit yet. You can add below.',
+      addA11y: 'Add',
+      add: { water: '💧 Water', sleep: '😴 Sleep', steps: '👣 Steps', walkMinutes: '🚶 Walking', weight: '⚖️ Weight' },
+      unitFor: { water: 'ml', sleep: 'hours', steps: 'steps', walkMinutes: 'minutes', weight: 'kg' },
+      unit: { g: 'g', ml: 'ml', mg: 'mg', h: 'h', steps: 'steps' },
+    },
+    aiMealGuide: {
+      open: '🤖 Log meals with AI ›',
+      title: '🤖 Log meals with AI',
+      stepCopy: '1. Copy a prompt',
+      copy: { meal: 'Log a meal', fix: 'Fix the format', food: 'New food (CSV)' },
+      copied: '✓ Copied',
+      stepChat: '2. Paste it into an AI, add what you ate or a photo',
+      stepPaste: '3. Copy the answer, come back here and tap Paste',
+      estimateNote: 'AI numbers are estimates. You review every row before logging.',
+      back: 'Back to the text box',
+      rejected: '⚠ {{count}} line(s) could not be read and were skipped.',
+      mealPrompt:
+        'You are a nutrition assistant. Turn what I tell you into a food log.\n\nRULES:\n- One line per food or drink, in exactly this format:\n  HH:MM | Food name | grams | kcal | protein_g | carbs_g | fat_g | water_ml\n- 24-hour time. If I give no time: breakfast=07:00, lunch=12:00, afternoon=15:00, dinner=19:00.\n- Convert portions to grams (1 bowl of rice ≈150 g, 1 large bowl ≈250–500 g, 1 glass ≈250–500 ml).\n- Round to whole numbers. Drinks: grams = ml.\n- A mixed dish is one line for the whole portion.\n- Return exactly 1 code block and no explanation. The first line is: {{header}}\n\nWHAT I ATE:\n',
+      fixPrompt: 'Wrong format. Return exactly 1 code block following the RULES above, with no other text.',
+      foodPrompt:
+        'You are a nutrition expert. Create nutrition data for the food below.\n\nRULES:\n- Return exactly 1 CSV code block with this header line and 1 data line:\n{{columns}}\n- All nutrition values are per 100 g.\n- id: English, lowercase, joined with underscores.\n- category: one of grain, meat, fish, egg_dairy, legume_nut, vegetable, fruit, fat_sugar, dish.\n- default_serving_g: grams of a usual portion.\n- serving_presets: label=grams joined with | (e.g. bowl=150|large=500).\n- Leave unknown numbers empty. source: AI-estimate.\n- No explanation outside the code block.\n\nFOOD:\n',
+    },
     appleHealthStatusBadge: {
       labelSynced: 'Apple Health connected',
       labelEstimated: 'Estimated (BMR) — Apple Health unavailable',

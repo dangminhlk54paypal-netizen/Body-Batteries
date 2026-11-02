@@ -6,6 +6,8 @@ Cột "Agent phụ trách" trỏ tới các file trong `.ai/agents/`.
 
 ---
 
+> **Session 79 (2026-11-02):** 🔁 tự điền, ✎ sửa ngày cũ, 🤖 BB-LOG (`docs/09-routine-autofill.md`, `docs/10-ai-meal-prompts.md`). Chưa test máy.
+
 ## 🔄 Phase 0 — Chuẩn bị môi trường (≈ 2–4 ngày)
 **Mục tiêu:** máy tính & điện thoại sẵn sàng, app trống chạy được.
 

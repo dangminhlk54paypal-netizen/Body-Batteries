@@ -79,6 +79,8 @@ import type { ThemeColors } from '../../lib/theme';
 import { useThemeColors, useThemedStyles } from '../../hooks/useThemeColors';
 import { useT } from '../../i18n/useT';
 import { buildAiPrompt, PROMPT_KEYS } from '../../domain/food/aiImport/aiPrompt';
+import { looksLikeBbLog, parseBbLog } from '../../domain/food/aiImport/bbLog';
+import { AiMealGuide } from './AiMealGuide';
 import { DOUBT_LIMITS } from '../../domain/food/mealText/aiNutrition';
 import { withLocalName } from '../../domain/food/foodNameText';
 import { LOCALE_TAGS } from '../../i18n';
@@ -120,7 +122,8 @@ type Screen =
   | { kind: 'edit'; id: string }
   | { kind: 'activityEdit'; id: string }
   | { kind: 'pick'; id: string | null } // null = add a new row
-  | { kind: 'batchTime' };
+  | { kind: 'batchTime' }
+  | { kind: 'aiGuide' };
 
 const LIST_HEIGHT = 300;
 const AI_CHOICES: AiChoice[] = ['app', 'ai', 'new'];
@@ -253,6 +256,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
       recentActivities: recent,
     };
   }
+
+  const bbLogRejected = looksLikeBbLog(text) ? parseBbLog(text).rejected.length : 0;
 
   function updateText(next: string) {
     setText(next);
@@ -786,6 +791,8 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
 
   const backToList = () => setView({ kind: 'list' });
 
+  if (view.kind === 'aiGuide') return <AiMealGuide onBack={backToList} />;
+
   if (view.kind === 'pick') {
     const found = searchForMealText(pickQuery, preferIds, pickLibrary);
     const results = [...found.matches, ...found.similar].slice(0, PICK_LIMIT);
@@ -1132,6 +1139,15 @@ export function TextMealEntry({ baseDate, recentLog, onBack, onClose, onLogged, 
         </Pressable>
       </View>
       {pasteEmpty && <Text style={styles.pasteNote}>{t('components.textMealEntry.pasteEmpty')}</Text>}
+      {bbLogRejected > 0 && rows != null && (
+        <Text style={styles.pasteNote}>{t('components.aiMealGuide.rejected', { count: bbLogRejected })}</Text>
+      )}
+      <Pressable
+        style={({ pressed }) => [styles.guideLink, pressed && styles.pressed]}
+        onPress={() => setView({ kind: 'aiGuide' })}
+      >
+        <Text style={styles.guideLinkText}>{t('components.aiMealGuide.open')}</Text>
+      </Pressable>
 
       {rows && rows.length === 0 && activityRows.length === 0 && (
         <Text style={styles.empty}>{t('components.textMealEntry.nothingFound')}</Text>
@@ -1403,7 +1419,9 @@ const createStyles = (c: ThemeColors) =>
       backgroundColor: c.bgElevated,
     },
     analyzeText: { color: c.accent, fontSize: 14, fontWeight: '700' },
-    pasteNote: { color: c.statusMid, fontSize: 12 },
+    guideLink: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 10 },
+  guideLinkText: { fontSize: 12, fontWeight: '600', color: c.accent },
+  pasteNote: { color: c.statusMid, fontSize: 12 },
     empty: { color: c.textTertiary, textAlign: 'center', paddingVertical: 12 },
     summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
     timeChip: { color: c.info, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },

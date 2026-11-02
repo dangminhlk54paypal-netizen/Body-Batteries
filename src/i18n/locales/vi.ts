@@ -660,6 +660,15 @@ export const vi = {
 
   // src/screens/SettingsScreen.tsx
   settings: {
+    routine: {
+      sectionTitle: 'TỰ ĐIỀN THEO THÓI QUEN',
+      mode: { off: 'Tắt', prompt: 'Hỏi theo giờ', auto: 'Tự điền' },
+      desc: {
+        off: 'Bạn tự nhập. Khi nạp nước hoặc ngủ vẫn có nút 💡 điền nhanh số thường ngày.',
+        prompt: 'Mở app lúc 6–8h: ô giờ ngủ điền sẵn. Lúc 20–22h: ô nước, bước, phút đi bộ điền sẵn. Bạn chỉ cần bấm Lưu.',
+        auto: 'Mục ghi đều từ 3 ngày liền, số gần giống nhau, được tự ghi bằng số thường ngày: ngủ từ 6h, nước và bước từ 20h. Luôn có nút Hoàn tác.',
+      },
+    },
     title: 'Cài đặt',
     subtitle: 'Tuỳ chỉnh theo thói quen của bạn',
     summary: {
@@ -887,6 +896,51 @@ export const vi = {
     },
   },
   components: {
+    routine: {
+      metric: { sleep: 'Giấc ngủ', water: 'Nước', steps: 'Bước chân', walkMinutes: 'Đi bộ' },
+      unit: { sleep: 'giờ', water: 'ml', steps: 'bước', walkMinutes: 'phút' },
+      suggest: '💡 Như thường ngày: {{amount}}',
+      autoTitle: '✨ Đã tự điền theo thói quen',
+      undo: '↩ Hoàn tác',
+      skip: 'Bỏ qua',
+      morningTitle: '☀️ Đêm qua bạn ngủ thế nào?',
+      bedtime: 'Đi ngủ lúc',
+      wakeTime: 'Thức dậy lúc',
+      sleptAbout: '≈ {{amount}}',
+      badTime: 'Giờ chưa hợp lệ (ví dụ 23:00)',
+      eveningTitle: '🌙 Tổng kết cuối ngày',
+      loggedToday: 'hôm nay đã ghi {{amount}}',
+      optInTitle: '🔁 Bạn ghi đều {{days}} ngày liền. Để app điền giúp?',
+      optInAsk: 'Hỏi theo giờ',
+      optInAuto: 'Tự điền',
+      optInLater: 'Để sau',
+      optInNo: 'Không',
+    },
+    dayLogEditor: {
+      open: '✎ Sửa số liệu ngày này',
+      empty: 'Chưa có mục nào để sửa. Có thể thêm bên dưới.',
+      addA11y: 'Thêm',
+      add: { water: '💧 Nước', sleep: '😴 Ngủ', steps: '👣 Bước', walkMinutes: '🚶 Đi bộ', weight: '⚖️ Cân nặng' },
+      unitFor: { water: 'ml', sleep: 'giờ', steps: 'bước', walkMinutes: 'phút', weight: 'kg' },
+      unit: { g: 'g', ml: 'ml', mg: 'mg', h: 'giờ', steps: 'bước' },
+    },
+    aiMealGuide: {
+      open: '🤖 Nhờ AI ghi món ›',
+      title: '🤖 Nhờ AI ghi món',
+      stepCopy: '1. Chép câu lệnh',
+      copy: { meal: 'Ghi bữa ăn', fix: 'Sửa định dạng', food: 'Tạo món mới (CSV)' },
+      copied: '✓ Đã chép',
+      stepChat: '2. Dán vào AI, viết thêm lời kể hoặc gửi ảnh món',
+      stepPaste: '3. Chép câu trả lời, quay lại đây rồi bấm Dán',
+      estimateNote: 'Số của AI là ước lượng. Bạn xem lại từng dòng trước khi nạp.',
+      back: 'Quay lại ô nhập',
+      rejected: '⚠ {{count}} dòng không đọc được, đã bỏ qua.',
+      mealPrompt:
+        'Bạn là trợ lý dinh dưỡng. Hãy chuyển lời kể của tôi thành nhật ký ăn uống.\n\nQUY TẮC:\n- Mỗi món ăn/đồ uống là 1 dòng, đúng định dạng:\n  HH:MM | Tên món | gram | kcal | đạm_g | tinh_bột_g | béo_g | nước_ml\n- Giờ theo 24h. Nếu tôi không nói giờ: sáng=07:00, trưa=12:00, chiều=15:00, tối=19:00.\n- Đổi khẩu phần sang gram (1 chén cơm ≈150 g, 1 tô ≈250–500 g, 1 ly ≈250–500 ml).\n- Số làm tròn tới số nguyên. Đồ uống: ghi gram = ml.\n- Món hỗn hợp (phở, bún, cơm tấm…) ghi thành 1 dòng cho cả phần.\n- Chỉ trả về đúng 1 khối code, không giải thích. Dòng đầu là: {{header}}\n\nLỜI KỂ CỦA TÔI:\n',
+      fixPrompt: 'Sai định dạng. Chỉ trả về đúng 1 khối code theo QUY TẮC ở trên, không thêm chữ nào khác.',
+      foodPrompt:
+        'Bạn là chuyên gia dinh dưỡng. Hãy tạo dữ liệu dinh dưỡng cho món ăn dưới đây.\n\nQUY TẮC:\n- Trả về đúng 1 khối code CSV gồm dòng tiêu đề này và 1 dòng dữ liệu:\n{{columns}}\n- Mọi chỉ số dinh dưỡng tính trên 100 g.\n- id: tiếng Anh, chữ thường, nối bằng dấu gạch dưới.\n- category: chọn 1 trong grain, meat, fish, egg_dairy, legume_nut, vegetable, fruit, fat_sugar, dish.\n- default_serving_g: gram của 1 phần thường ăn.\n- serving_presets: dạng nhãn=gram nối bằng | (vd: chén=150|tô=500).\n- Không biết số nào thì để trống. source ghi: AI-estimate.\n- Không giải thích gì thêm ngoài khối code.\n\nMÓN ĂN:\n',
+    },
     appleHealthStatusBadge: {
       labelSynced: 'Đã kết nối Apple Health',
       labelEstimated: 'Ước tính (BMR) — Apple Health không khả dụng',

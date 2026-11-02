@@ -154,7 +154,7 @@ interface EnergyState {
     batteryId: BatteryId,
     amount: number,
     note?: string,
-    opts?: { stepType?: StepActivityType }
+    opts?: { stepType?: StepActivityType; timestamp?: number }
   ) => Promise<BatteryAlert[]>;
   addCalories: (kcal: number, note?: string) => Promise<void>;
   // `portion` is optional (backward-compatible: existing callers that pass 3
@@ -196,10 +196,28 @@ interface EnergyState {
   // (e.g. the History day-detail view) — the entry is NOT in store.foodLog.
   // If it is (today's list), delegates to removeFood.
   removeFoodForPastDate: (entry: FoodLogEntry) => Promise<void>;
+  // Edit a food entry of ANY day: composes the two actions above under the
+  // ORIGINAL timestamp, like updateActivityForPastDate. No-op when the food can
+  // no longer be resolved (nothing to rescale from).
+  updateFoodForPastDate: (entry: FoodLogEntry, patch: { grams?: number; count?: number }) => Promise<void>;
   // FIX #3: undo a manual sub-battery quick-tap (the exact inverse of
   // addIntake): reverse the battery charge and, for macros that also feed the
   // calorie ledger, reverse the kcal too (satiety follows by replay).
   removeIntake: (id: string) => Promise<void>;
+  // The quick-tap counterpart of logFoodForPastDate / removeFoodForPastDate
+  // (the day editor): the event's CALENDAR day owns its battery, its ENERGY day
+  // owns any kcal, each changed in the store when it is the loaded day and on
+  // that day's persisted rows otherwise. A timestamp fully on the current day
+  // delegates to addIntake / removeIntake.
+  addIntakeForPastDate: (
+    batteryId: BatteryId,
+    amount: number,
+    timestamp: number,
+    note?: string
+  ) => Promise<void>;
+  removeIntakeForPastDate: (event: IntakeEvent) => Promise<void>;
+  // Remove + re-add under the ORIGINAL timestamp, so the event keeps its day.
+  updateIntakeForPastDate: (event: IntakeEvent, amount: number) => Promise<void>;
   // `startAt`/`endAt` (B2) are optional and display-only — see
   // types/energy.ts ActivityLogEntry doc (no replay engine).
   // `timestampOverride` (FIX #6): when set, used as the entry's `timestamp`
@@ -709,7 +727,7 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     // FIX #3: build the event up front so it can be appended to intakeLog for
     // an immediate, undoable listing (only manual sub-battery quick-taps go in
     // — the same predicate loadToday filters by).
-    const ts = nowTimestamp();
+    const ts = opts?.timestamp ?? nowTimestamp();
     const event: IntakeEvent = { id: `${batteryId}_${ts}`, timestamp: ts, batteryTypeId: batteryId, amount, note };
 
     // A food-fed pin (in practice: the water quick-tap) is replayed from today's
@@ -1182,6 +1200,145 @@ export const useEnergyStore = create<EnergyState>((set, get) => ({
     }
 
     if (kcal > 0) await get().recomputeSatiety();
+  },
+
+  addIntakeForPastDate: async (batteryId, amount, requestedTimestamp, note = '') => {
+    if (amount <= 0) return;
+    const timestamp = Math.min(requestedTimestamp, Date.now());
+    const calendarDay = dateString(new Date(timestamp));
+    const energyDay = energyDayString(new Date(timestamp));
+    const calendarIsCurrent = calendarDay === todayString();
+    const energyIsCurrent = energyDay === energyDayString();
+
+    if (calendarIsCurrent && energyIsCurrent) {
+      await get().addIntake(batteryId, amount, note, { timestamp });
+      return;
+    }
+
+    const event: IntakeEvent = {
+      id: `${batteryId}_${timestamp}`,
+      timestamp,
+      batteryTypeId: batteryId,
+      amount,
+      note,
+    };
+    const kcal = kcalFromMacro(batteryId, amount);
+
+    if (calendarIsCurrent || energyIsCurrent) {
+      const { readings, foodLog, intakeLog } = get();
+      const nextIntakeLog = calendarIsCurrent ? [...intakeLog, event] : intakeLog;
+      const charged = readings.map((r) => {
+        if (r.batteryTypeId === 'energy') return energyIsCurrent && kcal > 0 ? chargeEnergy(r, kcal) : r;
+        return calendarIsCurrent && r.batteryTypeId === batteryId ? applyIntake(r, amount) : r;
+      });
+      const updated = calendarIsCurrent ? recomputeFoodPins(charged, foodLog, nextIntakeLog) : charged;
+      set({ readings: updated, masterPercentage: energyPercentage(updated), intakeLog: nextIntakeLog });
+      try {
+        await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      } catch (e) {
+        console.warn('addIntakeForPastDate persistence failed:', e);
+      }
+    }
+
+    try {
+      const dayModeId = await modeIdForDate(calendarDay);
+      const built = () =>
+        buildReadingsForMissedDay(calendarDay, energyDay, currentProfile(), getModeById(dayModeId));
+      const toWrite: BatteryReading[] = [];
+      if (!calendarIsCurrent) {
+        const row =
+          (await getReadingsForDate(calendarDay)).find((r) => r.batteryTypeId === batteryId) ??
+          built().nutrients.find((r) => r.batteryTypeId === batteryId);
+        if (row) toWrite.push(applyIntake(row, amount));
+      }
+      if (!energyIsCurrent && kcal > 0) {
+        const row =
+          (await getReadingsForDate(energyDay)).find((r) => r.batteryTypeId === 'energy') ?? built().energy;
+        toWrite.push(chargeEnergy(row, kcal));
+      }
+      if (toWrite.length > 0) await upsertReadings(toWrite);
+      await upsertDailyLog({ date: calendarDay, modeId: dayModeId });
+      await addIntakeEvent(event);
+    } catch (e) {
+      console.warn('addIntakeForPastDate persistence failed:', e);
+    }
+
+    if (kcal > 0) await get().recomputeSatiety();
+  },
+
+  removeIntakeForPastDate: async (event) => {
+    if (get().intakeLog.some((e) => e.id === event.id)) {
+      await get().removeIntake(event.id);
+      return;
+    }
+
+    const calendarDay = dateString(new Date(event.timestamp));
+    const energyDay = energyDayString(new Date(event.timestamp));
+    const calendarIsCurrent = calendarDay === todayString();
+    const energyIsCurrent = energyDay === energyDayString();
+    const kcal = kcalFromMacro(event.batteryTypeId, event.amount);
+
+    // Same double-tap guard as removeFoodForPastDate: the caller holds a
+    // detached object, so only reverse a row that still exists.
+    try {
+      const stillLogged = (await getIntakeEventsForDate(calendarDay)).some((e) => e.id === event.id);
+      if (!stillLogged) return;
+    } catch (e) {
+      console.warn('removeIntakeForPastDate existence check failed:', e);
+    }
+
+    if (calendarIsCurrent || energyIsCurrent) {
+      const { readings, foodLog, intakeLog } = get();
+      const reversed = readings.map((r) => {
+        if (r.batteryTypeId === 'energy') return energyIsCurrent && kcal > 0 ? burnEnergy(r, kcal) : r;
+        return calendarIsCurrent && r.batteryTypeId === event.batteryTypeId ? applyIntake(r, -event.amount) : r;
+      });
+      const updated = calendarIsCurrent ? recomputeFoodPins(reversed, foodLog, intakeLog) : reversed;
+      set({ readings: updated, masterPercentage: energyPercentage(updated) });
+      try {
+        await upsertReadings(updated.filter((r) => r.batteryTypeId !== 'master'));
+      } catch (e) {
+        console.warn('removeIntakeForPastDate persistence failed:', e);
+      }
+    }
+
+    try {
+      const toWrite: BatteryReading[] = [];
+      if (!calendarIsCurrent) {
+        const row = (await getReadingsForDate(calendarDay)).find((r) => r.batteryTypeId === event.batteryTypeId);
+        if (row) toWrite.push(applyIntake(row, -event.amount));
+      }
+      if (!energyIsCurrent && kcal > 0) {
+        const row = (await getReadingsForDate(energyDay)).find((r) => r.batteryTypeId === 'energy');
+        if (row) toWrite.push(burnEnergy(row, kcal));
+      }
+      if (toWrite.length > 0) await upsertReadings(toWrite);
+      await deleteIntakeEventsByIds([event.id]);
+    } catch (e) {
+      console.warn('removeIntakeForPastDate persistence failed:', e);
+    }
+
+    if (kcal > 0) await get().recomputeSatiety();
+  },
+
+  updateIntakeForPastDate: async (event, amount) => {
+    if (amount <= 0) return;
+    await get().removeIntakeForPastDate(event);
+    await get().addIntakeForPastDate(event.batteryTypeId, amount, event.timestamp, event.note);
+  },
+
+  updateFoodForPastDate: async (entry, patch) => {
+    const item = getAnyFoodById(entry.foodId);
+    if (!item) return;
+    const newGrams =
+      isPortionCounted(item.portionUnit) && patch.count !== undefined
+        ? gramsForPortion(item, patch.count)
+        : patch.grams ?? entry.grams;
+    await get().removeFoodForPastDate(entry);
+    await get().logFoodForPastDate(item, newGrams, entry.timestamp, {
+      portionUnit: item.portionUnit,
+      count: patch.count ?? entry.count,
+    });
   },
 
   // Log activity (steps and/or workout sessions) as its own independent,

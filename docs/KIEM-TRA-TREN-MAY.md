@@ -24,6 +24,13 @@ mở file này, làm từ trên xuống. Thử xong mục nào thì đánh `[x]`
 
 ---
 
+## Session 79 — 🔁 Tự điền · ✎ Sửa ngày cũ · 🤖 BB-LOG
+- [ ] Lịch sử › hôm qua › ✎ Sửa số liệu: thêm 500 ml nước → số nước của ngày đó tăng, Home hôm nay không đổi.
+- [ ] Cùng ngày: sửa rồi xoá dòng nước vừa thêm → số quay về như cũ. Bấm ✎ trên một món, đổi gram → kcal đổi theo.
+- [ ] Sheet ngày dài + bàn phím mở: vẫn cuộn tới được ô nhập và nút ＋.
+- [ ] Cài đặt › Tự điền › Hỏi theo giờ: mở app 20–22h thấy thẻ tổng kết; Lưu thì nước/bước tăng, Bỏ qua thì thẻ ẩn.
+- [ ] Nạp bằng chữ › 🤖 Nhờ AI ghi món › chép, nhờ AI, dán: ra đúng các dòng, đúng giờ. Đổi EN/DE xem chữ không tràn.
+
 ## Session 78 — Pin nhỏ: nhãn cắm dây, vuốt để xoay (nhánh `claude/battery-ring-callouts`, publish từ Mac)
 
 - [ ] Mỗi chỉ số nối vào cung màu của nó bằng dây; không nhãn nào đè vòng hay đè nhau, chữ không bị cắt.

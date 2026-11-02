@@ -636,6 +636,15 @@ export const de: TranslationSchema = {
   },
 
   settings: {
+    routine: {
+      sectionTitle: 'AUS GEWOHNHEITEN AUSFÜLLEN',
+      mode: { off: 'Aus', prompt: 'Zu Uhrzeiten fragen', auto: 'Ausfüllen' },
+      desc: {
+        off: 'Du trägst alles selbst ein. Bei Wasser und Schlaf gibt es weiterhin eine 💡-Taste mit deinem üblichen Wert.',
+        prompt: 'App öffnen um 6–8 Uhr: Schlafzeiten sind ausgefüllt. Um 20–22 Uhr: Wasser, Schritte und Gehminuten sind ausgefüllt. Du tippst nur auf Speichern.',
+        auto: 'Was du 3 Tage in Folge mit ähnlichen Werten einträgst, wird mit deinem üblichen Wert eingetragen: Schlaf ab 6 Uhr, Wasser und Schritte ab 20 Uhr. Rückgängig geht immer.',
+      },
+    },
     title: 'Einstellungen',
     subtitle: 'Passe die App an deine Gewohnheiten an',
     summary: {
@@ -852,6 +861,51 @@ export const de: TranslationSchema = {
     },
   },
   components: {
+    routine: {
+      metric: { sleep: 'Schlaf', water: 'Wasser', steps: 'Schritte', walkMinutes: 'Gehen' },
+      unit: { sleep: 'Std.', water: 'ml', steps: 'Schritte', walkMinutes: 'Min.' },
+      suggest: '💡 Wie üblich: {{amount}}',
+      autoTitle: '✨ Aus deinen Gewohnheiten ausgefüllt',
+      undo: '↩ Rückgängig',
+      skip: 'Überspringen',
+      morningTitle: '☀️ Wie hast du letzte Nacht geschlafen?',
+      bedtime: 'Ins Bett um',
+      wakeTime: 'Aufgewacht um',
+      sleptAbout: '≈ {{amount}}',
+      badTime: 'Ungültige Uhrzeit (z. B. 23:00)',
+      eveningTitle: '🌙 Tagesabschluss',
+      loggedToday: 'heute {{amount}} eingetragen',
+      optInTitle: '🔁 Du trägst seit {{days}} Tagen regelmäßig ein. Soll die App ausfüllen?',
+      optInAsk: 'Zu Uhrzeiten fragen',
+      optInAuto: 'Ausfüllen',
+      optInLater: 'Später',
+      optInNo: 'Nein',
+    },
+    dayLogEditor: {
+      open: '✎ Diesen Tag bearbeiten',
+      empty: 'Noch nichts zu bearbeiten. Unten kannst du etwas hinzufügen.',
+      addA11y: 'Hinzufügen',
+      add: { water: '💧 Wasser', sleep: '😴 Schlaf', steps: '👣 Schritte', walkMinutes: '🚶 Gehen', weight: '⚖️ Gewicht' },
+      unitFor: { water: 'ml', sleep: 'Stunden', steps: 'Schritte', walkMinutes: 'Minuten', weight: 'kg' },
+      unit: { g: 'g', ml: 'ml', mg: 'mg', h: 'Std.', steps: 'Schritte' },
+    },
+    aiMealGuide: {
+      open: '🤖 Mahlzeiten mit KI eintragen ›',
+      title: '🤖 Mahlzeiten mit KI eintragen',
+      stepCopy: '1. Prompt kopieren',
+      copy: { meal: 'Mahlzeit eintragen', fix: 'Format korrigieren', food: 'Neues Gericht (CSV)' },
+      copied: '✓ Kopiert',
+      stepChat: '2. In eine KI einfügen, dazu schreiben, was du gegessen hast, oder ein Foto senden',
+      stepPaste: '3. Antwort kopieren, hierher zurückkehren und auf Einfügen tippen',
+      estimateNote: 'KI-Werte sind Schätzungen. Du prüfst jede Zeile vor dem Eintragen.',
+      back: 'Zurück zum Textfeld',
+      rejected: '⚠ {{count}} Zeile(n) nicht lesbar und übersprungen.',
+      mealPrompt:
+        'Du bist ein Ernährungsassistent. Wandle meine Beschreibung in ein Ernährungstagebuch um.\n\nREGELN:\n- Eine Zeile pro Speise oder Getränk, genau in diesem Format:\n  HH:MM | Name | Gramm | kcal | Eiweiß_g | Kohlenhydrate_g | Fett_g | Wasser_ml\n- 24-Stunden-Zeit. Ohne Zeitangabe: Frühstück=07:00, Mittag=12:00, Nachmittag=15:00, Abend=19:00.\n- Rechne Portionen in Gramm um (1 Schale Reis ≈150 g, 1 große Schüssel ≈250–500 g, 1 Glas ≈250–500 ml).\n- Runde auf ganze Zahlen. Getränke: Gramm = ml.\n- Ein gemischtes Gericht ist eine Zeile für die ganze Portion.\n- Gib genau 1 Codeblock ohne Erklärung zurück. Die erste Zeile lautet: {{header}}\n\nWAS ICH GEGESSEN HABE:\n',
+      fixPrompt: 'Falsches Format. Gib genau 1 Codeblock nach den REGELN oben zurück, ohne weiteren Text.',
+      foodPrompt:
+        'Du bist Ernährungsexperte. Erstelle Nährwertdaten für das folgende Gericht.\n\nREGELN:\n- Gib genau 1 CSV-Codeblock mit dieser Kopfzeile und 1 Datenzeile zurück:\n{{columns}}\n- Alle Nährwerte gelten pro 100 g.\n- id: Englisch, Kleinbuchstaben, mit Unterstrichen verbunden.\n- category: eines von grain, meat, fish, egg_dairy, legume_nut, vegetable, fruit, fat_sugar, dish.\n- default_serving_g: Gramm einer üblichen Portion.\n- serving_presets: Name=Gramm, mit | verbunden (z. B. Schale=150|groß=500).\n- Unbekannte Zahlen leer lassen. source: AI-estimate.\n- Keine Erklärung außerhalb des Codeblocks.\n\nGERICHT:\n',
+    },
     appleHealthStatusBadge: {
       labelSynced: 'Apple Health verbunden',
       labelEstimated: 'Geschätzt (BMR) — Apple Health nicht verfügbar',

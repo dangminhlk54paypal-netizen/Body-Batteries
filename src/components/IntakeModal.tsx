@@ -26,6 +26,8 @@ interface Props {
   // domain/rules/dailyRecommendations.ts. Never prescriptive; HomeScreen
   // derives the text and always appends "Chỉ để tham khảo."
   recommendationVi?: string;
+  // Routine "💡": the usual amount of the last 7 days (always in ml for water).
+  suggestion?: { value: number; label: string } | null;
 }
 
 const WATER_UNIT_OPTIONS: { key: WaterDisplayUnit; label: string }[] = [
@@ -41,6 +43,7 @@ export function IntakeModal({
   waterDisplayUnit = 'ml',
   onToggleWaterUnit,
   recommendationVi,
+  suggestion,
 }: Props) {
   const { t } = useT();
   const c = useThemeColors();
@@ -113,6 +116,15 @@ export function IntakeModal({
           autoFocus
         />
 
+        {suggestion && (
+          <Pressable
+            style={({ pressed }) => [styles.suggestChip, pressed && styles.pressed]}
+            onPress={() => setAmount(String(isWater && waterDisplayUnit === 'l' ? suggestion.value / 1000 : suggestion.value))}
+          >
+            <Text style={styles.suggestText}>{t('components.routine.suggest', { amount: suggestion.label })}</Text>
+          </Pressable>
+        )}
+
         <TextInput
           style={[styles.input, styles.noteInput]}
           placeholder={t('components.intakeModal.notePlaceholder')}
@@ -146,6 +158,8 @@ export function IntakeModal({
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
+  suggestChip: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 14, backgroundColor: c.bgElevated },
+  suggestText: { fontSize: 13, fontWeight: '600', color: c.textSecondary },
   content: {
     padding: 24,
     gap: 12,

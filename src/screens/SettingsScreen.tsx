@@ -1,3 +1,5 @@
+import { useRoutineStore } from '../store/routineStore';
+import type { RoutineMode } from '../domain/routine/routineEngine';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -188,7 +190,9 @@ function Tile({
   );
 }
 
-type SectionKey = 'language' | 'body' | 'health' | 'notifications' | 'meals' | 'data' | 'interface';
+const ROUTINE_MODES: RoutineMode[] = ['off', 'prompt', 'auto'];
+
+type SectionKey = 'language' | 'body' | 'health' | 'routine' | 'notifications' | 'meals' | 'data' | 'interface';
 
 const THEME_LABEL_KEYS: Record<ThemeMode, string> = {
   dark: 'settings.interface.themeDark',
@@ -232,6 +236,8 @@ export function SettingsScreen() {
   const [exporting, setExporting] = useState(false);
   // One card open at a time — the screen stays a short list of headings.
   const [openSection, setOpenSection] = useState<SectionKey | null>(null);
+  const routineMode = useRoutineStore((s) => s.mode);
+  const setRoutineMode = useRoutineStore((s) => s.setMode);
   // iOS "Reduce Motion" → cards open/close instantly (LayoutAnimation, unlike
   // Reanimated, doesn't honor that setting on its own).
   const reduceMotion = useReduceMotionSetting();
@@ -417,6 +423,7 @@ export function SettingsScreen() {
     data: t('settings.summary.data', {
       period: t(`dataRetention.periodLong.${monthsKey(resolveDataRetention(dataRetention).months)}`),
     }),
+    routine: t(`settings.routine.mode.${routineMode}`),
     interface: t('settings.summary.interface', {
       theme: t(THEME_LABEL_KEYS[themeMode]),
       fx: onOff(particleEffectsEnabled),
@@ -635,6 +642,31 @@ export function SettingsScreen() {
               danger
             />
           </View>
+        </SettingsSection>
+      ),
+    },
+    {
+      key: 'routine',
+      title: t('settings.routine.sectionTitle'),
+      node: (
+        <SettingsSection
+          key="routine"
+          icon="🔁"
+          title={t('settings.routine.sectionTitle')}
+          summary={summaries.routine}
+          info={ROUTINE_MODES.map((mode) => ({
+            heading: t(`settings.routine.mode.${mode}`),
+            body: t(`settings.routine.desc.${mode}`),
+          }))}
+          open={openSection === 'routine'}
+          onToggle={() => toggle('routine')}
+        >
+          <Segmented
+            compact
+            options={ROUTINE_MODES.map((mode) => ({ value: mode, label: t(`settings.routine.mode.${mode}`) }))}
+            value={routineMode}
+            onChange={setRoutineMode}
+          />
         </SettingsSection>
       ),
     },

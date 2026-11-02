@@ -59,6 +59,7 @@ export function HistoryScreen() {
   const [sheetBurnedKcal, setSheetBurnedKcal] = useState(0);
   const [addFoodVisible, setAddFoodVisible] = useState(false);
   // Bumped when the user starts scrolling — collapses the weight chart's tap caption.
+  const [weightCardKey, setWeightCardKey] = useState(0);
   const [scrollKey, setScrollKey] = useState(0);
   // Carried-forward weight for the day-detail sheet — fetched once here (not
   // by WeightLogCard, which keeps its own independent copy for its own list).
@@ -138,6 +139,18 @@ export function HistoryScreen() {
     await loadHistory();
   }
 
+  async function handleEditEntry(entry: FoodLogEntry, patch: { grams?: number; count?: number }) {
+    await useEnergyStore.getState().updateFoodForPastDate(entry, patch);
+    if (sheetDate) await fetchDayEntries(sheetDate);
+    await loadHistory();
+  }
+
+  async function handleDayChanged() {
+    if (sheetDate) await fetchDayEntries(sheetDate);
+    await loadHistory();
+    setWeightCardKey((k) => k + 1);
+  }
+
   // Close the day-detail sheet and open FoodLogModal pinned to that date.
   function handleAddFood() {
     setSheetVisible(false);
@@ -196,7 +209,7 @@ export function HistoryScreen() {
           <Text style={styles.empty}>{t('screens.history.empty')}</Text>
         )}
 
-        <WeightLogCard onChanged={loadHistory} dismissKey={scrollKey} />
+        <WeightLogCard key={weightCardKey} onChanged={loadHistory} dismissKey={scrollKey} />
       </ScrollView>
 
       <DayDetailSheet
@@ -212,6 +225,8 @@ export function HistoryScreen() {
         onClose={closeDaySheet}
         onAddFood={handleAddFood}
         onDeleteEntry={handleDeleteEntry}
+        onEditEntry={handleEditEntry}
+        onDayChanged={handleDayChanged}
       />
       <FoodLogModal
         visible={addFoodVisible}

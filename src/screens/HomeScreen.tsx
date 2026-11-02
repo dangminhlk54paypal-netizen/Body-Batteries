@@ -72,6 +72,10 @@ import { useT } from '../i18n/useT';
 import { foodLogEntryDisplayName, getAnyFoodById } from '../data/food/foodLookup';
 import { summarizeHomeDetails } from '../domain/battery/homeDetailsSummary';
 import { LOCALE_TAGS } from '../i18n/types';
+import { useRoutineAssistant } from '../hooks/useRoutineAssistant';
+import { useRoutineStore } from '../store/routineStore';
+import { RoutineCheckInCard } from '../components/routine/RoutineCheckInCard';
+import { routineAmount } from '../lib/routineLabels';
 
 // Matches the TFn convention used across other components (e.g.
 // BatterySourceSheet.tsx) — lets plain helper functions outside the
@@ -135,6 +139,8 @@ function isSupplementFood(foodId: string): boolean {
 
 export function HomeScreen() {
   const { t, language } = useT();
+  const routineHour = useRoutineAssistant();
+  const routineInsights = useRoutineStore((s) => s.insights);
   const {
     readings,
     foodLog,
@@ -342,6 +348,14 @@ export function HomeScreen() {
   // Plain render-time derivations for the two sheets below — no effects.
   const hasWorkoutToday = activityLog.some((e) => e.workouts.length > 0 || e.steps > 0);
   const recommendation = buildRecommendation(t, selectedBattery, userProfile, hasWorkoutToday);
+  const usualAmount =
+    selectedBattery?.id === 'water' || selectedBattery?.id === 'sleep'
+      ? routineInsights[selectedBattery.id].suggested
+      : null;
+  const intakeSuggestion =
+    usualAmount != null && (selectedBattery?.id === 'water' || selectedBattery?.id === 'sleep')
+      ? { value: usualAmount, label: routineAmount(selectedBattery.id, usualAmount, t, language) }
+      : null;
   const selectedBatteryLevel =
     readings.find((r) => r.batteryTypeId === selectedBattery?.id)?.level ?? 0;
 
@@ -402,6 +416,8 @@ export function HomeScreen() {
 
         {/* Eat / move quick actions feeding the energy battery */}
         <EnergyActionsBar />
+
+        <RoutineCheckInCard hour={routineHour} />
 
         {/* Sub-batteries — how-to text lives behind ⓘ */}
         <View style={styles.sectionHead}>
@@ -669,6 +685,7 @@ export function HomeScreen() {
         waterDisplayUnit={waterDisplayUnit}
         onToggleWaterUnit={handleToggleWaterUnit}
         recommendationVi={recommendation}
+        suggestion={intakeSuggestion}
       />
 
       <BatterySourceSheet

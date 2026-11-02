@@ -8,13 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   SectionList,
+  TextInput,
 } from 'react-native';
+import { DayLogEditor } from './history/DayLogEditor';
+import { parseDecimal } from '../lib/units';
 import { BottomSheet } from './ui/BottomSheet';
 import { NutritionDetailSheet } from './food/NutritionDetailSheet';
 import { mealLabel } from '../lib/constants';
 import { formatDisplayDate } from '../lib/dateUtils';
 import { foodLogEntryDisplayName, getAnyFoodById } from '../data/food/foodLookup';
-import { formatLoggedPortion } from '../domain/food/portionUnits';
+import { formatLoggedPortion, isPortionCounted } from '../domain/food/portionUnits';
 import type { FoodLogEntry, MealType } from '../types/food';
 import type { ThemeColors } from '../lib/theme';
 import { useThemeColors, useThemedStyles } from '../hooks/useThemeColors';
@@ -44,6 +47,9 @@ interface DayDetailSheetProps {
   onClose: () => void;
   onAddFood: () => void;
   onDeleteEntry: (entry: FoodLogEntry) => void;
+  onEditEntry: (entry: FoodLogEntry, patch: { grams?: number; count?: number }) => void;
+  // Sleep, water, activity or weight changed in the day editor.
+  onDayChanged: () => void;
 }
 
 // Helper to group entries by mealType
@@ -66,6 +72,10 @@ function groupEntriesByMeal(entries: FoodLogEntry[]): Record<MealType, FoodLogEn
 // every list that shows a logged food words its amount identically.
 function formatPortion(entry: FoodLogEntry, language: Language): string {
   return formatLoggedPortion(entry, getAnyFoodById(entry.foodId), language);
+}
+
+function isCountedEntry(entry: FoodLogEntry): boolean {
+  return isPortionCounted(getAnyFoodById(entry.foodId)?.portionUnit);
 }
 
 // One SectionList section: a meal's label + its entries.
@@ -110,6 +120,8 @@ export function DayDetailSheet({
   onClose,
   onAddFood,
   onDeleteEntry,
+  onEditEntry,
+  onDayChanged,
 }: DayDetailSheetProps) {
   const { t, language } = useT();
   const c = useThemeColors();
@@ -128,6 +140,23 @@ export function DayDetailSheet({
   }, [entries]);
 
   const sectionData = useMemo(() => buildSectionData(grouped, language), [grouped, language]);
+
+  // A food row being corrected in place, and whether the day editor is unfolded.
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const startEditEntry = (entry: FoodLogEntry) => {
+    setEditingEntryId(entry.id);
+    setEditingValue(String(isCountedEntry(entry) ? entry.count ?? 1 : entry.grams));
+  };
+
+  const saveEntry = (entry: FoodLogEntry) => {
+    const value = parseDecimal(editingValue);
+    if (isNaN(value) || value <= 0) return;
+    setEditingEntryId(null);
+    onEditEntry(entry, isCountedEntry(entry) ? { count: value } : { grams: value });
+  };
 
   const handleDelete = (entry: FoodLogEntry) => {
     Alert.alert(
@@ -161,7 +190,36 @@ export function DayDetailSheet({
         <Text style={styles.portion}>{formatPortion(entry, language)}</Text>
       </Pressable>
       <View style={styles.entryRight}>
-        <Text style={styles.energyLabel}>{entry.energyKcal} kcal</Text>
+        {editingEntryId === entry.id ? (
+          <>
+            <TextInput
+              style={styles.entryInput}
+              value={editingValue}
+              onChangeText={setEditingValue}
+              keyboardType="decimal-pad"
+              autoFocus
+              accessibilityLabel={foodLogEntryDisplayName(entry, language)}
+            />
+            <Pressable
+              style={({ pressed }) => [styles.deleteButton, { opacity: pressed ? 0.6 : 1 }]}
+              onPress={() => saveEntry(entry)}
+              accessibilityLabel={t('common.save')}
+            >
+              <Text style={styles.deleteIcon}>✓</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.energyLabel}>{entry.energyKcal} kcal</Text>
+        )}
+        {canAddFood && editingEntryId !== entry.id && getAnyFoodById(entry.foodId) && (
+          <Pressable
+            style={({ pressed }) => [styles.deleteButton, { opacity: pressed ? 0.6 : 1 }]}
+            onPress={() => startEditEntry(entry)}
+            accessibilityLabel={t('common.edit')}
+          >
+            <Text style={styles.deleteIcon}>✎</Text>
+          </Pressable>
+        )}
         <Pressable
           style={({ pressed }) => [
             styles.deleteButton,
@@ -192,7 +250,7 @@ export function DayDetailSheet({
           (same fix as FoodLogModal's editingNutrition guard). */}
       <BottomSheet visible={visible && !detailVisible} onClose={onClose} sheetOffset={600}>
         <ScrollView
-          scrollEnabled={false}
+          keyboardShouldPersistTaps="handled"
           style={styles.sheetContent}
           contentContainerStyle={styles.contentContainer}
         >
@@ -273,6 +331,20 @@ export function DayDetailSheet({
               </Text>
             </Pressable>
           )}
+
+          {/* Everything else logged that day, folded: same window as adding a food. */}
+          {!loading && canAddFood && (
+            <>
+              <Pressable
+                style={({ pressed }) => [styles.editorToggle, { opacity: pressed ? 0.7 : 1 }]}
+                onPress={() => setEditorOpen((open) => !open)}
+              >
+                <Text style={styles.editorToggleText}>{t('components.dayLogEditor.open')}</Text>
+                <Text style={styles.editorToggleText}>{editorOpen ? '▾' : '▸'}</Text>
+              </Pressable>
+              {editorOpen && <DayLogEditor key={date} date={date} onChanged={onDayChanged} />}
+            </>
+          )}
         </ScrollView>
       </BottomSheet>
 
@@ -286,6 +358,24 @@ export function DayDetailSheet({
 }
 
 const createStyles = (c: ThemeColors) => StyleSheet.create({
+  entryInput: {
+    minWidth: 64,
+    backgroundColor: c.bgElevated,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 14,
+    color: c.textPrimary,
+    textAlign: 'right',
+  },
+  editorToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  editorToggleText: { fontSize: 14, fontWeight: '600', color: c.textSecondary },
   sheetContent: {
     flex: 1,
   },

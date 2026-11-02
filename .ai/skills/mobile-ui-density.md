@@ -234,3 +234,6 @@ Khi app đoán ra nhiều mục từ một câu (Nạp bằng chữ), người d
 ## Cập nhật skill này
 Mỗi khi người dùng duyệt hoặc tinh chỉnh một kiểu hiển thị mới, thêm nó vào mục tương ứng ở trên (kèm tên component
 mẫu). Đây là bước bắt buộc của `session-wrapup` (Bước 5b).
+
+## Sửa nhanh trong sheet (Session 79, chờ chủ app duyệt trên máy)
+Một con số sửa ngay trên dòng: ✎ biến số thành ô nhập + ✓, không mở sheet thứ hai. Danh sách phụ gập sau một dòng ▸, cuộn trong cửa sổ nhỏ (`DayLogEditor`).
