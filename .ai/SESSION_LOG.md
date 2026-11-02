@@ -3351,6 +3351,7 @@ Tuần app là Thứ 2–CN: 15.06 rơi vào B1W3, 26.07 rơi vào tuần Holida
 - **Kết quả:** 🔁 tự điền (`domain/routine`, `routineStore`, Home + Cài đặt); ✎ sửa ngày cũ (`DayLogEditor`, `energyStore …IntakeForPastDate`,
   `updateFoodForPastDate`); BB-LOG đọc trong `parseMealAnswer` + `AiMealGuide`. Đủ vi/en/de. `xlsx` chuyển vào `vendor/` vì cloud không vào được CDN.
 - **Khác bản cloud:** không tự cộng trừ pin; không có ô thêm đạm/tinh bột/khoáng và "ăn thêm kcal" (app đã bỏ nhập tay); BB-LOG không có modal riêng.
+- **Dọn:** đã xoá `claude/routine-autofill`, `claude/ai-prompt-guide` (tip `997aada`, `078a893`). Hook + workflow chưa chạy thật trên cloud.
 - **Tiếp theo:** chủ app thêm `EXPO_TOKEN` (chưa có thì không tự publish), thử mục "Session 79" trong `docs/KIEM-TRA-TREN-MAY.md`. Khi `bb.food.v1`
   xong: hợp nhất với BB-LOG, xoá phần dư. EAS `preview` `712b9b20-2b2a-4e69-af40-1c27793cd642` (publish từ Mac). Chưa test máy.
 

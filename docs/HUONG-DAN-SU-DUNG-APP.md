@@ -420,6 +420,10 @@ yếu hoặc bạn thích giao diện tối giản hơn.
 
 ---
 
+### 6.9. 🔁 Tự điền theo thói quen
+Tắt là mặc định. **Hỏi theo giờ:** app hiện sẵn ô giờ ngủ lúc 6–8h, ô nước, bước, phút đi bộ lúc 20–22h. **Tự điền:** mục bạn ghi đều từ 3 ngày liền được ghi giúp, luôn có ↩ Hoàn tác.
+Ghi nhầm hoặc quên: vào **Lịch sử**, chọn hôm nay hoặc 3 ngày trước, mở **✎ Sửa số liệu ngày này**.
+
 ## 7. Một ngày dùng app trông như thế nào?
 
 Để hình dung mọi thứ khớp với nhau ra sao:

@@ -33,6 +33,7 @@ AI mở file skill tương ứng và thực hiện đúng các bước trong đ�
 | [`research-report`](research-report.md) | Nghiên cứu có trích dẫn: kiểm chứng từng thông tin với nguồn gốc, đánh dấu [n]/💡/❓ tại chỗ dùng, link đầy đủ cuối bài, lưu vào `docs/nghien-cuu/` | **Mỗi lần** được nhờ nghiên cứu, khảo sát, so sánh, lập kế hoạch dựa trên thông tin bên ngoài |
 | [`learn-with-ai`](learn-with-ai.md) | Biến tính năng/nghiên cứu AI đã làm thành công trong app thành **bài giảng** cho sinh viên năm nhất: ý tưởng từ đâu, AI biết từ đâu, từng bước, câu chuyện gỡ lỗi, bài tập, nguồn kiểm chứng; lưu vào `docs/LearnWithAI/` | Khi chủ dự án muốn "dạy lại" / "LearnWithAI" một tính năng hay |
 | [`eas-preview-publish`](eas-preview-publish.md) ⏳ *tạm thời* | Đẩy bản mới lên EAS Update (nhánh `preview`) + gửi link để thử trên iPhone | Tự động sau mỗi lượt sửa UI/logic, khi `npm run verify` đã xanh (chỉ khi team có 1 người) |
+| [`cloud-session`](../../.claude/skills/cloud-session/SKILL.md) ⏳ *tạm thời* | Phiên Claude cloud: đứng trên `ui-upgrade`, làm như IDE, push để có bản thử | Đầu mỗi phiên cloud (hook tự nhắc) |
 
 ## Skills native của Claude Code (có sẵn, không cần file)
 

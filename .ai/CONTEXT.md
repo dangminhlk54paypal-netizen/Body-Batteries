@@ -109,9 +109,12 @@ bash .ai/scripts/install-hooks.sh
 ---
 
 ## 10. Trạng thái hiện tại ← AI ĐỌC MỤC NÀY ĐẦU TIÊN
-- **Session 79 (2026-11-02):** 🔁 tự điền, ✎ sửa ngày cũ, 🤖 BB-LOG viết lại trên `ui-upgrade`; phiên cloud: `.claude/skills/cloud-session/SKILL.md`. Chưa test máy.
 
 > Mục này do skill `session-wrapup` tự cập nhật sau mỗi session. Mỗi session mới ≤ 4 dòng (luật ✂️ Viết ngắn).
+
+**Cập nhật lần cuối: 2026-11-02 (Session 79, `ui-upgrade`, đã push).** 🔁 Tự điền, ✎ sửa ngày cũ, 🤖 BB-LOG viết lại từ 2 nhánh cloud
+(nhánh gốc đã xoá). Phiên cloud: skill `cloud-session`; nhánh mặc định GitHub = `ui-upgrade`. Preview `712b9b20`, **chưa test máy**.
+Kế tiếp: chủ app thêm `EXPO_TOKEN`, thử checklist "Session 79"; phiên cloud đầu tiên là lần chạy thật của hook + workflow.
 
 **Cập nhật lần cuối: 2026-10-28 (Session 78).** Pin nhỏ: nhãn "cắm dây" quanh vòng + vuốt để xoay — nhánh
 `claude/battery-ring-callouts` (`6cf9a08`, đã push, chưa merge `ui-upgrade`). Verify xanh. **Chưa publish EAS, chưa test
